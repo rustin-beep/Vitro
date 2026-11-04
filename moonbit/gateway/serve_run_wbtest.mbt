@@ -363,3 +363,90 @@ test "serve_run_strtol_long_decl" {
     msg="long v=strtol(...) 不得再报 W3053 假阳性",
   )
 }
+
+///|
+/// #420（W4 尾件批，2026-11-03）：note 通道跨会话零残留。修前：
+/// `reset_session_preserving_config` 不清 `vm.output`（vm.reset 纪律性
+/// 不碰 output/vfs/input），`serve_run_frame` 的 not_compiled 早退又在
+/// `serve_execute_run` 的 output.clear 之前——前一会话程序的
+/// 「程序运行完成，返回值：N」附注泄漏到下一会话（W4 §4.2 实锤：泄漏
+/// 与协议文档 create_semantics=clear-and-rebuild 不符，定责=实现错）。
+/// 修后：reset 统一清 output + not_compiled 早退前清。
+test "note_channel_zero_residue_across_sessions_420" {
+  let s = @session.Session::new()
+  // 会话 1：编译并运行 → note 通道落「程序运行完成，返回值：42」
+  ignore(
+    serve_handle(
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { return 42; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"run\",\"params\":{}}"))
+  // 会话 2：create（承诺 clear-and-rebuild）→ 编译失败 → run not_compiled
+  ignore(
+    serve_handle(s, "{\"id\":3,\"method\":\"session.create\",\"params\":{}}"),
+  )
+  ignore(
+    serve_handle(
+      s, "{\"id\":4,\"method\":\"compile\",\"params\":{\"source\":\"int main() { return ; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":5,\"method\":\"run\",\"params\":{}}"))
+  // note 通道零残留（修前红：上一会话「返回值：42」泄漏，total>0）
+  let (delta, _) = serve_handle(
+    s, "{\"id\":6,\"method\":\"output.delta\",\"params\":{\"stream\":\"note\",\"cursor\":0}}",
+  )
+  assert_true(
+    delta.contains("\"total\":0"),
+    msg="跨会话 note 零残留（create+not_compiled 双路径）",
+  )
+}
+
+///|
+/// #420 续：session.reset 同款（协议文档「清空编译/运行状态」含输出通道
+/// ——与 create 同修面）；destroy 走同一 reset 函数不单独测。
+test "note_channel_zero_residue_after_session_reset_420" {
+  let s = @session.Session::new()
+  ignore(
+    serve_handle(
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { return 42; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"run\",\"params\":{}}"))
+  ignore(
+    serve_handle(s, "{\"id\":3,\"method\":\"session.reset\",\"params\":{}}"),
+  )
+  let (delta, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"output.delta\",\"params\":{\"stream\":\"note\",\"cursor\":0}}",
+  )
+  assert_true(delta.contains("\"total\":0"), msg="reset 后 note 零残留")
+}
+
+///|
+/// #466 审阅 P2-2（2026-11-04）：#420 的第二修复点独立锚——run 的
+/// not_compiled 早退清 output。既有跨会话锚被 session.create 的 clear
+/// 掩盖（删该早退 clear 后 165 测试全绿的实锤），本锚走**同会话**形态：
+/// compile ok → run（note 落「返回值：42」）→ compile 失败 → run
+/// not_compiled——早退若不清，前一轮附注残留（审阅探针 total=36 实锤）。
+test "note_zero_residue_not_compiled_same_session_466" {
+  let s = @session.Session::new()
+  ignore(
+    serve_handle(
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { return 42; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"run\",\"params\":{}}"))
+  // 同会话第二次 compile 失败（不经 create/reset——两修复点分立）
+  ignore(
+    serve_handle(
+      s, "{\"id\":3,\"method\":\"compile\",\"params\":{\"source\":\"int main() { return ; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":4,\"method\":\"run\",\"params\":{}}"))
+  let (delta, _) = serve_handle(
+    s, "{\"id\":5,\"method\":\"output.delta\",\"params\":{\"stream\":\"note\",\"cursor\":0}}",
+  )
+  assert_true(
+    delta.contains("\"total\":0"),
+    msg="not_compiled 早退后 note 零残留（同会话，无 create 掩护）",
+  )
+}

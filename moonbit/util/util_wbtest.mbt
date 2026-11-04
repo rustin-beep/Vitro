@@ -149,3 +149,33 @@ test "base64_decode_roundtrip" {
   }
   assert_true(base64_decode("!!!") is None, msg="非法字符 fail loud")
 }
+
+///|
+/// #466 审阅 P3-4（2026-11-04）：`\uXXXX` 转义的孤立代理项在 json_parse
+/// 层**原样透传**（write_char 三后端实测容忍——wasm-gc 不 abort；审阅
+/// wasm 臂端到端实锤：`"\ud800"` 的 compile/texts 帧正常，texts 侧输出
+/// U+FFFD）。String 可承载孤立代理码元；下游 @utf8.encode 的 abort 风险
+/// 由 #419 的 dispatch/pp 边界清洗承接——本锚锁「解析层不炸、码元保真」
+/// 事实，修正首版「json_parse 在 wasm-gc 后端 abort」的错误登记。
+test "json_parse_lone_surrogate_transparent_466" {
+  let v = json_parse("{\"a\":\"\\uD800\"}") catch {
+    _ =>
+      fail(
+        "孤立代理转义须可解析（三后端透传，#466 审阅实测）",
+      )
+  }
+  let inner = match v {
+    Object(m) =>
+      match m.get("a") {
+        Some(String(s)) => s
+        _ => fail("a 字段须为字符串")
+      }
+    _ => fail("顶层须为对象")
+  }
+  assert_eq(inner.length(), 1, msg="孤立高代理占一个码元")
+  assert_eq(
+    inner[0].to_int(),
+    0xD800,
+    msg="码元保真（未替换未丢弃）",
+  )
+}

@@ -12,7 +12,7 @@ pub fn json_escape(String) -> String
 
 pub fn json_escape_into(String, StringBuilder) -> Unit
 
-pub fn json_parse(String) -> Json raise JsonParseError
+pub fn json_parse(String, depth_limit? : Int32) -> Json raise JsonParseError
 
 pub fn le_u32_at(FixedArray[Byte], Int32) -> UInt32
 
@@ -29,6 +29,8 @@ pub fn utf8_len(String) -> Int32
 pub fn utf8_text(Bytes) -> String
 
 pub fn utf8_text_partial(Bytes) -> String
+
+pub fn valid_json_number(String) -> Bool
 
 // Errors
 pub suberror JsonParseError {

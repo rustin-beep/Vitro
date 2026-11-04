@@ -1970,6 +1970,12 @@
       "stdout_sha": "e57acc10f53c55bd",
       "memory_sha": "560815ccfefb0795"
     },
+    "baseline/paren_nest_legal_deep.c": {
+      "src_sha": "62ec219f",
+      "exit_code": 101,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "6741f207505527ba"
+    },
     "baseline/parentheses_priority.c": {
       "src_sha": "b8b9271b",
       "exit_code": 0,

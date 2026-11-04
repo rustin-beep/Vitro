@@ -189,3 +189,51 @@ test "resolver_absolute_operand_include_issue356r2" {
     msg="宏 A 自绝对路径头展开",
   )
 }
+
+///|
+/// #419（2026-11-03）：sanitize_surrogates 口径锚——孤立代理各替换一个
+/// U+FFFD（WHATWG 最大子部分，#363 同口径），合法代理对整码点保留；
+/// 快路径零重写。W4 对抗帧形态 `\ud800\udfff\udc00`（孤立高 + 孤立低×2）。
+test "sanitize_surrogates_ufffd_replacement" {
+  // 快路径：无代理区码元原样返回
+  assert_eq(sanitize_surrogates("int main(){}"), "int main(){}")
+  // 孤立高代理 → U+FFFD（EF BF BD）
+  let lone_hi = (0xD800).unsafe_to_char().to_string()
+  let b1 = @utf8.encode(sanitize_surrogates(lone_hi))
+  assert_eq(b1.length(), 3)
+  assert_true(
+    b1[0] == b'\xEF' && b1[1] == b'\xBF' && b1[2] == b'\xBD',
+    msg="U+FFFD 字节级替换",
+  )
+  // 孤立低代理 → U+FFFD（对称）
+  let lone_lo = (0xDFFF).unsafe_to_char().to_string()
+  let b2 = @utf8.encode(sanitize_surrogates(lone_lo))
+  assert_eq(b2.length(), 3)
+  assert_true(b2[0] == b'\xEF' && b2[1] == b'\xBF' && b2[2] == b'\xBD')
+  // 合法代理对（D800 DC00 = U+10000 → F0 90 80 80 四字节）原样保留
+  let pair = (0xD800).unsafe_to_char().to_string() +
+    (0xDC00).unsafe_to_char().to_string()
+  let b3 = @utf8.encode(sanitize_surrogates(pair))
+  assert_eq(b3.length(), 4)
+  assert_true(b3[0] == b'\xF0', msg="代理对未被误替换")
+  // W4 对抗帧三连 D800 DFFF DC00：前两码元恰组合成合法对（U+103FF →
+  // F0 90 8F BF 四字节），仅尾码元孤立 → 4 + 3 = 7 字节（配对优先）
+  let triple = (0xD800).unsafe_to_char().to_string() +
+    (0xDFFF).unsafe_to_char().to_string() +
+    (0xDC00).unsafe_to_char().to_string()
+  let b4 = @utf8.encode(sanitize_surrogates(triple))
+  assert_eq(
+    b4.length(),
+    7,
+    msg="合法对组合 4B + 孤立低代理 U+FFFD 3B",
+  )
+  assert_true(b4[0] == b'\xF0', msg="D800+DFFF 组合 U+103FF 首字节 F0")
+  // 源码语境：注释位孤立代理清洗后 tokenize 正常（finish_pp 零错误）
+  let pp = Pp::new(provider=MapProvider::of([]), cpp_mode=false)
+  let src = "int main() { /* " +
+    (0xD800).unsafe_to_char().to_string() +
+    " */ return 0; }\n"
+  let toks = pp.run_pp(src)
+  let r = pp.finish_pp(toks)
+  assert_eq(r.errors.length(), 0, msg="清洗后注释位代理项不再炸 pp")
+}

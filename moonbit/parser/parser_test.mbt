@@ -595,3 +595,30 @@ test "issue93_block_enum_definition" {
   )
   debug_inspect(codes_of(q4), content="[]")
 }
+
+///|
+/// #421（W4 尾件批，2026-11-03）：深嵌套 struct 定义链 parse 迭代化锚。
+/// 语料 = arm4 struct_nest 同族（`struct S {` × N + `int a; } s;` +
+/// `} t;` × N−1）：修前 parse_struct_body 对嵌套聚合定义自递归
+/// （wasm 栈 ~400B/层），wasmtime 512KiB 默认栈 1500 层即 StackOverflow
+/// （W4 第四臂唯一 TRAP_ONE 形态）、V8 默认 6000 层——修后显式栈迭代，
+/// 20000 层全链存活（合法 C 形态：嵌套 tag 定义，clang 全接受）。
+test "parse_deep_struct_nest_iterative_421" {
+  let n = 20000
+  let parts : Array[String] = []
+  for i = 0; i < n; i = i + 1 {
+    parts.push("struct S {")
+  }
+  parts.push(" int a; } s;")
+  for i = 1; i < n; i = i + 1 {
+    parts.push(" } t;")
+  }
+  parts.push("\nint main() { return 0; }")
+  let src = parts.join(" ")
+  let r = parse_src(src)
+  // parse 层完成（AST 平铺：嵌套层不加深树，StructDecl 表 N 条同名 S）
+  assert_true(
+    r.program is Some(_),
+    msg="深嵌套 struct 定义链 parse 不炸且产 AST",
+  )
+}

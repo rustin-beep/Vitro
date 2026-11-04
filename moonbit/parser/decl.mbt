@@ -1,12 +1,36 @@
 // 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
 
 ///|
+/// #421（2026-11-03）：嵌套聚合定义的帧栈——parse_struct_body 迭代化的
+/// 挂起/恢复载体（外层 body 进行到一半遇内层 `struct|union … {}` 时压栈
+/// 保存现场，内层收口后弹出续跑后半段——anonymous 表/声明器组）。
+priv struct NestFrame {
+  name : String
+  loc : @source.SourceLoc
+  // 本层聚合位（收口 push parsed_aggregates 用——union 记录正确性
+  // 依赖它，M03-A1 同款语义）
+  agg_union : Bool
+  fields : Array[@ast.StructField]
+  // 拦截段上下文（恢复后半段所需）：进入内层的 union 位与内层名
+  nested_union : Bool
+  nested_name : String
+}
+
+///|
 /// 声明族（照搬 Rust `decl.rs`）：struct/union/typedef/enum/函数声明 +
 /// C++ class/template 声明 + enum 常量求值器。
 ///
 /// `eval_enum_const` 的 checked 语义照搬（U1#9：MoonBit `Int` 静默回绕
 /// 与 Rust release UB 同危险——显式溢出检查返回 None 走"非常量表达式"
 /// 诊断）；sizeof 折叠经 `@ast.compute_type_size`（空表场景）。
+///
+/// #421（2026-11-03）：嵌套聚合定义链迭代化——原形态 `parse_struct_body`
+/// 对成员位置的 `struct|union … {}` 自递归（每层一帧 wasm 栈 ~400B），
+/// 深链语料在 runtime 栈预算下 StackOverflow（wasmtime 512KiB 默认 1500
+/// 层临界，W4 第四臂唯一 TRAP_ONE；V8 默认 6000 层）。改为显式 NestFrame
+/// 栈：遇内层压栈保存现场、内层收口后弹出续跑后半段（anonymous 表 +
+/// 声明器组）——栈深不再受 runtime 预算约束（陷阱 28 同族处方）。AST
+/// 产出与原递归逐字段同构（frames 转移的是同一 Array 引用）。
 fn Parser::parse_struct_body(
   self : Parser,
   name : String,
@@ -15,8 +39,71 @@ fn Parser::parse_struct_body(
   is_union~ : Bool = false,
 ) -> @ast.StructDecl {
   ignore(self.consume(LBrace, "预期 '{'"))
-  let fields : Array[@ast.StructField] = []
-  while !self.check(RBrace) && !self.is_at_end() {
+  let frames : Array[NestFrame] = []
+  // 当前层状态（入口层）
+  let mut cur_name = name
+  let mut cur_loc = loc
+  let mut cur_agg_union = is_union
+  let mut cur_fields : Array[@ast.StructField] = []
+  // 续点状态：内层 decl 完成后待执行的拦截段后半（resume_decl 非空即在）
+  let mut resume_decl : @ast.StructDecl? = None
+  let mut resume_union = false
+  let mut resume_name = ""
+  let mut stall_close = false
+  while true {
+    if resume_decl is Some(decl) {
+      // ── 拦截段后半（原递归返回点）：内层 decl 归表 + 声明器组 ──
+      let base = if resume_union {
+        self.anonymous_unions.push(decl)
+        @ast.Type::union_type(resume_name)
+      } else {
+        self.anonymous_structs.push(decl)
+        @ast.Type::struct_type(resume_name)
+      }
+      // 无声明器：匿名成员（字段名空——typeck/codegen 按链穿透访问）
+      if self.check(Semicolon) {
+        ignore(self.advance())
+        cur_fields.push({ ty: base, name: "", })
+      } else {
+        // 带声明器组（`union {...} u, v;`）
+        let d = self.parse_declarator(base, depth)
+        cur_fields.push({ ty: d.0, name: d.1, })
+        while self.match_token(Comma) {
+          let ex = self.parse_declarator(base, depth)
+          cur_fields.push({ ty: ex.0, name: ex.1, })
+        }
+        ignore(self.consume(Semicolon, "预期 ';'"))
+      }
+      resume_decl = None
+      continue
+    }
+    if stall_close || self.check(RBrace) || self.is_at_end() {
+      // ── 本层收口 ──
+      ignore(self.consume(RBrace, "预期 '}'"))
+      // issue #13（2026-10-06）：聚合表单点收口（全路径经此——tag/匿名/
+      // 嵌套/typedef），供 static_assert 的 sizeof 折叠
+      self.parsed_aggregates.push((cur_name, cur_agg_union, cur_fields))
+      let done : @ast.StructDecl = {
+        loc: cur_loc,
+        name: cur_name,
+        fields: cur_fields,
+        is_forward: false,
+      }
+      if frames.length() == 0 {
+        return done
+      }
+      let f = frames.remove(frames.length() - 1)
+      // 恢复外层现场 + 续点（后半段用拦截段保存的 union 位与内层名）
+      resume_decl = Some(done)
+      resume_union = f.nested_union
+      resume_name = f.nested_name
+      cur_name = f.name
+      cur_loc = f.loc
+      cur_agg_union = f.agg_union
+      cur_fields = f.fields
+      stall_close = false
+      continue
+    }
     // 嵌套 enum 定义拦截（issue #15 成员形状，2026-10-06）：
     // `enum [tag] {...} [声明器组] ;` ——常量经 program_sink 注册全局
     if self.check(Enum) {
@@ -33,10 +120,10 @@ fn Parser::parse_struct_body(
           continue
         }
         let d = self.parse_declarator(underlying, depth)
-        fields.push({ ty: d.0, name: d.1, })
+        cur_fields.push({ ty: d.0, name: d.1, })
         while self.match_token(Comma) {
           let ex = self.parse_declarator(underlying, depth)
-          fields.push({ ty: ex.0, name: ex.1, })
+          cur_fields.push({ ty: ex.0, name: ex.1, })
         }
         ignore(self.consume(Semicolon, "预期 ';'"))
         continue
@@ -63,38 +150,24 @@ fn Parser::parse_struct_body(
         } else {
           "__anon_struct_\{self.pos}"
         }
-        let decl = self.parse_struct_body(
-          decl_name,
-          @source.SourceLoc::new(kw_loc.line, kw_loc.column),
-          depth,
-          // M03-A1 处方（2026-11-02，#433 第二批）：is_union 透传——旧用
-          // 参数默认 false，union 记进 parsed_aggregates 为 struct ⇒
-          // snapshot_unions_table 查无 ⇒ 嵌套/局部 union 的
-          // _Static_assert(sizeof(...)) 折叠断链 E1006 假阳性（运行时
-          // sizeof 正确；clang 全形态接受）
-          is_union~,
-        )
-        let base = if is_union {
-          self.anonymous_unions.push(decl)
-          @ast.Type::union_type(decl_name)
-        } else {
-          self.anonymous_structs.push(decl)
-          @ast.Type::struct_type(decl_name)
-        }
-        // 无声明器：匿名成员（字段名空——typeck/codegen 按链穿透访问）
-        if self.check(Semicolon) {
-          ignore(self.advance())
-          fields.push({ ty: base, name: "", })
-          continue
-        }
-        // 带声明器组（`union {...} u, v;`）
-        let d = self.parse_declarator(base, depth)
-        fields.push({ ty: d.0, name: d.1, })
-        while self.match_token(Comma) {
-          let ex = self.parse_declarator(base, depth)
-          fields.push({ ty: ex.0, name: ex.1, })
-        }
-        ignore(self.consume(Semicolon, "预期 ';'"))
+        // #421：压栈保存外层现场，转入内层 body（原递归调用点）。
+        // M03-A1 处方（2026-11-02，#433 第二批）语义保留：is_union
+        // 透传——union 记进 parsed_aggregates（嵌套/局部 union 的
+        // _Static_assert(sizeof(...)) 折叠链，运行时 sizeof 正确；
+        // clang 全形态接受）
+        frames.push({
+          name: cur_name,
+          loc: cur_loc,
+          agg_union: cur_agg_union,
+          fields: cur_fields,
+          nested_union: is_union,
+          nested_name: decl_name,
+        })
+        cur_name = decl_name
+        cur_loc = @source.SourceLoc::new(kw_loc.line, kw_loc.column)
+        cur_agg_union = is_union
+        cur_fields = []
+        ignore(self.consume(LBrace, "预期 '{'"))
         continue
       }
     }
@@ -168,9 +241,11 @@ fn Parser::parse_struct_body(
     let d = (field_ty, field_name)
     if self.pos == field_checkpoint {
       ignore(self.advance())
-      break
+      // 零推进熔断（原 break 出成员循环→收口；迭代化转标志）
+      stall_close = true
+      continue
     }
-    fields.push({ ty: d.0, name: d.1, })
+    cur_fields.push({ ty: d.0, name: d.1, })
     while self.match_token(Comma) {
       // 对抗批挖出（2026-10-19）：逗号后只能是声明器（`int a, b;`）；
       // 出现类型关键字 = 重复声明说明符（`int a, int b`）非法 C，clang
@@ -192,15 +267,12 @@ fn Parser::parse_struct_body(
         continue
       }
       let ex = self.parse_declarator(base_type, depth)
-      fields.push({ ty: ex.0, name: ex.1, })
+      cur_fields.push({ ty: ex.0, name: ex.1, })
     }
     ignore(self.consume(Semicolon, "预期 ';'"))
   }
-  ignore(self.consume(RBrace, "预期 '}'"))
-  // issue #13（2026-10-06）：聚合表单点收口（全路径经此——tag/匿名/
-  // 嵌套/typedef），供 static_assert 的 sizeof 折叠
-  self.parsed_aggregates.push((name, is_union, fields))
-  { loc, name, fields, is_forward: false, }
+  // while true 表达式兜底（所有出口在收口分支 return——此处不可达）
+  abort("unreachable：parse_struct_body 收口分支必然 return")
 }
 
 ///|

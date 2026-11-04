@@ -30,8 +30,12 @@
 //   ST1 每行合法 JSON；ST2 step 行 ok:true 且 result 八字段齐；
 //   ST3 行 id 严格递增（cli_step id+=1 单调）；ST4 终态行恰一行
 //   （finished/trapped/waiting_input 三选一）；ST5 首行 payloads=[]
-//   （滞后一帧发布缓冲——R2 语义）；ST6 每行 payloads <= 2（frames=1；
-//   终态冲刷 buffered+当批）；ST7 summary.frames==帧总数且终态位与末行一致
+//   （滞后一帧发布缓冲——R2 语义）；ST7 summary.frames==帧总数且终态位
+//   与末行一致。
+//   ST6（每行 payloads<=2）已随 #477 案 a 退役（2026-11-05）：宿主回调段
+//   一条 CallHost 指令合法产出多帧（comparator 逐指令出帧——INV3a 修复
+//   语义），发布行 payloads 无静态上界；帧不丢不重由 INV3a（全流严格
+//   +1）+ ST7（summary 对账）锁。id 保留注释形态防报告引用断链。
 //
 // 边界（如实登记）：quarantine 隔离区**区间**数据不在帧流（可观测面只有
 // 指针四态与变量地址域）——「隔离区两两不交」的区间级检查需 gateway
@@ -258,9 +262,9 @@ export class StreamChecker {
       this.push(lineNo, "ST5", `首 step 行 payloads 非空（滞后一帧缓冲）：${payloads.length}`);
     }
     this.firstStepRow = false;
-    if (payloads.length > 2) {
-      this.push(lineNo, "ST6", `payloads=${payloads.length} 超 2（frames=1 语义 + 终态冲刷上限）`);
-    }
+    // ST6 数量上限退役（#477 案 a，2026-11-05）：宿主回调段一条 CallHost
+    // 指令合法多帧（comparator 嵌套帧），静态上限误伤合法形态；帧不丢
+    // 不重由 INV3a + ST7 锁（头注结构契约表）。
     const finished = r.finished === true;
     const trapped = r.trapped === true;
     const waiting = r.waiting_input === true;

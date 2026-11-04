@@ -155,6 +155,14 @@ pub struct VitroVM {
   /// deterministic 销分叉接线（此前 dispatch 恒传 0UL 占位）。不入快照、
   /// `reset` 保留（宿主注入物非执行态）。
   mut clock_source : (() -> UInt64)?
+  /// 宿主回调步观察者（#477 案 a 嵌套帧语义，2026-11-05）：qsort/bsearch
+  /// 的 comparator 经 call_user_function 逐指令执行（step_count 随之推进）
+  /// 但对外是一条 CallHost 指令——帧流曾在此跳号（INV3a 唯一违例形态）。
+  /// 观察者在回调**每条指令执行后**被调（参数 = vm + 该步执行前步数，
+  /// 状态 = 步进后态——与 engine run_batch 顶层 Ok 分支同口径）；
+  /// time_travel 引擎逐批挂载/卸载（run 全速态恒 None——run 通道行为
+  /// 零变化）。不入快照、reset 不碰（注入物非执行态，clock_source 同款）。
+  mut host_step_observer : ((VitroVM, Int32) -> Unit)?
   /// 会话起点（墙钟注册时采样，#211：`clock()` 自此起算的微秒近似——
   /// C11 §7.27.2.1 "自程序起算"，绝对墙钟会让 clock()/CLOCKS_PER_SEC
   /// 得到自 Unix 纪元的天文数字）。不入快照、reset 保留（会话级）。
@@ -222,6 +230,7 @@ pub fn VitroVM::new() -> VitroVM {
     waiting_input: false,
     deterministic: false,
     clock_source: None,
+    host_step_observer: None,
     clock_start_millis: 0UL,
     handler_stack: [],
     exec_mode: Running,
@@ -647,4 +656,16 @@ pub fn VitroVM::set_deterministic(self : VitroVM, deterministic : Bool) -> Unit 
 pub fn VitroVM::set_clock_source(self : VitroVM, f : () -> UInt64) -> Unit {
   self.clock_start_millis = f()
   self.clock_source = Some(f)
+}
+
+///|
+/// 挂载宿主回调步观察者（#477 案 a：comparator 逐指令出帧——time_travel
+/// 引擎逐批挂载，帧采集单源 collect；None = 卸载〔run 全速态/批尾〕）。
+/// 观察者签名 (vm, 执行前步数)——**在每条回调指令执行后、状态恢复前**
+/// 被调（帧状态 = 步进后态，与 run_batch 顶层帧同口径）。
+pub fn VitroVM::set_host_step_observer(
+  self : VitroVM,
+  obs : ((VitroVM, Int32) -> Unit)?,
+) -> Unit {
+  self.host_step_observer = obs
 }

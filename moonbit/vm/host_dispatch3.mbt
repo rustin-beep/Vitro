@@ -185,12 +185,23 @@ fn VitroVM::call_user_function(
   })
   self.ip = meta.ip
   // ── 逐 step 执行至收尾 ──
+  // #477 案 a（嵌套帧，2026-11-05）：每条回调指令执行后通知观察者
+  //（帧 = 执行前步数 + 步进后态——engine run_batch 顶层 Ok 分支同口径；
+  // Trap/WaitingInput/Finished 步的帧同样通知——回调被吞语义〔比较失败
+  // = 相等〕下这是该步唯一的可观测点）。观察者在 match 前调：Trap 帧
+  // 拿到的是 trap 后未回滚态（error 不进帧，帧数据自洽——INV 族不受扰）。
   let mut result : Int32? = None
   while true {
     if self.step_count - start_step >= max_steps {
       break
     }
-    match self.step() {
+    let pre = self.step_count
+    let r = self.step()
+    match self.host_step_observer {
+      Some(obs) => obs(self, pre)
+      None => ()
+    }
+    match r {
       Finished => {
         match self.stack.pop() {
           Some(v) => result = Some(v.to_uint().reinterpret_as_int())

@@ -181,7 +181,7 @@
   E2005 诊断/渲染钩子契约 + 审阅批锚：P1-1 输出回采双锚 / 披露恒真四锚 /
   P2-1 to 旁路 / P2-2 files 行号对齐 / P2-3 通知静默 / P2-4 schema /
   P3-② 诊断卡可交付）；
-  裸/native 双口径各 +22（mcp 挂 `+wasm` 随 gateway B3 口径）；随 master 合流（#462/#464 后）批末终值 = 裸 1264 / native 1313（mcp 22 条全入〔随 #466/#467 基 1264/1313 重对〕，双 README 连坐）。
+  裸/native 双口径各 +22（mcp 挂 `+wasm` 随 gateway B3 口径）；随 master 合流（#462/#464 后）批末终值 = 裸 1275 / native 1324（mcp 22 条全入〔随 #466/#467 基 1275/1324 重对〕，双 README 连坐）。
   黑盒验收 accept.mts 28 断言全绿（对 js 产物跑：会话池建/复用/LRU 逐出/披露切换/
   每工具 happy path/投影页边界/readOnlyHint/run_to 断点/错误帧形态/PNG image 块/
   interactive 双形态/编译错诊断卡）——TTL 5 分钟黑盒不可假钟，白盒覆盖；
@@ -5657,7 +5657,7 @@ LLM 语料探针产物（#78 误拒 VLA / #80 误拒警告级），clang 22.1.4 
 
 **P1 残余**：病 25（v 族 long 错位）**重建不复现销案**（vprintf 直调六形态三向全同——后续批已修）；病 26（未知转换符）三面修——计数器白名单（`parse_format_specs`）+ 弹参数数（`format_arg_count`）+ 输出侧（% 丢弃字母原样**不消耗实参**，clang `A%qB`→`AqB` 实测定形；旧锚「消耗实参」翻面）；病 28（round 边界）`floor(x±0.5)` 中间加法舍入域陷阱改 trunc+小数部判定（`round(0.5-1ulp)` 1.0→0.0）。
 
-**批A host 语义六病**：45 strcmp/strncmp/memcmp 无符号字节差（`& 0xFF` 还原；**strcmp 走预编译段系 oracle 冻结产物无法重产 → 改判 Host 第 6 名**——is_host_rerouted/SHADOWED 17→16/PURE 表摘 strcmp（快照+baselines 14→13）/三锚连坐）；47 strerror 表对齐 UCRT errnum（旧 1/2/3 连续自定义编号系 d1253f91 宏族批漏连坐）；48 time(&t) 写 *tloc（dispatch 弹参旧丢弃；deterministic 写 0，值域 #58 在案不锚）；49 perror=strerror(0)（"No error"）；50 fgetc 二进制模式不折叠 CR LF（is_text_mode 分流——fgets/fread 同族漏网）；51 fread/fwrite 乘 64 位防御（VFS 臂同款+1MB clamp）。
+**批A host 语义六病**：45 strcmp/strncmp/memcmp 无符号字节差（`& 0xFF` 还原；**strcmp 走预编译段系 oracle 冻结产物无法重产 → 改判 Host 第 6 名**——is_host_rerouted/SHADOWED 17→16/PURE 表摘 strcmp（快照+baselines 14→13）/三锚连坐）；47 strerror 表对齐 UCRT errnum（旧 1/2/3 连续自定义编号系 d1275f91 宏族批漏连坐）；48 time(&t) 写 *tloc（dispatch 弹参旧丢弃；deterministic 写 0，值域 #58 在案不锚）；49 perror=strerror(0)（"No error"）；50 fgetc 二进制模式不折叠 CR LF（is_text_mode 分流——fgets/fread 同族漏网）；51 fread/fwrite 乘 64 位防御（VFS 臂同款+1MB clamp）。
 
 **批B typeck 五病**：55 union 数组元素 E3006（**两层连动**：typeck check_array_elem_value 扩 TK_Union + codegen emit_local_array_init 嵌套臂同扩）；57 三目空指针常量豁免（C11 §6.5.15p5，赋值面 #56 同款）；58 `int x = x` 自引用零诊断；60 ll←double 窄化臂补（窄化矩阵独缺 LL 行，对齐 -Wliteral-conversion）；62 `1ULL<<63` TRAP——**真根因=词法 u+ll 丢 ll 分量**（`1ULL` fits_u32 发 UnsignedLiteral → 定型 uint → Shl 32 位域越界）：scanner u+ll 分支 text 带 "ull" 后缀 + parser 剥后缀恒定型 ULL（C11 后缀定死无值域适配）；scanner 锚翻面（text 含后缀）。
 
@@ -5669,7 +5669,7 @@ LLM 语料探针产物（#78 误拒 VLA / #80 误拒警告级），clang 22.1.4 
 
 - **病 44 定性修正后修复（用户指令上游亲证）**：上游探查三证——moonbitlang/x 的 v0.5.5 tag 与 main 的 `write_bytes_to_file_internal` **本有** `guard is_null`；vitro 文件头标注的 0.5.5 锁定 sha（29dbb4f9…）与上游实测一致；上游 guard 3 次 vs **搬迁提交 d29a3470 从第一天起 2 次**——**搬迁单行丢失**（原登记「vendored 0.5.5 原样」不实，非上游缺陷）。修复=补回该行（向锁定版收敛非偏离）；红锚 `write_to_unwritable_path_raises` 以**进程 0xC0000409 崩溃**最强形态证红（NULL fwrite fast-fail），修复后 IOError 透出；文件头标注补 ④Int32 化（f4dee085 扫及 vendored 面的披露债）与 ⑤guard 回补两项。CLI 真坏路径（目录名被文件占位）从崩进程变为带栈 IOError。vendor_drift 闸结构性盲区在案：只监控上游 main 漂移、不做本地↔锁定 tag 保真对账（病 44 即该盲区实例，改进登记不强推）。
 - **病 15 台账勘误销案（浓缩快照第三次漏收，与病 13/14/19 同笔 5a139d30）**：三层探针实证全销——编译层（FILE* 赋值/传参/比较零诊断，5a139d30 宏体 cast 收尾）/ 运行层（fputc 按句柄分流、fgets stdin 通）/ stderr 出口（`// STDERR` 协议标记行透出）。三个裁定点随实销失去对象。
-- **CI 红根除（d1253f91 push 后 lexer_diff knr 13 处 TSV 漂）**：errno 宏值族变更（1/2/3→22/34/33）改变引用宏语料的 token 流——d1253f91 时 lexer 只刷了 baseline（当时「无新例」红被误判跳过）；本批 lexer 四 corpus 补刷（TSV 重算 127/81/138/4）+ CI 口径四 corpus 复验零 FAIL。**freeze 义务清单再+1 家：lexer_diff 的 TSV 面也吃语料**（此前教训只列了 parser/typeck/codegen 的指纹面）。
+- **CI 红根除（d1275f91 push 后 lexer_diff knr 13 处 TSV 漂）**：errno 宏值族变更（1/2/3→22/34/33）改变引用宏语料的 token 流——d1275f91 时 lexer 只刷了 baseline（当时「无新例」红被误判跳过）；本批 lexer 四 corpus 补刷（TSV 重算 127/81/138/4）+ CI 口径四 corpus 复验零 FAIL。**freeze 义务清单再+1 家：lexer_diff 的 TSV 面也吃语料**（此前教训只列了 parser/typeck/codegen 的指纹面）。
 - 防线：moon test 751/751 · native 879（fs 10/gateway 104/cli 14 分解实勘）· drift PASS · testcount/facts --strict 0 漂移/smoke 全绿。
 
 ### Fixed（#76 两缺口：LLM 语料线第二批误拒——gpt-oss-120b 产出，2026-10-13）

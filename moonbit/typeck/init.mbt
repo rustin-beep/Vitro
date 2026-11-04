@@ -372,7 +372,20 @@ fn TypeChecker::check_field_value(
       None => value
     }
     let (e_type, new_value) = self.resolve_expr_type(value)
-    if !self.check_assignable(field_ty, e_type, loc, value_expr=new_value) {
+    // W0-4 豁免连坐（#424 B1 遗留，2026-11-03）：struct char 标量成员路径
+    //——与全局/局部/数组元素同款包裹（W0-4 批漏点三：`struct Q {char b;
+    // char c; int a;} q = {-1}` 的首成员误警）
+    let s_suppress = field_ty.kind() is TK_Char &&
+      is_char_safe_initializer(new_value, field_ty.is_unsigned())
+    if s_suppress {
+      self.char_narrow_suppress = true
+    }
+    let field_result = if !self.check_assignable(
+        field_ty,
+        e_type,
+        loc,
+        value_expr=new_value,
+      ) {
       // issue #19 销案（2026-10-06）：C11 §6.7.9 花括号省略/零初始化——
       // 常量 0 可初始化任意聚合成员（`struct S g = {0};` 惯用法——标量 0
       // 递归作用于首个标量子成员，数组成员收 0 即首元素零、其余默认零填
@@ -406,6 +419,10 @@ fn TypeChecker::check_field_value(
     } else {
       insert_implicit_cast(new_value, field_ty)
     }
+    if s_suppress {
+      self.char_narrow_suppress = false
+    }
+    field_result
   }
 }
 
@@ -772,8 +789,9 @@ pub fn TypeChecker::check_array_initializer(
               }
               let (e_type, new_value) = self.resolve_expr_type(elem.value)
               // W0-4：同普通列表路径的 char 窄化豁免
+              //（#424 B1 遗留：域按目标符号性 + Neg 字面量臂）
               let suppress = elem_type.kind() is TK_Char &&
-                is_char_safe_initializer(new_value)
+                is_char_safe_initializer(new_value, elem_type.is_unsigned())
               if suppress {
                 self.char_narrow_suppress = true
               }
@@ -787,11 +805,24 @@ pub fn TypeChecker::check_array_initializer(
                 self.char_narrow_suppress = false
               }
               if !ok {
-                self.report_error(
-                  "数组初始化元素类型不匹配：期望 '\{elem_type.to_c_string()}'，实际 '\{e_type.to_c_string()}'",
-                  loc,
-                  E3006_ArrayInitTypeMismatch,
-                )
+                // M11-B3（审阅 v2，2026-11-03 连坐）：designated 元素为嵌套
+                // 聚合（InitList 的 void 占位类型）时复用全局版收窄文案
+                //（gen.mbt flatten_designated_global 同款声明）——旧「期望
+                // 'struct S'，实际 'void'」把 InitList 占位类型当实际类型
+                // 报，用户无从理解（合法 C11 被拒已由收窄面诚实声明）
+                if e_type.kind() is TK_Void && elem.value is InitList(_, _, _) {
+                  self.report_error(
+                    "designated initializer 的嵌套聚合元素暂不支持（数组下标指派的 \{elem_type.to_c_string()} 元素——非指派聚合初始化不受影响）",
+                    loc,
+                    E3006_ArrayInitTypeMismatch,
+                  )
+                } else {
+                  self.report_error(
+                    "数组初始化元素类型不匹配：期望 '\{elem_type.to_c_string()}'，实际 '\{e_type.to_c_string()}'",
+                    loc,
+                    E3006_ArrayInitTypeMismatch,
+                  )
+                }
                 elements[i] = { ..elem, value: new_value, }
               } else {
                 elements[i] = {
@@ -919,8 +950,9 @@ fn TypeChecker::check_array_elem_value(
     }
     let (e_type, new_value) = self.resolve_expr_type(value)
     // W0-4：char 元素的字符常量/值域内整常量初始化是 C 惯用写法，豁免窄化警告
+    //（#424 B1 遗留：域按目标符号性 + Neg 字面量臂）
     let suppress = elem_type.kind() is TK_Char &&
-      is_char_safe_initializer(new_value)
+      is_char_safe_initializer(new_value, elem_type.is_unsigned())
     if suppress {
       self.char_narrow_suppress = true
     }

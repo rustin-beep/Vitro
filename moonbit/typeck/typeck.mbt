@@ -595,10 +595,25 @@ pub fn TypeChecker::check(
           program.globals[i] = { ..g_now, ty: new_ty, }
         }
         let g_init_expr : @ast.Expr? = g_now.init
+        // W0-4 豁免连坐（#424 B1 遗留，2026-11-03）：全局标量路径——与
+        // 局部（decl.mbt）/数组元素（init.mbt）同款包裹；W0-4 批只修了
+        // 后两路径（char_init_no_false_positive 语料全为局部形态未暴露），
+        // 全局 `char c = -1` / `unsigned char u = 200` 仍误警 W3053
+        let g_suppress = new_ty.kind() is TK_Char &&
+          (match g_init_expr {
+            Some(ie) => is_char_safe_initializer(ie, new_ty.is_unsigned())
+            None => false
+          })
+        if g_suppress {
+          self.char_narrow_suppress = true
+        }
         let g_assign_ok : Bool = match g_init_expr {
           Some(ie) =>
             self.check_assignable(new_ty, init_type, g.loc, value_expr=ie)
           None => self.check_assignable(new_ty, init_type, g.loc)
+        }
+        if g_suppress {
+          self.char_narrow_suppress = false
         }
         if !g_assign_ok {
           self.report_error(
@@ -876,12 +891,52 @@ pub fn TypeChecker::check_array_dims_legality(
 
 ///|
 /// W0-4：int→char 初始化器是否确定无损（字符常量 / char 值域内整常量）。
-fn is_char_safe_initializer(expr : @ast.Expr) -> Bool {
+/// #424 B1 遗留（2026-11-03）两处扩域：
+/// · 豁免边界按**目标域**判——signed char [-128,127] / unsigned char
+///   [0,255]（旧只按 signed 域，`unsigned char u = 200` 域内值误警；
+///   clang 默认/-Wall 零警实测）；
+/// · 补 **Neg 字面量臂**——`char c = -1` / designated `[1] = -1` /
+///   `static char sc = -2` 是 C 惯用写法（真实 parser 形态
+///   Unary(Neg, Literal)，旧落 `_ => false` 七形态全误警）。
+/// 域外（char c=-300 / unsigned char u=-1、300）维持教学警——比 clang
+/// 默认严一档（-Wextra 对负给 unsigned 的 sign-conversion 同判）。
+fn is_char_safe_initializer(expr : @ast.Expr, target_unsigned : Bool) -> Bool {
   match expr {
+    // 字符常量（ty=char 的 Literal，值恒 0..255）豁免与目标符号性无关
     Literal(value, _, ty) =>
-      ty.kind() is TK_Char || (value >= -128 && value <= 127)
-    LongLiteral(value, _, _) => value >= -128 && value <= 127
+      ty.kind() is TK_Char || in_char_domain(value, target_unsigned)
+    LongLiteral(value, _, _) => in_char_domain_q(value, target_unsigned)
+    Unary(@ast.UnaryOp::Neg, operand, _, _) =>
+      match operand {
+        // -value 需在目标域内（value ≥ 0 保证取反不溢出）
+        Literal(value, _, ty) =>
+          ty.kind() is TK_Char ||
+          (value >= 0 && in_char_domain(-value, target_unsigned))
+        LongLiteral(value, _, _) =>
+          value >= 0 && in_char_domain_q(-value, target_unsigned)
+        _ => false
+      }
     _ => false
+  }
+}
+
+///|
+/// 实际值是否落在目标 char 域（signed [-128,127] / unsigned [0,255]）。
+fn in_char_domain(value : Int32, target_unsigned : Bool) -> Bool {
+  if target_unsigned {
+    value >= 0 && value <= 255
+  } else {
+    value >= -128 && value <= 127
+  }
+}
+
+///|
+/// Int64 同域判定（LongLiteral 初始化 char 的罕见形态，取值域同上）。
+fn in_char_domain_q(value : Int64, target_unsigned : Bool) -> Bool {
+  if target_unsigned {
+    value >= 0L && value <= 255L
+  } else {
+    value >= -128L && value <= 127L
   }
 }
 

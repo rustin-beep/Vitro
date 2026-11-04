@@ -123,25 +123,77 @@ fn Int64::to_int32_bits(v : Int64) -> Int32 {
 /// LN_F→TK_LongLong 罕见路径（double 字面量初始化 long long，值域小），/// 差异随差分对拍暴露再登记。）
 
 ///|
+/// #424（2026-11-02，审阅 v2 B1）：char 字节初始化的单源入口——按 4 字节
+/// 对齐字小端合并（字节级位运算，不越权写邻居）。消费路径全集：
+/// · 字面量标量（push_literal_init 的 TK_Char 目标——覆盖全局标量 /
+///   struct char 字段 / 嵌套数组 char 元素 / static 局部标量，M13-A-3）；
+/// · 一维 char 数组顺序元素（gen.mbt / var_decl.mbt 的 is_char_array 分支）；
+/// · char[] 字符串直写（gen.mbt / 本文件 / var_decl.mbt 的 StringLiteral
+///   臂——连带消掉 M13-C-6「逐字节各推一条 4 字节 init」的表+装载双膨胀）；
+/// · designated 元素（flatten_designated_global 的 elem_size==1 臂，M11-A1）。
+///
+/// 装载序不变量：合并字在 generate 组装时按字基址升序**前插**到
+/// globals_init_32 头部。字内非 char 邻居字节（紧排布局可共享字）被合并
+/// 字写成 0 后，由后续装载的 32/64 位条目**精确覆盖自身范围**收敛——
+/// 邻居有初始化 ⇒ 必有后装载条目；无初始化 ⇒ 静态零本就是 0。libc
+/// 预留段 [0, BYTECODE_LIBC_GLOBALS_RESERVED) 与用户全局区（起点 4 字节
+/// 对齐 bump）不共享字。运行期 #177 的 StoreGlobalByte 是同族字节粒度，
+/// 本函数是其初始化侧对应物。
+fn BytecodeGen::push_char_init_byte(
+  self : BytecodeGen,
+  offset : UInt32,
+  val : Int32,
+) -> Unit {
+  let word = offset & 0xFFFFFFFCU
+  let shift = ((offset & 3U) * 8U).reinterpret_as_int()
+  let byte = (val.reinterpret_as_uint() & 0xFFU) << shift
+  let mask = 0xFFU << shift
+  let cur = match self.char_word_inits.get(word) {
+    Some(v) => v
+    None => 0U
+  }
+  self.char_word_inits.set(word, (cur & (mask ^ 0xFFFFFFFFU)) | byte)
+}
+
+///|
 fn BytecodeGen::push_literal_init(
   self : BytecodeGen,
   offset : UInt32,
   expr : @ast.Expr,
   target_ty : @ast.Type,
 ) -> Bool {
-  match literal_init_bits(expr, target_ty.kind(), expr.ty().is_unsigned()) {
-    Some(pair) => {
-      let (bits, is64) = pair
-      if is64 {
-        self.globals_init_64.push((offset, bits))
-      } else {
-        self.globals_init_32.push(
-          (offset, bits.reinterpret_as_int64().to_int()),
+  // #424（2026-11-02，审阅 v2 B1 / M13-A-3）：char 目标按 1 字节宽度写
+  // （位模式低 8 位）——旧形态落通用 4 字节臂，负值符号扩展成
+  // 0xFFFFFFFF 越权抹相邻三字节（`char a = 300; char b;` → b=1 泄漏、
+  // `char a = -1` 全 FF 抹邻）。TK_Char 与 unsigned char 同字节宽度
+  // （TypeKind 无独立 UChar，is_unsigned 只影响读取符号解释）。
+  if target_ty.kind() is TK_Char {
+    match literal_init_bits(expr, target_ty.kind(), expr.ty().is_unsigned()) {
+      Some(pair) => {
+        let (bits, _) = pair
+        self.push_char_init_byte(
+          offset,
+          (bits & 0xFFUL).reinterpret_as_int64().to_int(),
         )
+        true
       }
-      true
+      None => false
     }
-    None => false
+  } else {
+    match literal_init_bits(expr, target_ty.kind(), expr.ty().is_unsigned()) {
+      Some(pair) => {
+        let (bits, is64) = pair
+        if is64 {
+          self.globals_init_64.push((offset, bits))
+        } else {
+          self.globals_init_32.push(
+            (offset, bits.reinterpret_as_int64().to_int()),
+          )
+        }
+        true
+      }
+      None => false
+    }
   }
 }
 
@@ -223,13 +275,13 @@ fn BytecodeGen::flatten_global_init(
         // 字符串字面量按**字节直写**入 globals_init（含尾 NUL 与零填）；
         // 此前落 `_` 兜底 pending_string_inits 把池址当指针回填——
         // `struct S a = {"Hi"}` 的 a.s 变指针值（printf %s 读垃圾）。
+        // #424（2026-11-02）：字节直写改经合并字通道（不越权 +
+        // 消逐字节 4 字节 init 膨胀，M13-C-6）。
         let bytes = @bytecode.cstring_bytes(value)
         let total = target_ty.array_size()
         for i in 0..<total {
           let byte = if i < bytes.length() { bytes[i].to_int() } else { 0 }
-          self.globals_init_32.push(
-            (base_offset + i.reinterpret_as_uint(), byte),
-          )
+          self.push_char_init_byte(base_offset + i.reinterpret_as_uint(), byte)
         }
       } else {
         // 非 char[] 目标的字符串字面量：维持指针回填路径（char* 等）

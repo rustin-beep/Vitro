@@ -326,17 +326,47 @@
       "stdout_sha": "f73680cf6fa8a295",
       "memory_sha": "fbfd5acc8aa5ff46"
     },
+    "baseline/char_global_desig_byte_write.c": {
+      "src_sha": "88b2947c",
+      "exit_code": 0,
+      "stdout_sha": "8cf6f6a4c790c92b",
+      "memory_sha": "8ed56983fc32694a"
+    },
+    "baseline/char_global_desig_pollute_neighbor.c": {
+      "src_sha": "df932763",
+      "exit_code": 0,
+      "stdout_sha": "aea3cc7f3e919a35",
+      "memory_sha": "1b3fd0c5a6c2d658"
+    },
+    "baseline/char_global_init_word_merge_matrix.c": {
+      "src_sha": "10edd87c",
+      "exit_code": 0,
+      "stdout_sha": "57b8c90fb8ab9875",
+      "memory_sha": "978889bca7bd64ac"
+    },
     "baseline/char_global_read_extents.c": {
       "src_sha": "6f664292",
       "exit_code": 0,
       "stdout_sha": "beeac210e3bb3360",
       "memory_sha": "037cb2f7ce127882"
     },
+    "baseline/char_global_scalar_literal_byte.c": {
+      "src_sha": "5b551afd",
+      "exit_code": 0,
+      "stdout_sha": "53856e538f846d67",
+      "memory_sha": "923622c82691071f"
+    },
     "baseline/char_global_sscanf_fmt.c": {
       "src_sha": "828744d2",
       "exit_code": 0,
       "stdout_sha": "f192c9b0a8a607e2",
       "memory_sha": "a069bd42de4db9c8"
+    },
+    "baseline/char_init_neg_unsigned_domain.c": {
+      "src_sha": "3a6b1b5e",
+      "exit_code": 0,
+      "stdout_sha": "650c7b343062cbf9",
+      "memory_sha": "0d3cdf50c885fc3f"
     },
     "baseline/char_init_no_false_positive.c": {
       "src_sha": "c559bd1e",
@@ -2606,11 +2636,23 @@
       "stdout_sha": "e38726f482ad8e12",
       "memory_sha": "aa7abcfdcd55038d"
     },
+    "baseline/static_local_fnptr_array.c": {
+      "src_sha": "4a48a9a8",
+      "exit_code": 0,
+      "stdout_sha": "f5e2ac090ec3f12b",
+      "memory_sha": "599bf26540a7e029"
+    },
     "baseline/static_local_init_once.c": {
       "src_sha": "b5cb2f12",
       "exit_code": 0,
       "stdout_sha": "c117eca50cdc1156",
       "memory_sha": "934c55dc401b69c6"
+    },
+    "baseline/static_local_ptr_array_name.c": {
+      "src_sha": "a6189a9b",
+      "exit_code": 0,
+      "stdout_sha": "e7f6c011776e8db7",
+      "memory_sha": "6592c28ff299e954"
     },
     "baseline/static_local_shadow.c": {
       "src_sha": "9285a413",
@@ -2767,6 +2809,12 @@
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
       "memory_sha": "0ce88a0f0aa988e1"
+    },
+    "baseline/struct_assign_nested_call_arg.c": {
+      "src_sha": "e4912ccd",
+      "exit_code": 0,
+      "stdout_sha": "3f847e50541d5652",
+      "memory_sha": "9c771dc115b53949"
     },
     "baseline/struct_basic.c": {
       "src_sha": "981e9927",

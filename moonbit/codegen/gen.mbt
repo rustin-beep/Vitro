@@ -57,6 +57,12 @@ priv struct BytecodeGen {
   mut assign_addr_slots : Array[Int32]
   globals_init_32 : Array[(UInt32, Int32)]
   globals_init_64 : Array[(UInt32, UInt64)]
+  /// #424（2026-11-02，审阅 v2 B1）：char 字节初始化的合并字表（4 字节
+  /// 对齐字基址 → 小端字节合并值）。组装时按字基址升序**前插**到
+  /// globals_init_32 头部——装载序在既有 32/64 位条目之前（装载序不变量
+  /// 见 push_char_init_byte 注释）。（Map 本身可变，字段无需 mut——
+  /// 手册陷阱 #20）
+  char_word_inits : Map[UInt32, UInt32]
   mut next_global_offset : Int32
   f64_constants : Array[Double]
   i64_constants : Array[Int64]
@@ -161,6 +167,7 @@ fn BytecodeGen::with_mode(is_library_mode : Bool) -> BytecodeGen {
     assign_addr_slots: [],
     globals_init_32: [],
     globals_init_64: [],
+    char_word_inits: {},
     // 预编译 Bytecode Libc 自身（library mode）时全局/字符串数据从 0 起
     // 分配（Rust 同款自指闭环规避——事故 #13：若也用 RESERVED，
     // globals_size 回算 reserved 每次重生成膨胀 1KB）。
@@ -338,10 +345,28 @@ fn BytecodeGen::generate(
   }
   let end = @bytecode.GLOBAL_START +
     @bytecode.align4(self.next_global_offset_clamped().reinterpret_as_uint())
+  // #424（2026-11-02，审阅 v2 B1）：char 合并字前插到 globals_init_32 头部
+  // （装载序在既有条目之前——装载序不变量见 push_char_init_byte）。
+  // 按字基址升序输出保证 dump 确定性。static 局部（Pass 3）与全局
+  // （Pass 1）的 char 字节统一汇入本表。
+  let char_words : Array[UInt32] = []
+  for w, _ in self.char_word_inits {
+    char_words.push(w)
+  }
+  char_words.sort()
+  let merged_inits : Array[(UInt32, Int32)] = []
+  for w in char_words {
+    merged_inits.push(
+      (w, self.char_word_inits.get(w).unwrap_or(0U).reinterpret_as_int()),
+    )
+  }
+  for pair in self.globals_init_32 {
+    merged_inits.push(pair)
+  }
   (
     Some({
       code: self.code,
-      globals_init_32: self.globals_init_32,
+      globals_init_32: merged_inits,
       globals_init_64: self.globals_init_64,
       func_table: self.func_table,
       func_index: self.func_index,
@@ -497,8 +522,11 @@ fn BytecodeGen::pass1_register_global(
               let values = flatten_init_list(elements, self.errors)
               for i in 0..<sz {
                 let v = if i < values.length() { values[i] } else { 0 }
-                self.globals_init_32.push(
-                  (offset.reinterpret_as_uint() + i.reinterpret_as_uint(), v),
+                // #424（2026-11-02）：char 顺序元素走合并字通道（旧形态
+                // 逐字节各推一条 4 字节 store，越权+双膨胀）
+                self.push_char_init_byte(
+                  offset.reinterpret_as_uint() + i.reinterpret_as_uint(),
+                  v,
                 )
               }
             } else if g.ty.kind() is TK_Struct ||
@@ -639,8 +667,10 @@ fn BytecodeGen::pass1_register_global(
             let bytes = @bytecode.cstring_bytes(value)
             for i in 0..<sz {
               let byte = if i < bytes.length() { bytes[i].to_int() } else { 0 }
-              self.globals_init_32.push(
-                (offset.reinterpret_as_uint() + i.reinterpret_as_uint(), byte),
+              // #424（2026-11-02）：字符串直写走合并字通道（M13-C-6）
+              self.push_char_init_byte(
+                offset.reinterpret_as_uint() + i.reinterpret_as_uint(),
+                byte,
               )
             }
           } else {
@@ -817,6 +847,15 @@ fn BytecodeGen::flatten_designated_global(
           next_index.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
         if elem_size == 8 {
           self.globals_init_64.push((addr, bits))
+        } else if elem_size == 1 {
+          // #424（2026-11-02，审阅 v2 B1 / M11-A1）：char 数组 designated
+          // 元素按字节宽度写——旧形态 elem_size<8 一律 4 字节 store，
+          // `char a[4]={[1]=-1}` 的符号扩展 0xFFFFFFFF 越权抹 a[2]/a[3]
+          // 与相邻无初始化全局
+          self.push_char_init_byte(
+            addr,
+            (bits & 0xFFUL).reinterpret_as_int64().to_int(),
+          )
         } else {
           self.globals_init_32.push(
             (addr, bits.reinterpret_as_int64().to_int32_bits()),

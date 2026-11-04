@@ -319,39 +319,94 @@ test "declare_var_semantics" {
 
 ///|
 /// W0-4 char 窄化豁免判据（is_char_safe_initializer：字符常量 / char 值域
-/// 内整常量；界外值不豁免）。
+/// 内整常量；界外值不豁免）。#424 B1 遗留（2026-11-03）：签名加目标
+/// 符号性参（signed [-128,127] / unsigned [0,255] 分域）+ Neg 字面量臂。
 test "char_safe_initializer_w0_4" {
   let loc = @source.SourceLoc::new(1, 1)
-  // 字符常量（ty=char 的 Literal）
+  // 字符常量（ty=char 的 Literal）——豁免与目标符号性无关
   assert_true(
-    is_char_safe_initializer(@ast.Expr::Literal(65, loc, @ast.Type::char())),
+    is_char_safe_initializer(
+      @ast.Expr::Literal(65, loc, @ast.Type::char()),
+      false,
+    ),
   )
-  // 值域内整常量（ty=int）
   assert_true(
-    is_char_safe_initializer(@ast.Expr::Literal(127, loc, @ast.Type::int())),
+    is_char_safe_initializer(
+      @ast.Expr::Literal(65, loc, @ast.Type::char()),
+      true,
+    ),
+  )
+  // 值域内整常量（ty=int；signed 域）
+  assert_true(
+    is_char_safe_initializer(
+      @ast.Expr::Literal(127, loc, @ast.Type::int()),
+      false,
+    ),
   )
   assert_true(
-    is_char_safe_initializer(@ast.Expr::Literal(-128, loc, @ast.Type::int())),
+    is_char_safe_initializer(
+      @ast.Expr::Literal(-128, loc, @ast.Type::int()),
+      false,
+    ),
   )
-  // 界外
+  // signed 界外
   assert_false(
-    is_char_safe_initializer(@ast.Expr::Literal(128, loc, @ast.Type::int())),
+    is_char_safe_initializer(
+      @ast.Expr::Literal(128, loc, @ast.Type::int()),
+      false,
+    ),
   )
   assert_false(
-    is_char_safe_initializer(@ast.Expr::Literal(1000, loc, @ast.Type::int())),
+    is_char_safe_initializer(
+      @ast.Expr::Literal(1000, loc, @ast.Type::int()),
+      false,
+    ),
   )
+  // #424 B1 遗留：unsigned 目标分域——128..255 域内豁免、-1/300 界外
+  assert_true(
+    is_char_safe_initializer(
+      @ast.Expr::Literal(200, loc, @ast.Type::int()),
+      true,
+    ),
+  )
+  assert_false(
+    is_char_safe_initializer(
+      @ast.Expr::Literal(300, loc, @ast.Type::int()),
+      true,
+    ),
+  )
+  // #424 B1 遗留：Neg 字面量臂（Unary(Neg, Literal) 真实 parser 形态）
+  fn neg(v : Int32) -> @ast.Expr {
+    @ast.Expr::Unary(
+      @ast.UnaryOp::Neg,
+      @ast.Expr::Literal(v, loc, @ast.Type::int()),
+      loc,
+      @ast.Type::int(),
+    )
+  }
+  assert_true(is_char_safe_initializer(neg(1), false))
+  assert_true(is_char_safe_initializer(neg(128), false))
+  assert_false(is_char_safe_initializer(neg(300), false))
+  assert_false(is_char_safe_initializer(neg(1), true))
   // LongLiteral 同域判定
   assert_true(
-    is_char_safe_initializer(@ast.Expr::LongLiteral(65L, loc, @ast.Type::int())),
+    is_char_safe_initializer(
+      @ast.Expr::LongLiteral(65L, loc, @ast.Type::int()),
+      false,
+    ),
   )
   assert_false(
     is_char_safe_initializer(
       @ast.Expr::LongLiteral(300L, loc, @ast.Type::int()),
+      false,
     ),
   )
   // 其他表达式形态不豁免
   assert_false(
-    is_char_safe_initializer(@ast.Expr::Identifier("x", loc, @ast.Type::int())),
+    is_char_safe_initializer(
+      @ast.Expr::Identifier("x", loc, @ast.Type::int()),
+      false,
+    ),
   )
 }
 
@@ -532,5 +587,123 @@ test "compound assign rhs not pre-collapsed after typecheck (#425 F1 pipeline)" 
   assert_true(
     right is @ast.Expr::FloatLiteral(_, _, _),
     msg="右值应保持原 FloatLiteral 形态（运算域提升由 codegen 发射）",
+  )
+}
+
+///|
+/// #424 B1 遗留（2026-11-03）：W3053 对 char 域内**负字面量**与
+/// **unsigned char 域内值**的误报——`char c = -1` / `unsigned char u = 200` /
+/// designated `[1] = -1` / `static char sc = -2` 均为 C 惯用写法，clang
+/// 默认与 -Wall 零警（实测 Win clang 22.1.4，仅 -Wextra 涉 sign-conversion
+/// 面）；旧 is_char_safe_initializer 无 Neg 臂且只按 signed 域 [-128,127]
+/// 判，探针七形态全误警。豁免边界 = **实际值 ∈ 目标域**（signed
+/// [-128,127] / unsigned [0,255]）；域外（char c=-300 / unsigned char
+/// u=-1、300）保留教学警——比 clang 默认严一档（-Wextra 同判负给
+/// unsigned 的 sign-conversion 面）。
+test "w3053_char_neg_and_unsigned_domain(#424 B1 followup)" {
+  let loc = @source.SourceLoc::new
+  let uchar = @ast.Type::Char(true, false)
+  // 负字面量 = Unary(Neg, Literal) —— 真实 parser 形态
+  fn neg_lit(v : Int32) -> @ast.Expr {
+    @ast.Expr::Unary(
+      @ast.UnaryOp::Neg,
+      @ast.Expr::Literal(v, @source.SourceLoc::new(1, 1), @ast.Type::int()),
+      @source.SourceLoc::new(1, 1),
+      @ast.Type::int(),
+    )
+  }
+  fn gdecl(
+    name : String,
+    line : Int32,
+    ty : @ast.Type,
+    init : @ast.Expr,
+  ) -> @ast.GlobalDecl {
+    { ..Default::default(), loc: loc(line, 1), ty, name, init: Some(init), }
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: loc(90, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Literal(0, loc(90, 1), @ast.Type::int())),
+        loc(90, 1),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  // —— 第一组：域内四形态（char -1 / uchar 200 / designated [1]=-1）零警 ——
+  let tc1 = TypeChecker::new()
+  let (_, _, warns1, _) = tc1.check({
+    structs: [],
+    unions: [],
+    globals: [
+      gdecl("a1", 2, @ast.Type::char(), neg_lit(1)),
+      gdecl(
+        "u1",
+        3,
+        uchar,
+        @ast.Expr::Literal(200, loc(3, 1), @ast.Type::int()),
+      ),
+      // designated [1] = -1 —— 走 init.mbt designated 分支的豁免
+      {
+        ..Default::default(),
+        loc: loc(4, 1),
+        ty: @ast.Type::array_of(@ast.Type::char(), [2]),
+        name: "arr",
+        init: Some(
+          @ast.Expr::InitList(
+            [
+              {
+                designators: [
+                  @ast.Designator::Index(
+                    @ast.Expr::Literal(1, loc(4, 1), @ast.Type::int()),
+                  ),
+                ],
+                value: neg_lit(1),
+              },
+            ],
+            loc(4, 1),
+            @ast.Type::void_type(),
+          ),
+        ),
+      },
+    ],
+    funcs: [main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_false(
+    warns1.exists(w => w.code == 3053),
+    msg="域内四形态（char c=-1 / uchar u=200 / designated [1]=-1）不得误报 W3053",
+  )
+  // —— 第二组：域外三形态（char -300 / uchar -1 / uchar 300）须警（防恒真）——
+  let tc2 = TypeChecker::new()
+  let (_, _, warns2, _) = tc2.check({
+    structs: [],
+    unions: [],
+    globals: [
+      gdecl("a2", 2, @ast.Type::char(), neg_lit(300)),
+      gdecl("u2", 3, uchar, neg_lit(1)),
+      gdecl(
+        "u3",
+        4,
+        uchar,
+        @ast.Expr::Literal(300, loc(4, 1), @ast.Type::int()),
+      ),
+    ],
+    funcs: [main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  let w3053_count = warns2.filter(w => w.code == 3053).length()
+  assert_eq(
+    w3053_count,
+    3,
+    msg="域外三形态（char -300 / uchar -1 / uchar 300）各须一条 W3053（真截断/符号面）",
   )
 }

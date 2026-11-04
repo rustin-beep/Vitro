@@ -31,18 +31,13 @@
       "def": "util/json_escape.mbt",
       "def_anchor": "pub fn json_escape(",
       "consumers": [
-        "ast/json_emit.mbt",
         "cmd/lib/cli/cli_frame.mbt",
         "cmd/lib/cli/cli_step.mbt",
         "cmd/lib/cli/cli_wbtest.mbt",
         "cmd/lib/cli/cli_zero_anchor_wbtest.mbt",
         "cmd/lib/engine_direct/channel.mbt",
-        "cmd/lib/engine_direct/engine_direct_test.mbt",
         "cmd/vitro_wasm/main.mbt",
         "diag/e4_export.mbt",
-        "diag/e4_export_wbtest.mbt",
-        "gateway/serve_compile_wbtest.mbt",
-        "gateway/serve_dump.mbt",
         "gateway/serve_run_wbtest.mbt",
         "teaching/steps/catalog.mbt",
         "util/json_escape_wbtest.mbt"
@@ -58,8 +53,7 @@
         "cmd/dump_ast/main.mbt",
         "cmd/dump_compile/main.mbt",
         "cmd/dump_typeck/main.mbt",
-        "gateway/serve_compile_wbtest.mbt",
-        "util/json_escape.mbt"
+        "gateway/serve_compile_wbtest.mbt"
       ],
       "note": "ast 版（json_emit 家族成员）——审阅 v2 M06 三臂分叉案的共享层函数"
     },
@@ -76,7 +70,6 @@
         "parser/expr.mbt",
         "typeck/expr.mbt",
         "typeck/init.mbt",
-        "typeck/init_wbtest.mbt",
         "util/util_wbtest.mbt",
         "vm/state.mbt"
       ]
@@ -106,7 +99,6 @@
         "cmd/lib/cli/cli_run.mbt",
         "cmd/lib/cli/cli_step.mbt",
         "cmd/lib/cli/cli_wbtest.mbt",
-        "fs/utf8_compat.mbt",
         "gateway/serve_io.mbt",
         "util/util_wbtest.mbt"
       ]

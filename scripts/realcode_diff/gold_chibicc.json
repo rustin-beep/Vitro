@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "as_of": "2026-10-29",
+    "as_of": "2026-11-04",
     "buckets": {
       "both_green": 0,
       "clang_red": 21,
@@ -12,7 +12,7 @@
       "divergence": 4,
       "rescued": 1
     },
-    "note": "金样本签名清单,零源码文本。E1021×2 豁免;#278/#343 重冻;2026-10-29 全量重冻(#213 照跑 typeck+#344/#346 叠加,E3001 族 22 处随批吸收)。",
+    "note": "金样本签名清单,零源码文本。E1021×2 豁免;#278/#343 重冻;2026-10-29 全量重冻(#213/#344/#346,E3001 族 22 处);2026-11-04 #459 重冻(W3053 误报 13+1 条消失,零连坐)。",
     "repo": "chibicc@RunThem/chibicc-repo",
     "source_commit": "b9c1f0311709dbc0aab7ff4501f920f30444ae1b",
     "source_fork": "https://github.com/RunThem/chibicc-repo",
@@ -49,7 +49,7 @@
       "clang_ok": true,
       "gcc_ok": true,
       "vitro_errs": 1911,
-      "vitro_warns": 62,
+      "vitro_warns": 61,
       "codes": {
         "E2003": 1,
         "E2005": 1867,
@@ -60,8 +60,7 @@
         "E3067": 5,
         "E3075": 12,
         "E3076": 1,
-        "W1019": 61,
-        "W3053": 1
+        "W1019": 61
       },
       "layer": "parse",
       "run": ""
@@ -125,7 +124,7 @@
       "clang_ok": true,
       "gcc_ok": true,
       "vitro_errs": 371,
-      "vitro_warns": 7,
+      "vitro_warns": 6,
       "codes": {
         "E2003": 1,
         "E2005": 349,
@@ -133,8 +132,7 @@
         "E3001": 17,
         "E3037": 1,
         "E3076": 1,
-        "W1019": 6,
-        "W3053": 1
+        "W1019": 6
       },
       "layer": "parse",
       "run": ""
@@ -163,14 +161,13 @@
       "clang_ok": true,
       "gcc_ok": true,
       "vitro_errs": 139,
-      "vitro_warns": 2,
+      "vitro_warns": 1,
       "codes": {
         "E2003": 1,
         "E2005": 135,
         "E2007": 2,
         "E3037": 1,
-        "W1019": 1,
-        "W3053": 1
+        "W1019": 1
       },
       "layer": "parse",
       "run": ""
@@ -494,7 +491,7 @@
       "clang_ok": true,
       "gcc_ok": false,
       "vitro_errs": 991,
-      "vitro_warns": 28,
+      "vitro_warns": 25,
       "codes": {
         "E2003": 1,
         "E2005": 964,
@@ -503,8 +500,7 @@
         "E3037": 1,
         "E3067": 2,
         "E3075": 1,
-        "W1019": 25,
-        "W3053": 3
+        "W1019": 25
       },
       "layer": "parse",
       "run": ""
@@ -513,7 +509,7 @@
       "clang_ok": true,
       "gcc_ok": false,
       "vitro_errs": 657,
-      "vitro_warns": 34,
+      "vitro_warns": 26,
       "codes": {
         "E2003": 1,
         "E2005": 639,
@@ -521,8 +517,7 @@
         "E3001": 13,
         "E3037": 1,
         "E3067": 1,
-        "W1019": 26,
-        "W3053": 8
+        "W1019": 26
       },
       "layer": "parse",
       "run": ""

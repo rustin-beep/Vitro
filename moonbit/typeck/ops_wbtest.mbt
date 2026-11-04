@@ -889,3 +889,92 @@ test "const_indirect_assign_issue194" {
     msg="非 const 指针数组元素写不得误拒",
   )
 }
+
+///|
+/// #424 B1 遗留批审阅 P2-1（2026-11-04）：普通赋值路径的 char 域内
+/// 豁免——`d = 'C'` / `d = -1`（Neg 域内）/ struct 成员 `gq.c = 'B'`
+/// 不再误警 W3053（clang -Wall -Wextra 实测零警）；修复前域内三形态
+/// 各误报一条（初始化器四路径已豁免而 resolve_assign 的
+/// check_assignable 调用漏包裹）。负锚两组防恒真：域外 `a = 200`
+/// 教学警保留；复合赋值 `c += 1` 不豁免（提升回写非初始化器语义，
+/// 教学警照发——审阅口径：豁免边界 = 实际值 ∈ 目标域，单源
+/// is_char_safe_initializer）。
+test "w3053_assign_path_char_domain(#424 B1 followup P2-1)" {
+  let loc = @source.SourceLoc::new(1, 1)
+  fn char_lit(v : Int32) -> @ast.Expr {
+    @ast.Expr::Literal(v, loc, @ast.Type::char())
+  }
+  fn int_lit(v : Int32) -> @ast.Expr {
+    @ast.Expr::Literal(v, loc, @ast.Type::int())
+  }
+  fn neg_lit(v : Int32) -> @ast.Expr {
+    @ast.Expr::Unary(@ast.UnaryOp::Neg, int_lit(v), loc, @ast.Type::int())
+  }
+  fn decl_var(tc : TypeChecker, name : String, ty : @ast.Type) -> Unit {
+    tc.declare_var(name, ty, is_global=false, is_extern=false, is_static=false)
+  }
+  // —— 域内三形态：'C' 字符常量 / -1 Neg / struct 成员 'B' → 零 W3053 ——
+  let tc1 = TypeChecker::new()
+  tc1.enter_scope()
+  tc1.structs.set("Q", {
+    fields: [(@ast.Type::char(), "c")],
+    is_complete: true,
+  })
+  decl_var(tc1, "d", @ast.Type::char())
+  decl_var(tc1, "gq", @ast.Type::struct_type("Q"))
+  let id = @ast.Expr::Identifier("d", loc, @ast.Type::void_type())
+  ignore(tc1.resolve_assign(Assign, id, char_lit(67), loc))
+  ignore(tc1.resolve_assign(Assign, id, neg_lit(1), loc))
+  ignore(
+    tc1.resolve_assign(
+      Assign,
+      @ast.Expr::Member(
+        @ast.Expr::Identifier("gq", loc, @ast.Type::void_type()),
+        "c",
+        false,
+        loc,
+        @ast.Type::void_type(),
+      ),
+      char_lit(66),
+      loc,
+    ),
+  )
+  assert_false(
+    tc1.warnings.exists(w => w.code == 3053),
+    msg="域内赋值三形态（d='C' / d=-1 / gq.c='B'）不得误报 W3053",
+  )
+  // —— 负锚 1：域外 a = 200 → 教学警恰一条 ——
+  let tc2 = TypeChecker::new()
+  tc2.enter_scope()
+  decl_var(tc2, "a", @ast.Type::char())
+  ignore(
+    tc2.resolve_assign(
+      Assign,
+      @ast.Expr::Identifier("a", loc, @ast.Type::void_type()),
+      int_lit(200),
+      loc,
+    ),
+  )
+  assert_eq(
+    tc2.warnings.filter(w => w.code == 3053).length(),
+    1,
+    msg="域外赋值 a=200 须保留教学警 W3053（真截断面）",
+  )
+  // —— 负锚 2：复合赋值 c += 1 → 不豁免，教学警照发（锁现状口径）——
+  let tc3 = TypeChecker::new()
+  tc3.enter_scope()
+  decl_var(tc3, "c", @ast.Type::char())
+  ignore(
+    tc3.resolve_assign(
+      AddAssign,
+      @ast.Expr::Identifier("c", loc, @ast.Type::void_type()),
+      int_lit(1),
+      loc,
+    ),
+  )
+  assert_eq(
+    tc3.warnings.filter(w => w.code == 3053).length(),
+    1,
+    msg="复合赋值 c+=1 不在豁免域（提升回写非初始化器语义），教学警照发",
+  )
+}

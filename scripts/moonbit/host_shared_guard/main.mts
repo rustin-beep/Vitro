@@ -13,6 +13,9 @@
 //     逻辑（审阅 v2 M06：三臂分叉案根因在共享层），改共享函数时「有哪些消费方」此前
 //     靠人脑。判据：登记表的消费方文件集合 == 实际 grep 集合（双向差集红）——新增/
 //     删除消费方不更新登记即红；改共享函数时登记表就是强制的对账清单。
+//     消费面扫描口径（2026-11-04 审阅 P3⑤）：剥行注释后做词边界匹配——
+//     判据边界（URL 字面量假阴性 / 块注释仍命中）单源登记在 conv_specs
+//     stripLineComments 的 docstring，两闸共用同一实现与口径。
 //
 // 用法（**仓库根**）：
 //   node scripts/moonbit/host_shared_guard/main.mts             # 报告
@@ -25,6 +28,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../../internal/capi.mts";
+import { stripLineComments } from "../conv_specs/main.mts";
 
 export const RULES_PATH = "scripts/moonbit/host_shared_guard/rules.json";
 
@@ -172,8 +176,12 @@ export function actualConsumers(fnName: string, defFile: string): string[] {
       const rel = path.relative(abs("moonbit"), p).split(path.sep).join("/");
       if (rel === defFile) continue;
       const text = fs.readFileSync(p, "utf8");
-      // 消费 = 出现定义名（定义/调用/引用皆算——改共享函数时全部要对账）
-      if (new RegExp(`\\b${fnName}\\b`).test(text)) out.push(rel);
+      // 消费 = 出现定义名（定义/调用/引用皆算——改共享函数时全部要对账）。
+      // 2026-11-03 剥行注释后匹配（B3 批 cli_zero_anchor_wbtest 注释提及
+      // utf8_bytes 实锤误命中——「不经 util 包的 utf8_bytes，免给 surface
+      // 边表添一条消费边」的防登记说明文字反被当消费；与 twin_fingerprint
+      // 同款剥注释口径，A7 两闸自此一致）
+      if (new RegExp(`\\b${fnName}\\b`).test(stripLineComments(text))) out.push(rel);
     }
   };
   walk(root);

@@ -420,3 +420,33 @@ test "note_channel_zero_residue_after_session_reset_420" {
   )
   assert_true(delta.contains("\"total\":0"), msg="reset 后 note 零残留")
 }
+
+///|
+/// #466 审阅 P2-2（2026-11-04）：#420 的第二修复点独立锚——run 的
+/// not_compiled 早退清 output。既有跨会话锚被 session.create 的 clear
+/// 掩盖（删该早退 clear 后 165 测试全绿的实锤），本锚走**同会话**形态：
+/// compile ok → run（note 落「返回值：42」）→ compile 失败 → run
+/// not_compiled——早退若不清，前一轮附注残留（审阅探针 total=36 实锤）。
+test "note_zero_residue_not_compiled_same_session_466" {
+  let s = @session.Session::new()
+  ignore(
+    serve_handle(
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { return 42; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"run\",\"params\":{}}"))
+  // 同会话第二次 compile 失败（不经 create/reset——两修复点分立）
+  ignore(
+    serve_handle(
+      s, "{\"id\":3,\"method\":\"compile\",\"params\":{\"source\":\"int main() { return ; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":4,\"method\":\"run\",\"params\":{}}"))
+  let (delta, _) = serve_handle(
+    s, "{\"id\":5,\"method\":\"output.delta\",\"params\":{\"stream\":\"note\",\"cursor\":0}}",
+  )
+  assert_true(
+    delta.contains("\"total\":0"),
+    msg="not_compiled 早退后 note 零残留（同会话，无 create 掩护）",
+  )
+}

@@ -201,8 +201,6 @@ test "serve_dump_deep_typeck_complete_frame" {
 }
 
 ///|
-/// #418 单元锚：json_structural_depth 扫描器口径——配平/字符串感知/
-/// 转义感知（扫描器是深路径唯一的结构防线，独立白盒锁定）。
 test "json_structural_depth_scanner" {
   assert_eq(json_structural_depth("{}"), 1)
   assert_eq(json_structural_depth("[{}]"), 2)
@@ -216,4 +214,75 @@ test "json_structural_depth_scanner" {
   assert_eq(json_structural_depth("}"), -1)
   assert_eq(json_structural_depth("{\"a\":1"), -1)
   assert_eq(json_structural_depth("{\"a\":\"x}"), -1)
+}
+
+///|
+/// #466 审阅 P1（2026-11-04）：dump_frame_ok 阈值边界锚——json_parse 的
+/// depth 是递归栈深（末层标量也占一层），默认上限 128 实际只容**结构深度
+/// ≤127** 走浅路径；`d <= 128` 会把 d=128 的合法帧送进浅路径 → 必然
+/// 深度超限 → abort（越界一格，审阅实测 n=56 合法加法链 rc=0xC0000409）。
+/// 阈值两侧各造一点（A1-c 教训：分界点外取样全绿≠无病）。
+test "dump_frame_ok_threshold_boundary_466" {
+  // 构造精确结构深度的合法 JSON：d-1 层 {"a": 嵌套 + 标量 1
+  fn nested(depth : Int32) -> String {
+    let buf = StringBuilder()
+    for i = 0; i < depth - 1; i = i + 1 {
+      buf.write_string("{\"a\":")
+    }
+    buf.write_string("1")
+    for i = 0; i < depth - 1; i = i + 1 {
+      buf.write_string("}")
+    }
+    buf.to_string()
+  }
+  // 口径对齐：文本含 k 个嵌套 `{` ⇒ json_structural_depth=k、json_parse
+  // 栈深=k+1（末层标量占一层）。nested(n) 产出 k=n-1 个 `{`。
+  // k=127（nested 128）：浅路径最后安全档（栈恰 128 = 上限内，全量自检）
+  let f_shallow = dump_frame_ok(Json(7), nested(128))
+  assert_true(
+    f_shallow.contains("\"ok\":true"),
+    msg="k=127 浅路径安全档正常",
+  )
+  // k=128（nested 129）：必须走深路径——浅路径栈深 129 > 128 必然拒绝
+  //（修前 `d <= 128` 把它送进浅路径 abort，即审阅 P1 的越界一格；审阅
+  // 端点复现 = 56 项加法链包 if，emitter 深度恰落此档 rc=0xC0000409）
+  let f_deep = dump_frame_ok(Json(7), nested(129))
+  assert_true(
+    f_deep.contains("\"ok\":true"),
+    msg="k=128 深路径正常（P1 越界一格）",
+  )
+  // 两侧帧均可解析回 Json（出口完整性）
+  ignore(@util.json_parse(f_shallow, depth_limit=1000))
+  ignore(@util.json_parse(f_deep, depth_limit=1000))
+}
+
+///|
+/// #466 审阅 P2-1（2026-11-04）：深路径校验的**值级面**——升级前
+/// json_structural_depth 只验括号配平，`{"a":01}` / 非法转义等坏值
+/// 直拼出非法 JSON 帧（静默降级：把「能发现的崩溃」换成「静默坏帧」）。
+/// 全部须判 -1（fail loud），与浅路径 json_parse 同强度。
+test "json_lex_value_level_fail_loud_466" {
+  // 数字文法（RFC 8259）：前导零 / 裸尾点 / 指数缺数 / 前导 + 号
+  assert_eq(json_structural_depth("{\"a\":01}"), -1, msg="前导零")
+  assert_eq(json_structural_depth("{\"a\":1.}"), -1, msg="裸尾点")
+  assert_eq(json_structural_depth("[1e]"), -1, msg="指数缺数")
+  assert_eq(json_structural_depth("[+1]"), -1, msg="前导加号")
+  // 字符串域：非法转义 / u 转义非 hex / 裸控制字符
+  assert_eq(json_structural_depth("\"x\\qy\""), -1, msg="非法转义")
+  assert_eq(json_structural_depth("\"u\\u00ZZ\""), -1, msg="u 转义非 hex")
+  assert_eq(json_structural_depth("\"a\nb\""), -1, msg="裸换行控制字符")
+  // 字面量错拼 / 结构域（键非引号 / 缺逗号 / 尾逗号 / 顶层尾随）
+  assert_eq(json_structural_depth("[tru]"), -1, msg="字面量错拼")
+  assert_eq(json_structural_depth("{a:1}"), -1, msg="键非引号")
+  assert_eq(json_structural_depth("[1 2]"), -1, msg="缺逗号")
+  assert_eq(json_structural_depth("[1,]"), -1, msg="尾逗号")
+  assert_eq(json_structural_depth("{\"a\":1,}"), -1, msg="对象尾逗号")
+  assert_eq(json_structural_depth("1 x"), -1, msg="顶层尾随内容")
+  // 合法形态回归（升级不得误伤）
+  assert_eq(json_structural_depth("{\"a\":[{\"b\":1}]}"), 3)
+  assert_eq(
+    json_structural_depth("{\"a\":\"}{[\"}"),
+    1,
+    msg="字符串内括号不计",
+  )
 }

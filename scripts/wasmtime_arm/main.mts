@@ -417,7 +417,22 @@ function cmdDiff(o: Opts): { report: DiffReport; ok: boolean } {
   }
   // 冻结基线：本轮 verdict 落盘（DIFF 拒冻）
   if (o.freezeBaseline !== null) {
-    const base = freezeBaseline(report, manifest.profile, `frozen ${new Date().toISOString().slice(0, 10)} from --synth; 重冻：node scripts/wasmtime_arm/main.mts all --synth --freeze-baseline <此文件>`);
+    // #466 审阅 P3-3（2026-11-04）：note 追加式——目标文件已有 note 时
+    // 拼接保留（模板覆盖曾丢整段梯度知识：V8 临界版本依赖面/5000 flaky
+    // 勿加档等）；首冻无旧件走模板。
+    const freezeDate = new Date().toISOString().slice(0, 10);
+    const freezeCmd = "node scripts/wasmtime_arm/main.mts all --synth --freeze-baseline <此文件>";
+    let freezeNote = `frozen ${freezeDate} from --synth; 重冻：${freezeCmd}`;
+    try {
+      const prev = JSON.parse(readFileSync(o.freezeBaseline, "utf8")) as { note?: string };
+      if (prev.note && !prev.note.startsWith(`frozen ${freezeDate}`)) {
+        freezeNote = `frozen ${freezeDate} from --synth; 重冻：${freezeCmd}
+—— 前次 note 追加保留：${prev.note}`;
+      }
+    } catch {
+      // 首冻（目标不存在/坏 JSON）——模板 note
+    }
+    const base = freezeBaseline(report, manifest.profile, freezeNote);
     writeFileSync(o.freezeBaseline, JSON.stringify(base, null, 2) + "\n");
     process.stderr.write(`[w4 baseline] 冻结 ${Object.keys(base.cases).length} 例 → ${o.freezeBaseline}\n`);
     return { report, ok: true };

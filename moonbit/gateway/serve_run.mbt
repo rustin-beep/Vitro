@@ -140,7 +140,9 @@ fn serve_run_frame(
   if !s.compile.compiled {
     // #420（2026-11-03）：早退路径同清输出通道——「未编译」语义下输出
     // 应为空（serve_execute_run 的非 resume 段在 compiled 检查前清，
-    // 本早退在此前不经过 clear ⇒ 上一程序的 note 附注残留泄漏）
+    // 本早退在此前不经过 clear ⇒ 上一程序的 note 附注残留泄漏）。
+    // #466 审阅 P2-2：同会话锚 note_zero_residue_not_compiled_same_session_466
+    // 独立锁此点（跨会话锚被 create 的 clear 掩盖，删此清曾全绿）。
     s.vm.output.clear()
     return (serve_ok(id, not_compiled_json()).stringify(), false)
   }

@@ -32,49 +32,359 @@ fn dump_parse_or_abort(s : String) -> Json {
 }
 
 ///|
-/// emitter 文本最大嵌套深度（O(n) 迭代、字符串感知——#418）：
-/// 返回 -1 = 结构坏（括号配平破 / 字符串未闭合），值级合法性不在此面
-/// （浅层同构 emitter 逻辑已被对拍锁定，深路径只须结构性保证）。
+/// 深路径 JSON 词法校验器（O(n) 迭代状态机，#418 + #466 审阅 P2-1）：
+/// 通过则返回最大嵌套深度（`{`/`[` 计层），任一非法返回 -1。
+/// 值级与 json_parse 同强度（fail loud 不因深路径降级）——文法面：
+/// 转义合法性（`\"` 八式 + `\uXXXX` 四 hex）/ 字符串裸控制字符禁放 /
+/// 数字 RFC 8259（复用 @util.valid_json_number 单源）/ true|false|null
+/// 精确匹配 / 键必引号 / 逗号与冒号分隔形态 / 尾随内容。
+/// 修前形态（纯配平扫描）对 `{"a":01}`、`"x\qy"` 等坏值返回正值——
+/// 深链直拼出非法 JSON 帧的静默降级（审阅 P2-1 实锤）。
+priv enum JPhase {
+  TopValue // 顶层：期待唯一值
+  ArrValueOrClose // 数组：期待元素或 ']'
+  KeyOrClose // 对象：期待键 '"' 或 '}'
+  Colon // 键后期待 ':'
+  CommaOrCloseObj // 成员值后：期待 ',' 或 '}'
+  CommaOrCloseArr // 元素后：期待 ',' 或 ']'
+  ObjKeyAfterComma // 对象 ',' 后：期待键（禁 '}'——尾逗号非法）
+  ArrValueAfterComma // 数组 ',' 后：期待元素（禁 ']'——尾逗号非法）
+  Done // 顶层值完成：期待 EOF
+}
+
+///|
+fn j_peek(text : String, pos : Int32) -> Int32 {
+  if pos < text.length() {
+    text[pos].to_int()
+  } else {
+    -1
+  }
+}
+
+///|
+fn j_skip_ws(text : String, pos : Int32) -> Int32 {
+  let mut p = pos
+  while p < text.length() {
+    match text[p].to_int() {
+      32 | 9 | 10 | 13 => p += 1
+      _ => break
+    }
+  }
+  p
+}
+
+///|
 fn json_structural_depth(text : String) -> Int32 {
+  let n = text.length()
   let mut depth = 0
   let mut max_depth = 0
-  let mut in_string = false
-  let mut escaped = false
-  for ch in text {
-    let c = ch.to_int()
-    if in_string {
-      if escaped {
-        escaped = false
-      } else if c == 92 {
-        escaped = true // '\'
-      } else if c == 34 {
-        in_string = false // '"'
-      }
-      continue
-    }
-    match c {
-      34 => in_string = true // '"'
-      123 | 91 => {
-        // '{' '['
-        depth += 1
-        if depth > max_depth {
-          max_depth = depth
+  let containers : Array[Bool] = [] // true=Obj false=Arr（容器栈）
+  let mut phase = TopValue
+  let mut pos = 0
+  while true {
+    pos = j_skip_ws(text, pos)
+    let c = j_peek(text, pos)
+    // 值消费子程序后的流转标记
+    match phase {
+      TopValue | ArrValueOrClose | ArrValueAfterComma => {
+        if phase is ArrValueOrClose && c == 93 {
+          // ']'
+          ignore(containers.remove(containers.length() - 1))
+          depth -= 1
+          phase = if containers.length() == 0 {
+            Done
+          } else if containers[containers.length() - 1] {
+            CommaOrCloseObj
+          } else {
+            CommaOrCloseArr
+          }
+          pos += 1
+          continue
+        }
+        match c {
+          -1 => return -1
+          123 => {
+            // '{'
+            pos += 1
+            depth += 1
+            if depth > max_depth {
+              max_depth = depth
+            }
+            containers.push(true)
+            phase = KeyOrClose
+          }
+          91 => {
+            // '['
+            pos += 1
+            depth += 1
+            if depth > max_depth {
+              max_depth = depth
+            }
+            containers.push(false)
+            phase = ArrValueOrClose
+          }
+          34 =>
+            // '"'
+            match j_scan_string(text, pos) {
+              Some(next) => {
+                pos = next
+                phase = if containers.length() == 0 {
+                  Done
+                } else if containers[containers.length() - 1] {
+                  CommaOrCloseObj
+                } else {
+                  CommaOrCloseArr
+                }
+              }
+              None => return -1
+            }
+          45 | 48..<=57 =>
+            // '-' digit
+            match j_scan_number(text, pos) {
+              Some(next) => {
+                pos = next
+                phase = if containers.length() == 0 {
+                  Done
+                } else if containers[containers.length() - 1] {
+                  CommaOrCloseObj
+                } else {
+                  CommaOrCloseArr
+                }
+              }
+              None => return -1
+            }
+          116 =>
+            // 't'
+            match j_scan_lit(text, pos, "true") {
+              Some(next) => {
+                pos = next
+                phase = if containers.length() == 0 {
+                  Done
+                } else if containers[containers.length() - 1] {
+                  CommaOrCloseObj
+                } else {
+                  CommaOrCloseArr
+                }
+              }
+              None => return -1
+            }
+          102 =>
+            // 'f'
+            match j_scan_lit(text, pos, "false") {
+              Some(next) => {
+                pos = next
+                phase = if containers.length() == 0 {
+                  Done
+                } else if containers[containers.length() - 1] {
+                  CommaOrCloseObj
+                } else {
+                  CommaOrCloseArr
+                }
+              }
+              None => return -1
+            }
+          110 =>
+            // 'n'
+            match j_scan_lit(text, pos, "null") {
+              Some(next) => {
+                pos = next
+                phase = if containers.length() == 0 {
+                  Done
+                } else if containers[containers.length() - 1] {
+                  CommaOrCloseObj
+                } else {
+                  CommaOrCloseArr
+                }
+              }
+              None => return -1
+            }
+          _ => return -1
         }
       }
-      125 | 93 => {
-        // '}' ']'
-        depth -= 1
-        if depth < 0 {
+      KeyOrClose =>
+        match c {
+          125 => {
+            // '}'
+            ignore(containers.remove(containers.length() - 1))
+            depth -= 1
+            phase = if containers.length() == 0 {
+              Done
+            } else if containers[containers.length() - 1] {
+              CommaOrCloseObj
+            } else {
+              CommaOrCloseArr
+            }
+            pos += 1
+          }
+          34 =>
+            match j_scan_string(text, pos) {
+              Some(next) => {
+                pos = next
+                phase = Colon
+              }
+              None => return -1
+            }
+          _ => return -1
+        }
+      ObjKeyAfterComma =>
+        if c == 34 {
+          match j_scan_string(text, pos) {
+            Some(next) => {
+              pos = next
+              phase = Colon
+            }
+            None => return -1
+          }
+        } else {
           return -1
         }
+      Colon =>
+        if c == 58 {
+          // ':'
+          pos += 1
+          phase = ArrValueOrClose // 复用「期待值」态（容器语义由流转收）
+        } else {
+          return -1
+        }
+      CommaOrCloseObj =>
+        match c {
+          44 => {
+            // ','
+            pos += 1
+            phase = ObjKeyAfterComma
+          }
+          125 => {
+            // '}'
+            ignore(containers.remove(containers.length() - 1))
+            depth -= 1
+            phase = if containers.length() == 0 {
+              Done
+            } else if containers[containers.length() - 1] {
+              CommaOrCloseObj
+            } else {
+              CommaOrCloseArr
+            }
+            pos += 1
+          }
+          _ => return -1
+        }
+      CommaOrCloseArr =>
+        match c {
+          44 => {
+            // ','
+            pos += 1
+            phase = ArrValueAfterComma
+          }
+          93 => {
+            // ']'
+            ignore(containers.remove(containers.length() - 1))
+            depth -= 1
+            phase = if containers.length() == 0 {
+              Done
+            } else if containers[containers.length() - 1] {
+              CommaOrCloseObj
+            } else {
+              CommaOrCloseArr
+            }
+            pos += 1
+          }
+          _ => return -1
+        }
+      Done => {
+        if pos >= n {
+          return max_depth
+        }
+        return -1
       }
-      _ => ()
     }
   }
-  if in_string || depth != 0 {
-    return -1
+  // 不可达（Done 分支必 return）
+  abort("unreachable：json_structural_depth 状态机 Done 必然返回")
+}
+
+///|
+/// 字符串扫描（pos 指向开头 '"'）：合法返回消费后的下一位置，非法 None
+/// ——转义八式 + \uXXXX 四 hex + 裸控制字符（< 0x20）禁放。
+fn j_scan_string(text : String, pos : Int32) -> Int32? {
+  let n = text.length()
+  let mut p = pos + 1 // 跳过开头引号
+  while p < n {
+    let c = text[p].to_int()
+    if c == 34 {
+      // '"'
+      return Some(p + 1)
+    }
+    if c == 92 {
+      // '\'
+      p += 1
+      if p >= n {
+        return None
+      }
+      match text[p].to_int() {
+        34 | 92 | 47 | 98 | 102 | 110 | 114 | 116 => p += 1
+        117 => {
+          // 'u' 四 hex
+          p += 1
+          let mut k = 0
+          while k < 4 {
+            if p >= n {
+              return None
+            }
+            let h = text[p].to_int()
+            let ok = (h >= 48 && h <= 57) ||
+              (h >= 97 && h <= 102) ||
+              (h >= 65 && h <= 70)
+            if !ok {
+              return None
+            }
+            p += 1
+            k += 1
+          }
+        }
+        _ => return None
+      }
+    } else if c < 0x20 {
+      return None
+    } else {
+      p += 1
+    }
   }
-  max_depth
+  None
+}
+
+///|
+/// 数字扫描（pos 指向 '-' 或数字首字符）：字符集段截取后走
+/// @util.valid_json_number 单源文法。
+fn j_scan_number(text : String, pos : Int32) -> Int32? {
+  let n = text.length()
+  let mut p = pos
+  while p < n {
+    match text[p].to_int() {
+      45 | 43 | 46 | 101 | 69 | 48..<=57 => p += 1
+      _ => break
+    }
+  }
+  let seg = text[pos:p].to_owned()
+  if @util.valid_json_number(seg) {
+    Some(p)
+  } else {
+    None
+  }
+}
+
+///|
+/// 字面量精确匹配（true/false/null）。
+fn j_scan_lit(text : String, pos : Int32, word : String) -> Int32? {
+  let wn = word.length()
+  if pos + wn > text.length() {
+    return None
+  }
+  for i = 0; i < wn; i = i + 1 {
+    if text[pos + i] != word[i] {
+      return None
+    }
+  }
+  Some(pos + wn)
 }
 
 ///|
@@ -95,7 +405,11 @@ fn dump_frame_ok(id : Json, emitter_text : String) -> String {
       "dump JSON 拼装失败（emitter bug，结构不配平）：\{emitter_text[0:80].to_owned()}",
     )
   }
-  if d <= 128 {
+  // #466 审阅 P1（2026-11-04）：json_parse 的 depth 是递归栈深（末层标量
+  // 也占一层）——结构深度 k 的文本栈深 k+1，上限 128 只容 k ≤ 127 走浅
+  // 路径；`d <= 128` 会把 k=128 的合法帧送进浅路径必然超限 abort（越界
+  // 一格——审阅实测 56 项合法加法链包 if 即落此档，rc=0xC0000409）。
+  if d < 128 {
     serve_ok(id, dump_parse_or_abort(emitter_text)).stringify()
   } else {
     "{\"id\":\{id.stringify()},\"ok\":true,\"result\":\{emitter_text}}"

@@ -388,7 +388,9 @@ fn accumulate_double(text : String) -> Double {
 ///|
 /// RFC 8259 number 文法校验：[-]?int[.frac][e[+-]?exp]——int 禁前导零、
 /// frac/exp 至少一位数字。text 已过字符集扫描（只含 [0-9.eE+-]）。
-fn valid_json_number(text : String) -> Bool {
+/// #466 审阅 P2-1（2026-11-04）pub 化：gateway 深路径词法校验器复用
+/// （单源——值级 fail loud 强度与 json_parse 对齐，禁再造第二份文法）。
+pub fn valid_json_number(text : String) -> Bool {
   let n = text.length()
   let mut i = 0
   if i < n && text[i] == '-' {

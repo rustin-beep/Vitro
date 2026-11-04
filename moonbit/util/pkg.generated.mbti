@@ -30,6 +30,8 @@ pub fn utf8_text(Bytes) -> String
 
 pub fn utf8_text_partial(Bytes) -> String
 
+pub fn valid_json_number(String) -> Bool
+
 // Errors
 pub suberror JsonParseError {
   Fail(message~ : String, offset~ : Int32)

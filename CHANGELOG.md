@@ -42,19 +42,56 @@
   NestFrame 显式栈迭代化（外层 body 现场压栈、内层收口后弹出续跑拦截段
   后半——anonymous 表/声明器组；AST 产出与递归版逐字段同构）。红锚 20000
   层 parse 存活；parser/lexer/typeck/codegen 四 digest 存量零漂移（同构性
-  机判）；arm4：struct_nest_1500/2000/4000 TRAP_ONE→AGREE、6000
-  TRAP_BOTH→AGREE——wasmtime 默认栈下全 synth 通过。
+  机判）；arm4：struct_nest_6000/8000/12000 TRAP_BOTH→AGREE（迭代化后
+  栈预算无关——双侧全梯度 1500..12000 AGREE；1500–4000 档的 TRAP_ONE
+  已由前批 #461 的跑器 2MiB 对齐先转，本批归因口径相对 #461 冻结基线，
+  详见审阅修正）。
 - **语料与基线连坐**：corpus/baseline 新增 `paren_nest_legal_deep.c`（clang
   直拍 exit=101 一致）；四 diff 闸 + vm_diff digest 入账（存量零漂移）；arm4
-  synth_baseline 受控重冻（改善项逐条归因见 tmp/batch_W4tail_REPORT.md）。
-  `struct_nest_deep.c` 首版曾入 baseline 后撤出（CI 首轮红：perf_budget 的
-  `struct_or_union_defs` max_per_file=8 是**真实语料规模前提**，250 层合成
-  对抗语料不属该域——#421 回归防护由三层锚承担：parser wbtest 20000 层 +
-  arm4 synth struct_nest 全梯度基线 + 四 digest 同构闸，corpus 副本冗余）。
-- 锚：新增 8 测试（深 ast/typeck 帧 + 扫描器口径 / surrogate 端到端×2 + pp
+  synth_baseline 受控重冻（相对 #461 冻结基线 **17 例 TRAP_BOTH→AGREE**：
+  #418 面 10 + #419 面 4 + #421 面 3〔struct_nest≥6000〕；零恶化零 DIFF，
+  冻结复验 69/69 identical）。`struct_nest_deep.c` 首版曾入 baseline 后撤出
+  （CI 首轮红：perf_budget 的 `struct_or_union_defs` max_per_file=8 是
+  **真实语料规模前提**，250 层合成对抗语料不属该域——#421 回归防护由
+  三层锚承担：parser wbtest 20000 层 + arm4 synth struct_nest 全梯度基线 +
+  四 digest 同构闸，corpus 副本冗余）。
+- 锚：新增 9 测试（深 ast/typeck 帧 + 扫描器口径 / surrogate 端到端×2 + pp
   单元字节级 / 跨会话 note 零残留×2 / 20000 层 parse），J9 全先证红
   （abort/泄漏/栈溢出原始形态实录）；变异抽样：#418 深路径阈值变异→双帧
   红→还原复绿。
+### fix(engine): #466 审阅处置——P1×1 + P2×2 + P3×5（2026-11-04）
+
+- **P1（阈值越界一格）**：json_parse 的 depth 是递归栈深（末层标量占
+  一层），结构深度 k ⇒ 栈深 k+1——浅路径上限实际只容 k≤127；`d <= 128`
+  把 k=128 的合法帧送进浅路径必然超限 abort（审阅端点复现：56 项合法
+  加法链包 if，rc=0xC0000409；wasm 臂同点一致崩）。修：`d < 128` + 边界
+  两侧锚（k=127 浅路径安全档 / k=128 深路径，A1-c 形态：分界点外取样
+  全绿≠无病）。锚 `dump_frame_ok_threshold_boundary_466`（修前 abort
+  实录证红）。
+- **P2-1（深路径值级裸奔）**：纯配平扫描对 `{"a":01}` / `"x\qy"` 等坏值
+  返回正值——深链直拼出非法 JSON 帧的静默降级（深链修前直接 abort，
+  从无可比对帧，「浅层对拍锁定 ⇒ 深层同构」论证不成立）。修：
+  `json_structural_depth` 升级为 O(n) 迭代词法校验状态机（JPhase 七态
+  + 容器栈；值级与 json_parse 同强度——转义八式 + \uXXXX 四 hex + 裸
+  控制字符禁放 + 数字 RFC 8259〔@util.valid_json_number pub 化单源复用〕
+  + true/false/null 精确匹配 + 键必引号 + 尾逗号/缺逗号/尾随内容）。
+  锚 `json_lex_value_level_fail_loud_466` 13 断言（修前前导零判不出
+  证红；尾逗号两形态系实现期自查补——Comma 后态须禁立即闭括号）。
+- **P2-2（#420 第二修复点零锚）**：run 的 not_compiled 早退 clear 被跨
+  会话锚的 create clear 掩盖（删该 clear 后 165 测试全绿——审阅突变
+  实锤）。补同会话锚 `note_zero_residue_not_compiled_same_session_466`
+  （compile ok→run→compile 失败→run not_compiled→note total=0）；变异
+  复核：删早退 clear → 该锚精确红 → 复原绿。
+- **P3 五项**：①「新增 8 测试」勘误 9；②arm4 改善归因修正（21→17 例、
+  #421 面= struct_nest≥6000 三条——1500–4000 系前批 #461 栈预算转的）；
+  ③synth_baseline note 知识恢复（V8 临界版本依赖面/5000 flaky 勿加档
+  整段追加保留）+ 冻结机制改**追加式**（main.mts 读旧 note 拼接，模板
+  覆盖不再丢知识）；④#429 登记修正（json_parse 三后端透传实测 +
+  `json_parse_lone_surrogate_transparent_466` 锚）；⑤既有分叉
+  （`struct A { int; }` E2005 vs clang warning）审阅登记，非本批面。
+- 复验：gateway 168/168 + util 18/18（默认 + wasm-gc 双后端）；`moon check`
+  0 errors。
+
 - 边界登记（不越界）：json_parse 的 `\uXXXX` 转义 write_char 对孤立代理在
   wasm-gc 后端 abort 是 #429 面（B6 批）；`input.feed`/argv 运行时字节域
   通道的 surrogate 形态另行登记。

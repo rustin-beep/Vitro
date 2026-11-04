@@ -181,7 +181,7 @@
   E2005 诊断/渲染钩子契约 + 审阅批锚：P1-1 输出回采双锚 / 披露恒真四锚 /
   P2-1 to 旁路 / P2-2 files 行号对齐 / P2-3 通知静默 / P2-4 schema /
   P3-② 诊断卡可交付）；
-  裸/native 双口径各 +22（mcp 挂 `+wasm` 随 gateway B3 口径）；随 master 合流（#462/#464 后）批末终值 = 裸 1244 / native 1293（mcp 22 条全入，双 README 连坐）。
+  裸/native 双口径各 +22（mcp 挂 `+wasm` 随 gateway B3 口径）；随 master 合流（#462/#464 后）批末终值 = 裸 1264 / native 1313（mcp 22 条全入〔随 #466/#467 基 1264/1313 重对〕，双 README 连坐）。
   黑盒验收 accept.mts 28 断言全绿（对 js 产物跑：会话池建/复用/LRU 逐出/披露切换/
   每工具 happy path/投影页边界/readOnlyHint/run_to 断点/错误帧形态/PNG image 块/
   interactive 双形态/编译错诊断卡）——TTL 5 分钟黑盒不可假钟，白盒覆盖；

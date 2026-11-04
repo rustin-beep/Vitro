@@ -561,6 +561,19 @@ fn TypeChecker::resolve_assign(
     left_is_ptr &&
     !left_is_func_ptr &&
     right_is_int
+  // W0-4 豁免连坐（#424 B1 遗留批审阅 P2-1，2026-11-04）：普通赋值路径
+  //——与初始化器四路径（decl 局部 / init 数组元素 / init struct 成员 /
+  // typeck 全局标量）同款包裹；`gq.c = 'B'` / `d = 'C'` / `d = -1`（域内
+  // 含 Neg）不再误警，域外 `a = 200` 教学警保留（clang -Wall -Wextra 同
+  // 零警；豁免边界 = 实际值 ∈ 目标域，与初始化器口径单源
+  // is_char_safe_initializer）。复合赋值（c += 1）不经此豁免——其窄化
+  // 语义是「提升计算后回写」，非初始化器无损形态，教学警照发。
+  let a_suppress = op is Assign &&
+    left_type.kind() is TK_Char &&
+    is_char_safe_initializer(new_right_pre, left_type.is_unsigned())
+  if a_suppress {
+    self.char_narrow_suppress = true
+  }
   let new_right : @ast.Expr = if ptr_compound_ok {
     // 指针 +=/-= 整数：跳过普通赋值兼容性检查，右侧保持整数类型
     new_right_pre
@@ -586,6 +599,9 @@ fn TypeChecker::resolve_assign(
     // `x /= 0.5` 假除零 trap 误杀合法程序）。运算域提升与运算后窄化
     // 由 codegen 复合路径发射（assign.mbt compound_domain 三单源）
     new_right_pre
+  }
+  if a_suppress {
+    self.char_narrow_suppress = false
   }
   if !(op is Assign) {
     if ptr_compound_ok {

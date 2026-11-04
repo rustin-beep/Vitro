@@ -519,3 +519,117 @@ test "char_arr2d_substring_w3008_utf8_ds" {
     msg="多维子数组 W3008 判定须用 UTF-8 口径（Latin-1 回退即零警红）",
   )
 }
+
+///|
+/// #424 B1 遗留批审阅 P2-2（2026-11-04）：struct char 成员豁免路径
+/// （check_field_value 的 s_suppress 包裹）行为锚——此前该路径零单测锚
+///（突变关掉 s_suppress 后 132 条 typeck 单测全绿、仅差分 digest 红）。
+/// 域内形态：首成员 -1（Neg）/ 'x'（字符常量）零 W3053；负锚：域外
+/// 成员 300 教学警恰一条（防恒真，同 a=200 口径）。
+test "w3053_struct_field_char_domain(#424 B1 followup P2-2)" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let qt : @ast.StructDecl = {
+    loc,
+    name: "Q",
+    fields: [
+      { ty: @ast.Type::char(), name: "b", },
+      { ty: @ast.Type::char(), name: "c", },
+      { ty: @ast.Type::int(), name: "a", },
+    ],
+    is_forward: false,
+  }
+  fn init_list(
+    elems : Array[@ast.InitElement],
+    loc : @source.SourceLoc,
+  ) -> @ast.Expr {
+    @ast.Expr::InitList(elems, loc, @ast.Type::void_type())
+  }
+  fn int_lit(v : Int32, loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Literal(v, loc, @ast.Type::int())
+  }
+  fn char_lit(v : Int32, loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Literal(v, loc, @ast.Type::char())
+  }
+  fn neg_lit(v : Int32, loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Unary(@ast.UnaryOp::Neg, int_lit(v, loc), loc, @ast.Type::int())
+  }
+  fn qdecl(name : String, init : @ast.Expr) -> @ast.GlobalDecl {
+    {
+      ..Default::default(),
+      loc,
+      ty: @ast.Type::struct_type("Q"),
+      name,
+      init: Some(init),
+      source_file: "t.c",
+    }
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(90, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(int_lit(0, @source.SourceLoc::new(90, 1))),
+        @source.SourceLoc::new(90, 1),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  // 域内：{-1, 'x', 5} → 零 W3053
+  let tc1 = TypeChecker::new()
+  let (_, _, warns1, _) = tc1.check({
+    structs: [qt],
+    unions: [],
+    globals: [
+      qdecl(
+        "g_ok",
+        init_list(
+          [
+            { designators: [], value: neg_lit(1, loc), },
+            { designators: [], value: char_lit(120, loc), },
+            { designators: [], value: int_lit(5, loc), },
+          ],
+          loc,
+        ),
+      ),
+    ],
+    funcs: [main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_false(
+    warns1.exists(w => w.code == 3053),
+    msg="struct char 成员域内初始化 {-1,'x',5} 不得误报 W3053（s_suppress 豁免面）",
+  )
+  // 负锚：域外 {300, 'x', 5} → 教学警恰一条
+  let tc2 = TypeChecker::new()
+  let (_, _, warns2, _) = tc2.check({
+    structs: [qt],
+    unions: [],
+    globals: [
+      qdecl(
+        "g_bad",
+        init_list(
+          [
+            { designators: [], value: int_lit(300, loc), },
+            { designators: [], value: char_lit(120, loc), },
+            { designators: [], value: int_lit(5, loc), },
+          ],
+          loc,
+        ),
+      ),
+    ],
+    funcs: [main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(
+    warns2.filter(w => w.code == 3053).length(),
+    1,
+    msg="struct char 成员域外 300 须保留教学警 W3053（真截断面，防恒真）",
+  )
+}

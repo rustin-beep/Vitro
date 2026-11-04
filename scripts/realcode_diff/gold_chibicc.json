@@ -12,7 +12,7 @@
       "divergence": 4,
       "rescued": 1
     },
-    "note": "金样本签名清单,零源码文本。E1021×2 豁免;#278/#343 重冻;2026-10-29 全量重冻(#213/#344/#346,E3001 族 22 处);2026-11-04 #459 重冻(W3053 char 域豁免误报 13 条消失,零连坐)。",
+    "note": "金样本签名清单,零源码文本。E1021×2 豁免;#278/#343 重冻;2026-10-29 全量重冻(#213/#344/#346,E3001 族 22 处);2026-11-04 #459 重冻(W3053 误报 13+1 条消失,零连坐)。",
     "repo": "chibicc@RunThem/chibicc-repo",
     "source_commit": "b9c1f0311709dbc0aab7ff4501f920f30444ae1b",
     "source_fork": "https://github.com/RunThem/chibicc-repo",
@@ -124,7 +124,7 @@
       "clang_ok": true,
       "gcc_ok": true,
       "vitro_errs": 371,
-      "vitro_warns": 7,
+      "vitro_warns": 6,
       "codes": {
         "E2003": 1,
         "E2005": 349,
@@ -132,8 +132,7 @@
         "E3001": 17,
         "E3037": 1,
         "E3076": 1,
-        "W1019": 6,
-        "W3053": 1
+        "W1019": 6
       },
       "layer": "parse",
       "run": ""

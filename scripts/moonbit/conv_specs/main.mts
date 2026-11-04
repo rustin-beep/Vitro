@@ -97,7 +97,16 @@ export function byteSort(xs: string[]): string[] {
   return [...xs].sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
 }
 
-/** 剥行注释（`//` 之后）——判据臂上方的文档注释里常有字母字面量举例，不能当臂。 */
+/**
+ * 剥行注释（`//` 之后）——判据臂上方的文档注释里常有字母字面量举例，不能当臂。
+ *
+ * 判据口径边界（2026-11-04 审阅 P3⑤ 连坐登记，host_shared_guard /
+ * twin_fingerprint 两闸共用本函数）：实现为 `indexOf("//")` 首现剥除——
+ * ① 同行字符串字面量含 `//`（如 URL）时其后代码同被剥掉（假阴性面：
+ * 字面量之后再有真实调用不计数）；② 块注释不剥（注释正文提及符号名
+ * 仍算命中面）。当前两闸规则表与本口径自洽；若消费面出现上述形态，
+ * 先扩本函数再动规则表，勿在闸侧私自补丁。
+ */
 export function stripLineComments(text: string): string {
   return text
     .split("\n")

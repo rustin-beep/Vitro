@@ -422,13 +422,20 @@ fn UnifiedEngine::rollback_before_trap(
 ) -> Bool {
   guard self.checkpoints.nearest(step) is Some((_, snap)) else { return false }
   vm.restore(snap)
-  // 重放屏蔽副作用：Paused 同 Ok 续走（断点在重放态不拦——seek_to 同款
-  // Ok|Paused 合并）；WaitingInput 结构不可达（首跑未等待 ⇒ 区间同样
-  // 不等待）；Trap/Finished 不可达（区间止于 trap/终结指令之前）。任一
-  // 出现即环境漂移，返回 false 走防御分支。
+  // 重放屏蔽副作用：Paused 同 Ok 续走（断点在重放态不拦——#430 修复后
+  // 断点随会话配置保留，重放区间命中即置 paused；**命中即时解除**——
+  // 不解除则重放尾 vm.paused=true，后续 run_batch 的每个 StepEvent 都
+  // 返 Paused〔exec_debug `if self.paused` 先于断点行判定〕——非断点行
+  // 假暂停）；WaitingInput 结构不可达（首跑未等待 ⇒ 区间同样不等待）；
+  // Trap/Finished 不可达（区间止于 trap/终结指令之前）。任一出现即环境
+  // 漂移，返回 false 走防御分支。
   while vm.step_count < step {
     match vm.step() {
-      Ok | Paused => continue
+      Ok => continue
+      Paused => {
+        vm.unpause()
+        continue
+      }
       WaitingInput | Finished | Trap => return false
     }
   }
@@ -451,15 +458,32 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
   vm : @vm.VitroVM,
   src : P,
 ) -> @protocol.SeekResult {
-  // 坑 ⑥-6：seek = 回到过去——终结标志复位（重放路径若真到终结态会
-  // 再次置位），否则 seek 回中段后 step.next 静默返回 finished 空帧。
-  // trap 终态同款（issue #29）：seek 回 trap 前即离开终态可续跑
-  self.is_finished = false
-  self.is_trapped = false
-  self.last_trap_message = None
+  // #430（M26 A3）：负数目标参数层早退（serve 层 param_err 为第一道，
+  // 此处 engine 兜底——防越窗分支副作用：旧形态 seek(-1) 落入
+  // frame_at(-1)=None → reset_to(0)+restore 把已收集帧窗全毁 + VM 静默
+  // 回滚，报「无法获取目标步的 payload」误导文案）。spec §7 语义演进
+  // （L465）：「任何 >=0 的 seek 都可成功」——定义域非负。
+  if target < 0 {
+    return {
+      success: false,
+      payload: None,
+      error: Some("seek 目标步不能为负数：\{target}（step:int>=0）"),
+    }
+  }
   // 前置：目标已在当前窗口 → 直返（协议 §4.2 之前的快路径）
   match self.frames.frame_at(target) {
-    Some(p) => return { success: true, payload: Some(p), error: None, }
+    Some(p) => {
+      // #430（M31 A-2 证据一/三，2026-11-04）：直返臂只移动视口不动 VM
+      // ——**无时间旅行**，终态粘性保持（is_finished 不复位；旧形态无差别
+      // 复位后 step.next 在终结 VM 上空转 collect 幽灵终帧——step_index
+      // 与终帧同号重复入窗/越终步 +1，违反「每真实步恰投递一次」的坑
+      // ⑥-6 自声明）。trap 终态复位**保留**（issue #29）：trap 态有
+      // rollback_before_trap 真·回退机制接续（step.next 回滚重放至 trap
+      // 前一步再续跑），终态复位于此有机制支撑——两态不对称有意。
+      self.is_trapped = false
+      self.last_trap_message = None
+      return { success: true, payload: Some(p), error: None, }
+    }
     None =>
       // 第 1 步：取最近检查点（增量快照在此重建为全量）；无 → 失败。
       // P2-1（PR #342 审阅处置）：带回看窗口下限取锚——恰命中锚点时
@@ -474,6 +498,13 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
             error: Some("没有可用的检查点"),
           }
         Some((cp, snap)) => {
+          // 坑 ⑥-6（#430 起仅重放臂）：seek = 回到过去——重放真重建时间
+          // 轴，终结标志复位（重放若真到终结态会再次置位——见下方
+          // WaitingInput|Finished 臂）；trap 终态同款（issue #29）。直返
+          // 臂不复位（见上——无时间旅行终态保持，M31 A-2）。
+          self.is_finished = false
+          self.is_trapped = false
+          self.last_trap_message = None
           // #87 重放快道（2026-10-27）：窗口边距之外的中间步跳过
           // collect/推帧——这些帧终将被 finish_replay 裁出窗口（纯白干），
           // 跳过后重放每步成本降为裸 vm.step()。生效门：algo.matches 为
@@ -542,7 +573,16 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
             // 审阅 P2-4（2026-10-07）：seek 重放帧同源化（循环顶步进前
             // 行——#34 修复的补遗；与 run_batch 的 label/code_line 同源）
             let seek_line = vm.get_current_line()
-            match vm.step() {
+            // #430：断点随会话配置保留后重放区间可命中断点（StepEvent
+            // 置 paused 返 Paused）——重放非交互步进，只标记不拦；命中
+            // 即时解除（否则重放尾 vm.paused=true，后续 run_batch 每个
+            // StepEvent 都返 Paused——非断点行假暂停）。Ok|Paused 合并
+            // 照旧（命中帧仍正常收集入窗）。
+            let outcome = vm.step()
+            if vm.paused {
+              vm.unpause()
+            }
+            match outcome {
               Ok | Paused =>
                 if fast {
                   // 快道零操作（P3-1 审阅处置，2026-10-28）：vis 排水是
@@ -590,6 +630,16 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
                 )
                 self.frames.push_or_replace_at(pre_step, payload)
                 self.frames.finish_replay(target)
+                // #430（M31 A-2 证据三）：重放到达终态（Finished）时终态
+                // 标志须置位——旧形态漏置（头部复位后无人置回），后续
+                // step.next 在已终结 VM 上空转 collect 幽灵帧（step_index
+                // 与刚投递的终帧同号——重复入窗）。判据与 step() 入口的
+                // Finished 判定同构（finished 位〔main Ret 置〕或 ip 越界
+                // 〔指令耗尽——不置 finished 位〕两形态）；WaitingInput
+                // 不触发（等待输入非终态，供输入后续跑）。
+                if vm.finished || vm.ip >= vm.code.length() {
+                  self.is_finished = true
+                }
                 return { success: true, payload: Some(payload), error: None, }
               }
               Trap => {

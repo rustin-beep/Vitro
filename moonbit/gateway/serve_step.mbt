@@ -528,6 +528,21 @@ fn serve_seek_frame(
       false,
     )
   }
+  // #430（M26 A3，2026-11-04）：负数目标是参数域错误（spec §7「任何
+  // >=0 的 seek 都可成功」——定义域非负；#133 分类文案同款）。旧形态
+  // 落入越窗分支：success:false 误导文案「无法获取目标步的 payload」+
+  // 副作用三连（已收集帧窗全毁 + VM 静默回滚 + 后续从头重跑）——
+  // seek(-1) 一次手滑丢全部已收集帧。
+  if target < 0 {
+    return (
+      serve_param_err(
+        id,
+        "seek 的 params.step 不能为负数：\{target}",
+        "step:int>=0",
+      ).stringify(),
+      false,
+    )
+  }
   guard s.unified is Some(engine) else {
     return (
       serve_err(
@@ -537,6 +552,15 @@ fn serve_seek_frame(
     )
   }
   let result = engine.seek_to(target, s.vm, SessionLines::{ s, })
+  // #430（M26 A2）：seek 成功 = 发布缓冲失效——旧 pending 帧属于 seek
+  // 前时间轴（越窗回退后是「旧未来帧」：下一批 step.next 把它当上一帧
+  // 发布，首批发布流 step_index=2599→4 倒挂，违反 spec §7「step_index
+  // 严格递增」）；窗口内直返路径清缓冲亦无损（下一次 next 重建，首调
+  // 回到空帧形态——issue 处方拍板两臂都清）。失败路径不清：时间轴未
+  // 成功移动。
+  if result.success {
+    s.unified_pending = None
+  }
   (serve_ok(id, seek_result_json(result)).stringify(), false)
 }
 
@@ -544,21 +568,35 @@ fn serve_seek_frame(
 /// breakpoints.set（session_api.rs:874 + vitro_cli.rs:900 臂）：先清后设
 /// （非正行号过滤）；空断点 = 两层暂停恢复（vm 层 + 引擎层——S3 A2/A3
 /// 口径：清空断点即恢复推进，serve 出口明示的恢复手段）。
+/// #430（M26 C1，2026-11-04）：参数域 fail loud——缺 lines / lines 非
+/// 数组 / 元素非整数一律 param_err（与 step.next 的 frames/every 分类
+/// 文案纪律对齐）。旧形态静默当空 = 清空断点并恢复运行——一次手滑即
+/// 静默改变执行语义；空数组仍是**显式**清空（合法语义，两层恢复口）。
 fn serve_breakpoints_set_frame(
   s : @session.Session,
   id : Json,
   params : Json,
 ) -> (String, Bool) {
+  guard json_field(params, "lines") is Array(arr) else {
+    return (
+      serve_param_err(
+        id, "breakpoints.set 需要 params.lines:int[]（清空断点请显式传 []）",
+        "lines:int[]",
+      ).stringify(),
+      false,
+    )
+  }
   let lines : Array[Int32] = []
-  match json_field(params, "lines") {
-    Array(arr) =>
-      for v in arr {
-        match v.as_int() {
-          Some(n) => lines.push(n)
-          None => ()
-        }
-      }
-    _ => ()
+  for v in arr {
+    guard v.as_int() is Some(n) else {
+      return (
+        serve_param_err(
+          id, "breakpoints.set 的 lines 元素须为整数", "lines:int[]",
+        ).stringify(),
+        false,
+      )
+    }
+    lines.push(n)
   }
   s.vm.clear_breakpoints()
   for l in lines {

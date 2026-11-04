@@ -103,19 +103,26 @@ test "serve_step_seek_roundtrip_and_payload_get" {
   assert_true(sk.contains("\"success\":true"))
   assert_true(sk.contains("\"step_index\":0"))
   // seek 后 step.next 续跑（is_finished 复位 + 帧连续）
-  // 修锚（审阅 v2 批 A2 / M26 W1）：旧断言 assert_false(nx.contains("error"))
-  // 恒真——auto_step_result_json 响应 schema 根本不含 error 键（变异实证：
-  // nx 置任意垃圾串断言仍绿），对续跑语义零判别力；换发布帧 + finished
-  // 双断言：payloads 为空（is_finished 粘性形态）即无 step_index 键 → 红。
-  let (nx, _) = serve_handle(s, "{\"id\":22,\"method\":\"step.next\"}")
+  // 修锚史：A2 批（审阅 v2 / M26 W1）把恒真断言 assert_false(nx.contains(
+  // "error"))（响应 schema 无 error 键）换发布帧 + finished 双断言；
+  // #430（B7 批，M26 A2）再翻面——seek 成功即清发布缓冲（旧 pending
+  // 帧不属于 seek 后时间轴），续跑**首调回到空帧形态**（帧入缓冲），
+  // 第二调起发布帧且 step_index 严格递增。
+  let (nx1, _) = serve_handle(s, "{\"id\":22,\"method\":\"step.next\"}")
   assert_true(
-    nx.contains("\"step_index\""),
-    msg="续跑必须发布帧（step_index 在）",
+    nx1.contains("\"payloads\":[]"),
+    msg="#430：seek 清缓冲后续跑首调为空帧形态（帧入缓冲）",
   )
   assert_true(
-    nx.contains("\"finished\":false"),
+    nx1.contains("\"finished\":false"),
     msg="seek 回退后 is_finished 复位",
   )
+  let (nx2, _) = serve_handle(s, "{\"id\":23,\"method\":\"step.next\"}")
+  assert_true(
+    nx2.contains("\"step_index\""),
+    msg="第二调发布缓冲帧（发布流恢复）",
+  )
+  assert_true(nx2.contains("\"finished\":false"), msg="程序未终结")
 }
 
 ///|
@@ -868,4 +875,248 @@ test "serve_step_semantic_label_id_frame_field" {
   )
   assert_true(saw_loop, msg="循环帧须带 semantic_label_id=loop（#231）")
   assert_true(saw_swap, msg="交换帧须带 semantic_label_id=swap（#231）")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// #430 锚族（B7 批，2026-11-04）：seek 族四形态 serve 面红锚——
+// 断点被 restore 覆写（M26 A1）/ 发布流编号倒挂（M26 A2）/ seek(-1)
+// 毁帧窗（M26 A3）/ 终态 seek 幽灵帧（M31 A-2）+ breakpoints.set
+// fail loud（M26 C1）。修前全红（M26 探针 P20/P2/P15、M31 批 C 端到端
+// 重建形态）。
+// ─────────────────────────────────────────────────────────────────────
+
+///|
+/// 长循环程序（~3500 步 > 默认窗口 2000——批推后窗口滑走，越窗 seek 可达）。
+fn longloop_compile_json() -> String {
+  "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
+  "int main() {\\n" +
+  "  int a = 0;\\n" +
+  "  while (a < 500) {\\n" +
+  "    a = a + 1;\\n" +
+  "  }\\n" +
+  "  return a;\\n" +
+  "}\\n" +
+  "\"}}"
+}
+
+///|
+/// #430-A（M26 A1 P1，探针 P20 形态）：越窗 seek 把断点当执行状态回滚
+/// ——批推滑窗后设断点、越窗 seek（restore 检查点），断点须保留且续跑
+/// 再命中（旧形态 BP 清空、续跑永不 paused）。
+test "serve_seek_overwindow_breakpoint_survives_b7" {
+  let s = @session.Session::new()
+  let (cresp, _) = serve_handle(s, longloop_compile_json())
+  assert_true(
+    cresp.contains("\"ok\":true"),
+    msg="编译须成功（假绿防线）",
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  // 批推 2600 步（窗口滑走——start_step > 0 即越窗可达）
+  ignore(
+    serve_handle(
+      s, "{\"id\":3,\"method\":\"step.next\",\"params\":{\"frames\":2600}}",
+    ),
+  )
+  guard s.unified is Some(engine) else { fail("engine 必在") }
+  assert_true(engine.frames.start_step() > 0, msg="前置：窗口已滑走")
+  // 设断点行 4（循环体 a = a + 1）
+  let (bresp, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"breakpoints.set\",\"params\":{\"lines\":[4]}}",
+  )
+  assert_true(bresp.contains("\"lines\":[4]"), msg="断点回显")
+  // 越窗 seek(100)（100 < 窗口起点 → 重放臂 restore 检查点）
+  let (skresp, _) = serve_handle(
+    s, "{\"id\":5,\"method\":\"seek\",\"params\":{\"step\":100}}",
+  )
+  assert_true(skresp.contains("\"success\":true"), msg="seek 成功")
+  // 断点保留（旧形态被快照覆写清空）
+  assert_true(
+    s.vm.breakpoints_sorted().contains(4),
+    msg="#430：断点=会话配置，越窗 seek 不得清空",
+  )
+  // 续跑再命中：批=1 逐帧，断点行 4 每 ~7 步一次——12 批内必中
+  let mut hit = false
+  for k = 0; k < 12; k = k + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":\{20 + k},\"method\":\"step.next\"}")
+    if r.contains("\"paused\":true") {
+      assert_true(
+        r.contains("\"current_line\":4"),
+        msg="#430：暂停行须为断点行（防重放残留假暂停）",
+      )
+      hit = true
+      break
+    }
+    if r.contains("\"finished\":true") {
+      break
+    }
+  }
+  assert_true(
+    hit,
+    msg="#430：越窗 seek 后断点须再命中（旧形态永不命中）",
+  )
+}
+
+///|
+/// #430-B（M26 A2，探针 P2 形态）：发布流编号倒挂——越窗 seek 后旧
+/// pending「未来帧」不属于新时间轴，须随 seek 清缓冲（旧形态首批发布
+/// step_index=2599 旧帧再跳回 4→5→6，违反 spec §7「step_index 严格
+/// 递增」）。
+test "serve_seek_pending_reset_b7" {
+  let s = @session.Session::new()
+  let (cresp, _) = serve_handle(s, longloop_compile_json())
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  ignore(
+    serve_handle(
+      s, "{\"id\":3,\"method\":\"step.next\",\"params\":{\"frames\":2600}}",
+    ),
+  )
+  // 越窗 seek(3)：重放臂重建时间轴 [0..3]
+  let (skresp, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"seek\",\"params\":{\"step\":3}}",
+  )
+  assert_true(skresp.contains("\"success\":true"), msg="seek 成功")
+  // 批=1 逐帧 6 次，收集发布流 step_index——全部须在小值域单调推进
+  //（旧形态首个发布帧 step_index=2599 倒挂）
+  let mut prev : Int32 = -1
+  for k = 0; k < 6; k = k + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":\{10 + k},\"method\":\"step.next\"}")
+    let v = @util.json_parse(r) catch { _ => Json::object(Map([])) }
+    let payloads = json_field(json_field(v, "result"), "payloads")
+    guard payloads.as_array() is Some(arr) else { continue }
+    for p in arr {
+      let idx = json_field(p, "step_index").as_int().unwrap_or(-1)
+      assert_true(
+        idx <= 12,
+        msg="#430：发布帧 \{idx} 超出 seek 后新时间轴（旧未来帧倒挂）",
+      )
+      assert_true(
+        idx > prev,
+        msg="#430：发布流 step_index 须严格递增（\{prev} → \{idx}）",
+      )
+      prev = idx
+    }
+  }
+  assert_true(prev >= 4, msg="须有新帧发布（seek 后续跑 4 起）")
+}
+
+///|
+/// #430-C（M26 A3，探针 P15 形态）：seek 负数目标——参数层 param_err
+///（step:int>=0，#133 分类文案同款）+ 帧窗零副作用（旧形态
+/// success:false 误导文案 + 已收集帧窗全毁 + VM 静默回滚）。
+test "serve_seek_negative_param_err_b7" {
+  let s = @session.Session::new()
+  ignore(
+    serve_handle(
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { int a = 0; a = a + 1; return a; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  // 推 3 帧（首帧入缓冲，max_collected_step = 2）
+  for i = 0; i < 3; i = i + 1 {
+    ignore(serve_handle(s, "{\"id\":\{10 + i},\"method\":\"step.next\"}"))
+  }
+  let (pg0, _) = serve_handle(
+    s, "{\"id\":20,\"method\":\"payload.get\",\"params\":{\"start\":0,\"end\":10}}",
+  )
+  assert_true(pg0.contains("\"max_collected_step\":2"), msg="前置帧窗")
+  // seek(-1)：param_err（旧形态 success:false + 帧窗毁）
+  let (sk, _) = serve_handle(
+    s, "{\"id\":21,\"method\":\"seek\",\"params\":{\"step\":-1}}",
+  )
+  assert_true(sk.contains("\"kind\":\"protocol\""), msg="参数域错误分类")
+  assert_true(
+    sk.contains("seek 的 params.step 不能为负数"),
+    msg="负数目标 = 参数错误（旧形态误导文案「无法获取目标步的 payload」）",
+  )
+  assert_true(
+    sk.contains("\"expected\":\"step:int>=0\""),
+    msg="#68 机器可读形状",
+  )
+  // 帧窗零副作用
+  let (pg1, _) = serve_handle(
+    s, "{\"id\":22,\"method\":\"payload.get\",\"params\":{\"start\":0,\"end\":10}}",
+  )
+  assert_true(
+    pg1.contains("\"max_collected_step\":2"),
+    msg="#430：seek(-1) 不得毁帧窗（旧形态 BEFORE=[0,1,2] → AFTER=[]）",
+  )
+}
+
+///|
+/// #430-D（M31 A-2 证据一，端到端批 C 形态）：程序终结后窗口内 seek
+///（直返臂——VM 不动、无时间旅行）终态粘性保持——后续 step.next 空批
+/// + finished（旧形态复位后续跑产 step_index=终步+1 幽灵终帧，违反
+/// 「每真实步恰投递一次」）。
+test "serve_seek_inwindow_finished_no_ghost_frame_b7" {
+  let s = @session.Session::new()
+  ignore(
+    serve_handle(
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { int a = 0; while (a < 3) { a = a + 1; } return a; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  // 跑至终结（程序 ~30+ 步；批=1 逐帧）
+  let mut finished = false
+  for k = 0; k < 80; k = k + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":\{10 + k},\"method\":\"step.next\"}")
+    if r.contains("\"finished\":true") {
+      finished = true
+      break
+    }
+  }
+  assert_true(finished, msg="前置：程序已终结")
+  // 窗口内 seek(0)：直返臂（帧在窗口、VM 不动）
+  let (sk, _) = serve_handle(
+    s, "{\"id\":60,\"method\":\"seek\",\"params\":{\"step\":0}}",
+  )
+  assert_true(sk.contains("\"success\":true"), msg="直返 seek 成功")
+  // 续跑：空批 + finished（旧形态回幽灵帧 step_index=终步+1）
+  let (nx, _) = serve_handle(s, "{\"id\":61,\"method\":\"step.next\"}")
+  assert_true(
+    nx.contains("\"payloads\":[]"),
+    msg="#430：终态 seek 后不得产幽灵帧",
+  )
+  assert_true(nx.contains("\"finished\":true"), msg="终态保持")
+}
+
+///|
+/// #430-E（M26 C1，探针 P8 形态）：breakpoints.set 参数域 fail loud——
+/// 缺 lines / lines 非数组 / 元素非整数一律 param_err（与 step.next 的
+/// frames/every 分类文案纪律对齐；旧形态静默当空 = 清空断点并恢复运行，
+/// 一次手滑即静默改变执行语义）。空数组仍是显式清空（合法语义）。
+test "serve_breakpoints_set_fail_loud_domain_b7" {
+  let s = @session.Session::new()
+  ignore(
+    serve_handle(
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { int a = 0; a = a + 1; return a; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  // 缺 lines（旧形态静默当空清空）
+  let (r1, _) = serve_handle(s, "{\"id\":3,\"method\":\"breakpoints.set\"}")
+  assert_true(r1.contains("\"kind\":\"protocol\""), msg="缺 lines = param_err")
+  assert_true(r1.contains("\"expected\":\"lines:int[]\""))
+  // lines 非数组
+  let (r2, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"breakpoints.set\",\"params\":{\"lines\":\"4\"}}",
+  )
+  assert_true(
+    r2.contains("\"kind\":\"protocol\""),
+    msg="lines 非数组 = param_err",
+  )
+  // 元素非整数（旧形态静默丢弃）
+  let (r3, _) = serve_handle(
+    s, "{\"id\":5,\"method\":\"breakpoints.set\",\"params\":{\"lines\":[4,\"x\",7]}}",
+  )
+  assert_true(
+    r3.contains("\"kind\":\"protocol\""),
+    msg="非整数元素 = param_err（旧形态静默丢弃只留 [4,7]）",
+  )
+  // 合法面：空数组 = 显式清空（两层恢复语义保留）
+  let (r4, _) = serve_handle(
+    s, "{\"id\":6,\"method\":\"breakpoints.set\",\"params\":{\"lines\":[]}}",
+  )
+  assert_true(r4.contains("\"ok\":true"), msg="空数组 = 合法显式清空")
+  assert_true(r4.contains("\"lines\":[]"))
 }

@@ -518,7 +518,8 @@ pub fn VitroVM::set_i64_constants(
 
 ///|
 /// C 风格字符串安全写入（含 NUL 终止；字节口径 = `@bytecode.cstring_bytes`
-/// 单源——Latin-1 ≤0xFF / UTF-8 >0xFF，P4 口径照搬）。
+/// 单源——码元=字节，B6 批 #429 起；字面量池专用，argv 串走
+/// `write_cstring_utf8`——宿主 Unicode 串的字节口径是 UTF-8）。
 ///
 /// 越界/NULL 区静默跳过（照搬 Rust `write_cstring`：装载期数据由 codegen
 /// 保证合法，越界属编译器 bug 不炸运行）；UAF 置 `error`（结构化 trap 与
@@ -528,7 +529,34 @@ pub fn VitroVM::write_cstring(
   addr : UInt32,
   s : String,
 ) -> Unit {
-  let bytes = @bytecode.cstring_bytes(s)
+  self.write_cstring_bytes_impl(addr, @bytecode.cstring_bytes(s))
+}
+
+///|
+/// argv 参数串写入（UTF-8 字节口径——B6 批 #429 与字面量通道拆分）：
+/// argv[i] 是宿主 Unicode 串（码点可 >0xFF，非解码层「码元=字节」产物），
+/// 字节口径 = `@utf8.encode`，与 `argv_region_footprint` 的
+/// `@util.utf8_len` 计账同口径（推进量 == 写入量，中文 argv 无尾部间隙）。
+fn VitroVM::write_cstring_utf8(
+  self : VitroVM,
+  addr : UInt32,
+  s : String,
+) -> Unit {
+  let arr : Array[Byte] = []
+  for b in @utf8.encode(s) {
+    arr.push(b)
+  }
+  self.write_cstring_bytes_impl(addr, arr)
+}
+
+///|
+/// write_cstring 族的共同落盘段（字节直写 + NUL；故障面同
+/// `write_cstring` 头注）。
+fn VitroVM::write_cstring_bytes_impl(
+  self : VitroVM,
+  addr : UInt32,
+  bytes : Array[Byte],
+) -> Unit {
   let raw : Array[Byte] = Array(capacity=bytes.length() + 1)
   for b in bytes {
     raw.push(b)
@@ -570,15 +598,16 @@ pub fn VitroVM::setup_argv(
   for i = 0; i < count; i = i + 1 {
     let s = argv[i]
     // 推进口径 = UTF-8 字节数（与 `argv_region_footprint` 同口径——Rust
-    // `s.len()` 同义）；**写入**字节走 cstring 单源（Latin-1 ≤0xFF）——
-    // 非 ASCII 参数串内容短于推进量，尾部留零间隙，与 oracle 逐字节同形。
+    // `s.len()` 同义）；**写入**走 write_cstring_utf8（B6 批 #429 起——
+    // cstring 单源改「码元=字节」字面量口径后，argv 的宿主 Unicode 串
+    // 须按 UTF-8 写入，推进量 == 写入量，无非 ASCII 尾部间隙）
     let byte_len = @util.utf8_len(s).reinterpret_as_uint()
     let next = string_addr + byte_len + 1U
     if next > @bytecode.GLOBAL_REGION_LIMIT {
       self.error = "setup_argv: 命令行参数过长，超出全局数据区"
       return
     }
-    self.write_cstring(string_addr, s)
+    self.write_cstring_utf8(string_addr, s)
     let slot = array_addr + i.reinterpret_as_uint() * 4U
     ignore(self.memory.store_u32(self.mem_map, slot, string_addr))
     string_addr = next

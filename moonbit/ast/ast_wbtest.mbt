@@ -198,3 +198,37 @@ test "expr_accessors" {
 test "panic class size with empty map" {
   ignore(compute_type_size(Class("Foo", false), Map([]), Map([]), Map([])))
 }
+
+///|
+/// B6（#429 / PR #472 审阅 P2-1）：StringLiteral.value 字节转义序列化——
+/// dump 与内存等长可逆（修前按 Unicode 文本 UTF-8 化致「你」〔3 字节〕
+/// 显示 6 字节文本，按 dump 复现常量池错 2×）。
+test "cstring_escape_bytes_review_p21_b6" {
+  // 「你」拆装码元（E4 BD A0）→ JSON 文本 \\xNN ×3（解码后 value 值为
+  // 字面 `\xE4\xBD\xA0` 12 字符——\x 前缀明示字节、JSON 合法可逆）
+  let out = cstring_escape_string("\u00e4\u00bd\u00a0")
+  inspect(out, content="\"\\\\xE4\\\\xBD\\\\xA0\"")
+  // 等长不变量：JSON 文本长度 = 2 引号 + 3×5（\\xNN）= 17；解码值 12
+  // 字符中 \xNN 计数 == 码元数 == cstring_len
+  assert_eq(out.length(), 17, msg="2 引号 + 3 组 \\xNN（5 字符/组）")
+  // ASCII 域与 json_escape 语义同源零变化
+  inspect(cstring_escape_string("a\"b"), content="\"a\\\"b\"")
+  // 混装：ASCII 直出 + 高位字节转义（\xff 单码元 → \xFF）
+  inspect(cstring_escape_string("A\u00ffz"), content="\"A\\\\xFFz\"")
+  // JSON 合法性与可逆性（dump 配平消费链——单反斜杠 \x 形态会被
+  // json_parse 拒；解码值应为字面 `\xE4\xBD\xA0` 12 字符）
+  let v = @util.json_parse("{\"v\":" + out + "}") catch {
+    _ =>
+      return fail(
+        "字节转义形态须为合法 JSON（\\\\xNN 双反斜杠）",
+      )
+  }
+  match v {
+    Object(m) =>
+      match m.get("v") {
+        Some(String(s)) => inspect(s, content="\\xE4\\xBD\\xA0")
+        _ => fail("v 须为字符串")
+      }
+    _ => fail("顶层须为对象")
+  }
+}

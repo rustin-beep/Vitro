@@ -13,6 +13,8 @@ pub fn base_element_type(Type) -> Type
 
 pub fn compute_type_size(Type, Map[String, Array[StructField]], Map[String, Array[StructField]], Map[String, Int32]) -> Int32
 
+pub fn cstring_escape_string(String) -> String
+
 pub fn double_to_json_text(Double) -> String
 
 pub fn expr_depth(Expr) -> Int32

@@ -52,7 +52,10 @@ fn emit_expr(e : Expr, buf : StringBuilder) -> Unit {
     }
     StringLiteral(value, loc, ty) => {
       buf.write_string("{\"StringLiteral\":{\"value\":")
-      emit_json_str(value, buf)
+      // B6（#429 / PR #472 审阅 P2-1）：value 码元=字节——字节转义序列化
+      //（\xNN），dump 与内存等长可逆；原 emit_json_str 按 Unicode 文本
+      // UTF-8 化每 ≥0x80 码元致 2× 失真
+      emit_cstring_value(value, buf)
       buf.write_string(",\"loc\":")
       emit_loc(loc, buf)
       buf.write_string(",\"ty\":")

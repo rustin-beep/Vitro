@@ -162,11 +162,43 @@ test "compile_output_dump_json rich shape (Type/f64/escape single-source)" {
 }
 
 ///|
+/// #66 锚（源内 ·/×/° 落 UTF-8 字节与 clang execution charset 对齐——
+/// **B6 批 #429 翻面**：cstring 单源改「码元=字节」口径后，wbtest 手构
+/// 串须用解码层拆装形态（· U+00B7 的 UTF-8 字节 C2 B7 两码元）——
+/// 引擎路径（源内 ·）经解码层拆装后与本形态同构，字节产出不变
+/// （A C2 B7 X）；原「真码点串整串 encode」形态已退役（码点入串的
+/// String 在新口径下按 Latin-1 投影，引擎路径不可达该形态）。
 test "cstring_bytes_utf8_passthrough_66" {
-  // #66：源字符整串 UTF-8 直通（· U+00B7 → C2 B7 双字节）
-  let bs = cstring_bytes("A·X")
+  // 拆装形态：· = 码元 [C2, B7]（解码层产物同构）
+  let bs = cstring_bytes("A\u00c2\u00b7X")
   assert_eq(bs.length(), 4, msg="A + C2 B7 + X")
   assert_eq(bs[1].to_int(), 0xC2)
   assert_eq(bs[2].to_int(), 0xB7)
-  assert_eq(cstring_len("A·X"), 4)
+  assert_eq(cstring_len("A\u00c2\u00b7X"), 4)
+}
+
+///|
+/// B6 批（#429）红锚：cstring 单源改「码元=字节」口径（Latin-1 双射）——
+/// 字面量 String 的码元恒为字节值（解码层拆装保证），逐码元直出即 C
+/// 字节序列。修前整串 UTF-8 encode：\xE4 产物（码元 U+00E4）落 C3 A4
+/// 双字节（M22 A-1 双字节膨胀——strlen/strspn 连带错值）。
+test "cstring_bytes_latin1_codeunits_b6" {
+  // \xE4 转义产物（单码元 U+00E4）→ 单字节 0xE4（修前 [C3 A4] 即红）
+  let bs = cstring_bytes("\u00e4")
+  assert_eq(
+    bs.length(),
+    1,
+    msg="码元=字节：单码元产单字节（UTF-8 给 2 即红）",
+  )
+  assert_eq(bs[0].to_int(), 0xE4)
+  assert_eq(cstring_len("\u00e4"), 1)
+  // 「你」拆装形态（解码层产物 E4 BD A0 三码元）→ 3 字节
+  let nb = cstring_bytes("\u00e4\u00bd\u00a0")
+  assert_eq(nb.length(), 3, msg="三码元三字节")
+  assert_eq(nb[0].to_int(), 0xE4)
+  assert_eq(nb[1].to_int(), 0xBD)
+  assert_eq(nb[2].to_int(), 0xA0)
+  assert_eq(cstring_len("\u00e4\u00bd\u00a0"), 3)
+  // ASCII 域不受口径影响
+  assert_eq(cstring_bytes("AB").length(), 2)
 }

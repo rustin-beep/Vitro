@@ -599,24 +599,26 @@ fn TypeChecker::resolve_float_literal_ty(
 }
 
 ///|
-/// 字符串字面量定型 char 数组（ds 批 2026-10-31：尺寸口径与字节产出层
-/// 同源 = 整串 UTF-8（`@util.utf8_len`，#66 连坐完）——旧私有 Latin-1
-/// 混合口径（≤0xFF 计 1）与 bytecode 包 cstring_bytes（UTF-8 全编码，
-/// \xff 落 C3 BF 双字节）失配，char 数组定型尺寸少 1 ⇒ NUL 终止符被
-/// 挤出 ⇒ strlen/printf("%s") 越界读（亲验 len=20 vs clang 9）；+1 NUL）。
-/// **等价约束（审阅批 2026-10-31 P3-1）**：本处 `@util.utf8_len` 与
-/// bytecode 包的 `cstring_len`（分配/对齐计算用）是「同实现两符号」——
-/// 语义上恒等（整串 UTF-8 字节数），typeck 不能 import bytecode
-/// （L5→L6 反向依赖），故各自显式调 `@util.utf8_len`；改任何一侧的
-/// 口径 = 重新制造两层失配（ds 批修复的就是这个），连带锚：
-/// typeck `string_literal_byte_len` / 语料 `string_escape_nul_term.c`。
+/// 字符串字面量定型 char 数组（B6 批 #429：计长 = `value.length()`
+/// 码元数——解码层（scanner/string.mbt）已把字面量承载统一为「码元=
+/// 字节」（转义产码元=字节值、源字符按 UTF-8 字节拆装），码元数即
+/// C 字节数：`\xff` 计 1、`"你"` 计 3，与三方编译器对齐（M22 A-1 /
+/// M07 A6 / M09 D1 销案）。ds 批 2026-10-31 的整串 UTF-8 计长
+/// （`@util.utf8_len`）与 #66 的 UTF-8 装载是「String 承载不区分转义
+/// 字节/源字符」时代的两层妥协，B6 治本后两面同时对齐。
+/// **等价约束（审阅批 2026-10-31 P3-1 延续）**：本处计长与 bytecode
+/// 包 `cstring_len`（分配/对齐计算用）是「同实现两符号」——语义恒等
+/// （码元数），typeck 不能 import bytecode（L5→L6 反向依赖），故各自
+/// 显式实现；改任何一侧口径 = 重新制造两层失配（ds 批修的 NUL 挤出
+/// 越界读就是这个失配），连带锚：typeck `string_literal_byte_len` /
+/// 语料 `string_escape_nul_term.c`。
 fn TypeChecker::resolve_string_literal(
   self : TypeChecker,
   value : String,
   loc : @source.SourceLoc,
 ) -> (@ast.Type, @ast.Expr) {
   ignore(self)
-  let array_size = @util.utf8_len(value) + 1
+  let array_size = value.length() + 1
   let ty = @ast.Type::Array(
     Char(false, false),
     array_size,

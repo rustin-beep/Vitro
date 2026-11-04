@@ -462,6 +462,7 @@
         "strcat_empty.c": "fba688cf",
         "strcat_function.c": "64d863aa",
         "strcpy_retval_chain.c": "e642bd01",
+        "string_escape_latin1_bytes.c": "6dd916a7",
         "string_escape_nul_term.c": "5b6a628b",
         "string_escape_octal_hex.c": "9dda4d23",
         "string_literal.c": "fc69622a",
@@ -760,7 +761,7 @@
           "result_sha": "0b606bb2e57481e5"
         },
         "col_utf8_units.c": {
-          "result_sha": "7253719704896bbe"
+          "result_sha": "7c26ebadad1df32c"
         },
         "comma_expr_stmt.c": {
           "result_sha": "2034bf615ac55451"
@@ -1035,7 +1036,7 @@
           "result_sha": "d12e2ad13efab2f7"
         },
         "engine_note_lookalike.c": {
-          "result_sha": "9a5cae1cf9884daf"
+          "result_sha": "7432cbd673095add"
         },
         "enum.c": {
           "result_sha": "9911f84c9ad24381"
@@ -1541,7 +1542,7 @@
           "result_sha": "b4db4324cc33d2dd"
         },
         "p2a_host_semantics.c": {
-          "result_sha": "042c3898587df3d0"
+          "result_sha": "d12f635475417ce6"
         },
         "p2b_typeck_false_positives.c": {
           "result_sha": "48c01409c4a49051"
@@ -1954,11 +1955,14 @@
         "strcpy_retval_chain.c": {
           "result_sha": "58f462c8236aeb23"
         },
+        "string_escape_latin1_bytes.c": {
+          "result_sha": "f384a36b1bbd54ca"
+        },
         "string_escape_nul_term.c": {
-          "result_sha": "6e5902e75a4405bf"
+          "result_sha": "5f4867573e313467"
         },
         "string_escape_octal_hex.c": {
-          "result_sha": "904f922c359fe578"
+          "result_sha": "95359a746a064a13"
         },
         "string_literal.c": {
           "result_sha": "f5426821ad500ce8"
@@ -2162,7 +2166,7 @@
           "result_sha": "c5c23862c41801b5"
         },
         "utf8_latin1_output.c": {
-          "result_sha": "6ce8b1d9692eddf9"
+          "result_sha": "168e421102905c2c"
         },
         "variable_length_array.c": {
           "result_sha": "1707c5a7681087dd"

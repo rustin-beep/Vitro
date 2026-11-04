@@ -157,25 +157,26 @@ test "base64_decode_roundtrip" {
 /// U+FFFD）。String 可承载孤立代理码元；下游 @utf8.encode 的 abort 风险
 /// 由 #419 的 dispatch/pp 边界清洗承接——本锚锁「解析层不炸、码元保真」
 /// 事实，修正首版「json_parse 在 wasm-gc 后端 abort」的错误登记。
+///
+/// **B6 批（#429，2026-11-04 rebase 翻面）**：`\uD800` **转义形态**改判
+/// **拒绝**（serde_json / RFC 8259 §8.2 口径——转义语义明确指向码点，
+/// 孤代理非标量值；fail loud 优于静默有损替换）。透传通道保留给**码元
+/// 直排形态**（宿主不经 JSON 文本化直接构造帧——真孤代理码元走普通
+/// 字符路径 write_char 直入，不经本分支），#419 的 dispatch/pp 边界清洗
+/// 承接该通道的 encode abort 风险——两 issue 分工：转义=json_parse 拒
+/// （#429）、直排=透传+边界清洗（#419）。原「码元保真」断言随翻面退役
+/// （直排形态的透传由 gateway `serve_compile_lone_surrogate_raw_b6` 锁）。
 test "json_parse_lone_surrogate_transparent_466" {
+  // B6 翻面：转义形态 → JsonParseError（msg 含「孤立高代理」）
   let v = json_parse("{\"a\":\"\\uD800\"}") catch {
-    _ =>
-      fail(
-        "孤立代理转义须可解析（三后端透传，#466 审阅实测）",
+    JsonParseError::Fail(message~, ..) => {
+      assert_true(
+        message.contains("孤立高代理"),
+        msg="拒绝文案指向孤代理（实际：\{message}）",
       )
+      return
+    }
   }
-  let inner = match v {
-    Object(m) =>
-      match m.get("a") {
-        Some(String(s)) => s
-        _ => fail("a 字段须为字符串")
-      }
-    _ => fail("顶层须为对象")
-  }
-  assert_eq(inner.length(), 1, msg="孤立高代理占一个码元")
-  assert_eq(
-    inner[0].to_int(),
-    0xD800,
-    msg="码元保真（未替换未丢弃）",
-  )
+  ignore(v)
+  fail("孤立代理转义形态须拒绝（B6 #429 翻面 #466 透传锚）")
 }

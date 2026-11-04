@@ -1938,7 +1938,7 @@
       "src_sha": "d22a05b8",
       "exit_code": 0,
       "stdout_sha": "dabcc0e8623f5312",
-      "memory_sha": "37159cbffdb835f5"
+      "memory_sha": "b04e39f6c43f70a9"
     },
     "baseline/p2b_typeck_false_positives.c": {
       "src_sha": "60ce2b5e",
@@ -2750,17 +2750,23 @@
       "stdout_sha": "3c609dad442c03ea",
       "memory_sha": "7ba335d9ea4769a9"
     },
+    "baseline/string_escape_latin1_bytes.c": {
+      "src_sha": "6dd916a7",
+      "exit_code": 0,
+      "stdout_sha": "f904089aa13e7d2f",
+      "memory_sha": "f046fd33d9bbc38d"
+    },
     "baseline/string_escape_nul_term.c": {
       "src_sha": "5b6a628b",
       "exit_code": 0,
-      "stdout_sha": "6b253a3c0b08287a",
-      "memory_sha": "a602381b010c9c22"
+      "stdout_sha": "fa824b11fc353dbf",
+      "memory_sha": "2307229c58f943b6"
     },
     "baseline/string_escape_octal_hex.c": {
       "src_sha": "9dda4d23",
       "exit_code": 0,
-      "stdout_sha": "66c52d8b63eae3cd",
-      "memory_sha": "12cdc28c3aad45f4"
+      "stdout_sha": "473551e7cbf88d64",
+      "memory_sha": "c41f52b5511e54da"
     },
     "baseline/string_literal.c": {
       "src_sha": "fc69622a",

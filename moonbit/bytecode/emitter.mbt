@@ -176,7 +176,10 @@ pub fn compile_output_dump_json(o : CompileOutput) -> String {
     if i > 0 {
       buf.write_string(",")
     }
-    buf.write_string("[\{pair.0},\{@ast.json_escape_string(pair.1)}]")
+    // B6（#429 / PR #472 审阅 P2-1）：string_data 的 value 码元=字节——
+    // 字节转义序列化（\xNN）与内存等长可逆（原 json_escape_string
+    // 按 Unicode 文本 UTF-8 化致 dump 2× 失真）
+    buf.write_string("[\{pair.0},\{@ast.cstring_escape_string(pair.1)}]")
   }
   buf.write_string("],\"source_map\":[")
   for i, pair in o.source_map {

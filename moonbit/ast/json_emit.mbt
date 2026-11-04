@@ -90,6 +90,49 @@ fn emit_json_str(s : String, buf : StringBuilder) -> Unit {
 }
 
 ///|
+/// StringLiteral.value 的**字节转义序列化**（B6 批 #429 / PR #472 审阅
+/// P2-1）：value 承载契约是「码元=字节」（Latin-1 双射，见 expr.mbt
+/// StringLiteral 注）——≥0x80 码元写 `\xNN` 显式字节（十六进制大写两位，
+/// 4 字符文本），<0x80 域沿用 json_escape 语义（单字符经 @util 单源）。
+/// 修前 dump 按 Unicode 文本序列化把每 ≥0x80 码元 UTF-8 化（「你」
+/// 〔3 字节 E4 BD A0〕显示 `ä½¡` 占 6 字节）——dump 与内存不再等长，
+/// 按 dump 复现常量池错 2×（dump 族是公开 api 方法面，#52 流程图原料）。
+/// 字节转义后 value 可逆（\xNN 逆映射还原字节）且转义计数 == 码元数
+/// == `cstring_len`。ASCII 域字面量的 dump 形态零变化。
+pub fn cstring_escape_string(s : String) -> String {
+  let buf = StringBuilder()
+  emit_cstring_value(s, buf)
+  buf.to_string()
+}
+
+///|
+/// `cstring_escape_string` 的流式形态（emit_json_str 同款分工：ast 包
+/// 内 emitter 直写 buf，跨包走整串出口）。
+fn emit_cstring_value(s : String, buf : StringBuilder) -> Unit {
+  buf.write_string("\"")
+  for i = 0; i < s.length(); i = i + 1 {
+    let cu = s[i].to_int()
+    if cu >= 0x80 {
+      // 码元=字节：显式字节形态——JSON 文本写 \\xNN（双反斜杠：JSON 转义
+      // 后 value 值为字面 `\xE4` 4 字符文本；单反斜杠 \x 非 JSON 合法转义，
+      // 下游 json_parse 配平会拒——PR #472 首版实锤）；十六进制大写两位，
+      // 消费方按 \xNN 逆映射还原字节（与 cstring_len 等长）
+      buf.write_string("\\\\x")
+      buf.write_char(HEX_DIGITS[(cu >> 4) & 0xF].unsafe_to_char())
+      buf.write_char(HEX_DIGITS[cu & 0xF].unsafe_to_char())
+    } else {
+      // <0x80 域与 json_escape 语义单源一致（单字符构造走 @util 薄包）
+      @util.json_escape_into("\{cu.unsafe_to_char()}", buf)
+    }
+  }
+  buf.write_string("\"")
+}
+
+///|
+/// 大写十六进制数字表（emit_cstring_value 的 \xNN 位输出用；索引 0..=15）。
+const HEX_DIGITS : String = "0123456789ABCDEF"
+
+///|
 /// 浮点文本化（serde_json/ryu-pretty 全区间对齐，2026-09-19 审阅 P1-1/P1-2 修复）。
 ///
 /// 区间规则（ryu pretty：d 为最短有效数字串，v = d × 10^e10，

@@ -189,3 +189,69 @@ test "issue_297_multiline_token_start_loc" {
   )
   assert_eq(semi.loc.column, 4, msg="行 2 分号列（cd\" 后）")
 }
+
+///|
+/// B6 批（#429）红锚：字符串字面量字节承载——非转义源字符按 UTF-8
+/// 字节拆装码元（码元=字节，Latin-1 双射），与 hex/八进制转义（产
+/// 码元=字节值）统一口径。修前：源字符按码点入串（「你」1 码元
+/// U+4F60），下游 utf8_len/UTF-8 再编码双字节膨胀（M22 A-1 / M07 A6）。
+test "string_literal_byte_carriage_b6" {
+  // 源内「你」（U+4F60，UTF-8 三字节 E4 BD A0）→ 拆装 3 码元
+  let r = scan_raw(@utf8.encode("\"你\""))
+  let mut stok : @token.Token? = None
+  for t in r.tokens {
+    if t.ty is String {
+      stok = Some(t)
+      break
+    }
+  }
+  match stok {
+    Some(t) => {
+      assert_eq(
+        t.text.length(),
+        3,
+        msg="源字符按 UTF-8 字节拆装（码点入串给 1 即红）",
+      )
+      assert_eq(t.text[0].to_int(), 0xE4)
+      assert_eq(t.text[1].to_int(), 0xBD)
+      assert_eq(t.text[2].to_int(), 0xA0)
+    }
+    None => fail("应产出字符串 token")
+  }
+  // hex 转义现状已对（码元=字节值）——防回归 + 混装形态
+  let r2 = scan_raw(@utf8.encode("\"\\xE4zz\""))
+  let mut stok2 : @token.Token? = None
+  for t in r2.tokens {
+    if t.ty is String {
+      stok2 = Some(t)
+      break
+    }
+  }
+  match stok2 {
+    Some(t) => {
+      assert_eq(t.text.length(), 3, msg="\\xE4 单字节 + zz")
+      assert_eq(t.text[0].to_int(), 0xE4)
+      assert_eq(t.text[1].to_int(), 0x7A)
+      assert_eq(t.text[2].to_int(), 0x7A)
+    }
+    None => fail("应产出字符串 token")
+  }
+  // 转义 + 源字符混装：\xE4\xBD\xA0zz + 源内「你」→ 9 码元全字节
+  let r3 = scan_raw(@utf8.encode("\"\\xE4\\xBD\\xA0zz 你\""))
+  let mut stok3 : @token.Token? = None
+  for t in r3.tokens {
+    if t.ty is String {
+      stok3 = Some(t)
+      break
+    }
+  }
+  match stok3 {
+    Some(t) =>
+      assert_eq(
+        t.text.length(),
+        9,
+        msg="3 转义 + zz + 空格 + 你(3) = 9 码元（码点入串给 7 即红）",
+      )
+    None => fail("应产出字符串 token")
+  }
+}

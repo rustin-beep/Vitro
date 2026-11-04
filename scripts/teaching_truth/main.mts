@@ -44,6 +44,7 @@
 // cmd/serve`，exe 新鲜度由 internal/freshness 兜底）：
 //   node scripts/teaching_truth/main.mts [--only a,b] [--json] [--no-exempt]
 //                                        [--selftest] [--list] [--emit-shapes]
+//                                        [--backend-wasm]
 // 退出码：0 全绿（含 EXPECTED_RED 均命中）/ 1 判定红 / 2 规则或前置错误。
 // --only 的僵尸对账限定到本次跑到的 case 集（局部验证可用——P2-2 处置）；
 // --emit-shapes 输出全部失败的 shape 键（豁免回填用，不跑对账）。
@@ -55,27 +56,11 @@ import { projectRoot } from "../internal/capi.mts";
 import { ensureFresh } from "../internal/freshness.mts";
 
 /** J9 证红锚清单（外置常量——P2-1 处置：与豁免表 j9 标记双向对账，
- *  锚集合不得由被证对象自身定义）。新增主红例时三处连坐：本常量 +
- *  豁免条目 j9=true + 语料 expect.json。 */
-export const J9_ANCHORS: readonly { case: string; assertion: string }[] = [
-  { case: "gcd_tmp_variant", assertion: "mod_arithmetic" },
-  { case: "bubble_no_minus_i", assertion: "bubble_noi_i1_j3_compare" },
-  { case: "bubble_no_minus_i", assertion: "bubble_noi_i2_j2_compare" },
-  { case: "bubble_no_minus_i", assertion: "bubble_noi_i3_j0_compare" },
-  { case: "bfs_reset_visited", assertion: "bfs_reset_visit_no_false_node" },
-  { case: "bfs_reset_visited", assertion: "bfs_reset_visit_v1_node_value" },
-  { case: "dfs_reset_visited", assertion: "dfs_reset_visit_no_false_node" },
-  { case: "dfs_reset_visited", assertion: "dfs_reset_visit_v1_node_value" },
-  { case: "kmp_std", assertion: "kmp_backtrack_is_skip" },
-  { case: "quick_inline_partition", assertion: "index_bound" },
-  { case: "string_reverse_print_loop", assertion: "reverse_print_no_swap" },
-  { case: "bubble_nonadjacent_swap", assertion: "index_claims_grounded" },
-  { case: "is_prime_std", assertion: "detect_set" },
-  { case: "detect_binary_structural", assertion: "detect_set" },
-  { case: "detect_quick_structural", assertion: "detect_set" },
-  { case: "detect_merge_linkedlist", assertion: "detect_set" },
-  { case: "trace_offbyone_hint", assertion: "root_cause" },
-];
+ *  锚集合不得由被证对象自身定义）。B12（#436）完成全部 39 条失真翻面后
+ *  语料级红例清零——闸的牙证由 --selftest 的原语有牙自检（合成 fixture
+ *  逐原语证红，P2-3「不依赖语料碰巧触发」）持续承担；新失真面再登记
+ *  时三处连坐：本常量 + 豁免条目 j9=true + 语料 expect.json。 */
+export const J9_ANCHORS: readonly { case: string; assertion: string }[] = [];
 
 /** cases 目录全名清单（selftest 锚定目录数与目录名——缺 expect.json 的
  *  目录 fail loud 而非静默跳过，防锚静默缩水）。 */
@@ -262,7 +247,11 @@ export function checkIndexClaimsGrounded(
   const claims = extractIndexClaims(text);
   if (claims.length === 0) return null;
   // grounding 窗口 = 当前行 + 前两行（三行交换组 temp=a[j]; a[j]=a[j+1];
-  // a[j+1]=temp 的组语义跨行——单行 grounding 会把组首下标误判无出处）
+  // a[j+1]=temp 的组语义跨行——单行 grounding 会把组首下标误判无出处）。
+  // PR #463 审阅 P2-1：求值源保持帧末态单源（不为回溯/假比较类语句放宽
+  // 到行入口态——审阅实证 39 条翻面里仅 KMP 2 条依赖入口值，已按处方 b
+  // 改文案不拼下标数字；「本行任一时刻出现过的值」当出处会放走新旧值
+  // 混用——恰是 M34b A2/A4 的病根）。
   const values = new Set<number>();
   const idxExprs: string[] = [];
   for (const l of windowLines) {
@@ -381,7 +370,10 @@ export interface DivergenceEntry {
 
 export interface DivergenceRules {
   as_of: string;
-  fix_batch: string;
+  /** 在册豁免所属修复批（issue 号）；null = 翻面完成态（entries 须空）。
+   *  PR #463 审阅 P3-2：字段必填（缺键/类型错 fail loud——此前删字段后
+   *  输出「修复批 undefined」无人察觉）。 */
+  fix_batch: string | null;
   _doc?: string[];
   entries: DivergenceEntry[];
 }
@@ -484,7 +476,7 @@ export interface CaseRun {
   finished: boolean;
 }
 
-export function runServeCase(exe: string, source: string, budget: number): CaseRun {
+export function runServeCase(exe: string, source: string, budget: number, nodeShell = false): CaseRun {
   const lines: string[] = [];
   let id = 0;
   id++;
@@ -497,7 +489,15 @@ export function runServeCase(exe: string, source: string, budget: number): CaseR
     id++;
     lines.push(`{"id": ${id}, "method": "step.next"}`);
   }
-  const r = spawnSync(exe, [], {
+  // nodeShell：wasm 臂——统一入口壳形态 `node <shell> serve`
+  const r = nodeShell
+    ? spawnSync("node", [exe, "serve"], {
+        input: lines.join("\n") + "\n",
+        encoding: "utf8",
+        timeout: 120_000,
+        maxBuffer: 64 * 1024 * 1024,
+      })
+    : spawnSync(exe, [], {
     input: lines.join("\n") + "\n",
     encoding: "utf8",
     timeout: 120_000,
@@ -735,6 +735,16 @@ export function loadDivergences(root: string): DivergenceRules {
     throw new Error(`known_divergences.json 读失败: ${e instanceof Error ? e.message : String(e)}`);
   }
   if (!Array.isArray(d.entries)) throw new Error("known_divergences.json 缺 entries 数组");
+  // P3-2 fail loud：as_of/fix_batch 必填（fix_batch=null 表翻面完成态——
+  // entries 须为空，有豁免却无批次号 = 半改状态）
+  if (typeof d.as_of !== "string" || d.as_of === "") throw new Error("known_divergences.json 缺 as_of");
+  if (d.fix_batch === undefined) throw new Error("known_divergences.json 缺 fix_batch（string=在册豁免批次 / null=翻面完成）");
+  if (d.fix_batch === null && d.entries.length > 0) {
+    throw new Error("known_divergences.json fix_batch=null 但 entries 非空——翻面完成态不应有在册豁免");
+  }
+  if (typeof d.fix_batch === "string" && d.fix_batch !== "" && d.entries.length === 0) {
+    throw new Error("known_divergences.json fix_batch 在册但 entries 空——豁免全翻面后应置 null");
+  }
   const ids = new Set<string>();
   for (const e of d.entries) {
     if (!e.id || !e.case || !e.assertion || !e.source) {
@@ -768,10 +778,14 @@ export interface ParsedArgs {
   selftest: boolean;
   list: boolean;
   emitShapes: boolean;
+  /** wasm 臂（PR #463 审阅 P3-5）：被测物切统一入口壳 vitro_wasm.js 的
+   *  serve 子命令（与 teaching_annotation_diff --backend-wasm 同款形态），
+   *  真值锚不再单压 native 臂。 */
+  backendWasm: boolean;
 }
 
 export function parseArgs(argv: string[]): ParsedArgs | { usage: string } {
-  const a: ParsedArgs = { only: "", json: false, noExempt: false, selftest: false, list: false, emitShapes: false };
+  const a: ParsedArgs = { only: "", json: false, noExempt: false, selftest: false, list: false, emitShapes: false, backendWasm: false };
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i] ?? "";
     if (t === "--only") {
@@ -783,6 +797,7 @@ export function parseArgs(argv: string[]): ParsedArgs | { usage: string } {
     else if (t === "--selftest") a.selftest = true;
     else if (t === "--list") a.list = true;
     else if (t === "--emit-shapes") a.emitShapes = true;
+    else if (t === "-backend-wasm" || t === "--backend-wasm") a.backendWasm = true;
     else return { usage: `未知参数: ${t}` };
   }
   return a;
@@ -964,16 +979,33 @@ function main(argv: string[]): number {
   }
   if (parsed.list) {
     for (const c of cases) process.stdout.write(`${c.exp.case} — ${c.exp.note ?? ""}（源 ${c.exp.source}）\n`);
-    process.stdout.write(`豁免登记 ${divs.entries.length} 条（修复批 ${divs.fix_batch}）\n`);
+    const fb = divs.fix_batch === null ? "翻面完成，无在册豁免" : divs.fix_batch;
+    process.stdout.write(`豁免登记 ${divs.entries.length} 条（${fb}）\n`);
     return 0;
   }
 
-  const exe = serveExe(root);
-  if (!fs.existsSync(exe)) {
-    process.stdout.write(`错误: serve exe 不存在: ${exe}\n前置: cd moonbit && MOON_CC=clang moon build --target native cmd/serve\n`);
-    return 2;
+  // wasm 臂（PR #463 审阅 P3-5）：被测物切统一入口壳——与
+  // teaching_annotation_diff --backend-wasm 同款（ensureFresh 双产物）。
+  let exe = serveExe(root);
+  let nodeShell = false;
+  if (parsed.backendWasm) {
+    const shell = path.join(root, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_wasm", "vitro_wasm.js");
+    const wasmMod = path.join(root, "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm");
+    if (!fs.existsSync(shell)) {
+      process.stdout.write(`错误: wasm 臂产物缺失 ${shell}（统一入口壳）\n前置: cd moonbit && MOON_CC=clang moon build --release --target js cmd/vitro_wasm\n`);
+      return 2;
+    }
+    ensureFresh("teaching_truth_wasm", wasmMod, ["build", "--release", "--target", "wasm-gc", "gateway/wasm"]);
+    ensureFresh("teaching_truth_glue", shell, ["build", "--release", "--target", "js", "cmd/vitro_wasm"]);
+    exe = shell;
+    nodeShell = true;
+  } else {
+    if (!fs.existsSync(exe)) {
+      process.stdout.write(`错误: serve exe 不存在: ${exe}\n前置: cd moonbit && MOON_CC=clang moon build --target native cmd/serve\n`);
+      return 2;
+    }
+    ensureFresh("teaching_truth", exe, ["build", "--target", "native", "cmd/serve"]);
   }
-  ensureFresh("teaching_truth", exe, ["build", "--target", "native", "cmd/serve"]);
 
   const allFailures: Failure[] = [];
   const runInfo: { c: string; frames: number; annotated: number; bound: string }[] = [];
@@ -982,7 +1014,7 @@ function main(argv: string[]): number {
     const src = srcLines.join("\n");
     let run: CaseRun;
     try {
-      run = runServeCase(exe, src, exp.step_budget ?? 2000);
+      run = runServeCase(exe, src, exp.step_budget ?? 2000, nodeShell);
     } catch (e) {
       process.stdout.write(`错误: case ${exp.case} serve 跑失败: ${e instanceof Error ? e.message : String(e)}\n`);
       return 2;
@@ -1009,7 +1041,8 @@ function main(argv: string[]): number {
   const ranCases = new Set(cases.map((c) => c.exp.case));
   const out = reconcile(allFailures, divs, parsed.noExempt, ranCases);
   const lines: string[] = [];
-  lines.push(`teaching_truth: ${cases.length} case × 豁免 ${divs.entries.length} 条（修复批 ${divs.fix_batch}）`);
+  const fbMain = divs.fix_batch === null ? "翻面完成，无在册豁免" : `修复批 ${divs.fix_batch}`;
+  lines.push(`teaching_truth: ${cases.length} case × 豁免 ${divs.entries.length} 条（${fbMain}）`);
   for (const r of runInfo) lines.push(`  ${r.c}: ${r.frames} 帧 / ${r.annotated} 标注帧 / ${r.bound}`);
 
   if (parsed.selftest) {
@@ -1048,7 +1081,14 @@ function main(argv: string[]): number {
       process.stdout.write("SELFTEST FAIL（有豁免跑存在未登记红/僵尸豁免——见上）\n");
       return 1;
     }
-    lines.push(`SELFTEST PASS：J9 锚 ${J9_ANCHORS.length} 条（外置常量对账一致）全部命中红例；原语自检 9 项全红；豁免跑零红零僵尸`);
+    // PR #463 审阅 P2-2：J9 锚清零后不再称「全部命中红例」（空集恒真——
+    // D21 同族：通过条件与打印路数不一致）；如实报告语料级红例数与
+    // 原语自检数（牙证的实际承担者）。
+    if (J9_ANCHORS.length > 0) {
+      lines.push(`SELFTEST PASS：J9 锚 ${J9_ANCHORS.length} 条（外置常量对账一致）全部命中红例；原语自检 9 项全红；豁免跑零红零僵尸`);
+    } else {
+      lines.push(`SELFTEST PASS：语料级红例 0 条（39 条失真已全数翻面，J9 锚随翻面清零——外置常量对账一致）；闸的牙证由原语自检 9 项全红承担；豁免跑零红零僵尸`);
+    }
   }
 
   for (const { failure } of out.reds) lines.push(`RED  [${failure.case}] ${failure.assertion} ×${failure.count} shape「${failure.shape}」: ${failure.detail}`);

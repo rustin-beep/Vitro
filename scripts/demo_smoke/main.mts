@@ -596,10 +596,15 @@ async function run(): Promise<void> {
       "linked_list_append",
       "string_match_kmp",
       "gcd",
+      // is_prime 2026-11-04（B12/#436）移出豁免加回抽验：旧 prim_mst 误配
+      //（contains("prim") 裸子串命中 isPrime）压制 is_prime 帧分派致「确无
+      // 标注」豁免成立；prim 整词判据修复后 is_prime 成首个 match、帧标注
+      // algorithm_name=is_prime 命中——豁免反向锚按设计翻红逼移除
+      "is_prime",
     ];
     // threaded_binary_tree 2026-10-04 反向锚首跑翻红移出豁免：extra 源函数名
     // inorderThreadedTree 命中 detect 且该形态行号偏移不显——确有标注
-    const exempt = new Set(["is_prime"]);
+    const exempt = new Set<string>([]);
     const spotRun = (algo: string): boolean => {
       const it = items.find((x) => x.id === algo);
       g.reset();

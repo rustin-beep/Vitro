@@ -343,10 +343,21 @@ fn walk_expr(
         }
         f.has_swap = true
       }
-      // left/right 更新（索引含 mid 的赋值）
+      // left/right 更新（两种真形态——#436 翻面 M33b-A2 补 ②）：
+      // ① LHS 下标含 mid（arr[mid] = x 形态，Rust 蓝本原判据）
+      // ② LHS 裸标识符 left/right/low/high 且 RHS 含 mid——教科书二分的
+      //   `left = mid + 1` Identifier 赋值（原判据只认 ①，真二分恒
+      //   不可达，结构分支对无命名二分零检测）。
       if op is Assign {
         if left is Index(_, idx, _, _) {
           if expr_to_string(idx).contains("mid") {
+            f.has_left_right_update = true
+          }
+        }
+        if left is Identifier(lname, _, _) {
+          let ln = lname.to_lower()
+          if (ln == "left" || ln == "right" || ln == "low" || ln == "high") &&
+            expr_to_string(right).contains("mid") {
             f.has_left_right_update = true
           }
         }

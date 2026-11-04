@@ -78,6 +78,7 @@
         "compound_assign.c": "bd4f84a7",
         "compound_assign_array.c": "b8a3b013",
         "compound_assign_deref.c": "7fc2300f",
+        "compound_assign_fp_rhs.c": "9b676d69",
         "compound_assign_struct.c": "0ccfb227",
         "compound_div_var.c": "464f5d0a",
         "compound_literal.c": "1e8a9390",
@@ -86,6 +87,7 @@
         "compound_mod_var.c": "e36b3f92",
         "compound_mul_var.c": "b8fda662",
         "compound_sub_var.c": "4c3236cb",
+        "compound_unsigned_promote.c": "8ce08a4b",
         "conditional_compile.c": "6c65dc3e",
         "const.c": "b97fa1c4",
         "const_2d_array_param.c": "70d43963",
@@ -260,6 +262,7 @@
         "llm_snprintf_struct_member.c": "dde9552c",
         "llm_struct_arg_sched2.c": "0dad2954",
         "llm_struct_nested_2d_init.c": "3a72245a",
+        "logic_judge_zero.c": "dcf28baa",
         "logical_and.c": "d48c431d",
         "logical_and_var.c": "d48c431d",
         "logical_not.c": "6a9f88bf",
@@ -311,6 +314,7 @@
         "nested_ternary2.c": "69f6f36b",
         "not_equal.c": "d14a5e7d",
         "not_equal_var.c": "f3f6e9dd",
+        "not_numeric_zero.c": "77b47bef",
         "not_zero.c": "ecad3441",
         "null_deref_trap_e3083.c": "e58e4a9c",
         "null_keyword.c": "eee2e083",
@@ -714,7 +718,7 @@
           "result_sha": "1c86b6207d84d657"
         },
         "char_local_narrow_matrix.c": {
-          "result_sha": "0235397b2fc6528b"
+          "result_sha": "88816ac51705978b"
         },
         "char_signedness.c": {
           "result_sha": "ae495b56270091ff"
@@ -761,6 +765,9 @@
         "compound_assign_deref.c": {
           "result_sha": "583900ed9409bb88"
         },
+        "compound_assign_fp_rhs.c": {
+          "result_sha": "f4f85999f6a158b7"
+        },
         "compound_assign_struct.c": {
           "result_sha": "02fc1b7a0b5998ff"
         },
@@ -784,6 +791,9 @@
         },
         "compound_sub_var.c": {
           "result_sha": "34a2a22a1be6714e"
+        },
+        "compound_unsigned_promote.c": {
+          "result_sha": "651c4f47aad4f81b"
         },
         "conditional_compile.c": {
           "result_sha": "17aa1c99c03230f6"
@@ -1319,10 +1329,13 @@
           "result_sha": "0ac49d472307aa5a"
         },
         "llm_struct_arg_sched2.c": {
-          "result_sha": "983182ce364355cf"
+          "result_sha": "0391a687d6dfe6f0"
         },
         "llm_struct_nested_2d_init.c": {
-          "result_sha": "ce8db97e404ae320"
+          "result_sha": "28061d76a5eb48c1"
+        },
+        "logic_judge_zero.c": {
+          "result_sha": "a992ee23efb90e41"
         },
         "logical_and.c": {
           "result_sha": "1ea2b5ac8d8fd767"
@@ -1478,6 +1491,9 @@
         },
         "not_equal_var.c": {
           "result_sha": "0ef093cf2f29f90c"
+        },
+        "not_numeric_zero.c": {
+          "result_sha": "febe815b88792cee"
         },
         "not_zero.c": {
           "result_sha": "3ac13ccf5f43eb4d"
@@ -2092,7 +2108,7 @@
           "result_sha": "fe294a4929ba6b31"
         },
         "unsigned_semantics.c": {
-          "result_sha": "e8d8454cc552455c"
+          "result_sha": "53091bab5c8a64d2"
         },
         "unsigned_type.c": {
           "result_sha": "c5c23862c41801b5"
@@ -2568,7 +2584,7 @@
           "result_sha": "b8739f515e9cc469"
         },
         "kr_1_15.c": {
-          "result_sha": "d03c8e8a66a09887"
+          "result_sha": "9ac40d1405be77bb"
         },
         "kr_1_16.c": {
           "result_sha": "9ee0bd3b8b5466ad"
@@ -2727,7 +2743,7 @@
           "result_sha": "1821d70ef6523605"
         },
         "kr_5_2.c": {
-          "result_sha": "df579c99df1f2f18"
+          "result_sha": "3a39b7ed9d90979b"
         },
         "kr_5_3.c": {
           "result_sha": "07c603b518a9c540"
@@ -3048,7 +3064,7 @@
           "result_sha": "d3e9966bd904d80e"
         },
         "lc_191.c": {
-          "result_sha": "775b49a18423938d"
+          "result_sha": "d1848011ab57b8ce"
         },
         "lc_198.c": {
           "result_sha": "6606482c835254b7"

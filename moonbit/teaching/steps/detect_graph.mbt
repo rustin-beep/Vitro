@@ -46,8 +46,13 @@ pub fn detect_graph(
       ),
     )
   }
-  // Prim 最小生成树
-  if name_lower.contains("prim") {
+  // Prim 最小生成树（#436 翻面 M33b-A1：整词判定——裸子串 contains("prim")
+  // 把 isPrime（is**prim**e）误配 prim_mst，完整 MST 文案+vis_events 全套
+  // 挂在素数判定上。has_word 驼峰切词：isPrime→is/prime ≠ prim 不命中；
+  // primMST/prim_mst/prim 原样命中。判据用 func_name 原名（has_word 内部
+  // 小写化——name_lower 已丢驼峰边界）。同族 kruskal/dijkstra/floyd 名字
+  // 独特无前缀碰撞面，不连坐。）
+  if has_word(func_name, "prim") {
     matches.push(
       build_match(
         "prim_mst",

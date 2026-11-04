@@ -486,10 +486,11 @@ jobs:
       # B11 教学真值源对拍（issue #435，2026-11-02）：annotation_diff 锁当前
       # 行为（防回归——golden 是 Vitro 自证历史快照），本闸锁真值——期望 =
       # 算术事实/帧状态可推导标注（cases/*/expect.json），已知失真面
-      # known_divergences.json 显式豁免（#436 翻面索引；失败命中 = EXPECTED_RED
-      # 放行、未登记红 = RED、豁免未命中 = ZOMBIE 红）。selftest = J9 双步：
-      # ① j9 锚条目无豁免跑必须全部红（七处失真面红例全命中）② 有豁免跑
-      # 零红零僵尸。serve exe 复用上一步构建（ensureFresh 兜底）。
+      # known_divergences.json 显式豁免（失败命中 = EXPECTED_RED 放行、未登记
+      # 红 = RED、豁免未命中 = ZOMBIE 红）。selftest = J9 双步：① j9 锚条目
+      # （若非空）无豁免跑必须全部红 ② 有豁免跑零红零僵尸；B12/#436 翻面
+      # 后语料级红例 0 条——牙证由原语自检（合成 fixture 逐原语证红）承担。
+      # serve exe 复用上一步构建（ensureFresh 兜底）。
       - name: Teaching truth gate (engine-behavior ground truth, Exit 1)
         run: node scripts/teaching_truth/main.mts --selftest
         shell: bash
@@ -598,6 +599,12 @@ jobs:
       - name: teaching_annotation_diff wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
         run: node scripts/teaching_annotation_diff/main.mts --backend-wasm
+        shell: bash
+      # PR #463 审阅 P3-5：真值闸 wasm 臂——39 条真值锚不再单压 native 臂
+      #（wasm 侧此前仅有 golden 防漂移；壳/产物复用上一步，ensureFresh 兜底）
+      - name: teaching_truth wasm arm (shell serve)
+        if: matrix.slice == 'serve_channel'
+        run: node scripts/teaching_truth/main.mts --backend-wasm
         shell: bash
 
       # ── slice cli_smoke = 统一 CLI 入口闸 + algorithms.catalog 三方对账 ──

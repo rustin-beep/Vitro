@@ -64,10 +64,25 @@ fn BytecodeGen::gen_binary(
   // && / || 短路求值
   if op is And || op is Or {
     self.gen_expr(left)
+    // #425 B2（2026-11-03，审阅 v2 / M13-A1）：操作数判零改数值比较——
+    // 浮点/LL 禁截断 Cast（CastF2I/D2I/Q2I 的 VM 语义是向零截断：(0,1)
+    // 开区间浮点截断为 0 恒判假、低 32 位为零的 LL 判假——`0.5f && 1`=0
+    // 实锤）。数值判零后栈上为 0/1（i32 域），Dup/JumpIfZero 短路基态不变
     match lk {
-      TK_Float => self.emit(@opcode.OpCode::CastF2I, 0, loc)
-      TK_Double => self.emit(@opcode.OpCode::CastD2I, 0, loc)
-      TK_LongLong => self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+      TK_Float => {
+        self.emit(@opcode.OpCode::PushConstF, 0, loc)
+        self.emit(@opcode.OpCode::NeF, 0, loc)
+      }
+      TK_Double => {
+        let z = self.push_f64_constant(0.0)
+        self.emit(@opcode.OpCode::PushConstD, z, loc)
+        self.emit(@opcode.OpCode::NeD, 0, loc)
+      }
+      TK_LongLong => {
+        let z = self.push_i64_constant(0L)
+        self.emit(@opcode.OpCode::PushConstQ, z, loc)
+        self.emit(@opcode.OpCode::NeQ, 0, loc)
+      }
       _ => ()
     }
     self.emit(@opcode.OpCode::Dup, 0, loc)
@@ -79,10 +94,22 @@ fn BytecodeGen::gen_binary(
     }
     self.emit(@opcode.OpCode::Pop, 0, loc)
     self.gen_expr(right)
+    // #425 B2：右操作数同款数值判零（M13-A1）
     match rk {
-      TK_Float => self.emit(@opcode.OpCode::CastF2I, 0, loc)
-      TK_Double => self.emit(@opcode.OpCode::CastD2I, 0, loc)
-      TK_LongLong => self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+      TK_Float => {
+        self.emit(@opcode.OpCode::PushConstF, 0, loc)
+        self.emit(@opcode.OpCode::NeF, 0, loc)
+      }
+      TK_Double => {
+        let z = self.push_f64_constant(0.0)
+        self.emit(@opcode.OpCode::PushConstD, z, loc)
+        self.emit(@opcode.OpCode::NeD, 0, loc)
+      }
+      TK_LongLong => {
+        let z = self.push_i64_constant(0L)
+        self.emit(@opcode.OpCode::PushConstQ, z, loc)
+        self.emit(@opcode.OpCode::NeQ, 0, loc)
+      }
       _ => ()
     }
     let end_ip = self.current_ip()

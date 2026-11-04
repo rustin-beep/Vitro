@@ -4,8 +4,61 @@
 // 七算法照搬 vitro_algorithm_steps/src/graph.rs:1-222——含全部审阅修复
 // 语义：BFS 起点入队文案区分（U1#1 P1-6）/ prim 的 lowcost[k]=0 收紧
 //（U1#1 P1-76——初始化行 lowcost[0]=0 不误判）/ dijkstra 的 visited[u]=1
-// 收紧（U1#1 P0-1——初始化行 visited[v0]=1 不产「顶点 -1 已确定”）/
+// 收紧（U1#1 P0-1——初始化行 visited[v0]=1 不产「顶点 -1 已确定」）/
 // 拓扑排序 output 挂真输出行（§6-5 v4 #112）。
+// #436 翻面（M34b A3）：BFS/DFS 的 visit 判据补修——U1#1 P0-1 dijkstra
+// 同款收紧漏修面（宽判据 contains("visited")&&contains("=") 把重置行
+// visited[i]=0 与判断行 == 双双误标 visit；节点值取 u/front/start 与
+// 行下标变量脱钩——真标记行 visited[v]=1 显示的不是 v）。
+
+///|
+/// `arr[expr] = 1` 裸赋值形态提取（#436 翻面 M34b A3）：返回下标表达式
+/// expr；非该形态返回 None——判断行（== 由 bare_assign_eq 排除）/ 重置行
+///（= 0 的 RHS 排除）/ 复合赋值排除。真标记语义只在「下标写 1」。
+/// PR #463 审阅 P3-4：marker 查找走小写化行（`Visited[...]` 形态同判）；
+/// 下标表达式原样保留（变量名大小写敏感——eval_index_expr 按原名查）。
+/// 子串查找复用 infer_dp 的 find_sub（3 参版）。
+fn array_write_one_of(line : String, arr : String) -> String? {
+  let marker = "\{arr}["
+  let lower_line = line.to_lower()
+  let p = match find_sub(lower_line, marker, 0) {
+    Some(v) => v
+    None => return None
+  }
+  let n = line.length()
+  let b0 = p + marker.length()
+  let mut b1 = b0
+  while b1 < n && line[b1].to_int() != 93 {
+    b1 = b1 + 1
+  }
+  if b1 >= n {
+    return None
+  }
+  let expr = line[b0:b1].trim().to_owned()
+  if expr.is_empty() {
+    return None
+  }
+  // 裸赋值 = 须在下标之后；RHS（trim 去 ;/}）须恰为 "1"
+  let eq = bare_assign_eq(line)
+  if eq < 0 || eq < b1 {
+    return None
+  }
+  let rhs = line[eq + 1:n].trim().to_owned()
+  let rhs_clean = if rhs.length() > 0 {
+    let last = rhs[rhs.length() - 1].to_int()
+    if last == 59 || last == 125 {
+      rhs[0:rhs.length() - 1].trim().to_owned()
+    } else {
+      rhs
+    }
+  } else {
+    rhs
+  }
+  if rhs_clean != "1" {
+    return None
+  }
+  Some(expr)
+}
 
 ///|
 /// BFS 广度优先搜索。
@@ -13,6 +66,7 @@ fn infer_bfs(
   source_line : String,
   vars : VarMap,
   algorithm : @protocol.AlgorithmMatch,
+  env : InferEnv,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let u = match vars.get_int_any(["u", "front", "start"]) {
@@ -51,10 +105,19 @@ fn infer_bfs(
     }
     return Some(build_step(algorithm, "enqueue", "邻居节点入队"))
   }
-  if line_lower.contains("visited") && line_lower.contains("=") {
-    return Some(
-      build_step(algorithm, "visit", "标记节点 \{u} 为已访问"),
-    )
+  // #436 翻面（M34b A3）：visit 只认 `visited[X] = 1` 裸赋值真标记形态
+  //（判断行 == / 重置行 = 0 皆非访问语义）；节点值取行内下标变量 X 的
+  // 帧值（求值不可得则不产——不拼负哨兵）。
+  match array_write_one_of(source_line, "visited") {
+    Some(idx_expr) =>
+      match eval_index_expr(idx_expr, env.prev_vars, vars) {
+        Some(node) =>
+          return Some(
+            build_step(algorithm, "visit", "标记节点 \{node} 为已访问"),
+          )
+        None => ()
+      }
+    None => ()
   }
   if starts_with(line_lower, "return") {
     return Some(build_step(algorithm, "finish", "BFS 遍历完成"))
@@ -69,6 +132,7 @@ fn infer_dfs(
   vars : VarMap,
   algorithm : @protocol.AlgorithmMatch,
   func_name : String,
+  env : InferEnv,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let u = match vars.get_int_any(["u", "v", "start"]) {
@@ -86,10 +150,18 @@ fn infer_dfs(
       ),
     )
   }
-  if line_lower.contains("visited") && line_lower.contains("=") {
-    return Some(
-      build_step(algorithm, "visit", "标记节点 \{u} 为已访问"),
-    )
+  // #436 翻面（M34b A3，DFS 侧同款）：`visited[X] = 1` 裸赋值真标记形态
+  // + 节点值取行内下标变量 X。
+  match array_write_one_of(source_line, "visited") {
+    Some(idx_expr) =>
+      match eval_index_expr(idx_expr, env.prev_vars, vars) {
+        Some(node) =>
+          return Some(
+            build_step(algorithm, "visit", "标记节点 \{node} 为已访问"),
+          )
+        None => ()
+      }
+    None => ()
   }
   if starts_with(line_lower, "for ") || starts_with(line_lower, "while ") {
     return Some(build_step(algorithm, "scan", "扫描节点 \{u} 的邻居"))

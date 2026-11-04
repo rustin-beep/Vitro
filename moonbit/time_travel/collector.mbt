@@ -554,10 +554,34 @@ pub fn infer_semantic_label(
     None => ()
   }
   if is_swap && loop_depth >= 1 {
-    // P0-3：下标从源码行取（first() 会取到 n 这类规模量——曾致
-    // label 与 algorithm_step 同时一对一错）
-    let idx_val = pick_inner_index(loop_vars, source_line)
-    return "交换 arr[\{idx_val}]↔arr[\{idx_val + 1}]"
+    // #436 翻面（M30-A1 三重失真收口）：
+    // ① 非交换误标——is_swap_assign_line v3 收紧（RHS 须下标读或暂存
+    //    名），`visited[i]=0`/`next[j]=k`/`arr[i]=i`/`queue[rear++]=v`
+    //    等单向下标写不再判交换（本分支不达，落循环变量播报）；
+    // ② 下标与数组名从行内容提取（单源 @steps.swap_index_pair——原
+    //    pick_inner_index 回退末位 + idx_val+1 恒拼，冒出 arr[5]↔arr[6]
+    //    末位越界与 arr[-1]↔arr[0] 负哨兵）；
+    // ③ 无据不产——求值不可得即落后续分支，不编造数值。
+    let sv : Array[@steps.VarSnapshot] = []
+    match local_vars {
+      Some(vars) =>
+        for v in vars {
+          sv.push({ name: v.name, value: v.value, })
+        }
+      None => ()
+    }
+    match
+      @steps.swap_index_pair(
+        source_line,
+        [],
+        @steps.VarMap::new(sv),
+        "i",
+        -1,
+        allow_fallback=false,
+      ) {
+      Some((an, l, r)) => return "交换 \{an}[\{l}]↔\{an}[\{r}]"
+      None => ()
+    }
   }
   if is_recursive {
     return "递归调用 \{func_name}"

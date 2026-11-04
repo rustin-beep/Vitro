@@ -240,8 +240,10 @@ test "teaching_features_binary_structural_branch" {
     false,
     loc(1),
   )
-  // right = mid - 1（索引含 mid 的赋值——walk 的 has_left_right_update）
-  let narrow : @ast.Stmt = Expr(
+  // right = mid - 1（教科书二分的 Identifier 赋值形态——#436 翻面
+  // M33b-A2 连坐翻案：锚二十九原用人为 arr[mid] = arr[left] 形态锁旧
+  // 判据（真形态恒不可达）；判据补 ② 后真二分形态即触发点）
+  let lr_update : @ast.Stmt = Expr(
     Assign(
       Assign,
       mk_ident_expr("right"),
@@ -257,17 +259,6 @@ test "teaching_features_binary_structural_branch" {
     ),
     loc(1),
   )
-  ignore(narrow)
-  // walk 源：left/right 更新判据是「索引访问的赋值且 index 含 mid」——
-  // 形态 arr[mid] = x；构造 arr[mid] = arr[left] 以触发
-  let lr_update : @ast.Stmt = Expr(
-    mk_index_assign(
-      "arr",
-      mk_ident_expr("mid"),
-      mk_index("arr", mk_ident_expr("left")),
-    ),
-    loc(1),
-  )
   let body : @ast.Stmt = Block([mid_calc, lr_update], loc(1))
   let f = extract_of("myFind", body)
   assert_true(
@@ -276,7 +267,7 @@ test "teaching_features_binary_structural_branch" {
   )
   assert_true(
     f.has_left_right_update,
-    msg="arr[mid] = ... 必须产 left/right 更新特征",
+    msg="right = mid - 1（Identifier 赋值形态）必须产 left/right 更新特征",
   )
   assert_false(
     f.has_nested_loops,

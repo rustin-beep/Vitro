@@ -121,7 +121,15 @@ fn infer_string_reverse(
       build_step(algorithm, "measure", "扫描字符串，计算长度"),
     )
   }
-  if starts_with(line_lower, "for ") && line_lower.contains("len") {
+  // #436 翻面（M34b A6）：反转循环判据收紧为**半长形态**（len/2）——
+  // 原 for+len 宽判据把后续打印循环（`for (i < len) printf`）也标 swap
+  //（含 i=len/2 处的自交换荒谬帧）。打印循环无交换语义不产 swap。
+  // PR #463 审阅 P3-4 登记：半长判据当前只认 len + / 2 字面组合
+  //（length/2、n/2 变体不命中）——教学模板域 len 占绝对主流，变体
+  // 语料出现时随豁免红例扩判据（追加语料即入闸类）。
+  if starts_with(line_lower, "for ") &&
+    line_lower.contains("len") &&
+    (line_lower.contains("/ 2") || line_lower.contains("/2")) {
     let other = if len >= 0 { "\{len - i - 1}" } else { "-1" }
     return Some(build_step(algorithm, "swap", "交换位置 \{i} 和 \{other}"))
   }
@@ -164,11 +172,41 @@ fn infer_string_match_bf(
 }
 
 ///|
+/// KMP 回溯读形态判定（#436 翻面 M34b A4）：`j = next[j]` / `k = next[k]`
+///——裸赋值 = 且 **LHS 无下标**、RHS 读 next[...]。返回回溯的下标变量名。
+fn kmp_backtrack_var(source_line : String) -> String? {
+  let eq = bare_assign_eq(source_line)
+  if eq <= 0 {
+    return None
+  }
+  let lhs = source_line[0:eq]
+  if lhs.contains("[") || lhs.contains("(") {
+    return None
+  }
+  let rhs = source_line[eq + 1:].to_owned()
+  let p0 = match find_sub(rhs, "next[", 0) {
+    Some(v) => v
+    None => return None
+  }
+  let b0 = p0 + 5
+  let b1 = match find_char(rhs, ']', b0) {
+    Some(v) => v
+    None => return None
+  }
+  let name = rhs[b0:b1].trim().to_owned()
+  if name.is_empty() {
+    return None
+  }
+  Some(name)
+}
+
+///|
 /// KMP 模式匹配。
 fn infer_string_match_kmp(
   source_line : String,
   vars : VarMap,
   algorithm : @protocol.AlgorithmMatch,
+  env : InferEnv,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let j = match vars.get_int_any(["j"]) {
@@ -178,6 +216,25 @@ fn infer_string_match_kmp(
   let k = match vars.get_int_any(["k"]) {
     Some(v) => v
     None => -1
+  }
+  // #436 翻面（M34b A4）：回溯读形态（j = next[j] / k = next[k]）先判——
+  // 原 build_next 判据 contains("next[")&&contains("=") 先于 skip 分支，
+  // 匹配阶段 L30 与 getNext 体内 L14 的回溯行全被吞（skip 词汇死分支、
+  // 回溯后 j 当下标报建表文案）。
+  // PR #463 审阅 P2-1 处方 b：文案不拼下标数字——行末帧 X 已是回溯后值、
+  // 行入口 X 是回溯前值，任一取法都让「next[N]」的 N 混新旧值语义
+  //（grounding 判据因此不必为 KMP 放宽）；只播报回读结果（帧态可推）。
+  match kmp_backtrack_var(source_line) {
+    Some(xname) => {
+      let x_new = match vars.get_int_any([xname]) {
+        Some(v) => v
+        None => k
+      }
+      return Some(
+        build_step(algorithm, "skip", "\{xname} 回溯到 next 值 \{x_new}"),
+      )
+    }
+    None => ()
   }
   // nextval 优先于 next（§6-7 v4 #35：两张表——nextval 行同时含 "next["
   // 会被 next 分支吞掉）
@@ -221,7 +278,10 @@ fn infer_string_match_kmp(
     )
   }
   if line_lower.contains("next[j]") {
-    return Some(build_step(algorithm, "skip", "j 回溯到 next[\{j}]=\{k}"))
+    // PR #463 审阅 P2-1 同款：不拼 next[N] 数字（帧 j/k 与回溯前后值语义
+    // 混用风险——主回溯判定在前置 kmp_backtrack_var 已截走裸赋值形态，
+    // 此处是非赋值读用法的兜底）
+    return Some(build_step(algorithm, "skip", "j 回溯到 next 值 \{k}"))
   }
   None
 }

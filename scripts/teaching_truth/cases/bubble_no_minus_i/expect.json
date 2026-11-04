@@ -1,12 +1,33 @@
 {
   "case": "bubble_no_minus_i",
   "source": "./source.c",
-  "note": "M34b A2 红例：内层界 j < n-1（无 -i）变体，i≥1 后半程比较帧被模板界守卫吞",
+  "note": "M34b A2 红例：内层界 j < n-1（无 -i）变体，i≥1 后半程比较帧被模板界守卫吞。锚形态注（B12 修正）：serve 一帧发布缓冲把 compare 标注挂在 L9 行帧串末帧——假比较若「下一次迭代条件真」则并入后续串被清标注（i=1 j=3 / i=2 j=2 / i=3 j=0 原锚点结构性无帧）；可产出锚 = 假比较的「末次退出型」（j++ 后条件假退出，串在行变处断，末帧 j 未推进）——i=2 j=3 / i=3 j=1 两点，均旧守卫吞 / 新数组界守卫放行，翻面语义不变。",
   "step_budget": 2000,
-  "detect": ["bubble_sort"],
+  "detect": [
+    "bubble_sort"
+  ],
   "frames": [
-    { "id": "bubble_noi_i1_j3_compare", "kind": "expect", "phase": "compare", "vars": { "i": 1, "j": 3 }, "note": "i=1 j=3 域内比较（j+1=4 ≤ n-1），守卫 j<n-1-i=3 误吞" },
-    { "id": "bubble_noi_i2_j2_compare", "kind": "expect", "phase": "compare", "vars": { "i": 2, "j": 2 }, "note": "i=2 j=2 域内比较，守卫 j<2 误吞" },
-    { "id": "bubble_noi_i3_j0_compare", "kind": "expect", "phase": "compare", "vars": { "i": 3, "j": 0 }, "note": "i=3 j=0 域内比较，守卫 j<1 误吞" }
+    {
+      "id": "bubble_noi_i2_j3_compare",
+      "kind": "expect",
+      "phase": "compare",
+      "vars": {
+        "i": 2,
+        "j": 3
+      },
+      "desc": "比较 arr\\[3\\] 与 arr\\[4\\]",
+      "note": "i=2 j=3 域内比较（j+1=4 ≤ n-1），旧守卫 j<n-1-i=2 吞"
+    },
+    {
+      "id": "bubble_noi_i3_j1_compare",
+      "kind": "expect",
+      "phase": "compare",
+      "vars": {
+        "i": 3,
+        "j": 1
+      },
+      "desc": "比较 arr\\[1\\] 与 arr\\[2\\]",
+      "note": "i=3 j=1 域内比较，旧守卫 j<1 吞"
+    }
   ]
 }

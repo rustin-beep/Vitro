@@ -190,7 +190,12 @@ test "engine_run_batch_trap_root_cause_hint_divzero" {
 test "trace_analyze_bounds_wrong_init" {
   // oracle test_infer_wrong_init 照搬：i 从 1 起单调 +1，accessed=5=size
   let hist : Array[Int32] = [1, 2, 3, 4, 5]
-  let loop_info : LoopInfo = { lines: [3], has_le: false, increment: Some(1), }
+  let loop_info : LoopInfo = {
+    lines: [3],
+    has_le: false,
+    increment: Some(1),
+    init_val: None,
+  }
   let cat = infer_bounds_category(hist, 5, 5, loop_info)
   assert_eq(cat.as_str(), "WrongInit")
   let (one_liner, fix_kind, fix_line, fix_desc) = build_bounds_hint(
@@ -211,6 +216,7 @@ test "trace_analyze_bounds_wrong_increment" {
     lines: [3, 5],
     has_le: false,
     increment: Some(2),
+    init_val: None,
   }
   let cat = infer_bounds_category(hist, 6, 5, loop_info)
   assert_eq(cat.as_str(), "WrongIncrement")
@@ -304,7 +310,12 @@ test "hint_migration_snapshot_before" {
 /// bounds hint 外置等价锚（#60 批三段一b，2026-10-10）：build_bounds_hint
 /// 五变体代表形态的逐字节基线（直调单元级——LoopInfo/hist_vals 手工构造）。
 test "bounds_hint_migration_snapshot_before" {
-  let li = LoopInfo::{ lines: [7], has_le: false, increment: Some(1), }
+  let li = LoopInfo::{
+    lines: [7],
+    has_le: false,
+    increment: Some(1),
+    init_val: None,
+  }
   // OffByOne（带行号）
   let (m1, k1, _, f1) = build_bounds_hint(OffByOne, "i", "a", 5, 5, li, [])
   assert_eq(
@@ -322,7 +333,12 @@ test "bounds_hint_migration_snapshot_before" {
   assert_eq(k2, "FixLoopStart")
   assert_eq(f2, Some("将 i 的初始值 1 改为 0"))
   // WrongIncrement（无行号形态）
-  let li0 = LoopInfo::{ lines: [], has_le: false, increment: None, }
+  let li0 = LoopInfo::{
+    lines: [],
+    has_le: false,
+    increment: None,
+    init_val: None,
+  }
   let (m3, _, _, f3) = build_bounds_hint(WrongIncrement, "i", "a", 6, 5, li0, [])
   assert_eq(
     m3, "数组 'a' 访问了越界索引 6。循环变量 'i' 的步长是 2，导致跳过了边界检查。建议将步长改为 1，或调整循环条件。",

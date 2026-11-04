@@ -449,3 +449,88 @@ test "issue214_w3085_implicit_decl_forward_call" {
     msg="原型先行（first_decl_line=5 < 调用行 10）不报",
   )
 }
+
+///|
+/// #467 审阅补（2026-11-04）：F1 的管线级锚——审阅实锤「typeck 还原
+/// （复合赋值回退预收口）后 codegen 包全绿（wbtest 直喂 AST 绕过
+/// typeck），锚在语料闸不在单测」。本锚走完整 typecheck：`x /= 0.5`
+/// 改写后的右值**不得**被 insert_implicit_cast 包裹（#425 B2 复合赋值
+/// 不预收口——收口若回退，本锚当场红，不必依赖语料闸）。
+test "compound assign rhs not pre-collapsed after typecheck (#425 F1 pipeline)" {
+  fn l(n : Int32) -> @source.SourceLoc {
+    @source.SourceLoc::new(n, 1)
+  }
+  let x_ty = @ast.Type::int()
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        ..Default::default(),
+        loc: l(1),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::VarDecl(
+                x_ty,
+                "x",
+                Some(@ast.Expr::Literal(3, l(2), x_ty)),
+                [],
+                false,
+                false,
+                l(2),
+              ),
+              @ast.Stmt::Expr(
+                @ast.Expr::Assign(
+                  @ast.AssignOp::DivAssign,
+                  @ast.Expr::Identifier("x", l(3), x_ty),
+                  @ast.Expr::FloatLiteral(0.5, l(3), @ast.Type::double()),
+                  l(3),
+                  x_ty,
+                ),
+                l(3),
+              ),
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Identifier("x", l(4), x_ty)),
+                l(4),
+              ),
+            ],
+            l(1),
+          ),
+        ),
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let tc = TypeChecker::new()
+  let (rewritten, errs, _, _) = tc.check(program)
+  assert_eq(errs.length(), 0, msg="x /= 0.5 不应报错")
+  // 从改写后 program 取 main 体内的复合 Assign 右值
+  let main = rewritten.funcs[0]
+  let body_stmts : Array[@ast.Stmt] = match main.body {
+    Some(@ast.Stmt::Block(stmts, _)) => stmts
+    _ => fail("main body 须为 Block")
+  }
+  let assign_expr : @ast.Expr = match body_stmts[1] {
+    @ast.Stmt::Expr(e, _) => e
+    _ => fail("body[1] 须为 ExprStmt")
+  }
+  let right : @ast.Expr = match assign_expr {
+    @ast.Expr::Assign(_, _, r, _, _) => r
+    _ => fail("须为 Assign")
+  }
+  assert_false(
+    right is @ast.Expr::Cast(_, _, _, _),
+    msg="复合赋值右值不得被 insert_implicit_cast 预收口包裹（#425 B2——回退则 x /= (int)0.5 假除零复活）",
+  )
+  assert_true(
+    right is @ast.Expr::FloatLiteral(_, _, _),
+    msg="右值应保持原 FloatLiteral 形态（运算域提升由 codegen 发射）",
+  )
+}

@@ -1,7 +1,7 @@
 {
   "case": "dfs_reset_visited",
   "source": "./source.c",
-  "note": "M34b A3 红例（DFS 侧）：visited 重置循环（dfsReset 包装函数——名含 dfs 保 detect 命中与重置帧分派；重置放递归体内会反复清零致无限递归，首版语料实锤 8000 步跑不完）+ 递归 DFS——重置行误标 visit、判断行误标 visit、真标记行节点值取错变量",
+  "note": "M34b A3 红例（DFS 侧）：visited 重置循环（dfsReset 包装函数——名含 dfs 保 detect 命中与重置帧分派；重置放递归体内会反复清零致无限递归，首版语料实锤 8000 步跑不完）+ 递归 DFS——重置行误标 visit、判断行误标 visit、真标记行节点值取错变量。B12 注：dfs_reset_visit_v1_node_value 锚已删——其锚定前提（判断行误产 visit）随 #436 M34b-A3 判据收紧（visited[X]=1 裸赋值形态）消除，翻面后 L20 不产 visit 帧。",
   "step_budget": 2500,
   "detect": [
     "dfs"
@@ -28,18 +28,6 @@
       "line": 17,
       "desc": "标记节点 0 ",
       "note": "真标记行 visited[u]=1（u=0）节点值须为 u——正锚（当前正确）"
-    },
-    {
-      "id": "dfs_reset_visit_v1_node_value",
-      "kind": "expect",
-      "phase": "visit",
-      "line": 20,
-      "vars": {
-        "u": 3,
-        "v": 1
-      },
-      "desc": "标记节点 1 ",
-      "note": "判断行误产 visit 时节点值须为 v=1——A3 DFS 值错形态（当前取 u 显示「标记节点 3」；u=v=1 层会巧合绿故锚定 u=3 层）"
     }
   ]
 }

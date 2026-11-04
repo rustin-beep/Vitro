@@ -139,7 +139,12 @@ test "issue225_bubble_compare_j_values_dynamic" {
       { name: "i", value: "0", },
       { name: "j", value: j, },
     ]
-    infer_bubble_sort(if_line, VarMap::new(vars), alg)
+    infer_bubble_sort(if_line, VarMap::new(vars), alg, {
+      prev_vars: [],
+      at_callee_entry: false,
+      caller_is_main: false,
+      lookahead: "",
+    })
   }
   let mut ok = true
   let mut msg = ""

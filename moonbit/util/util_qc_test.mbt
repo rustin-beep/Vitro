@@ -48,15 +48,19 @@ test "qc_str_cmp_reflexivity" {
 }
 
 ///|
-/// str_cmp 传递：a<b 且 b<c 蕴含 a<c。前提不满足的样本为空真（随机三串
-/// 前提命中约 1/4，count=300 下非空调用数十次起）。
+/// str_cmp 传递：a<b 且 b<c 蕴含 a<c。前提不满足的样本为空真——**前提
+/// 命中守卫**（PR #476 审阅 P3-1：实现缺陷可抽空前提使属性恒真——注入
+/// 「cmp 恒返 1」后本属性仍绿即此形态；命中数为 0 即对该 seed 无判别力，
+/// fail loud 而非静默空绿）。
 /// prove 三态：未做（三条完整规范的组合引理，比反对称更重）——qc 补位。
 test "qc_str_cmp_transitivity" {
   for seed in [20261104, 427] {
+    let mut hits = 0
     @quickcheck.check(
       (t : (String, String, String)) => {
         let (a, b, c) = t
         if @util.str_cmp(a, b) < 0 && @util.str_cmp(b, c) < 0 {
+          hits = hits + 1
           @util.str_cmp(a, c) < 0
         } else {
           true
@@ -66,6 +70,11 @@ test "qc_str_cmp_transitivity" {
       max_size=32,
       seed=seed.to_uint64(),
     )
+    guard hits > 0 else {
+      fail(
+        "transitivity 前提零命中（seed=\{seed}）——属性对该 seed 空真",
+      )
+    }
   }
 }
 
@@ -85,6 +94,10 @@ test "qc_i64_to_i32_bits_in_range_identity" {
 ///|
 /// i64_to_i32_bits 高 32 位丢弃：任意 hi，(hi<<32)|lo 截断 == 仅 lo 的
 /// 截断（位截断语义只看低半）。
+/// **判别面登记**（PR #476 审阅 P3-1）：本属性判「输出只依低 32 位」——
+/// 符号位泄漏形态红（注入 +(v>>62)，falsified after 3）；Int64::to_int
+/// 截断族形态恒绿（减 2^32 不改低 32 位，issue #475 等价性）——界内偏移
+/// 类缺陷由 in_range_identity 判别，两属性互补不重叠。
 /// prove 三态：同上未覆盖——qc 补位（与上属性合力覆盖「无损 + 丢弃」两向）。
 test "qc_i64_to_i32_bits_high_half_dropped" {
   for seed in [20261104, 427] {
@@ -168,6 +181,10 @@ test "qc_le_u64_composes_from_two_u32" {
 
 ///|
 /// base64 编解码 roundtrip：decode(encode(b)) == Some(b)。
+/// **oracle 分工**（PR #476 审阅 P2-3）：roundtrip 对「编码解码双错互逆」
+/// 无判别力（encode/decode 同时注入 ^0xFF 后本属性与 shape 属性均绿）——
+/// 编码正确性的**唯一语义 oracle 是 util_wbtest 的 RFC 4648 向量例锚**
+/// （删例锚即该面归零）；本属性管任意长度输入域的往返闭包与形态。
 /// prove 三态：位打包域模型亚秒证过（报告 §3.2 试点 b2），roundtrip 组合
 /// 语义 frontend 拒——qc 补组合面。
 test "qc_base64_roundtrip" {
@@ -183,7 +200,8 @@ test "qc_base64_roundtrip" {
 
 ///|
 /// base64 输出形态：长度恒为 4*⌈n/3⌉；'=' 只出现在尾部且 ≤2 个；非填充
-/// 字符全在 RFC 4648 字母表。
+/// 字符全在 RFC 4648 字母表。同 qc_base64_roundtrip 的 oracle 分工注记
+/// （PR #476 审阅 P2-3）——形态断言对错值注入亦无判别力，语义面归例锚。
 /// prove 三态：6-bit 索引域证过（模型重写后），填充/长度形态未做——双保险。
 test "qc_base64_output_shape" {
   let alphabet : Array[Char] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".to_array()
@@ -299,6 +317,17 @@ fn qc_utf8_width(c : Char) -> Int32 {
 }
 
 ///|
+/// 串的 UTF-8 字节长度参照（Σ 码点宽度——与 @util.utf8_len 独立的
+/// 测试侧口径，QcTextCut 的域界定用它而非被测函数，PR #476 审阅 P3-2）。
+fn qc_byte_len(s : String) -> Int32 {
+  let mut n = 0
+  for c in s {
+    n += qc_utf8_width(c)
+  }
+  n
+}
+
+///|
 /// 按整字符消费的最大前缀（utf8_text_partial 的期望值参照：逐码点累计
 /// 字节宽，超 k 即止）。
 fn qc_prefix_at(s : String, k : Int32) -> String {
@@ -344,8 +373,14 @@ impl @quickcheck.Arbitrary for QcByteSlice with fn arbitrary(
 impl @shrink.Shrink for QcByteSlice with fn shrink(self : QcByteSlice) -> Iter[
   QcByteSlice,
 ] {
-  // 字节串缩短后偏移重算入域（保持 off ∈ [0, len-8] 不变量）
-  @shrink.Shrink::shrink(self.bytes).map(b => {
+  // 字节串缩短后偏移重算入域（保持 off ∈ [0, len-8] 不变量）。
+  // 域下界 filter（PR #476 审阅 P2-1）：Bytes 内置 shrink 会产长度 <8 的
+  // 候选——off 域随之变负（span=len-7<1），反例收缩路径崩溃（js 臂
+  // unreachable / native 臂 0xc0000409 整包中断）而非给出最小反例；
+  // 此处滤掉域外候选，shrink 收敛于域内最小形态
+  @shrink.Shrink::shrink(self.bytes)
+  .filter(b => b.length() >= 8)
+  .map(b => {
     let span = b.length() - 7
     let off = if self.off > span { span } else { self.off }
     { bytes: b, off, }
@@ -359,7 +394,9 @@ impl @debug.Debug for QcByteSlice with fn to_repr(self : QcByteSlice) -> Repr {
 
 ///|
 /// 合法码点串 + 字节切点（utf8_text_partial 前缀属性域）：cut ∈
-/// [0, utf8_len(text)]。
+/// [0, qc_byte_len(text)]。**域由测试侧参照表定**（PR #476 审阅 P3-2：
+/// 不用被测 @util.utf8_len 界域——生成器依赖被测函数会把实现缺陷折进
+/// 采样域，注入 utf8_len 为码元数时域静默变窄而非暴露）。
 struct QcTextCut {
   text : String
   cut : Int32
@@ -371,7 +408,7 @@ impl @quickcheck.Arbitrary for QcTextCut with fn arbitrary(
   state : @splitmix.RandomState,
 ) -> QcTextCut {
   let text = @quickcheck.Arbitrary::arbitrary(size, state)
-  let n = @util.utf8_len(text)
+  let n = qc_byte_len(text)
   let cut = if n == 0 {
     0
   } else {
@@ -384,10 +421,10 @@ impl @quickcheck.Arbitrary for QcTextCut with fn arbitrary(
 impl @shrink.Shrink for QcTextCut with fn shrink(self : QcTextCut) -> Iter[
   QcTextCut,
 ] {
-  // 串缩短后切点重算入域；String 内置 shrink 的候选仍是合法码点串
-  // （Char shrink 候选皆合法字符），合法码点域不变量保持
+  // 串缩短后切点重算入域（同 qc_byte_len 参照口径）；String 内置 shrink
+  // 的候选仍是合法码点串（Char shrink 候选皆合法字符），域不变量保持
   @shrink.Shrink::shrink(self.text).map(t => {
-    let n = @util.utf8_len(t)
+    let n = qc_byte_len(t)
     let cut = if self.cut > n { n } else { self.cut }
     { text: t, cut, }
   })

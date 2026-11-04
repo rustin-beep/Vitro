@@ -55,10 +55,12 @@
   变异必拒（#466 pub 化面的两向）；i64_to_i32_bits 界内恒等/高 32 位丢弃；
   le_u32/u64 写读对偶 + u64=u32|u32<<32 组合一致；utf8 roundtrip/字节长
   码点累加/utf8_text_partial 前缀止（#363 语义属性化）。
-- **J9 注入证红 16 次**：13 次有效红 + 2 次无效注入形态的等价性发现
-  （Int64::to_int 低 32 位截断语义下 i64_to_i32_bits 分支减法等价——单点
-  注入被吞，换符号位泄漏形态证红）+ 1 次 sed 转义损坏重试；传递性属性
-  无现实可注入形态（单臂缺陷恒被反对称/自反锚先行覆盖）——诚实登记；
+- **J9 注入 16 次**（口径：13 次有效红 / 2 次无效注入形态的等价性发现
+  〔Int64::to_int 低 32 位截断语义下 i64_to_i32_bits 分支减法等价——单点
+  注入被吞，换符号位泄漏形态证红〕/ 1 次 sed 转义损坏重试不计证红——
+  PR #476 审阅 P3-3 口径修正）；传递性属性加前提命中守卫（审阅注入
+  「cmp 恒返 1」实测空真，命中数为 0 即 fail loud 而非静默空绿）；
+  repr 保真半边补注入证红（json_parse repr=text 注入，审阅 P3-4）；
   注入后源码全程 git checkout 恢复零残留。
 - **连坐**：测试数 1242→1259（裸 moon test）/1291→1308（native 全量
   MOON_CC=clang-cl，双口径亲测）；moon info 接口面零漂移（pub 面零变更）；
@@ -68,6 +70,28 @@
   core/debug 共 5 边登记 surface_edges.txt（PR #476 首轮 contract +
   scripts-ts 两 job 红，补登记后本地 surface -check 与
   moonbit_surface.test.mts 双绿）。
+
+### test(moonbit)+fix(scripts): PR #476 审阅处置批——P2×3 落地 + P3×4 连坐（2026-11-04）
+
+- **P2-1 QcByteSlice.shrink 域崩溃修复**：Bytes 内置 shrink 会产长度 <8
+  候选，off 域随之变负——反例收缩路径崩溃（js 臂 unreachable / native 臂
+  0xc0000409 整包中断）而非最小反例（审阅双臂实测）。修：shrink 链
+  filter(len>=8)；复验注入 le_u32 <<9 形态从崩溃变为正常 falsified after 1。
+- **P2-2 pkg_deps 判据⑥（test-only 依赖闸）**：审阅实测「删 for "test"
+  尾标后 pkg_deps/surface/mbti_sync/host_shared_guard 四闸全绿」——测试
+  依赖面外溢零机判。新增 rules.json test_only_imports 表 + testOnlyLeaks
+  断言（兼容后缀/前置两种块语法）；J9 删尾标注入：四依赖泄漏全名单红。
+- **P2-3 base64 oracle 分工头注**：roundtrip 对双错互逆注入无判别力
+  （审阅 ^0xFF 实测）——编码正确性唯一语义 oracle 是 RFC 4648 例锚，
+  头注明示「删例锚即该面归零」。
+- **P3 连坐**：①transitivity 加前提命中守卫（审阅「cmp 恒返 1」空真
+  实测，命中 0 即 fail loud）；②QcTextCut 域改测试侧 qc_byte_len 参照
+  （去被测函数循环依赖）；③CHANGELOG 证红口径精确化（13 有效/2 等价性
+  发现/1 重试）；④repr 保真半边补注入证红（falsified after 1）；
+  high_half_dropped 头注登记判别面（符号位泄漏红/截断族恒绿）。
+- 工具链教训再证：本仓 bash 工具层 heredoc 吃反斜杠（陷阱 19）在
+  python 写盘路径复现（chr(0) 标记产 4 个 NUL 字节，source_hygiene
+  兜住）——代码写盘一律 Edit/Write 工具，heredoc 只跑读侧脚本。
 
 ### fix(engine): W4 尾件批——普查钉出的四缺陷修复（abort 族×2 + note 泄漏 + 栈迭代化，Closes #418 #419 #420 #421，2026-11-04）
 

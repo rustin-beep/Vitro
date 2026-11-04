@@ -495,6 +495,25 @@ jobs:
         run: node scripts/teaching_truth/main.mts --selftest
         shell: bash
 
+      # step 帧流不变量检查器（过程语义防线，moon_prove 试点报告 §8.2 方案 B，
+      # 2026-11-04）：`vitro step --json` NDJSON 逐帧断言四条语义不变量
+      # （内存视图域/栈深/cursor 连续/指针四态）+ 帧流结构契约。双档：
+      # PR 轮 spot 抽样（--sample 60，~1min）；夜间 schedule 轮全量
+      # （987 语料 163 万帧，本地 jobs=8 实测 ~5min）+ --audit-known 白名单
+      # 僵尸审计。已知违例白名单 known_violations.json 三态
+      # （RED/EXPECTED_RED/ZOMBIE）。js 臂壳现场构建（ensureFresh 只兜陈旧
+      # 不兜缺失——上步 Protocol frames 同款形态）。timeout 600s：llm_scale
+      # 大语料单例可达数分钟（并发资源竞争下 120s 默认曾超时×10）。
+      - name: Step invariant gate (per-frame runtime invariants)
+        run: |
+          cd moonbit && MOON_CC=clang moon build --release --target js cmd/vitro_js && cd ..
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known
+          else
+            node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000
+          fi
+        shell: bash
+
       # ── wasm-gc / demo 闸族（产物复用链内构建）────────────────────────
       # 注-步错位修正（2026-11-01 审阅 v2 R1e-Y4）：本段三块注释曾整体上移
       # 一位（D19 审计注挂在 teaching 步、wasm 冒烟注挂在豁免审计步、S8

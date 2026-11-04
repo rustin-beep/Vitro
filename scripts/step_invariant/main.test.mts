@@ -1,0 +1,263 @@
+// step_invariant.test.mts —— 检查核心证红/证绿（J9 义务：篡改帧逐不变量必红）。
+//
+// 覆盖三层：
+//   1. 绿基线：手工构造合法帧流（对齐 cli_step/serve_step 真实形状）全绿；
+//      compile-error 单行形态正确 skip；
+//   2. 证红：每条不变量（INV1a/1b/1c、INV2a/2b/2c、INV3a、INV4 三态、
+//      ST1/3/4/5/6/7）构造一例篡改帧，断言恰好命中该不变量 id；
+//   3. 常量镜像：引擎侧布局常量值锚（bytecode/memory.mbt 漂移连坐此处）。
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  checkStepStream,
+  MEM_SIZE,
+  NULL_TRAP_SIZE,
+  GLOBAL_START,
+  GLOBAL_REGION_LIMIT,
+  HEAP_START,
+  CALL_DEPTH_LIMIT,
+} from "./main.mts";
+
+// ── 帧构造器（对齐 step_payload_json 真实字段面）──
+
+interface FrameOverrides {
+  step_index?: number;
+  depth?: number;
+  bottomName?: string;
+  vars?: Array<{ name: string; addr: number; is_local: boolean }>;
+  ptrs?: Array<{ name: string; addr: number; target_addr: number; status: string }>;
+}
+
+function mkFrame(o: FrameOverrides = {}): Record<string, unknown> {
+  const depth = o.depth ?? 1;
+  const bottom = o.bottomName ?? "main";
+  const callStack = Array.from({ length: depth }, (_, i) =>
+    i === 0 ? { func_name: bottom, return_line: 0 } : { func_name: `f${i}`, return_line: 10 + i },
+  );
+  return {
+    step_index: o.step_index ?? 0,
+    code_line: 1,
+    code_file: "t.c",
+    func_name: depth > 0 ? "main" : "",
+    semantic_label: "",
+    semantic_label_id: "",
+    algorithm_step: null,
+    local_vars: o.vars ?? [{ name: "x", addr: 0xfff00, is_local: true, ty_name: "int", value: "3" }],
+    call_stack: callStack,
+    vis_events: [],
+    heatmap_line: 0,
+    heatmap_count: 0,
+    accessed_vars: [],
+    array_snapshots: [],
+    pointer_snapshots: o.ptrs ?? [],
+    root_cause_hint: null,
+  };
+}
+
+function stepRow(id: number, payloads?: Array<Record<string, unknown>>, terminal: Record<string, unknown> = {}): string {
+  return JSON.stringify({
+    id,
+    ok: true,
+    result: {
+      payloads: payloads ?? [],
+      finished: false,
+      trapped: false,
+      waiting_input: false,
+      paused: false,
+      current_line: 1,
+      trap_message: null,
+      cache_start_step: 0,
+      ...terminal,
+    },
+  });
+}
+
+/** 绿基线流：空首行 + 5 帧（栈深 1→2→1→0→0，含指针三态）+ 终态 + stdout + summary。 */
+function greenStream(): string[] {
+  return [
+    stepRow(6), // 首行 payloads=[]（滞后一帧缓冲）
+    stepRow(7, [mkFrame({ step_index: 0, depth: 1 })]),
+    stepRow(8, [mkFrame({ step_index: 1, depth: 2 })]),
+    stepRow(9, [mkFrame({ step_index: 2, depth: 1, ptrs: [{ name: "p", addr: 0xfff00, target_addr: 0x5000, status: "Valid" }] })]),
+    stepRow(10, [mkFrame({ step_index: 3, depth: 0, ptrs: [{ name: "p", addr: 0xfff00, target_addr: 0x99999999, status: "Dangling" }] })]),
+    stepRow(11, [mkFrame({ step_index: 4, depth: 0, ptrs: [{ name: "p", addr: 0xfff00, target_addr: 0, status: "Null" }] })], { finished: true }),
+    JSON.stringify({ type: "stdout", frame: { id: 12, ok: true, result: { delta: "ok", cursor: 2, total: 2, stream: "stdout", truncated_bytes: 0 } } }),
+    JSON.stringify({ type: "summary", frames: 5, finished: true, trapped: false }),
+  ];
+}
+
+function invariantsOf(lines: string[], source = "t.c"): string[] {
+  return checkStepStream(lines, source).violations.map((v) => v.invariant);
+}
+
+test("绿基线：手工合法帧流全绿（帧数/终态对）", () => {
+  const r = checkStepStream(greenStream(), "t.c");
+  assert.deepEqual(r.violations, []);
+  assert.equal(r.frames, 5);
+  assert.equal(r.terminal, "finished");
+});
+
+test("compile-error 单行形态：skip 不变量面", () => {
+  const lines = [JSON.stringify({ id: 3, ok: true, result: { ok: false, diagnostics: [{ code: "E2003" }] } })];
+  const r = checkStepStream(lines, "bad.c");
+  assert.deepEqual(r.violations, []);
+  assert.equal(r.terminal, "compile-error");
+});
+
+// ── J9 证红：逐不变量篡改一例 ──
+
+test("INV1a 证红：变量 addr 落 NULL 陷阱区", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, vars: [{ name: "x", addr: 0x500, is_local: true }] })]);
+  assert.deepEqual(invariantsOf(s), ["INV1a"]);
+});
+
+test("INV1a 证红：指针 addr 域外", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, ptrs: [{ name: "p", addr: 0x100000, target_addr: 0x5000, status: "Valid" }] })]);
+  assert.deepEqual(invariantsOf(s), ["INV1a"]);
+});
+
+test("INV1b 证红：全局变量 addr 越 GLOBAL_REGION_LIMIT", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, vars: [{ name: "g", addr: 0x20000, is_local: false }] })]);
+  assert.deepEqual(invariantsOf(s), ["INV1b"]);
+});
+
+test("INV1c 证红：Freed 指针 target < HEAP_START（域内但非堆）", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, ptrs: [{ name: "p", addr: 0xfff00, target_addr: 0x4000, status: "Freed" }] })]);
+  assert.deepEqual(invariantsOf(s), ["INV1c"]);
+});
+
+test("INV2a 证红：栈深超 call_depth_limit", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, depth: CALL_DEPTH_LIMIT + 1 })]);
+  const inv = invariantsOf(s);
+  assert.ok(inv.includes("INV2a"), `应含 INV2a，得 ${JSON.stringify(inv)}`);
+  assert.ok(inv.includes("INV2b"), "10001 帧同时破 ±1（前帧深 1）——连带红属预期");
+});
+
+test("INV2b 证红：相邻帧栈深跳 +2", () => {
+  const s = greenStream();
+  s[2] = stepRow(8, [mkFrame({ step_index: 1, depth: 3 })]);
+  const inv = invariantsOf(s);
+  assert.ok(inv.includes("INV2b"), `应含 INV2b，得 ${JSON.stringify(inv)}`);
+  // 后继帧（深 1）相对篡改帧也 -2——恰两例 INV2b，无其他不变量红
+  assert.deepEqual(inv.filter((x) => x !== "INV2b"), []);
+});
+
+test("INV2c 证红：底帧非 main", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, bottomName: "notmain" })]);
+  assert.deepEqual(invariantsOf(s), ["INV2c"]);
+});
+
+test("INV3a 证红：step_index 跳号", () => {
+  const s = greenStream();
+  s[2] = stepRow(8, [mkFrame({ step_index: 3, depth: 2 })]);
+  const inv = invariantsOf(s);
+  assert.ok(inv.includes("INV3a"), `应含 INV3a，得 ${JSON.stringify(inv)}`);
+});
+
+test("INV3a 证红：step_index 回退（cursor 非单调）", () => {
+  const s = greenStream();
+  s[2] = stepRow(8, [mkFrame({ step_index: 0, depth: 2 })]);
+  assert.ok(invariantsOf(s).includes("INV3a"));
+});
+
+test("INV4 证红：Null 状态 target 非 0", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, ptrs: [{ name: "p", addr: 0xfff00, target_addr: 0x5000, status: "Null" }] })]);
+  assert.deepEqual(invariantsOf(s), ["INV4"]);
+});
+
+test("INV4 证红：Dangling 状态 target 域内（判定与域不自洽）", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, ptrs: [{ name: "p", addr: 0xfff00, target_addr: 0x5000, status: "Dangling" }] })]);
+  assert.deepEqual(invariantsOf(s), ["INV4"]);
+});
+
+test("INV4 证红：Valid 状态 target 越区", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, ptrs: [{ name: "p", addr: 0xfff00, target_addr: 0x1000000, status: "Valid" }] })]);
+  assert.deepEqual(invariantsOf(s), ["INV4"]);
+});
+
+test("ST1 证红：非法 JSON 行", () => {
+  const s = greenStream();
+  s[1] = "{oops";
+  // 首行（空 payloads）仍是首 step 行——ST5 不红；丢 step0 帧连带 INV3a 红
+  assert.deepEqual(invariantsOf(s), ["ST1", "INV3a", "ST7"]);
+});
+
+test("ST3 证红：行 id 回退", () => {
+  const s = greenStream();
+  s[2] = stepRow(7, [mkFrame({ step_index: 1, depth: 2 })]);
+  assert.ok(invariantsOf(s).includes("ST3"), "id 7 -> 7 非严格递增");
+});
+
+test("ST4 证红：双终态行", () => {
+  const s = greenStream();
+  s[4] = stepRow(10, [mkFrame({ step_index: 3, depth: 0 })], { trapped: true });
+  assert.ok(invariantsOf(s).includes("ST4"), "finished 前再见 trapped 行");
+});
+
+test("ST5 证红：首行 payloads 非空", () => {
+  const s = greenStream();
+  s[0] = stepRow(6, [mkFrame({ step_index: 0 })]);
+  const inv = invariantsOf(s);
+  assert.ok(inv.includes("ST5"));
+  assert.ok(inv.includes("INV3a"), "帧序 0,0,1.. 连带破连续（同因红）");
+});
+
+test("ST6 证红：单行 payloads 超 2", () => {
+  const s = greenStream();
+  s[1] = stepRow(7, [mkFrame({ step_index: 0 }), mkFrame({ step_index: 1, depth: 2 }), mkFrame({ step_index: 2, depth: 1 })]);
+  s.splice(2, 1); // 摘掉原 step1 行保帧序连续，孤立证 ST6
+  const inv = invariantsOf(s);
+  assert.ok(inv.includes("ST6"), `应含 ST6，得 ${JSON.stringify(inv)}`);
+});
+
+test("ST7 证红：summary.frames 计数不符", () => {
+  const s = greenStream();
+  s[7] = JSON.stringify({ type: "summary", frames: 99, finished: true, trapped: false });
+  assert.deepEqual(invariantsOf(s), ["ST7"]);
+});
+
+test("ST7 证红：缺 summary 收口行", () => {
+  const s = greenStream();
+  s.splice(7, 1);
+  assert.deepEqual(invariantsOf(s), ["ST7"]);
+});
+
+// ── 常量镜像锚（引擎侧漂移连坐）──
+
+test("布局常量镜像：与 bytecode/memory.mbt 单源对齐", () => {
+  assert.equal(MEM_SIZE, 0x100000);
+  assert.equal(NULL_TRAP_SIZE, 0x1000);
+  assert.equal(GLOBAL_START, 0x1000);
+  assert.equal(GLOBAL_REGION_LIMIT, 0x10000);
+  assert.equal(HEAP_START, 0x5000);
+  assert.equal(CALL_DEPTH_LIMIT, 10000);
+});
+
+// ── 白名单形态锚（三态 RED/EXPECTED_RED/ZOMBIE 的判定面在 main() 内联，
+// 实机三态验证见批报告；此处锁登记文件形态防僵尸化源头）──
+
+test("known_violations.json：条目形态合法（case 正斜杠 + invariant 在册 + reason/issue 非空）", async () => {
+  const { loadKnown } = await import("./main.mts");
+  const { projectRoot } = await import("../internal/capi.mts");
+  const known = loadKnown(projectRoot());
+  assert.ok(known.length > 0, "白名单非空（qsort 族回调跳号 7 条，#477）");
+  const invariants = new Set([
+    "INV1a", "INV1b", "INV1c", "INV2a", "INV2b", "INV2c", "INV3a", "INV4",
+    "ST1", "ST2", "ST3", "ST4", "ST5", "ST6", "ST7",
+  ]);
+  for (const k of known) {
+    assert.ok(!k.case.includes("\\"), `case 须正斜杠形态：${k.case}`);
+    assert.ok(invariants.has(k.invariant), `invariant 在册：${k.invariant}`);
+    assert.ok(k.reason.length > 10, `reason 须实质（为什么放行）：${k.case}`);
+    assert.ok(k.issue.length > 0, `issue 引用非空：${k.case}`);
+  }
+});

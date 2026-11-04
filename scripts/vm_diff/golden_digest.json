@@ -1916,6 +1916,18 @@
       "stdout_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
+    "baseline/p427_printf_missing_arms.c": {
+      "src_sha": "2941d73b",
+      "exit_code": 0,
+      "stdout_sha": "0de76ed6fbbf1d0c",
+      "memory_sha": "b7bee856c9ae26f4"
+    },
+    "baseline/p427_scanf_width_c.c": {
+      "src_sha": "022d677d",
+      "exit_code": 0,
+      "stdout_sha": "142a72375da096c1",
+      "memory_sha": "a9159ab870e0309d"
+    },
     "baseline/p71_tier3_scanf.c": {
       "src_sha": "7cf64475",
       "exit_code": 0,

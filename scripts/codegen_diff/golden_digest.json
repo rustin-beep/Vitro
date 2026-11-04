@@ -323,6 +323,8 @@
         "p2e_div_zero_scope.c": "9fa05878",
         "p2f_review_regression_guards.c": "75cc81b0",
         "p2g_enum_float_reject.c": "330f99b3",
+        "p427_printf_missing_arms.c": "2941d73b",
+        "p427_scanf_width_c.c": "022d677d",
         "p71_tier3_scanf.c": "ebb09917",
         "p71_tier3_semantics.c": "c752b120",
         "param_shadows_func.c": "dbad2b64",
@@ -1513,6 +1515,12 @@
         "p2g_enum_float_reject.c": {
           "fail": true,
           "fail_stage": "parse"
+        },
+        "p427_printf_missing_arms.c": {
+          "result_sha": "087a22c045b43d23"
+        },
+        "p427_scanf_width_c.c": {
+          "result_sha": "3e400015b1486f6c"
         },
         "p71_tier3_scanf.c": {
           "result_sha": "b466586e55860432"

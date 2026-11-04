@@ -60,16 +60,8 @@
         "E": { "host": true, "typeck": true },
         "g": { "host": true, "typeck": true },
         "G": { "host": true, "typeck": true },
-        "a": {
-          "host": true,
-          "typeck": false,
-          "divergence": "typeck check_printf_format 无 a/A（十六进制浮点）类型判据臂——落 `_ => true` 兜底放行零警告；host is_known_conv_code 认并输出（host_format.mbt）。补 typeck 判据臂（fp 族同款）时置 typeck:true 删本字段。R1a-M3 枚举进度漂移登记（2026-11-02）"
-        },
-        "A": {
-          "host": true,
-          "typeck": false,
-          "divergence": "同 a：typeck 无 A 判据臂（兜底放行），host 认。R1a-M3 登记（2026-11-02）"
-        },
+        "a": { "host": true, "typeck": true },
+        "A": { "host": true, "typeck": true },
         "c": { "host": true, "typeck": true },
         "s": { "host": true, "typeck": true },
         "p": { "host": true, "typeck": true },

@@ -26,18 +26,23 @@ pub fn host_difftime(a_bits : UInt64, b_bits : UInt64) -> UInt64 {
 
 ///|
 /// 逐 spec 的变参字节宽度（与 vm 参数栈布局 / `host_va_arg` 步进一致）：
-/// d/i/o/u/x/X → int（4，`ll` 时 8）；c → int 提升（4）；
-/// f/e/E/g/G → double（8）；s/p → 指针（4）。
-fn va_spec_width(spec : Int32, is_ll : Bool) -> Int32? {
+/// d/i/o/u/x/X → int（4，`ll` 时 8；hh/h 变参仍 int 提升 4）；
+/// c → int 提升（4）；f/e/E/g/G/**F/a/A** → double（8）；s/p/**n** →
+/// 指针（4）。#427 批 B4（M21 A3/B1）：70(F)/97(a)/65(A)/110(n) 四符
+/// 补臂——旧集合缺此四符致 vprintf 预取游标不步进而 host 侧计数面认
+///（is_known_conv_code）的三处口径分裂；现四消费者（计数 / 预取 /
+/// 输出 / typeck conv_specs 表）同认。
+fn va_spec_width(spec : Int32, len_mod : String) -> Int32? {
   match spec {
-    100 | 105 | 111 | 117 | 120 | 88 => Some(if is_ll { 8 } else { 4 })
+    100 | 105 | 111 | 117 | 120 | 88 =>
+      Some(if len_mod == "ll" { 8 } else { 4 })
     // d i o u x X
     99 => Some(4)
     // c
-    102 | 101 | 69 | 103 | 71 => Some(8)
-    // f e E g G
-    115 | 112 => Some(4)
-    // s p
+    102 | 70 | 101 | 69 | 103 | 71 | 97 | 65 => Some(8)
+    // f F e E g G a A（a/A 实参经默认实参提升为 double）
+    115 | 112 | 110 => Some(4)
+    // s p n（指针；%ln/%lln 修饰不改指针自身宽度）
     _ => None
   }
 }
@@ -84,7 +89,7 @@ fn va_args_from_cursor(
                 scan.advance() // %% 不取参
               } else {
                 match parse_format_spec(scan) {
-                  Some((spec, is_ll, _, _, _, star_w, star_p)) => {
+                  Some((spec, len_mod, _, _, _, star_w, star_p)) => {
                     if star_w {
                       match va_read_word(mem, map, cur, 4) {
                         Ok(v) => args.push(v)
@@ -99,7 +104,7 @@ fn va_args_from_cursor(
                       }
                       cur = cur + 4U
                     }
-                    match va_spec_width(spec, is_ll) {
+                    match va_spec_width(spec, len_mod) {
                       Some(w) =>
                         match va_read_word(mem, map, cur, w) {
                           Ok(v) => args.push(v)
@@ -107,7 +112,7 @@ fn va_args_from_cursor(
                         }
                       None => ()
                     }
-                    match va_spec_width(spec, is_ll) {
+                    match va_spec_width(spec, len_mod) {
                       Some(w) => cur = cur + w.reinterpret_as_uint()
                       None => ()
                     }

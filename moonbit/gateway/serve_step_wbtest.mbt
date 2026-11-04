@@ -1120,3 +1120,111 @@ test "serve_breakpoints_set_fail_loud_domain_b7" {
   assert_true(r4.contains("\"ok\":true"), msg="空数组 = 合法显式清空")
   assert_true(r4.contains("\"lines\":[]"))
 }
+
+///|
+/// #430-B7b-1（M31 A-2 证据二，端到端批 A 形态）：窗口内 seek（直返——
+/// 只移动视口不动 VM）后续跑的**视口连续性**——step.next 前检测 VM 位置
+/// 与窗口尾帧脱节即自动重放对齐，发布流从视口后继连续推进（教学播放器
+/// 语义：seek=拖进度条、下一步=视口下一帧）。旧形态 VM 在原位置续跑，
+/// 用户 seek(100) 后点下一步拿到 step_index=1000（「瞬移」）。
+test "serve_seek_viewport_next_continuity_b7b" {
+  let s = @session.Session::new()
+  let (cresp, _) = serve_handle(s, longloop_compile_json())
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  // 批推 1000 步（窗口 [0..999] 未滑——帧全在窗）
+  ignore(
+    serve_handle(
+      s, "{\"id\":3,\"method\":\"step.next\",\"params\":{\"frames\":1000}}",
+    ),
+  )
+  guard s.unified is Some(engine) else { fail("engine 必在") }
+  assert_eq(
+    engine.frames.start_step(),
+    0,
+    msg="前置：窗口未滑（帧全在窗）",
+  )
+  // seek(100)：帧在窗口内 → 直返臂（VM 仍在 1000——视口回看）
+  let (skresp, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"seek\",\"params\":{\"step\":100}}",
+  )
+  assert_true(skresp.contains("\"success\":true"), msg="直返 seek 成功")
+  // 续跑批=1 ×5：发布流须从视口后继 101 连续推进（旧形态从 1000 瞬移）
+  let mut prev : Int32 = 100
+  for k = 0; k < 5; k = k + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":\{10 + k},\"method\":\"step.next\"}")
+    let v = @util.json_parse(r) catch { _ => Json::object(Map([])) }
+    let payloads = json_field(json_field(v, "result"), "payloads")
+    guard payloads.as_array() is Some(arr) else { continue }
+    for p in arr {
+      let idx = json_field(p, "step_index").as_int().unwrap_or(-1)
+      assert_eq(
+        idx,
+        prev + 1,
+        msg="#430-B7b：发布帧须为视口后继（期望 \{prev + 1}，实得 \{idx}——旧形态 VM 原位置瞬移）",
+      )
+      prev = idx
+    }
+  }
+  assert_true(prev >= 104, msg="须有连续新帧发布（101..105）")
+}
+
+///|
+/// #430-B7b-2：等待输入态不重复投递——scanf 等待帧已收集（首 waiting 批
+/// 一次投递），续调 step.next 空批 + waiting_input=true（等待步 ip/步数
+/// 双回退语义下旧形态每次续调重新 collect 同号帧再发布——同一帧反复
+/// 投递，违反「每真实步恰投递一次」）；input.feed 清等待位后续跑正常。
+test "serve_step_next_waiting_no_redelivery_b7b" {
+  let s = @session.Session::new()
+  ignore(
+    serve_handle(
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\nint main(){ int a; if (scanf(\\\"%d\\\", &a) == 1) printf(\\\"got=%d\\\", a * 2); return 0; }\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  // 推到等待点（waiting_input=true 批——等待帧一次投递）
+  let mut waiting = false
+  for i = 0; i < 20 && !waiting; i = i + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":10,\"method\":\"step.next\"}")
+    if r.contains("\"waiting_input\":true") {
+      waiting = true
+    }
+  }
+  assert_true(
+    waiting,
+    msg="前置：scanf 等待点须上报 waiting_input=true",
+  )
+  // 等待态续调 next ×3：等待帧至多投递一次（首个 waiting 批帧入 serve
+  // 发布缓冲、第二次 next 冲刷即首次投递、其后恒空批——serve「滞后一
+  // 帧发布」与 engine 零 collect 的合成形态；旧形态 engine 每批重新
+  // collect 同号帧 → 发布缓冲滚动重发——3 次续调投 2-3 帧同号帧）
+  let mut delivered = 0
+  for k = 0; k < 3; k = k + 1 {
+    let (w, _) = serve_handle(s, "{\"id\":\{20 + k},\"method\":\"step.next\"}")
+    assert_true(
+      w.contains("\"waiting_input\":true"),
+      msg="等待态照报（消费方据此 input.feed）",
+    )
+    let v = @util.json_parse(w) catch { _ => Json::object(Map([])) }
+    let payloads = json_field(json_field(v, "result"), "payloads")
+    if payloads.as_array() is Some(arr) {
+      delivered = delivered + arr.length()
+    }
+  }
+  assert_true(
+    delivered <= 1,
+    msg="#430-B7b：等待帧至多投递一次（实得 \{delivered}——旧形态每批重发同号帧）",
+  )
+  // feed 清等待位 → 续跑正常完成（守卫不得拦已恢复的会话）
+  let _ = serve_handle(
+    s, "{\"id\":21,\"method\":\"input.feed\",\"params\":{\"text\":\"21\\n\"}}",
+  )
+  let mut finished = false
+  for i = 0; i < 20 && !finished; i = i + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":30,\"method\":\"step.next\"}")
+    if r.contains("\"finished\":true") {
+      finished = true
+    }
+  }
+  assert_true(finished, msg="feed 后续跑可完成（清位闭环）")
+}

@@ -821,3 +821,34 @@ test "engine_seek_inwindow_finished_keeps_terminal_b7" {
   assert_eq(r.payloads.length(), 0, msg="#430：不得重发终帧")
   assert_true(r.finished)
 }
+
+///|
+/// 锚 #430-B7b（M31 A-2 证据二，白盒）：视口回看脱节自动对齐——窗口内
+/// seek（直返）只移动视口不动 VM，run_batch 续跑前检测 VM 在窗口尾帧的
+/// 未来（step_count > max+1）即重放对齐到尾帧，帧流从视口后继连续推进
+///（旧形态 VM 在原位置续跑——帧流「瞬移」跳变）。
+test "engine_viewport_desync_run_alignment_b7b" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(40))
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  ignore(e.run_batch(vm, src, 20))
+  assert_eq(vm.step_count, 20, msg="前置：VM 在 20")
+  // 窗口内 seek(5)：直返臂（VM 不动——视口回看）
+  let sk = e.seek_to(5, vm, src)
+  assert_true(sk.success)
+  assert_eq(vm.step_count, 20, msg="直返不动 VM")
+  // 续跑 4 帧：脱节对齐 → 帧从视口后继 6 连续（旧形态从 20 瞬移）
+  guard e.run_batch(vm, src, 4) is Ok(r) else { fail("续跑应 Ok") }
+  assert_eq(
+    r.payloads[0].step_index,
+    6,
+    msg="#430-B7b：首帧须为视口后继 6（旧形态 VM 原位置 20 瞬移）",
+  )
+  // 对齐 + 续跑 4 步：VM = 5+1（对齐）+4（续跑）= 10
+  assert_eq(vm.step_count, 10)
+  // 帧流连续性：6..9
+  for k = 0; k < 4; k = k + 1 {
+    assert_eq(r.payloads[k].step_index, 6 + k)
+  }
+}

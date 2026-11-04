@@ -96,6 +96,13 @@ export function requestTable(): Req[] {
     { id: 69, method: "step.next", params: `` },
     { id: 70, method: "seek", params: `{"step":-1}` },
     { id: 71, method: "payload.get", params: `{"start":100,"end":104}` },
+    // #430-B7b：视口回看对齐帧锚——批推滑窗后窗口内 seek（直返——只动
+    // 视口不动 VM）+ 续跑：step.next 自动重放对齐到视口（发布流从视口
+    // 后继续号；无对齐则从 VM 原位置瞬移——帧 step_index 即判别面）
+    { id: 72, method: "step.next", params: `{"every":600}` },
+    { id: 73, method: "seek", params: `{"step":600}` },
+    { id: 74, method: "step.next", params: `` },
+    { id: 75, method: "step.next", params: `` },
   ];
 }
 

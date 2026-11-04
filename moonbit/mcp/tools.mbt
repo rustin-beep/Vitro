@@ -171,7 +171,12 @@ fn tool_table() -> Array[ToolDef] {
       description: "打开有状态会话（只编译不运行）：返回 session_id、编译诊断、算法识别、程序概览（函数/符号/行数）。首个会话入池即解锁 L1 工具（frames_summary / frames_query / annotations / run_to / step_next / render / session_close——编译失败会话同样解锁：render 可出诊断卡；design §1.2「成功后解锁」按此收窄修正），并发 tools/list_changed 通知——请重拉 tools/list。",
       input_schema: schema(
         [
-          ("source", p_str("C 源码字符串（必填，≤64KB）")),
+          (
+            "source",
+            p_str(
+              "C 源码字符串（与 files 二选一——都给报错；≤64KB）",
+            ),
+          ),
           (
             "files",
             ob()
@@ -198,7 +203,10 @@ fn tool_table() -> Array[ToolDef] {
           ),
           ("title", p_str("会话标题（render 默认页面标题）")),
         ],
-        ["source"],
+        // PR #457 审阅 v2 P2-4：required 不含 source——「给 files 则 source
+        // 可省」与 required:["source"] 自相矛盾（严格校验客户端拒纯 files
+        // 调用）；二选一由 arg_source 校验兜底（都缺报错、都给报错）
+        [],
       ),
     },
     {

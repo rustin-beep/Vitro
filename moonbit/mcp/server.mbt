@@ -88,38 +88,50 @@ pub fn Server::handle_line(self : Server, line : String) -> Array[String] {
     return out
   }
   match req.method_name {
-    "initialize" => {
-      self.initialized = true
-      let pv = jstr_or(
-        jget(req.params, "protocolVersion"),
-        MCP_PROTOCOL_VERSION,
-      )
-      let r = ob()
-        .s("protocolVersion", pv)
-        .j(
-          "capabilities",
-          ob().j("tools", ob().b("listChanged", true).done()).done(),
+    // PR #457 审阅 v2 P2-3：请求形态方法（initialize/ping/tools/list/
+    // tools/call）无 id = 通知形态——JSON-RPC 通知无响应帧、MCP 亦未定义
+    // 这些方法的通知语义 → 不执行不回（修前 tools/call 通知形态会真创建
+    // 会话并回 id:null 帧，严格客户端按协议错处理）
+    "initialize" =>
+      if req.has_id {
+        self.initialized = true
+        let pv = jstr_or(
+          jget(req.params, "protocolVersion"),
+          MCP_PROTOCOL_VERSION,
         )
-        .j(
-          "serverInfo",
-          ob().s("name", SERVER_NAME).s("version", SERVER_VERSION).done(),
-        )
-        .s(
-          "instructions", "Vitro C 代码执行动画（Serena 形态有状态会话）。一次性出动画：animate(source)。教学引导/质量调优：session_open(source) 解锁会话工具（会收到 tools/list_changed，请重拉 tools/list）→ frames_summary 看结构 → annotations/frames_query 下钻 → run_to/step_next 导游式推进 → render 出 HTML → 用 DSH present 工具交付 html_path。只读探查工具带 readOnlyHint。",
-        )
-        .done()
-      out.push(rpc_result(req.id, r))
-    }
+        let r = ob()
+          .s("protocolVersion", pv)
+          .j(
+            "capabilities",
+            ob().j("tools", ob().b("listChanged", true).done()).done(),
+          )
+          .j(
+            "serverInfo",
+            ob().s("name", SERVER_NAME).s("version", SERVER_VERSION).done(),
+          )
+          .s(
+            "instructions", "Vitro C 代码执行动画（Serena 形态有状态会话）。一次性出动画：animate(source)。教学引导/质量调优：session_open(source) 解锁会话工具（会收到 tools/list_changed，请重拉 tools/list）→ frames_summary 看结构 → annotations/frames_query 下钻 → run_to/step_next 导游式推进 → render 出 HTML → 用 DSH present 工具交付 html_path。只读探查工具带 readOnlyHint。",
+          )
+          .done()
+        out.push(rpc_result(req.id, r))
+      }
     "notifications/initialized" | "initialized" | "notifications/cancelled" =>
       ()
-    "ping" => out.push(rpc_result(req.id, Json::object(Map([]))))
+    "ping" =>
+      if req.has_id {
+        out.push(rpc_result(req.id, Json::object(Map([]))))
+      }
     "tools/list" =>
-      out.push(rpc_result(req.id, tools_list_json(self.l1_visible)))
+      if req.has_id {
+        out.push(rpc_result(req.id, tools_list_json(self.l1_visible)))
+      }
     "tools/call" =>
-      match self.call_tool(req.params, now) {
-        Done(r) => out.push(rpc_result(req.id, r))
-        Proto(code, m) => out.push(rpc_error(req.id, code, m))
-        Fail(m) => out.push(rpc_result(req.id, tool_error(m)))
+      if req.has_id {
+        match self.call_tool(req.params, now) {
+          Done(r) => out.push(rpc_result(req.id, r))
+          Proto(code, m) => out.push(rpc_error(req.id, code, m))
+          Fail(m) => out.push(rpc_result(req.id, tool_error(m)))
+        }
       }
     other =>
       if req.has_id {

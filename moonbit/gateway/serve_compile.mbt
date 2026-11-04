@@ -780,6 +780,18 @@ fn compile_result_json(s : @session.Session) -> Json {
   m.set("diagnostics", Json::array(diags))
   m.set("preprocessor_trace", Json::array(trace))
   m.set("algorithm_matches", Json::array(matches))
+  // file_ranges（PR #457 审阅 v2 P2-2，只增不改）：merge_units 产的拼接流
+  // 文件区间表出口化——下游（mcp overview / agent 行号映射）不再各自复制
+  // 拼接行数语义即可对齐拼接坐标（多文件帧行号的全局行基准）
+  let frs : Array[Json] = []
+  for fr in s.compile.file_ranges {
+    let fm : Map[String, Json] = Map([])
+    fm.set("filename", Json::string(fr.filename))
+    fm.set("start_line", Json(fr.start_line))
+    fm.set("end_line", Json(fr.end_line))
+    frs.push(Json::object(fm))
+  }
+  m.set("file_ranges", Json::array(frs))
   Json::object(m)
 }
 

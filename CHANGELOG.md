@@ -175,13 +175,17 @@
   compare/any，逐帧精确推进）/ max_frames 上限；终局会话零推进 + 回看提示
   （design §4.2 约束如实：终局不可回退推进）。step_next = n 个关键帧（权重判据
   v1 keyWeight 逐条照搬，参照帧聚焦集 = 两帧出现过的全部数组）。
-- **测试**：mcp 白盒 12 条三 target 全绿（native/js/wasm-gc——依赖 gateway 不含
-  wasm 故裸口径不含；锁披露切换/LRU/TTL/投影分页/事件锚 1126 步·swap7=逆序对·
-  compare54/首交换帧 93 行 8/run_to 断点/E2005 诊断/渲染钩子契约）；
-  裸/native 双口径各 +12（mcp 12 条挂 `+wasm` 随 gateway B3 口径）；随 master 合流（#452/#456 后）批末终值 = 裸 1226 / native 1275（mcp 17 条全入，双 README 连坐）。
+- **测试**：mcp 白盒 22 条三 target 全绿（native/js/wasm-gc——**裸口径含 mcp**
+  （审阅 v2 实测注入必红断言后裸 1239 变 1238/1 failed）；锁披露切换/LRU/TTL/
+  投影分页/事件锚 1126 步·swap7=逆序对·compare54/首交换帧 93 行 8/run_to 断点/
+  E2005 诊断/渲染钩子契约 + 审阅批锚：P1-1 输出回采双锚 / 披露恒真四锚 /
+  P2-1 to 旁路 / P2-2 files 行号对齐 / P2-3 通知静默 / P2-4 schema /
+  P3-② 诊断卡可交付）；
+  裸/native 双口径各 +22（mcp 挂 `+wasm` 随 gateway B3 口径）；随 master 合流（#462/#464 后）批末终值 = 裸 1244 / native 1293（mcp 22 条全入，双 README 连坐）。
   黑盒验收 accept.mts 28 断言全绿（对 js 产物跑：会话池建/复用/LRU 逐出/披露切换/
   每工具 happy path/投影页边界/readOnlyHint/run_to 断点/错误帧形态/PNG image 块/
-  interactive 双形态/编译错诊断卡）——TTL 5 分钟黑盒不可假钟，白盒覆盖。
+  interactive 双形态/编译错诊断卡）——TTL 5 分钟黑盒不可假钟，白盒覆盖；
+  CI 产物闸 `mcp_smoke` 18 断言（含 #468/#469 语法门与 PLAYER 驱动对拍）。
 - **登记连坐**：pkg_deps rules.json（mcp=L9）+ surface 边表 10 条（cmd/mcp_js→
   mcp/gateway/util×N、mcp→gateway/session/util×N）+ mcp pkg.generated.mbti（canonical=wasm
   随 gateway B3 批的 +wasm 通道可达，无需豁免）+

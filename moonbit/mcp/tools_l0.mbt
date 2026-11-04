@@ -33,6 +33,15 @@ fn arg_source(
         Proto(-32602, "files 元素须为 {filename:string, source:string}"),
       )
     }
+    // PR #457 审阅 v2 P3-③：files[].source 同受 64KB 上限（修前只查顶层
+    // source——files 通道绕过校验，70KB 编译成功）
+    if jstr_or(jget(f, "source"), "").length() > 65536 {
+      return Err(
+        Proto(
+          -32602, "files[].source 超限（>64KB/文件）——请精简用例",
+        ),
+      )
+    }
   }
   // PR #457 审阅 P3：files 与 source 互斥 fail loud（旧形态 source 被静默忽略）
   if files.length() > 0 && source.length() > 0 {
@@ -90,10 +99,51 @@ fn first_algo(e : Entry) -> Json {
 }
 
 ///|
+/// 主文件挑选谓词（source_display 与 overview 的 offset 映射同源消费——
+/// 两处漂移即行号对不齐）：filename 含 "main" 者优先，否则首个（与引擎
+/// compile{files} 的 main.c 缺省名同源）。
+fn main_file_pick(prev_picked : Bool, name : String) -> Bool {
+  !prev_picked || name.contains("main")
+}
+
+///|
 /// 程序概览（typeck.dump 函数表——只读通道不碰会话态；行区间 = 本函数起行
 /// 到下一函数起行-1，末函数到文末）。
 fn overview_json(e : Entry, source : String) -> Json {
-  let lc = line_count(source)
+  // PR #457 审阅 v2 P2-2：多文件工程行号与帧行号同基（引擎拼接坐标）——
+  // 修前主文件单源重跑 typeck.dump 出单文件坐标，agent 按 overview 调
+  // filter.line / run_to{breakpoint_line} 会静默空集。offset 取 compile
+  // 出口 file_ranges 的主文件区间（gateway merge_units 生产者），末函数
+  // 基准与 line_count 用拼接流全行数；单文件形态 offset=0 坐标不变。
+  let (offset, main_end, lc) = {
+    let ranges = jarr(jget(e.compile_result, "file_ranges"))
+    if ranges.length() > 0 {
+      let mut total = 0
+      let mut picked : Json? = None
+      for fr in ranges {
+        let name = jstr_or(jget(fr, "filename"), "main.c")
+        if main_file_pick(picked is Some, name) {
+          picked = Some(fr)
+        }
+        let endl = jint_or(jget(fr, "end_line"), 0)
+        if endl > total {
+          total = endl
+        }
+      }
+      match picked {
+        Some(fr) =>
+          (
+            jint_or(jget(fr, "start_line"), 1) - 1,
+            jint_or(jget(fr, "end_line"), 0),
+            total,
+          )
+        None => (0, 0, total)
+      }
+    } else {
+      let n = line_count(source)
+      (0, n, n)
+    }
+  }
   let funcs : Array[(String, Int32)] = []
   match entry_call(e, "typeck.dump", ob().s("source", source).done()) {
     Ok(r) =>
@@ -101,7 +151,7 @@ fn overview_json(e : Entry, source : String) -> Json {
         let line = jint_or(jget(jget(f, "loc"), "line"), 0)
         let has_body = !jis_null(jget(f, "body"))
         if line > 0 && has_body {
-          funcs.push((jstr_or(jget(f, "name"), ""), line))
+          funcs.push((jstr_or(jget(f, "name"), ""), line + offset))
         }
       }
     Err(_) => ()
@@ -109,7 +159,7 @@ fn overview_json(e : Entry, source : String) -> Json {
   funcs.sort_by((a, b) => a.1 - b.1)
   let arr : Array[Json] = []
   for i, f in funcs {
-    let end = if i + 1 < funcs.length() { funcs[i + 1].1 - 1 } else { lc }
+    let end = if i + 1 < funcs.length() { funcs[i + 1].1 - 1 } else { main_end }
     arr.push(ob().s("name", f.0).j("lines", jints([f.1, end])).done())
   }
   ob().n("line_count", lc).a("functions", arr).done()
@@ -133,13 +183,13 @@ fn Server::tool_session_open(
   self.seq += 1
   let id = "s_" + pad4(self.seq)
   // PR #457 审阅 P2-1：files 多文件形态下 Entry.source 不能为空（overview
-  // 的函数表/行数与 render 的源码面板都吃它）——取主文件源（filename 含
-  // "main" 者优先，否则首个文件；与引擎 compile{files} 的 main.c 缺省名同源）
+  // 的函数表/行数与 render 的源码面板都吃它）——取主文件源（main_file_pick
+  // 谓词与 overview 的 offset 映射同源）
   let source_display = if files.length() > 0 {
     let mut pick = ""
     for f in files {
       let name = jstr_or(jget(f, "filename"), "main.c")
-      if pick.length() == 0 || name.contains("main") {
+      if main_file_pick(pick.length() > 0, name) {
         pick = jstr_or(jget(f, "source"), "")
       }
     }

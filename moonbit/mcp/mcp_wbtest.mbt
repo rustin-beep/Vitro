@@ -568,12 +568,23 @@ test "mcp_render_stub_contract" {
     "1 2 3 5 8 9 \n",
     msg="输出透传",
   )
-  // 编译失败：仍走渲染（诊断卡）+ warnings 带诊断行
+  // 编译失败：仍走渲染（诊断卡）+ warnings 带诊断行。ok 语义 = 产物已落盘
+  // （审阅 v2 P3-② 翻面：修前 ok:false 让按 ok 判断的 agent 丢弃诊断卡）；
+  // 编译态看 compile_ok
   let badsrc = "int main(){int x = 5"
   let bad = tool_body(
     tool_call(srv, 2, "animate", ob().s("source", badsrc).done()),
   )
-  assert_eq(jbool(jget(bad, "ok")), Some(false), msg="编译失败 ok=false")
+  assert_eq(
+    jbool(jget(bad, "ok")),
+    Some(true),
+    msg="编译失败 ok=true（诊断卡已落盘）",
+  )
+  assert_eq(
+    jbool(jget(bad, "compile_ok")),
+    Some(false),
+    msg="编译失败 compile_ok=false",
+  )
   assert_eq(jint(jget(bad, "frame_count")), Some(0), msg="零帧")
   assert_true(
     jstr_arr(jget(bad, "warnings")).length() > 0,
@@ -818,5 +829,180 @@ test "mcp_files_mode_source_face" {
     jint(jget(jget(bad, "error"), "code")),
     Some(-32602),
     msg="files+source 互斥协议错",
+  )
+}
+
+// ── PR #457 审阅 v2（2026-11-04）P2×4 红锚 ──────────────────────────
+
+///|
+test "mcp_frames_query_to_cannot_bypass_page_cap" {
+  // P2-1：`to` 显式区间不得旁路「每页 ≤50」契约——to 与 start+limit 双上限
+  // 取小（修前 {to:20000} 一次吐 1126 帧 / {to:100,limit:5} 吐 33 帧）。
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  ignore(
+    tool_call(srv, 1, "session_open", ob().s("source", bubble_src()).done()),
+  )
+  let q1 = tool_body(
+    tool_call(srv, 2, "frames_query", ob().n("from", 0).n("to", 20000).done()),
+  )
+  assert_true(
+    jint(jget(q1, "total")) == Some(1126) &&
+    jarr(jget(q1, "frames")).length() <= 50,
+    msg="to 超界 → 页大小仍 ≤50（total=\{jint(jget(q1, "total"))} len=\{jarr(jget(q1, "frames")).length()}）",
+  )
+  let q2 = tool_body(
+    tool_call(
+      srv,
+      3,
+      "frames_query",
+      ob().n("from", 0).n("to", 100).n("limit", 5).done(),
+    ),
+  )
+  assert_true(
+    jarr(jget(q2, "frames")).length() <= 5,
+    msg="to+limit 并存 → 页大小 ≤ limit（len=\{jarr(jget(q2, "frames")).length()}）",
+  )
+}
+
+///|
+test "mcp_files_overview_line_matches_frame_coords" {
+  // P2-2：多文件工程 overview 行号必须与帧行号同基（引擎拼接坐标）——
+  // 修前 overview 用主文件单源重跑（单文件坐标），filter.line/
+  // breakpoint_line 按 overview 调用会静默空集。语料：util.c(1 行) +
+  // main.c(3 行) → 拼接流 main 函数在行 4。
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  let util = ob()
+    .s("filename", "util.c")
+    .s("source", "int twice(int x){return x*2;}")
+    .done()
+  let mainf = ob()
+    .s("filename", "main.c")
+    .s(
+      "source", "#include <stdio.h>\nint twice(int x);\nint main(){printf(\"%d\", twice(21));return 0;}",
+    )
+    .done()
+  let opened = tool_body(
+    tool_call(srv, 1, "session_open", ob().a("files", [util, mainf]).done()),
+  )
+  assert_eq(
+    jbool(jget(opened, "compile_ok")),
+    Some(true),
+    msg="files 工程编译成功",
+  )
+  let fns = jarr(jget(jget(opened, "overview"), "functions"))
+  let mut main_lines : Int32? = None
+  for f in fns {
+    if jstr_or(jget(f, "name"), "") == "main" {
+      let ls = jarr(jget(f, "lines"))
+      main_lines = jint(ls[0])
+    }
+  }
+  assert_eq(
+    main_lines,
+    Some(4),
+    msg="overview main 函数行 = 拼接坐标 4（修前主文件坐标 3）",
+  )
+  // 帧行号与 overview 同基可过滤（修前 filter.line=overview 行 → 0 帧）
+  let q = tool_body(
+    tool_call(
+      srv,
+      2,
+      "frames_query",
+      ob().j("filter", ob().n("line", 4).done()).done(),
+    ),
+  )
+  assert_true(
+    jint_or(jget(q, "total"), 0) > 0,
+    msg="filter.line 按 overview 行命中帧（total=\{jint(jget(q, "total"))}）",
+  )
+}
+
+///|
+test "mcp_notification_tools_call_silent" {
+  // P2-3：无 id 的 tools/call（通知形态）不得执行且回 id:null 帧——JSON-RPC
+  // 通知无响应，MCP 的 tools/call 是请求语义。修前：会话真被创建 + 回
+  // id:null 帧并发 list_changed。
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  let out = srv.handle_line(
+    "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"session_open\",\"arguments\":{\"source\":\"int main(){return 0;}\"}}}",
+  )
+  assert_eq(
+    out.length(),
+    0,
+    msg="通知形态 tools/call 零响应帧（修前回 id:null）",
+  )
+  let list = call(srv, "tools/list", 9)
+  let tools = jarr(jget(jget(list, "result"), "tools"))
+  assert_eq(tools.length(), 5, msg="L1 未解锁（通知形态未建会话）")
+}
+
+///|
+test "mcp_session_open_schema_not_requires_source" {
+  // P2-4：inputSchema.required 含 source 与「给 files 则 source 可省」的
+  // 实现互斥——严格校验客户端会拒纯 files 调用。required 置空（二选一由
+  // arg_source 校验兜底：两者都给报错、两者都缺报错）。
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  let list = call(srv, "tools/list", 1)
+  let mut schema : Json = Json::null()
+  for t in jarr(jget(jget(list, "result"), "tools")) {
+    if jstr_or(jget(t, "name"), "") == "session_open" {
+      schema = jget(t, "inputSchema")
+    }
+  }
+  let req = jarr(jget(schema, "required"))
+  assert_eq(
+    req.length(),
+    0,
+    msg="session_open required 为空（source/files 二选一，修前 [\"source\"]）",
+  )
+  // 兜底不弱化：两者都缺仍 fail loud
+  let bad = tool_call(srv, 2, "session_open", ob().done())
+  assert_eq(
+    jint(jget(jget(bad, "error"), "code")),
+    Some(-32602),
+    msg="source/files 都缺仍协议错",
+  )
+}
+
+///|
+test "mcp_render_diag_card_deliverable" {
+  // PR #457 审阅 v2 P3-②：编译失败的 render 产物（诊断卡）也是可用交付
+  // 物——ok 表「产物已落盘」（渲染真失败走 Fail），编译态另立 compile_ok
+  // 字段（修前 ok:false 让按 ok 判断的 agent 丢弃已落盘的诊断卡）。
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  ignore(
+    tool_call(
+      srv,
+      1,
+      "session_open",
+      ob().s("source", "int main(){return x;}").done(),
+    ),
+  )
+  let r = tool_body(
+    tool_call(srv, 2, "render", ob().b("preview_png", false).done()),
+  )
+  assert_eq(
+    jbool(jget(r, "ok")),
+    Some(true),
+    msg="诊断卡已落盘 → ok（修前 ok:false）",
+  )
+  assert_eq(
+    jbool(jget(r, "compile_ok")),
+    Some(false),
+    msg="编译态独立字段 compile_ok=false",
+  )
+  assert_true(
+    jstr_or(jget(r, "html_path"), "").length() > 0,
+    msg="诊断卡 html_path 在响应体（可交付）",
   )
 }

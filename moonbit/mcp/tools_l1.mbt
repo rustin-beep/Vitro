@@ -91,9 +91,12 @@ fn Server::tool_frames_query(
   }
   let total = idx.length()
   let start = min_int(from, total)
+  // PR #457 审阅 v2 P2-1：to 与 start+limit 双上限取小——显式区间不得旁路
+  // 「每页 ≤50」契约（修前 to 优先：{to:超界} 一次吐全量、{to,limit} 并存
+  // 时 limit 被无视）
   let end = min_int(
     match jint(jget(args, "to")) {
-      Some(t) => t
+      Some(t) => min_int(t, start + limit)
       None => start + limit
     },
     total,
@@ -493,7 +496,11 @@ fn Server::render_entry(
   let mode_used = jstr_or(jget(r, "mode_used"), mode)
   let frame_count = jint_or(jget(r, "frame_count"), idx.length())
   let body = ob()
-    .b("ok", e.phase != PHASE_COMPILE_FAILED)
+    // PR #457 审阅 v2 P3-②：ok 表「产物已落盘」（渲染真失败上方已走 Fail）
+    // ——编译失败的诊断卡同样是可用交付物；编译态另立 compile_ok（修前
+    // ok:false 让按 ok 判断的 agent 丢弃已落盘的诊断卡）
+    .b("ok", true)
+    .b("compile_ok", e.phase != PHASE_COMPILE_FAILED)
     .s("html_path", jstr_or(jget(r, "html_path"), ""))
     .s("mode", mode_used)
     .n("frame_count", frame_count)

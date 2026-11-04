@@ -1,0 +1,121 @@
+///|
+/// 证明侧谓词（PROVE-arith 批，2026-11-04）——moon prove 的 logic body
+/// 不支持枚举 `==`（trait 方法调用被 4207 拒，derive(Eq) 亦然），域判等与
+/// 规范镜像一律走穷尽 match 谓词。**注意**：`predicate` 关键字仅 .mbtp 合法。
+
+///|
+/// 域判等四谓词（互斥完备）
+predicate dom_is_i32(d : IntDomain) {
+  match d {
+    I32 => true
+    U32 => false
+    I64 => false
+    U64 => false
+  }
+}
+
+///|
+predicate dom_is_u32(d : IntDomain) {
+  match d {
+    I32 => false
+    U32 => true
+    I64 => false
+    U64 => false
+  }
+}
+
+///|
+predicate dom_is_i64(d : IntDomain) {
+  match d {
+    I32 => false
+    U32 => false
+    I64 => true
+    U64 => false
+  }
+}
+
+///|
+predicate dom_is_u64(d : IntDomain) {
+  match d {
+    I32 => false
+    U32 => false
+    I64 => false
+    U64 => true
+  }
+}
+
+///|
+/// 域相等（判等谓词的合取形态，等价 16 格对角表）
+predicate dom_same(a : IntDomain, b : IntDomain) {
+  (dom_is_i32(a) && dom_is_i32(b)) ||
+  (dom_is_u32(a) && dom_is_u32(b)) ||
+  (dom_is_i64(a) && dom_is_i64(b)) ||
+  (dom_is_u64(a) && dom_is_u64(b))
+}
+
+///|
+/// 档位（位宽族）：w32 = I32/U32，w64 = I64/U64
+predicate dom_w32(d : IntDomain) {
+  match d {
+    I32 => true
+    U32 => true
+    I64 => false
+    U64 => false
+  }
+}
+
+///|
+predicate dom_w64(d : IntDomain) {
+  match d {
+    I32 => false
+    U32 => false
+    I64 => true
+    U64 => true
+  }
+}
+
+///|
+/// integer_promote 六格镜像规范（C11 §6.3.1.1 直译：char 系提升 I32 且
+/// unsigned 位消失〔A7.1/A7.3 锚〕；int/long long 档位不动保符号位）。
+/// Bool 字面量不可作 .mbtp match 模式（moon 0.1.20261028 parse 拒），
+/// 符号分情形用 `==` 布尔组合表达。
+predicate promote_spec(kind : IntKind, is_unsigned : Bool, result : IntDomain) {
+  match kind {
+    KChar => dom_is_i32(result) // char 系两性一律 I32（A7 锚）
+    KInt =>
+      (is_unsigned && dom_is_u32(result)) ||
+      (is_unsigned == false && dom_is_i32(result))
+    KLongLong =>
+      (is_unsigned && dom_is_u64(result)) ||
+      (is_unsigned == false && dom_is_i64(result))
+  }
+}
+
+///|
+/// common_domain 十六格镜像规范（C11 §6.3.1.8 直译：同档任一 unsigned 即
+/// 无符号域；跨档高档域胜——I64 全值域 ⊇ U32 故 signed I64 胜〔A1 锚〕，
+/// U64 ⊄ I64 故 U64 胜）。
+predicate common_spec(l : IntDomain, r : IntDomain, result : IntDomain) {
+  match (l, r, result) {
+    // 同 rank（I32 档）
+    (I32, I32, I32) => true
+    (I32, U32, U32) => true
+    (U32, I32, U32) => true
+    (U32, U32, U32) => true
+    // 同 rank（I64 档）
+    (I64, I64, I64) => true
+    (I64, U64, U64) => true
+    (U64, I64, U64) => true
+    (U64, U64, U64) => true
+    // 跨 rank：高档域胜（保其符号位）
+    (I64, I32, I64) => true
+    (I64, U32, I64) => true
+    (I32, I64, I64) => true
+    (U32, I64, I64) => true
+    (U64, I32, U64) => true
+    (U64, U32, U64) => true
+    (I32, U64, U64) => true
+    (U32, U64, U64) => true
+    _ => false
+  }
+}

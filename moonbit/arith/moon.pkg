@@ -7,3 +7,12 @@
 // 的分口径系既有裁定，本核继承不裁）；核不 import ast（类型面用核内枚举，
 // AST→(值,域) 薄壳映射在消费方）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L0，总计划 §4）。
+// prove 面（PROVE-arith 批，2026-11-04）：proof_enabled 开——integer_promote/
+// common_domain 携契约（域判定表镜像锁格，谓词层 arith/arith.mbtp）；eval_int_
+// binary/eval_int_unary/normalize 等含移位/位运算/reinterpret/Result 的函数
+// **不带契约即被 moon prove 静默跳过**（frontend 只验契约函数），其证明面在
+// 镜像证明包 proofs/arith_mirror（算术化重写；对照锚 = mirror_wbtest.mbt 逐臂
+// 值对拍矩阵 + parity_test.mbt 黑盒采样，处置批 2026-11-05 补全）。契约注解对
+// moon build/test 零影响（release 三消费端产物 stash 基线法 sha256 逐字节一致
+// 实测，批报告留存主控）。
+proof_enabled = true

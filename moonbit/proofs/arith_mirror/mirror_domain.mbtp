@@ -1,0 +1,12 @@
+///|
+/// 操作数域谓词（PROVE-arith 批）——eval_int_binary 头注契约「l/r 须已
+/// normalize 到 dom」的机器化。I64/U64 装载原值即位模式（容器全域，机器
+/// 类型系统平凡保证）。
+predicate in_dom(v : Int64, dom : IntDomain) {
+  match dom {
+    I32 => -2147483648L <= v && v <= 2147483647L
+    U32 => 0L <= v && v <= 4294967295L
+    I64 => true
+    U64 => true
+  }
+}

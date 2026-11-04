@@ -1,0 +1,24 @@
+// PROVE-arith 批（2026-11-04）：arith 共享算术核的镜像证明包——
+// vitro/engine/arith 的 eval_int_binary/eval_int_unary 语义表算术化重写
+// （移位/位运算/reinterpret 被 moon prove frontend 拒，须数学模型替代；
+// Result 的 Ok/Err 构造器在 .mlw 层 unbound——镜像返回用自定义 Outcome）。
+// **镜像自持**：证明函数（mirror_*.mbt 的契约函数）禁引 @arith——镜像
+// 与原件的对照锚三层：mirror_wbtest.mbt 逐臂值对拍矩阵（处置批 2026-11-05
+// 增）+ parity_test.mbt 黑盒采样 + arith_wbtest.mbt 既有语义锚（原件侧）。
+// import 仅供 _wbtest.mbt/_test.mbt 对拍消费（PR #480 审阅实锤：包级
+// import 在 wbtest 可用）。分层登记：scripts/moonbit/pkg_deps rules.json
+// （L0；依赖的 vitro/engine/arith 亦 L0 同层合法）。
+proof_enabled = true
+
+// m_* 镜像臂与 @arith import 的消费点全部在 _wbtest.mbt/_test.mbt——
+// moon check 的 unused 分析不计测试文件（fs 包 -unused_value /
+// time_travel 包 -unused_package 同款先例拍板：本体真死码仍由
+// moon test 编译路径与 surface 闸暴露），包级关闭两项。
+
+warnings = "-unused_value-unused_package"
+
+// 对拍锚专用 import（mirror_wbtest.mbt / parity_test.mbt 消费 @arith
+// 原函数；证明函数禁引）。
+import {
+  "vitro/engine/arith",
+}

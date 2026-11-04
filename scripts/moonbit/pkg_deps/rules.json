@@ -6,6 +6,7 @@
   "levels": {
     "source": 0,
     "arith": 0,
+    "proofs/arith_mirror": 0,
     "opcode": 0,
     "util": 0,
     "fs": 0,

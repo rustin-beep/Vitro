@@ -783,3 +783,39 @@ vitro/engine/vm vitro/engine/util render_template
 vitro/engine/vm vitro/engine/util utf8_len
 vitro/engine/bytecode vitro/engine/ast cstring_escape_string
 vitro/engine/ast vitro/engine/util json_parse
+# PROVE-arith 批（2026-11-04）：镜像证明包对拍锚（parity_test.mbt 黑盒——wrap 模型对拍 normalize /
+# 拒绝路径行为锚 / 域采样；证明函数零引用 @arith，import 仅供测试消费）
+vitro/engine/proofs/arith_mirror vitro/engine/arith AddOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith DivByZero
+vitro/engine/proofs/arith_mirror vitro/engine/arith DivOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith I32
+vitro/engine/proofs/arith_mirror vitro/engine/arith I64
+vitro/engine/proofs/arith_mirror vitro/engine/arith MulOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith NegOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpAdd
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpDiv
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpMod
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpMul
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpNeg
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpShl
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpShr
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpSub
+vitro/engine/proofs/arith_mirror vitro/engine/arith ShiftOutOfRange
+vitro/engine/proofs/arith_mirror vitro/engine/arith SubOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith U32
+vitro/engine/proofs/arith_mirror vitro/engine/arith U64
+vitro/engine/proofs/arith_mirror vitro/engine/arith eval_int_binary
+vitro/engine/proofs/arith_mirror vitro/engine/arith eval_int_unary
+vitro/engine/proofs/arith_mirror vitro/engine/arith normalize
+# PR #480 审阅处置批（2026-11-05）：mirror_wbtest.mbt 逐臂矩阵对拍扩面的 11 边（wbtest 包级 import 消费——审阅实锤形态）
+vitro/engine/proofs/arith_mirror vitro/engine/arith ArithFault
+vitro/engine/proofs/arith_mirror vitro/engine/arith IntBinOp
+vitro/engine/proofs/arith_mirror vitro/engine/arith IntDomain
+vitro/engine/proofs/arith_mirror vitro/engine/arith IntUnOp
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpBitNot
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpEq
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpGe
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpGt
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpLe
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpLt
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpNe

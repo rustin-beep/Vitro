@@ -1,0 +1,83 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/proofs/arith_mirror"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn floor_div_pos(Int64, Int64) -> Int64
+
+pub fn m_shift_guard(Int64, Int64) -> ShiftGuardM
+
+pub fn two_pow(Int32) -> Int64
+
+pub fn wrap32s(Int64) -> Int64
+
+pub fn wrap32u(Int64) -> Int64
+
+// Errors
+
+// Types and methods
+pub(all) enum Fault {
+  FDivByZero
+  FDivOverflow
+  FShiftOutOfRange(Int64)
+  FAddOverflow
+  FSubOverflow
+  FMulOverflow
+  FNegOverflow
+} derive(Compare, Eq, @debug.Debug)
+pub fn Fault::compare(Self, Self) -> Int32
+pub fn Fault::equal(Self, Self) -> Bool
+pub fn Fault::not_equal(Self, Self) -> Bool
+pub fn Fault::op_ge(Self, Self) -> Bool
+pub fn Fault::op_gt(Self, Self) -> Bool
+pub fn Fault::op_le(Self, Self) -> Bool
+pub fn Fault::op_lt(Self, Self) -> Bool
+pub fn Fault::to_repr(Self) -> @debug.Repr
+
+pub(all) enum IntDomain {
+  I32
+  U32
+  I64
+  U64
+} derive(Compare, Eq, @debug.Debug)
+pub fn IntDomain::compare(Self, Self) -> Int32
+pub fn IntDomain::equal(Self, Self) -> Bool
+pub fn IntDomain::not_equal(Self, Self) -> Bool
+pub fn IntDomain::op_ge(Self, Self) -> Bool
+pub fn IntDomain::op_gt(Self, Self) -> Bool
+pub fn IntDomain::op_le(Self, Self) -> Bool
+pub fn IntDomain::op_lt(Self, Self) -> Bool
+pub fn IntDomain::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Outcome {
+  V(Int64)
+  F(Fault)
+} derive(Compare, Eq, @debug.Debug)
+pub fn Outcome::compare(Self, Self) -> Int32
+pub fn Outcome::equal(Self, Self) -> Bool
+pub fn Outcome::not_equal(Self, Self) -> Bool
+pub fn Outcome::op_ge(Self, Self) -> Bool
+pub fn Outcome::op_gt(Self, Self) -> Bool
+pub fn Outcome::op_le(Self, Self) -> Bool
+pub fn Outcome::op_lt(Self, Self) -> Bool
+pub fn Outcome::to_repr(Self) -> @debug.Repr
+
+pub(all) enum ShiftGuardM {
+  GOk
+  GBad(Int64)
+} derive(Compare, Eq, @debug.Debug)
+pub fn ShiftGuardM::compare(Self, Self) -> Int32
+pub fn ShiftGuardM::equal(Self, Self) -> Bool
+pub fn ShiftGuardM::not_equal(Self, Self) -> Bool
+pub fn ShiftGuardM::op_ge(Self, Self) -> Bool
+pub fn ShiftGuardM::op_gt(Self, Self) -> Bool
+pub fn ShiftGuardM::op_le(Self, Self) -> Bool
+pub fn ShiftGuardM::op_lt(Self, Self) -> Bool
+pub fn ShiftGuardM::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

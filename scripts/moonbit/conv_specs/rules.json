@@ -78,27 +78,23 @@
         "o": { "host": true, "typeck": true },
         "u": { "host": true, "typeck": true },
         "x": { "host": true, "typeck": true },
-        "X": {
-          "host": false,
-          "typeck": true,
-          "divergence": "R1a-F3 枚举轴同族：host SCANF_ 常量集无大写 X（C11 scanf %X ≡ %x），%X 落 host_sscanf else 兜底『不消费不计数』；typeck W3063 认 X 合法零警告——用户零诊断静默失败。B 轮修复批治：host 补 SCANF_X_UPPER 臂（与 x 同实现）后置 host:true 删本字段（2026-11-02）"
+        "X": { "host": true, "typeck": true },
+        "a": {
+          "host": true,
+          "typeck": false,
+          "divergence": "typeck check_scanf_format 无 a/A（十六进制浮点输入）判据臂——落 `_ => true` 兜底放行零警告零误报；host #428 B5 批（2026-11-04）已实现（与 f 同语义）。补 typeck 判据臂（fp 族同款）时置 typeck:true 删本字段——printf 侧 a/A 同形态先例（见上）"
         },
-        "a": { "host": false, "typeck": false, "note": "C11 成员双面均未实现（十六进制浮点输入）——两面一致无漂移；属 R1a-F3 枚举轴缺口，B 轮修复批治" },
-        "A": { "host": false, "typeck": false, "note": "同 a" },
-        "e": {
-          "host": false,
-          "typeck": true,
-          "divergence": "R1a-F3 实锤：host 缺 e 实现——sscanf(\"2.5\",\"%e\",&d) vitro 双臂返 0 不写 / clang(ucrt) 返 1 成功；typeck W3063 认 e 合法零警告（fp 族臂）。B 轮修复批治：host 补 e/E/g/G 臂（与 f 同实现——strtod 不区分记法）后置 host:true 删本字段（2026-11-02）"
+        "A": {
+          "host": true,
+          "typeck": false,
+          "divergence": "同 a：typeck 无 A 判据臂（兜底放行），host 已实现（#428 B5 批）"
         },
-        "E": { "host": false, "typeck": true, "divergence": "同 e（R1a-F3）" },
+        "e": { "host": true, "typeck": true },
+        "E": { "host": true, "typeck": true },
         "f": { "host": true, "typeck": true },
-        "F": {
-          "host": false,
-          "typeck": true,
-          "divergence": "R1a-F3：host 无 F（C11 scanf %F ≡ %f）；typeck 认 F 合法。B 轮修复批治（2026-11-02）"
-        },
-        "g": { "host": false, "typeck": true, "divergence": "同 e（R1a-F3）" },
-        "G": { "host": false, "typeck": true, "divergence": "同 e（R1a-F3）" },
+        "F": { "host": true, "typeck": true },
+        "g": { "host": true, "typeck": true },
+        "G": { "host": true, "typeck": true },
         "c": { "host": true, "typeck": true },
         "s": { "host": true, "typeck": true },
         "p": {

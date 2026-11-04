@@ -327,8 +327,15 @@ pub fn host_putchar(log : OutputLog, val : UInt64) -> UInt64 {
 
 ///|
 /// `ungetc(c, stream)`（oracle `io.rs:279-284`）——缓存一字节（stream
-/// 实参不解析），返回 `c`（符号扩展压栈）。
+/// 实参不解析），返回 `c`（符号扩展压栈）。#428 A-11（2026-11-04）：
+/// `ungetc(EOF, ...)` 是**无操作**（C11 §7.21.7.10——失败含 EOF 实参时
+/// 流不变，返回 EOF）——旧形态 -1 被当回退字节缓存回吐，教学惯用法
+/// `ungetc(getchar(), stdin)` 在 EOF 处吞流（clang 真值：回退后 getchar
+/// 读流原内容 'x'=120）。
 pub fn host_ungetc(input : InputState, ch : Int32) -> UInt64 {
+  if ch == -1 {
+    return 0xFFFFFFFFFFFFFFFFUL
+  }
   input.ungetc = Some(ch)
   ch.to_int64().reinterpret_as_uint64()
 }
@@ -640,6 +647,90 @@ fn read_float_token(
   if chars[pos] == 43 || chars[pos] == 45 {
     pos = pos + 1
   }
+  // #428 A-10 连坐（2026-11-04）：INF/INFINITY/NAN 字母 token（strtod
+  // subject sequence——C11 6.4.2.3 经 §7.21.6.2，大小写不敏感、可带
+  // 符号；NAN 可带 `(n-char-sequence)` payload 体消费至 `)`，未闭合 →
+  // 括号段整体不消费）。真值：inf/INFINITY/nan/NAN(1) 四形态双派 r=4
+  // 全配。值层转换见 scanf_float_value。
+  if pos < limit &&
+    (chars[pos] == 105 || chars[pos] == 73) &&
+    pos + 2 < limit &&
+    (chars[pos + 1] == 110 || chars[pos + 1] == 78) &&
+    (chars[pos + 2] == 102 || chars[pos + 2] == 70) {
+    // INF 前缀；INITY? → INFINITY 尾段（完整 5 字母才消费——部分匹配
+    // 如 "INFIN" 回退到 INF 结束位，INF 本身已是完整 token；尾段比较
+    // **大小写不敏感**——C11 全族不敏感，"INFINITY" 大写尾段也须消费，
+    // 否则游标停在半途（debug 实锤：off 停 'N' 第三字符）
+    pos = pos + 3
+    let inity : Array[Int32] = [105, 110, 105, 116, 121]
+    let save = pos
+    let mut k = 0
+    while k < 5 && pos < limit {
+      let c = chars[pos].to_int()
+      let lower = if c >= 65 && c <= 90 { c + 32 } else { c }
+      if lower == inity[k] {
+        pos = pos + 1
+        k = k + 1
+      } else {
+        break
+      }
+    }
+    if k < 5 {
+      pos = save
+    }
+    let token : Array[Byte] = []
+    let mut i2 = start
+    while i2 < pos {
+      token.push(chars[i2])
+      i2 = i2 + 1
+    }
+    return (token, pos)
+  }
+  if pos < limit &&
+    (chars[pos] == 110 || chars[pos] == 78) &&
+    pos + 2 < limit &&
+    (chars[pos + 1] == 97 || chars[pos + 1] == 65) &&
+    (chars[pos + 2] == 110 || chars[pos + 2] == 78) {
+    // NAN 前缀；可选 (...) payload（n-char-sequence 域 [a-zA-Z0-9_]——
+    // C11 6.4.2.3；闭合才属 subject sequence）。**未闭合 / 域外字符 =
+    // 匹配失败**（PR #474 审阅 P3：旧形态回退成合法 "nan" 误判成功 r=1
+    // ——clang 真值 sscanf("nan(") glibc r=0 / UCRT r=-1〔实现分叉，择
+    // glibc 匹配失败边，UCRT 输入失败边登记〕、scanf 流内 r=0 双派一致）
+    // → 空 token + pos 回 start（调用方不计数终止）
+    pos = pos + 3
+    if pos < limit && chars[pos] == 40 {
+      pos = pos + 1
+      let mut closed = false
+      let mut bad_char = false
+      while pos < limit {
+        if chars[pos] == 41 {
+          pos = pos + 1
+          closed = true
+          break
+        }
+        let ch = chars[pos]
+        let nchar = (ch >= 97 && ch <= 122) ||
+          (ch >= 65 && ch <= 90) ||
+          (ch >= 48 && ch <= 57) ||
+          ch == 95
+        if !nchar {
+          bad_char = true
+          break
+        }
+        pos = pos + 1
+      }
+      if !closed || bad_char {
+        return ([], start)
+      }
+    }
+    let token : Array[Byte] = []
+    let mut i3 = start
+    while i3 < pos {
+      token.push(chars[i3])
+      i3 = i3 + 1
+    }
+    return (token, pos)
+  }
   // hex float 探测（scan_float_token 同款：0x 后 hex 数字或 .+hex）
   let hex_probe = pos + 2 < limit &&
     chars[pos] == 48 &&
@@ -757,6 +848,35 @@ const SCANF_O = 111
 ///|
 const SCANF_N = 110
 
+// #428 缺臂族（2026-11-04，rules.json B 轮清账 / R1a-F3）：C11
+// §7.21.6.2 p12 浮点族 a/A/e/E/f/F/g/G 输入语义全同（strtod subject
+// sequence，不区分输出记法）；大写 X ≡ x（hex 同实现）。
+// X=88 e=101 E=69 g=103 G=71 a=97 A=65 F=70
+
+///|
+const SCANF_X_UPPER = 88
+
+///|
+const SCANF_E = 101
+
+///|
+const SCANF_E_UPPER = 69
+
+///|
+const SCANF_G = 103
+
+///|
+const SCANF_G_UPPER = 71
+
+///|
+const SCANF_A = 97
+
+///|
+const SCANF_A_UPPER = 65
+
+///|
+const SCANF_F_UPPER = 70
+
 ///|
 /// scanf 写目标按长度修饰分宽（审阅 P2-1，2026-10-23）：ll→8 字节 /
 /// 无与 l→4（LLP64 long=4）/ h→2 / hh→1。val 一律 u64 位模式（各臂
@@ -788,39 +908,100 @@ fn scanf_store_by_lenmod(
 }
 
 ///|
-/// token → Int（oracle `parse().unwrap_or(0)`：溢出/空/孤立符号 → 0）。
-fn parse_int_or_zero(token : Array[Byte]) -> Int32 {
-  @string.parse_int(@utf8.decode_lossy(Bytes::from_array(token))) catch {
-    _ => 0
+/// strtoll/strtoul 语义数字累加器（#428 A-9，2026-11-04）——替代
+/// d/u 臂 parse_*_or_zero 的「溢出 catch→0」与 i/x/o 臂的裸回绕：
+/// u64 域内逐位累加；超域 **clamp 边界位模式**（真值 = glibc+UCRT 双派
+/// 一致，t2/t2b/t2c/t3/t5/t8 探针，2026-11-04 亲采）：
+/// - 有符号转换符（d/i）负溢出 → LLONG_MIN（0x8000..0）**全档**——
+///   %lld → LLONG_MIN / %d 低 32 位 = 0 / %hd 低 16 位 = 0
+/// - 有符号正溢出 **ll 档**（len_mod==2）→ LLONG_MAX；4 字节及窄档 →
+///   ULLONG_MAX 截位（%d → 0xFFFFFFFF = -1 / %hd → 0xFFFF——glibc
+///   vfscanf 实现怪形按真值建模，不逆向）
+/// - 无符号转换符（u/x/X/o）正负溢出 → ULLONG_MAX（**负号吞**——clamp
+///   压过回绕：`%llx` 读 "-10000000000000000" → 0xFFFF..F；`%hu` 负
+///   超域 → 65535）
+/// - 域内负号 → 位模式回绕取负（`-5 %u` → 4294967291，现状已对）
+/// digits 为纯数字 token（符号/进制前缀由调用方剥），base ∈ {10,16,8}。
+fn scan_int_clamp(
+  digits : Array[Byte],
+  base : Int32,
+  negative : Bool,
+  signed_conv : Bool,
+  is_ll : Bool,
+) -> UInt64 {
+  let b = base.to_uint64()
+  let mut val : UInt64 = 0UL
+  let mut overflow = false
+  let n = digits.length()
+  let mut i = 0
+  while i < n {
+    let d = hex_digit_val(digits[i]).to_uint64()
+    // 溢出前探：val*b + d > ULLONG_MAX ⟺ val > (MAX-d)/b（UInt64 算术
+    // 回绕——前探在乘加前完成，检测式自身不回绕）
+    if val > (0xFFFFFFFFFFFFFFFFUL - d) / b {
+      overflow = true
+      break
+    }
+    val = val * b + d
+    i = i + 1
+  }
+  if overflow {
+    if signed_conv {
+      if negative {
+        0x8000000000000000UL
+      } else if is_ll {
+        9223372036854775807UL
+      } else {
+        0xFFFFFFFFFFFFFFFFUL
+      }
+    } else {
+      0xFFFFFFFFFFFFFFFFUL
+    }
+  } else if negative {
+    0UL - val
+  } else {
+    val
   }
 }
 
 ///|
-fn parse_int64_or_zero(token : Array[Byte]) -> Int64 {
-  @string.parse_int64(@utf8.decode_lossy(Bytes::from_array(token))) catch {
-    _ => 0L
+/// 浮点 token 值转换单点（#428 A-10，2026-11-04）：hexfloat 接
+/// host_convert `parse_float_token` 单源（mantissa hex 逐位累加 + 2^p
+/// 指数，精度取舍登记在彼处）；INF/INFINITY/NAN 形态本地识别
+/// （strtod subject sequence——C11 6.4.2.3 经 §7.21.6.2，带符号；
+/// NAN payload 位与 -nan 符号位是平台实现定义域〔M20 D-4〕——产静态
+/// NaN）。atof/strtod 侧的 inf/nan token 缺口登记（host_convert
+/// scan_float_token 域，非本批）。
+fn scanf_float_value(token : Array[Byte]) -> Double {
+  let neg = token.length() > 0 && token[0] == 45
+  let off : Int32 = if token.length() > 0 && (token[0] == 43 || token[0] == 45) {
+    1
+  } else {
+    0
   }
-}
-
-///|
-fn parse_uint64_or_zero(token : Array[Byte]) -> UInt64 {
-  @string.parse_uint64(@utf8.decode_lossy(Bytes::from_array(token))) catch {
-    _ => 0UL
+  fn ci(i : Int32) -> Int32 {
+    let v = token[i].to_int()
+    if v >= 65 && v <= 90 {
+      v + 32
+    } else {
+      v
+    }
   }
-}
-
-///|
-fn parse_uint_or_zero(token : Array[Byte]) -> UInt32 {
-  @string.parse_uint(@utf8.decode_lossy(Bytes::from_array(token))) catch {
-    _ => 0U
+  let rest = token.length() - off
+  // INF（INFINITY 尾段由 token 层收——此处只判三字母前缀）
+  if rest >= 3 && ci(off) == 105 && ci(off + 1) == 110 && ci(off + 2) == 102 {
+    return if neg { @double.neg_infinity } else { @double.infinity }
   }
-}
-
-///|
-fn parse_double_or_zero(token : Array[Byte]) -> Double {
-  @string.parse_double(@utf8.decode_lossy(Bytes::from_array(token))) catch {
-    _ => 0.0
+  // NAN（payload 括号体 token 层已消费；**符号位保留**——PR #474 审阅 P3：
+  // 旧静态 not_a_number 丢 "-nan" 符号；真值 glibc/UCRT 双派 signbit=1，
+  // 置符号位 0xFFF8..0 静默 NaN）
+  if rest >= 3 && ci(off) == 110 && ci(off + 1) == 97 && ci(off + 2) == 110 {
+    if neg {
+      return 0xFFF8000000000000UL.reinterpret_as_double()
+    }
+    return @double.not_a_number
   }
+  parse_float_token(token)
 }
 
 ///|
@@ -1048,33 +1229,35 @@ pub fn host_scanf_n(
           }
         None => chars.length()
       }
-      let start = pos
+      let mut negative = false
       if chars[pos] == 43 || chars[pos] == 45 {
+        negative = chars[pos] == 45
         pos = pos + 1
       }
+      let digits_start = pos
       while pos < lim && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
       }
-      if pos == start ||
-        (pos == start + 1 && (chars[start] == 43 || chars[start] == 45)) {
+      if pos == digits_start {
         pos = entry_pos
         break
       }
       let token : Array[Byte] = []
-      let mut j = start
+      let mut j = digits_start
       while j < pos {
         token.push(chars[j])
         j = j + 1
       }
-      // 审阅 P2-1：宽度分档（统一 i64 位模式——4 字节档取低 32 位与
-      // 旧 parse_int 等价）
+      // #428 A-9：超域 clamp 边界位模式（d = 有符号转换符——负溢出
+      // LLONG_MIN 低 32 位 = 0；正溢出 ULLONG_MAX 低 32 位 = -1）；
+      // 宽度分档照旧（审阅 P2-1——scanf_store_by_lenmod 取 clamp 值低位）
       let f = if !sl.2 {
         scanf_store_by_lenmod(
           mem,
           map,
           ptr,
           len_mod,
-          parse_int64_or_zero(token).reinterpret_as_uint64(),
+          scan_int_clamp(token, 10, negative, true, len_mod == 2),
         )
       } else {
         Ok(())
@@ -1126,12 +1309,10 @@ pub fn host_scanf_n(
         token.push(chars[j])
         j = j + 1
       }
-      // 负值按无符号回绕（strtoul 形态，C11 §7.21.6.2——"-5" %u → 4294967291）
-      let uval = if negative {
-        0UL - parse_uint64_or_zero(token)
-      } else {
-        parse_uint64_or_zero(token)
-      }
+      // #428 A-9 + 域内负号回绕（strtoul 形态，C11 §7.21.6.2——
+      // "-5" %u → 4294967291 现状对保留）：负溢出 clamp ULLONG_MAX
+      //（负号吞）；u = 无符号转换符
+      let uval = scan_int_clamp(token, 10, negative, false, len_mod == 2)
       let f = if !sl.2 {
         scanf_store_by_lenmod(mem, map, ptr, len_mod, uval)
       } else {
@@ -1142,25 +1323,27 @@ pub fn host_scanf_n(
         Err(e) =>
           return InputOutcome::Trap(access_fault_text(e), access_fault_code(e))
       }
-    } else if spec == SCANF_F {
-      // f
+    } else if spec == SCANF_F ||
+      spec == SCANF_E ||
+      spec == SCANF_E_UPPER ||
+      spec == SCANF_G ||
+      spec == SCANF_G_UPPER ||
+      spec == SCANF_A ||
+      spec == SCANF_A_UPPER ||
+      spec == SCANF_F_UPPER {
+      // f 族（#428 缺臂扩面，2026-11-04：e/E/g/G/a/A/F 输入语义与 f 全同
+      //——C11 §7.21.6.2 p12 浮点族同一行，strtod subject sequence 不区分
+      // 输出记法；此前缺臂落「未知转换符」else 兜底不消费不计数）。
+      // #428 A-10：值转换走 scanf_float_value 单点（hexfloat 接
+      // host_convert parse_float_token + inf/nan 形态——旧
+      // parse_double_or_zero 的 @string.parse_double 不认 hexfloat → 0.0）。
+      // 旧臂死代码 lim 顺手删（M20 B-2——read_float_token 自带 max 重算）
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
       }
       if pos >= chars.length() {
         exhausted = true
         break
-      }
-      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
-      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
-      let lim = match sl.3 {
-        Some(w) =>
-          if pos + w < chars.length() {
-            pos + w
-          } else {
-            chars.length()
-          }
-        None => chars.length()
       }
       let pair = read_float_token(chars, pos, sl.3)
       let token = pair.0
@@ -1173,7 +1356,7 @@ pub fn host_scanf_n(
           mem.store_u64(
             map,
             ptr,
-            parse_double_or_zero(token).reinterpret_as_uint64(),
+            scanf_float_value(token).reinterpret_as_uint64(),
           )
           // %f → float（4 字节位模式）
         } else {
@@ -1181,7 +1364,7 @@ pub fn host_scanf_n(
             map,
             ptr,
             Float::reinterpret_as_uint(
-              Float::from_double(parse_double_or_zero(token)),
+              Float::from_double(scanf_float_value(token)),
             ),
           )
         }
@@ -1194,25 +1377,26 @@ pub fn host_scanf_n(
           return InputOutcome::Trap(access_fault_text(e), access_fault_code(e))
       }
     } else if spec == SCANF_C {
-      // c（不跳空白；#427 批 B4 范围外顺手 / M20 A-3：字段宽度适用
-      // %c——C11 §7.21.6.2 p12：宽度 w = 逐字节读**写** w 个字符（**不
-      // 写 NUL**——%c 无终止符语义），缺省 1；输入不足时已读部分照写、
-      // 匹配成功。#71 病 23（2026-10-11）宽度修复漏了 %c 臂——旧只读
-      // 1 字节忽略 wopt）
-      let lim = match sl.3 {
-        Some(w) => w
-        None => 1
-      }
+      // c（不跳空白）；#428 A-3（2026-11-04）：宽度 k = wopt 或 1
+      //（C11 §7.21.6.2——宽度适用**所有**转换；#71 病 23 修漏 %c 臂——
+      // scanf+sscanf 双臂同漏）：逐字节读 k 个连续 store_i8，**不写
+      // NUL**（%c 无终止符语义，clang `scanf("%3c")` 输入 abcdef →
+      // buf="abc" next='d'）。中途流尽：部分写入保留（照 C——真值
+      // `scanf("%5c")` 输入 "ab" → buf="ab"），转换未完成不计 matched。
       if pos >= chars.length() {
         exhausted = true
         break
       }
-      let mut k = 0
-      while k < lim && pos < chars.length() {
+      let k = match sl.3 {
+        Some(w) => w
+        None => 1
+      }
+      let mut j = 0
+      while j < k && pos < chars.length() {
         let ch = chars[pos]
         pos = pos + 1
         if !sl.2 {
-          match mem.store_i8(map, ptr + k.reinterpret_as_uint(), ch.to_int()) {
+          match mem.store_i8(map, ptr + j.reinterpret_as_uint(), ch.to_int()) {
             Ok(_) => ()
             Err(e) =>
               return InputOutcome::Trap(
@@ -1221,7 +1405,12 @@ pub fn host_scanf_n(
               )
           }
         }
-        k = k + 1
+        j = j + 1
+      }
+      if j < k {
+        // 宽度未读满即流尽——输入失败终止（matched 不计；部分写入已发生）
+        exhausted = true
+        break
       }
     } else if spec == SCANF_S {
       // s
@@ -1286,13 +1475,19 @@ pub fn host_scanf_n(
             )
         }
       }
-    } else if spec == SCANF_I || spec == SCANF_X || spec == SCANF_O {
+    } else if spec == SCANF_I ||
+      spec == SCANF_X ||
+      spec == SCANF_X_UPPER ||
+      spec == SCANF_O {
       // i / x / o（病 9 修复，#47 2026-10-09——方向 A 扩面拍板；oracle
       // 从未实现、规范 :421 的 ✅ 系虚标，删区后以 C11 §7.21.6.2 为真值
       // 源补齐）：`%i` = strtol(s,NULL,0) 语义（0x/0X 前缀 16 进制、
       // 0 开头 8 进制、否则十进制）；`%x` = base 16（可选 0x 前缀——仅当
       // 后随 hex 数字才跳，防游标错位）；`%o` = base 8（'0' 天然是 oct
       // 数字无需前缀处理）。均可带符号；抑制（%*x）同外层只跳写不跳消费。
+      // #428（2026-11-04）：大写 X 并臂（C11 %X ≡ %x）；累加器换
+      // scan_int_clamp（旧裸回绕超域错值——clamp：i 有符号负溢出
+      // LLONG_MIN / x/X/o 无符号溢出 ULLONG_MAX 负号吞）。
       let entry_pos = pos
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
@@ -1326,7 +1521,7 @@ pub fn host_scanf_n(
       // 双派 stdin 实测一致：%c 随后读到 Z；与病 13 d/u 的回退语义刻意
       // 异构——那边失败时零消费故回退=未动，这边前缀已消费保留）、不计
       // matched、不写、终止（返已配数，C11 §7.21.6.2）
-      if (spec == SCANF_I || spec == SCANF_X) &&
+      if (spec == SCANF_I || spec == SCANF_X || spec == SCANF_X_UPPER) &&
         pos < lim &&
         chars[pos] == 48 &&
         pos + 1 < lim &&
@@ -1336,7 +1531,7 @@ pub fn host_scanf_n(
         break
       }
       let mut base : Int32 = 10
-      if spec == SCANF_X {
+      if spec == SCANF_X || spec == SCANF_X_UPPER {
         base = 16
         // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
         if pos + 2 < lim &&
@@ -1359,14 +1554,13 @@ pub fn host_scanf_n(
           base = 8
         }
       }
-      let mut val : UInt64 = 0UL
+      let digits_start2 = pos
       let mut scanned = false
       while pos < lim {
         let d = hex_digit_val(chars[pos])
         if d < 0 || d >= base {
           break
         }
-        val = val * base.to_uint64() + d.to_uint64()
         pos = pos + 1
         scanned = true
       }
@@ -1376,9 +1570,20 @@ pub fn host_scanf_n(
         pos = entry_pos
         break
       }
-      if negative {
-        val = 0UL - val
+      let token2 : Array[Byte] = []
+      let mut j2 = digits_start2
+      while j2 < pos {
+        token2.push(chars[j2])
+        j2 = j2 + 1
       }
+      // #428 A-9：clamp 累加器（i 有符号 / x·X·o 无符号）
+      let val = scan_int_clamp(
+        token2,
+        base,
+        negative,
+        spec == SCANF_I,
+        len_mod == 2,
+      )
       let f = if !sl.2 {
         scanf_store_by_lenmod(mem, map, ptr, len_mod, val)
       } else {
@@ -1462,6 +1667,14 @@ pub fn host_scanf_n(
     input.char_offset = start_off
     return InputOutcome::Waiting
   }
+  // #474 审阅 P2（2026-11-04）：**首个转换完成前的输入失败 → EOF**（C11
+  // §7.21.6.2 p16）——matched==0 且因流耗尽中止（exhausted 而非不匹配）
+  // 时返 -1 而非 0：`scanf("%5c")` 输入 "ab" → clang r=-1（buf 已写 "ab"
+  // 部分写入保留）；`scanf("%d")` 仅空白输入同形（顺治存量边角——旧返
+  // matched=0）。不匹配（字面失配/格式错）仍返 0 ✓ 不变。
+  if exhausted && matched == 0 {
+    return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
+  }
   InputOutcome::Value(matched.to_uint64())
 }
 
@@ -1495,6 +1708,9 @@ pub fn host_sscanf(
   }
   let mut pos = 0
   let mut matched = 0
+  // #474 审阅 P2（2026-11-04）：源串尽中止位（区别于不匹配 break）——
+  // 尾部「首个转换完成前的输入失败 → EOF」判定用（C11 §7.21.6.2 p16）
+  let mut exhausted = false
   let mut arg_idx = 0
   for item in spec_types {
     let sl = match item {
@@ -1591,66 +1807,7 @@ pub fn host_sscanf(
         pos = pos + 1
       }
       if pos >= chars.length() {
-        break
-      }
-      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
-      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
-      let lim = match sl.3 {
-        Some(w) =>
-          if pos + w < chars.length() {
-            pos + w
-          } else {
-            chars.length()
-          }
-        None => chars.length()
-      }
-      let start = pos
-      if chars[pos] == 43 || chars[pos] == 45 {
-        pos = pos + 1
-      }
-      while pos < lim && chars[pos] >= 48 && chars[pos] <= 57 {
-        pos = pos + 1
-      }
-      if pos == start ||
-        (pos == start + 1 && (chars[start] == 43 || chars[start] == 45)) {
-        pos = entry_pos
-        break
-      }
-      let token : Array[Byte] = []
-      let mut j = start
-      while j < pos {
-        token.push(chars[j])
-        j = j + 1
-      }
-      // 审阅 P2-1：宽度分档（统一 i64 位模式——4 字节档取低 32 位与
-      // 旧 parse_int 等价）
-      let f = if !sl.2 {
-        scanf_store_by_lenmod(
-          mem,
-          map,
-          ptr,
-          len_mod,
-          parse_int64_or_zero(token).reinterpret_as_uint64(),
-        )
-      } else {
-        Ok(())
-      }
-      match f {
-        Ok(_) => ()
-        Err(e) => return fault_reply(e)
-      }
-      if !sl.2 {
-        matched = matched + 1
-      }
-    } else if spec == SCANF_U {
-      // u（病 13 失败语义 + #61 审阅 P1-3 符号面对齐 i/x/o 臂：+/- 记录、
-      // 负值无符号回绕；旧臂不认 '-' 失败、'+' 被吃后 token 交
-      // parse_uint 不吃 '+' → 写 0 还计数）
-      let entry_pos = pos
-      while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
-        pos = pos + 1
-      }
-      if pos >= chars.length() {
+        exhausted = true
         break
       }
       // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
@@ -1683,12 +1840,70 @@ pub fn host_sscanf(
         token.push(chars[j])
         j = j + 1
       }
-      // 负值按无符号回绕（strtoul 形态，C11 §7.21.6.2——"-5" %u → 4294967291）
-      let uval = if negative {
-        0UL - parse_uint64_or_zero(token)
+      // #428 A-9：clamp 累加器（与 scanf 臂同修——d 有符号）
+      let f = if !sl.2 {
+        scanf_store_by_lenmod(
+          mem,
+          map,
+          ptr,
+          len_mod,
+          scan_int_clamp(token, 10, negative, true, len_mod == 2),
+        )
       } else {
-        parse_uint64_or_zero(token)
+        Ok(())
       }
+      match f {
+        Ok(_) => ()
+        Err(e) => return fault_reply(e)
+      }
+      if !sl.2 {
+        matched = matched + 1
+      }
+    } else if spec == SCANF_U {
+      // u（病 13 失败语义 + #61 审阅 P1-3 符号面对齐 i/x/o 臂：+/- 记录、
+      // 负值无符号回绕；旧臂不认 '-' 失败、'+' 被吃后 token 交
+      // parse_uint 不吃 '+' → 写 0 还计数）
+      let entry_pos = pos
+      while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
+        pos = pos + 1
+      }
+      if pos >= chars.length() {
+        exhausted = true
+        break
+      }
+      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
+      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
+      let mut negative = false
+      if chars[pos] == 43 || chars[pos] == 45 {
+        negative = chars[pos] == 45
+        pos = pos + 1
+      }
+      let digits_start = pos
+      while pos < lim && chars[pos] >= 48 && chars[pos] <= 57 {
+        pos = pos + 1
+      }
+      if pos == digits_start {
+        pos = entry_pos
+        break
+      }
+      let token : Array[Byte] = []
+      let mut j = digits_start
+      while j < pos {
+        token.push(chars[j])
+        j = j + 1
+      }
+      // #428 A-9 + 域内负号回绕（"-5" %u → 4294967291 现状对保留）：
+      // 负溢出 clamp ULLONG_MAX（负号吞）；u = 无符号转换符
+      let uval = scan_int_clamp(token, 10, negative, false, len_mod == 2)
       let f = if !sl.2 {
         scanf_store_by_lenmod(mem, map, ptr, len_mod, uval)
       } else {
@@ -1701,7 +1916,10 @@ pub fn host_sscanf(
       if !sl.2 {
         matched = matched + 1
       }
-    } else if spec == SCANF_I || spec == SCANF_X || spec == SCANF_O {
+    } else if spec == SCANF_I ||
+      spec == SCANF_X ||
+      spec == SCANF_X_UPPER ||
+      spec == SCANF_O {
       // i / x / o（#47 同族对齐扩面，审阅 P2-1 2026-10-09——与 scanf 臂
       // 同源，C11 §7.21.6.2 真值源：%i 前缀探测 0x→16 / 0→8，%x 可选
       // 0x 前缀仅后随 hex 才跳，%o base 8；均可带符号。无数字 → 匹配
@@ -1713,6 +1931,7 @@ pub fn host_sscanf(
         pos = pos + 1
       }
       if pos >= chars.length() {
+        exhausted = true
         pos = entry_pos
         break
       }
@@ -1740,7 +1959,7 @@ pub fn host_sscanf(
       // 双派 stdin 实测一致：%c 随后读到 Z；与病 13 d/u 的回退语义刻意
       // 异构——那边失败时零消费故回退=未动，这边前缀已消费保留）、不计
       // matched、不写、终止（返已配数，C11 §7.21.6.2）
-      if (spec == SCANF_I || spec == SCANF_X) &&
+      if (spec == SCANF_I || spec == SCANF_X || spec == SCANF_X_UPPER) &&
         pos < lim &&
         chars[pos] == 48 &&
         pos + 1 < lim &&
@@ -1750,7 +1969,7 @@ pub fn host_sscanf(
         break
       }
       let mut base : Int32 = 10
-      if spec == SCANF_X {
+      if spec == SCANF_X || spec == SCANF_X_UPPER {
         base = 16
         // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
         if pos + 2 < lim &&
@@ -1772,14 +1991,13 @@ pub fn host_sscanf(
           base = 8
         }
       }
-      let mut val : UInt64 = 0UL
+      let digits_start2 = pos
       let mut scanned = false
       while pos < lim {
         let d = hex_digit_val(chars[pos])
         if d < 0 || d >= base {
           break
         }
-        val = val * base.to_uint64() + d.to_uint64()
         pos = pos + 1
         scanned = true
       }
@@ -1787,9 +2005,20 @@ pub fn host_sscanf(
         pos = entry_pos
         break
       }
-      if negative {
-        val = 0UL - val
+      let token2 : Array[Byte] = []
+      let mut j2 = digits_start2
+      while j2 < pos {
+        token2.push(chars[j2])
+        j2 = j2 + 1
       }
+      // #428 A-9：clamp 累加器（与 scanf 臂同修——i 有符号 / x·X·o 无符号）
+      let val = scan_int_clamp(
+        token2,
+        base,
+        negative,
+        spec == SCANF_I,
+        len_mod == 2,
+      )
       let f = if !sl.2 {
         scanf_store_by_lenmod(mem, map, ptr, len_mod, val)
       } else {
@@ -1802,13 +2031,26 @@ pub fn host_sscanf(
       if !sl.2 {
         matched = matched + 1
       }
-    } else if spec == SCANF_F {
+    } else if spec == SCANF_F ||
+      spec == SCANF_E ||
+      spec == SCANF_E_UPPER ||
+      spec == SCANF_G ||
+      spec == SCANF_G_UPPER ||
+      spec == SCANF_A ||
+      spec == SCANF_A_UPPER ||
+      spec == SCANF_F_UPPER {
+      // f 族（#428 缺臂扩面：e/E/g/G/a/A/F 与 f 全同 + hexfloat/inf/nan
+      // 值转换走 scanf_float_value——与 scanf 臂同修）
       // f（#71 病 23+24：宽度经 token 读取 max 承接；token 形态统一
       // host_convert.scan_float_token——十进制/eE 指数/hexfloat/悬空回退）
       let pair = read_float_token(chars, pos, sl.3)
       let token = pair.0
       pos = pair.1
       if token.length() == 0 {
+        // 流尽形态（pos 推到串尾）置 exhausted——首字符非法的不匹配不置
+        if pos >= chars.length() {
+          exhausted = true
+        }
         break
       }
       let f = if !sl.2 {
@@ -1816,14 +2058,14 @@ pub fn host_sscanf(
           mem.store_u64(
             map,
             ptr,
-            parse_double_or_zero(token).reinterpret_as_uint64(),
+            scanf_float_value(token).reinterpret_as_uint64(),
           )
         } else {
           mem.store_u32(
             map,
             ptr,
             Float::reinterpret_as_uint(
-              Float::from_double(parse_double_or_zero(token)),
+              Float::from_double(scanf_float_value(token)),
             ),
           )
         }
@@ -1838,26 +2080,31 @@ pub fn host_sscanf(
         matched = matched + 1
       }
     } else if spec == SCANF_C {
-      // c（宽度语义同 scanf 版——#427 批 B4 / M20 A-3：C11 §7.21.6.2
-      // 宽度 w 个字符逐字节写、不写 NUL，缺省 1）
-      let lim = match sl.3 {
+      // c；#428 A-3：宽度 k = wopt 或 1（与 scanf 臂同修——双臂同漏实证）；
+      // 逐字节读 k 个、不写 NUL；中途源串尽 → 部分写入保留、不计 matched
+      if pos >= chars.length() {
+        exhausted = true
+        break
+      }
+      let k = match sl.3 {
         Some(w) => w
         None => 1
       }
-      if pos >= chars.length() {
-        break
-      }
-      let mut k = 0
-      while k < lim && pos < chars.length() {
+      let mut j = 0
+      while j < k && pos < chars.length() {
         let ch = chars[pos]
         pos = pos + 1
         if !sl.2 {
-          match mem.store_i8(map, ptr + k.reinterpret_as_uint(), ch.to_int()) {
+          match mem.store_i8(map, ptr + j.reinterpret_as_uint(), ch.to_int()) {
             Ok(_) => ()
             Err(e) => return fault_reply(e)
           }
         }
-        k = k + 1
+        j = j + 1
+      }
+      if j < k {
+        exhausted = true
+        break
       }
       if !sl.2 {
         matched = matched + 1
@@ -1868,6 +2115,7 @@ pub fn host_sscanf(
         pos = pos + 1
       }
       if pos >= chars.length() {
+        exhausted = true
         break
       }
       // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
@@ -1927,6 +2175,13 @@ pub fn host_sscanf(
     } else {
       // 未知转换符：不消费不计数
     }
+  }
+  // #474 审阅 P2（2026-11-04）：**首个转换完成前的输入失败 → EOF**
+  //（C11 §7.21.6.2 p16——sscanf 的「eof」= 读过源串尾）：matched==0 且
+  // 因源串尽中止时返 -1：`sscanf("ab","%5c")` → clang r=-1（glibc/UCRT
+  // 双派一致）。不匹配（字面失配/格式错/nan( 未闭合）仍返 0 ✓。
+  if exhausted && matched == 0 {
+    return value_only(0xFFFFFFFFFFFFFFFFUL)
   }
   value_only(matched.to_uint64())
 }

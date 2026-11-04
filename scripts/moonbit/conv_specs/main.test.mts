@@ -87,10 +87,12 @@ test("J9 红：内存注入四面漂移各一路必红", () => {
     d.divergence = "僵尸探针";
     assert.equal(verdict(rd2, faces), false);
   }
-  // 面④：分叉无 reason
+  // 面④：分叉无 reason（#428 B5 批后 e 已两面一致——探针换 p：host:false /
+  // typeck:true 现役分叉成员，删 divergence 应红）
   {
     const rd2 = JSON.parse(JSON.stringify(rd)) as typeof rd;
-    const d = rd2.families["scanf"]!.letters["e"]!;
+    const d = rd2.families["scanf"]!.letters["p"]!;
+    assert.ok(d.host !== d.typeck, "探针字母 p 须仍在分叉态——若已修复置 true 请换 a/A/[ 等现役分叉成员");
     delete d.divergence;
     assert.equal(verdict(rd2, faces), false);
   }

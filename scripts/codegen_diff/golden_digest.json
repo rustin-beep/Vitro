@@ -395,12 +395,15 @@
         "reverse_array.c": "afd801dd",
         "scalar_brace_init.c": "2f45a293",
         "scanf_0x_behavior.c": "d808487a",
+        "scanf_c_width.c": "9d2cc80b",
         "scanf_digit_mismatch.c": "bf658db3",
         "scanf_eof_after_exhaust.c": "b3b8767a",
         "scanf_eof_loop.c": "0c619589",
         "scanf_float.c": "3016d3e3",
+        "scanf_hexfloat_inf_nan.c": "e3184a88",
         "scanf_literal_match.c": "21d4f96d",
         "scanf_literal_mismatch.c": "94230ab7",
+        "scanf_overflow_clamp.c": "249f7dd5",
         "scanf_printf.c": "67efa9e1",
         "scanf_return_value.c": "aa9f5496",
         "scanf_string.c": "0ff6e57f",
@@ -507,6 +510,7 @@
         "typedef_redefine_reject.c": "24d2feff",
         "typedef_struct_anon.c": "2061a8b7",
         "u_suffix_unsigned_domain.c": "deeaa7a1",
+        "ungetc_eof_noop.c": "78f61ffb",
         "union_array.c": "eb30623a",
         "union_basic.c": "d0a842c6",
         "union_int_member.c": "aeb30e27",
@@ -1747,6 +1751,9 @@
         "scanf_0x_behavior.c": {
           "result_sha": "3c971c671cf5b60d"
         },
+        "scanf_c_width.c": {
+          "result_sha": "0ae476843d61ab25"
+        },
         "scanf_digit_mismatch.c": {
           "result_sha": "ea7e764890294cd7"
         },
@@ -1759,11 +1766,17 @@
         "scanf_float.c": {
           "result_sha": "0827de9edd50ddaa"
         },
+        "scanf_hexfloat_inf_nan.c": {
+          "result_sha": "3448d175458758fa"
+        },
         "scanf_literal_match.c": {
           "result_sha": "f73f5d63c111d6b6"
         },
         "scanf_literal_mismatch.c": {
           "result_sha": "05fdc4f035651e6a"
+        },
+        "scanf_overflow_clamp.c": {
+          "result_sha": "d98d5635919132f0"
         },
         "scanf_printf.c": {
           "result_sha": "a12211b09f278e98"
@@ -2087,6 +2100,9 @@
         },
         "u_suffix_unsigned_domain.c": {
           "result_sha": "e8125bf604991465"
+        },
+        "ungetc_eof_noop.c": {
+          "result_sha": "06bd0190cd24a4f5"
         },
         "union_array.c": {
           "result_sha": "d244af63a4137df1"

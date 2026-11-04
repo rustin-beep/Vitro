@@ -2348,6 +2348,12 @@
       "stdout_sha": "0e857e28859f7923",
       "memory_sha": "4962859d213bd7f1"
     },
+    "baseline/scanf_c_width.c": {
+      "src_sha": "b5f0198c",
+      "exit_code": 0,
+      "stdout_sha": "2e11c0bbf396e55d",
+      "memory_sha": "c60ccf0c01853398"
+    },
     "baseline/scanf_digit_mismatch.c": {
       "src_sha": "18b9ac07",
       "exit_code": 0,
@@ -2372,6 +2378,12 @@
       "stdout_sha": "2efff1261c25d94d",
       "memory_sha": "7ead62a0deb1bdef"
     },
+    "baseline/scanf_hexfloat_inf_nan.c": {
+      "src_sha": "b94ffa1a",
+      "exit_code": 0,
+      "stdout_sha": "2aa6f4818ccc1c45",
+      "memory_sha": "80aa011fa260c2c4"
+    },
     "baseline/scanf_literal_match.c": {
       "src_sha": "ab97cbcb",
       "exit_code": 0,
@@ -2383,6 +2395,12 @@
       "exit_code": 0,
       "stdout_sha": "e806a10abb27f16b",
       "memory_sha": "22f1cc2425700e85"
+    },
+    "baseline/scanf_overflow_clamp.c": {
+      "src_sha": "39bbfd10",
+      "exit_code": 0,
+      "stdout_sha": "3b8c9cbd8e7315ea",
+      "memory_sha": "46cfcfbf97149354"
     },
     "baseline/scanf_printf.c": {
       "src_sha": "67efa9e1",
@@ -3019,6 +3037,12 @@
       "exit_code": 0,
       "stdout_sha": "1c1753d340cf12c7",
       "memory_sha": "281ba7b89c922d5d"
+    },
+    "baseline/ungetc_eof_noop.c": {
+      "src_sha": "ade51025",
+      "exit_code": 0,
+      "stdout_sha": "4caa9269f2eccb89",
+      "memory_sha": "f2f93cf42941a9c0"
     },
     "baseline/union_array.c": {
       "src_sha": "eb30623a",

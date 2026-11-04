@@ -1470,3 +1470,144 @@ test "scanf_missing_conv_arms" {
   assert_eq(mem.load_u64(map, 0x8090U), Ok(4.5.reinterpret_as_uint64()))
   assert_eq(mem.load_u64(map, 0x80A0U), Ok(5.5.reinterpret_as_uint64()))
 }
+
+// ── PR #474 审阅处置批（2026-11-04）：P2 %Nc 流尽 EOF + P3 -nan/nan( ───
+// 真值：Win clang(UCRT) + WSL gcc 双派亲采（t9 探针）；sscanf nan( 未
+// 闭合两侧真值分叉（UCRT -1 / glibc 0）——择 glibc 匹配失败边，UCRT
+// 输入失败边登记（语义取舍见速查表与 PR 评论）。
+
+///|
+/// #474 审阅 P2：**首个转换完成前的输入失败 → EOF**（C11 §7.21.6.2
+/// p16）——`%Nc` 宽度中途流尽（本批新增触发面）与「仅空白流尽」存量
+/// 边角（顺治）双壳。修前红：返 matched=0（Value(0) / Some(0)）。
+/// clang 真值：`scanf("%5c")` 输入 "ab" → r=-1 且 buf 已写 "ab"
+///（部分写入保留）；`sscanf("ab","%5c")` → r=-1（glibc/UCRT 双派一致）。
+test "scanf_c_width_partial_eof" {
+  let (map, mem) = fresh()
+  // scanf 壳（Batch）：%5c 输入 "ab" → EOF(-1) 位模式 + 部分写入保留
+  let buf = 0x8000U
+  ignore(mem.store_i8(map, buf + 3U, 33)) // '!' 哨兵（未写满段位）
+  let input = InputState::new([b"ab"], true)
+  let r = scanf_run(map, mem, input, "%5c", [buf])
+  assert_eq(
+    r,
+    InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL),
+    msg="%5c 中途流尽 → EOF（修前返 0）",
+  )
+  assert_eq(mem.load_i8(map, buf), Ok(97), msg="部分写入保留（'a'）")
+  assert_eq(
+    mem.load_i8(map, buf + 1U),
+    Ok(98),
+    msg="部分写入保留（'b'）",
+  )
+  // InputState 虚拟流行尾补位换行（跨行流拼装既定语义——"ab" 补成三字节）：
+  // %5c 读 a/b/补位换行 共 3 字节后流尽（clang 同形态输入双侧一致）
+  assert_eq(
+    mem.load_i8(map, buf + 2U),
+    Ok(10),
+    msg="补位换行亦部分写入",
+  )
+  assert_eq(mem.load_i8(map, buf + 3U), Ok(33), msg="未写满段不动")
+  // sscanf 壳同款（修前返 0）
+  put_cstr(mem, map, 0x6800U, "ab")
+  put_cstr(mem, map, 0x6000U, "%5c")
+  let sb = 0x8100U
+  ignore(mem.store_i8(map, sb + 2U, 33))
+  let rs = host_sscanf(map, mem, 0x6800U, 0x6000U, [sb])
+  assert_eq(
+    rs.value,
+    Some(0xFFFFFFFFFFFFFFFFUL),
+    msg="sscanf %5c 源串尽 → EOF（修前返 0）",
+  )
+  assert_eq(mem.load_i8(map, sb), Ok(97))
+  assert_eq(mem.load_i8(map, sb + 1U), Ok(98))
+  assert_eq(mem.load_i8(map, sb + 2U), Ok(33))
+  // 顺治存量边角：仅空白输入 + %d（跳空白后流尽）→ EOF 非 0
+  let input2 = InputState::new([b" "], true)
+  let pd = 0x8200U
+  assert_eq(
+    scanf_run(map, mem, input2, "%d", [pd]),
+    InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL),
+    msg="仅空白流尽 %d → EOF（修前返 0——顺治存量边角）",
+  )
+  // 防误翻：不匹配（字面失配）仍返 0——EOF 判定只对流尽形态
+  let input3 = InputState::new([b"zz"], true)
+  assert_eq(
+    scanf_run(map, mem, input3, "a%d", [pd]),
+    InputOutcome::Value(0UL),
+    msg="字面失配仍返 0（不因流尽误判 EOF）",
+  )
+}
+
+///|
+/// #474 审阅 P3：-nan **符号位保留**（clang 双派 signbit=1——旧静态
+/// not_a_number 丢符号）+ `nan(`/`NAN(x` **未闭合/域外 = 匹配失败**
+///（旧形态回退成合法 "nan" 误判成功 r=1；真值 glibc r=0 / UCRT r=-1
+/// 实现分叉——择 glibc 匹配失败边，UCRT 输入失败边登记）。
+test "scanf_negnan_sign_and_unclosed" {
+  let (map, mem) = fresh()
+  // -nan → 符号位 NaN（0xFFF8000000000000）
+  let input = InputState::new([b"-nan nan"], true)
+  let pa = 0x8000U
+  guard scanf_run(map, mem, input, "%lf %le", [pa, 0x8010U])
+    is InputOutcome::Value(2UL) else {
+    fail("-nan/nan 双配 r=2")
+  }
+  assert_eq(
+    mem.load_u64(map, pa),
+    Ok(0xFFF8000000000000UL),
+    msg="-nan 符号位置位（修前丢符号→0x7FF8..0）",
+  )
+  assert_eq(
+    mem.load_u64(map, 0x8010U),
+    Ok(@double.not_a_number.reinterpret_as_uint64()),
+    msg="nan 无符号保持静态 NaN",
+  )
+  // nan( / NAN(x：未闭合 / 域外字符 → 匹配失败（r=0、不写、不计）
+  put_cstr(mem, map, 0x6800U, "nan(")
+  put_cstr(mem, map, 0x6000U, "%lf")
+  let pb = 0x8020U
+  ignore(mem.store_u64(map, pb, 0xDEADBEEFDEADBEEFUL))
+  let rs = host_sscanf(map, mem, 0x6800U, 0x6000U, [pb])
+  assert_eq(
+    rs.value,
+    Some(0UL),
+    msg="nan( 未闭合 → 匹配失败 r=0（修前误判成功 1；glibc 边）",
+  )
+  assert_eq(
+    mem.load_u64(map, pb),
+    Ok(0xDEADBEEFDEADBEEFUL),
+    msg="失败不写目标",
+  )
+  put_cstr(mem, map, 0x6900U, "NAN(x")
+  put_cstr(mem, map, 0x6100U, "%le")
+  let rs2 = host_sscanf(map, mem, 0x6900U, 0x6100U, [pb])
+  assert_eq(rs2.value, Some(0UL), msg="NAN(x 域外字符 → 匹配失败 r=0")
+  // 防误翻：闭合形态 NAN(1) 仍成功
+  put_cstr(mem, map, 0x6A00U, "NAN(1)")
+  put_cstr(mem, map, 0x6200U, "%le")
+  let rs3 = host_sscanf(map, mem, 0x6A00U, 0x6200U, [pb])
+  assert_eq(rs3.value, Some(1UL), msg="NAN(1) 闭合仍配（防误翻）")
+  assert_eq(
+    mem.load_u64(map, pb),
+    Ok(@double.not_a_number.reinterpret_as_uint64()),
+  )
+}
+
+///|
+/// #474 审阅 §四补枚：`%hhd` 负超域窄档（clang 双派 → LLONG_MIN 低
+/// 8 位 = 0；同族 %hd 负超域锚已有，hh 档补位）。
+test "scanf_hhd_negative_overflow" {
+  let (map, mem) = fresh()
+  let input = InputState::new([b"-99999999999999999999"], true)
+  let phh = 0x8000U
+  ignore(mem.store_u32(map, phh, 0xDEADBEEFU))
+  guard scanf_run(map, mem, input, "%hhd", [phh]) is InputOutcome::Value(1UL) else {
+    fail("负超域 %hhd r=1")
+  }
+  assert_eq(
+    mem.load_u32(map, phh),
+    Ok(0xDEADBE00U),
+    msg="%hhd 负超域 → LLONG_MIN 低 8 位 0x00（t9 探针 clang 真值）",
+  )
+}

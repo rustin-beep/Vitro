@@ -691,22 +691,36 @@ fn read_float_token(
     pos + 2 < limit &&
     (chars[pos + 1] == 97 || chars[pos + 1] == 65) &&
     (chars[pos + 2] == 110 || chars[pos + 2] == 78) {
-    // NAN 前缀；可选 (...) payload（闭合才消费整段）
+    // NAN 前缀；可选 (...) payload（n-char-sequence 域 [a-zA-Z0-9_]——
+    // C11 6.4.2.3；闭合才属 subject sequence）。**未闭合 / 域外字符 =
+    // 匹配失败**（PR #474 审阅 P3：旧形态回退成合法 "nan" 误判成功 r=1
+    // ——clang 真值 sscanf("nan(") glibc r=0 / UCRT r=-1〔实现分叉，择
+    // glibc 匹配失败边，UCRT 输入失败边登记〕、scanf 流内 r=0 双派一致）
+    // → 空 token + pos 回 start（调用方不计数终止）
     pos = pos + 3
     if pos < limit && chars[pos] == 40 {
-      let save = pos
       pos = pos + 1
       let mut closed = false
+      let mut bad_char = false
       while pos < limit {
         if chars[pos] == 41 {
           pos = pos + 1
           closed = true
           break
         }
+        let ch = chars[pos]
+        let nchar = (ch >= 97 && ch <= 122) ||
+          (ch >= 65 && ch <= 90) ||
+          (ch >= 48 && ch <= 57) ||
+          ch == 95
+        if !nchar {
+          bad_char = true
+          break
+        }
         pos = pos + 1
       }
-      if !closed {
-        pos = save
+      if !closed || bad_char {
+        return ([], start)
       }
     }
     let token : Array[Byte] = []
@@ -978,8 +992,13 @@ fn scanf_float_value(token : Array[Byte]) -> Double {
   if rest >= 3 && ci(off) == 105 && ci(off + 1) == 110 && ci(off + 2) == 102 {
     return if neg { @double.neg_infinity } else { @double.infinity }
   }
-  // NAN（payload 括号体 token 层已消费）
+  // NAN（payload 括号体 token 层已消费；**符号位保留**——PR #474 审阅 P3：
+  // 旧静态 not_a_number 丢 "-nan" 符号；真值 glibc/UCRT 双派 signbit=1，
+  // 置符号位 0xFFF8..0 静默 NaN）
   if rest >= 3 && ci(off) == 110 && ci(off + 1) == 97 && ci(off + 2) == 110 {
+    if neg {
+      return 0xFFF8000000000000UL.reinterpret_as_double()
+    }
     return @double.not_a_number
   }
   parse_float_token(token)
@@ -1648,6 +1667,14 @@ pub fn host_scanf_n(
     input.char_offset = start_off
     return InputOutcome::Waiting
   }
+  // #474 审阅 P2（2026-11-04）：**首个转换完成前的输入失败 → EOF**（C11
+  // §7.21.6.2 p16）——matched==0 且因流耗尽中止（exhausted 而非不匹配）
+  // 时返 -1 而非 0：`scanf("%5c")` 输入 "ab" → clang r=-1（buf 已写 "ab"
+  // 部分写入保留）；`scanf("%d")` 仅空白输入同形（顺治存量边角——旧返
+  // matched=0）。不匹配（字面失配/格式错）仍返 0 ✓ 不变。
+  if exhausted && matched == 0 {
+    return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
+  }
   InputOutcome::Value(matched.to_uint64())
 }
 
@@ -1681,6 +1708,9 @@ pub fn host_sscanf(
   }
   let mut pos = 0
   let mut matched = 0
+  // #474 审阅 P2（2026-11-04）：源串尽中止位（区别于不匹配 break）——
+  // 尾部「首个转换完成前的输入失败 → EOF」判定用（C11 §7.21.6.2 p16）
+  let mut exhausted = false
   let mut arg_idx = 0
   for item in spec_types {
     let sl = match item {
@@ -1777,6 +1807,7 @@ pub fn host_sscanf(
         pos = pos + 1
       }
       if pos >= chars.length() {
+        exhausted = true
         break
       }
       // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
@@ -1837,6 +1868,7 @@ pub fn host_sscanf(
         pos = pos + 1
       }
       if pos >= chars.length() {
+        exhausted = true
         break
       }
       // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
@@ -1899,6 +1931,7 @@ pub fn host_sscanf(
         pos = pos + 1
       }
       if pos >= chars.length() {
+        exhausted = true
         pos = entry_pos
         break
       }
@@ -2014,6 +2047,10 @@ pub fn host_sscanf(
       let token = pair.0
       pos = pair.1
       if token.length() == 0 {
+        // 流尽形态（pos 推到串尾）置 exhausted——首字符非法的不匹配不置
+        if pos >= chars.length() {
+          exhausted = true
+        }
         break
       }
       let f = if !sl.2 {
@@ -2046,6 +2083,7 @@ pub fn host_sscanf(
       // c；#428 A-3：宽度 k = wopt 或 1（与 scanf 臂同修——双臂同漏实证）；
       // 逐字节读 k 个、不写 NUL；中途源串尽 → 部分写入保留、不计 matched
       if pos >= chars.length() {
+        exhausted = true
         break
       }
       let k = match sl.3 {
@@ -2065,6 +2103,7 @@ pub fn host_sscanf(
         j = j + 1
       }
       if j < k {
+        exhausted = true
         break
       }
       if !sl.2 {
@@ -2076,6 +2115,7 @@ pub fn host_sscanf(
         pos = pos + 1
       }
       if pos >= chars.length() {
+        exhausted = true
         break
       }
       // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
@@ -2135,6 +2175,13 @@ pub fn host_sscanf(
     } else {
       // 未知转换符：不消费不计数
     }
+  }
+  // #474 审阅 P2（2026-11-04）：**首个转换完成前的输入失败 → EOF**
+  //（C11 §7.21.6.2 p16——sscanf 的「eof」= 读过源串尾）：matched==0 且
+  // 因源串尽中止时返 -1：`sscanf("ab","%5c")` → clang r=-1（glibc/UCRT
+  // 双派一致）。不匹配（字面失配/格式错/nan( 未闭合）仍返 0 ✓。
+  if exhausted && matched == 0 {
+    return value_only(0xFFFFFFFFFFFFFFFFUL)
   }
   value_only(matched.to_uint64())
 }

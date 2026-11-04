@@ -54,6 +54,8 @@
 | S3 | `scanf("%d",…)` 读 `4294967297`（i64 域内） | `1` | `1`（一致；域内截断是对的——B5 批防误翻锚 `scanf_overflow_clamp_bitpattern` 锁定） | M20 A-9（防误翻注：只翻越界值行为） |
 | S4 | `scanf("%f",…)` 读 `0x1.8p3` | `12.00` | **已修一致**（#428 B5 批：值转换接 host_convert parse_float_token 单源；inf/INFINITY/nan/NAN(n) token 形态同批〔read_float_token 收集 + scanf_float_value 值层〕） | M20 A-10 → #428 |
 | S5 | `ungetc(EOF,stdin)` 后 getchar（流中 `xy`） | 120（`x`；ungetc(EOF) 是无操作） | **已修一致**（#428 B5 批：ch==-1 早退不动缓存，返 EOF） | M20 A-11 → #428 |
+| S1b | `scanf("%5c",buf)` 输入 `ab`（宽度中途流尽） | **r=-1**（EOF——首个转换完成前的输入失败，C11 §7.21.6.2 p16；buf 已写 "ab" 部分保留）；`sscanf("ab","%5c")` 同 r=-1（glibc/UCRT 双派一致） | **已修一致**（#474 审阅处置：matched==0 且流尽中止 → EOF；「仅空白 + %d」存量边角同批顺治；不匹配仍返 0 不变） | PR #474 审阅 P2 → #428 |
+| S4b | `sscanf("nan(","%lf")` / 读 `-nan` | nan( 未闭合：**glibc r=0（匹配失败）/ UCRT r=-1（输入失败）——真值间自分歧**；`-nan`：signbit=1 双派一致 | nan( → r=0（择 glibc 边，UCRT 输入失败边**登记分叉**）；`-nan` → 0xFFF8000000000000 符号位 NaN（#474 审阅处置） | PR #474 审阅 P3 / t9 探针 |
 | S6 | `fgets(buf,1,f)`（文件含 `hi`） | 返 buf、buf[0]=0(NUL)、feof=0、后续读 `hi` | 返 NULL、buf[0]=90(未动)、feof=1（误置）、后续读 `hi` | M23 A2 / V1#41 |
 | S7 | vprintf 族 `%s` 字符串实参 len≥4 | 正常输出（glibc） | 第 4 字节起 VM 栈下溢 trap（边界=4 字节；宽度/精度无关；js/native/wasm 三臂一致） | M21 A2 / V1#36（根因在 vm/codegen 变参压栈层，M21 §五点名另立） |
 

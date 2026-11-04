@@ -1,97 +1,28 @@
 ## [Unreleased]
 
-### feat(scripts+ci): step 帧流不变量检查器——过程语义防线全语料落地 + PR #478 审阅处置（moon_prove §8.2 方案 B，登记 #477，2026-11-04）
+### fix(engine): PR #474 审阅处置——P2 %Nc 流尽 EOF + P3 -nan 符号/nan( 未闭合（双壳，2026-11-04）
 
-- **检查器主体（`scripts/step_invariant/`）**：TS 消费 `vitro step --json`
-  NDJSON 帧流逐帧断言——四条语义不变量：INV1a/1b/1c 内存视图域（变量
-  addr ∈ [NULL_TRAP_SIZE, MEM_SIZE-4]、全局变量域 [GLOBAL_START,
-  GLOBAL_REGION_LIMIT)、Freed 指针 target ≥ HEAP_START——布局常量
-  bytecode/memory.mbt 单源镜像）；INV2a/2b/2c 栈深（域 [0,10000]、相邻帧
-  增量 ∈ {-1,0,+1}、底帧恒 main）；INV3a cursor 严格 +1 连续（CLI 路径
-  无 seek）；INV4 指针四态域自洽（collector.mbt 判定镜像：Null⇒0 /
-  Dangling⇒越区 / Valid|Freed⇒域内）。结构层契约 ST1-7（JSON 合法 /
-  **ST2 含帧形状断言**〔三数组必为数组、字段类型必达——发射层退化防线，
-  PR #478 审阅 P2-2：`local_vars:null` 形态曾零判别力〕/ id 递增 / 终态
-  恰一行 / 首行空缓冲 / payloads ≤ 2 / summary 对账）。**流式
-  StreamChecker**（逐行 feed 即弃——首版行数组终检在全量并发下 4GB OOM，
-  208 万帧无压力）。
-- **J9 证红**：28 测试锚（每不变量一例篡改帧必红 + INV1a 4 字节上边界
-  锚〔MEM_SIZE-4 恰绿 / -3 必红，P3-1〕+ ST2 形状锚×3〔P2-3〕+ 白名单
-  形态锚 + 布局常量六值镜像锚）；真实帧流全绿。
-- **全量实测（本地 jobs=8）**：995 语料 / 2,080,042 帧 / ~644s——唯一
-  真实违例形态 = INV3a 宿主回调跳号（qsort/bsearch comparator 在
-  `vm/host_dispatch3.mbt::call_user_function` 内推进 step_count 不产帧，
-  18 例/7 语料），**登记不修**（#477，行为修复归 B 轮线）；白名单
-  `known_violations.json` 三态收编（RED/EXPECTED_RED/ZOMBIE——
-  `--audit-known` 僵尸审计）+ **count 期望条数恶化检测**（P3-2：同根因
-  违例数超登记上限即红，防恶化静默放行）。
-- **CI 接线（gates-native job）双档**：PR 轮 spot 抽样 `--sample 60
-  --step-budget 20000`（实测 10.6s——大语料步数预算封顶换墙钟，截断流
-  仍是合法检查面；P1-2 处置：无预算时 spot 曾实测 345.8s，stride 必中
-  19 个 10 万步上限语料）；夜间 schedule 轮全量 + `--audit-known`。
-  **超时单列不红 + 两轮预算自动复跑**（P1-1：挂起复现率 ~0.2%/spawn
-  复跑即解，两轮尽收 timeout 单列——预算问题与防线违例分账，不再同红）；
-  `child.on("error")` spawn 级失败立即落账；rc=4（用法错/源不可读）
-  单列 unreadable 不红（P3-6）。
-- **口径登记（PR #478 审阅 P3-3/P3-4）**：全量数字含 compile-error 111
-  （其中显式负例文件名 `*reject*` 仅 14——余 97 的负例/回归分类未做，
-  登记 P3-4 遗留：闸暂不区分「预期编不过」与「回归到编不过」，无阈值
-  报警）、trapped 19 / waiting_input 39 的帧流只检查到截断点；
-  **js 单臂**——帧 schema 单源（cmd/lib/cli 三臂同表），但按
-  AGENTS §14 应有的 native/wasm 臂同跑未接入，登记为已知豁免（后续
-  批次补臂，非本批收口面）。
-- 零引擎行为：moonbit/ 零改动，digest 零漂移。
-
-### test(moonbit): QC 属性批——util 层 quickcheck 程序级属性（moon prove 盲区互补防线，2026-11-04）
-
-- **17 条属性入 vitro/engine/util 黑盒**（util_qc_test.mbt + json_qc_test.mbt；
-  core/quickcheck 自带——moon.mod 零新增依赖，import 走 for "test" 不进包
-  依赖面与接口面）：count=300 × 双种子固定（20261104/427）+ 内置 @shrink
-  反例收缩，反例可由 seed 直接复现。
-- **属性清单（prove 三态对照详 tmp/batch_QC_REPORT.md）**：str_cmp 反对称
-  （prove 60s 超时的 ∃ witness 卡点——本批旗舰）/自反/传递；json_escape
-  roundtrip + 无裸控制字符（prove 模型 17/18）；base64 roundtrip + 输出
-  形态；valid_json_number 合法构造必过（含 json_parse repr 保真断言）/非法
-  变异必拒（#466 pub 化面的两向）；i64_to_i32_bits 界内恒等/高 32 位丢弃；
-  le_u32/u64 写读对偶 + u64=u32|u32<<32 组合一致；utf8 roundtrip/字节长
-  码点累加/utf8_text_partial 前缀止（#363 语义属性化）。
-- **J9 注入 16 次**（口径：13 次有效红 / 2 次无效注入形态的等价性发现
-  〔Int64::to_int 低 32 位截断语义下 i64_to_i32_bits 分支减法等价——单点
-  注入被吞，换符号位泄漏形态证红〕/ 1 次 sed 转义损坏重试不计证红——
-  PR #476 审阅 P3-3 口径修正）；传递性属性加前提命中守卫（审阅注入
-  「cmp 恒返 1」实测空真，命中数为 0 即 fail loud 而非静默空绿）；
-  repr 保真半边补注入证红（json_parse repr=text 注入，审阅 P3-4）；
-  注入后源码全程 git checkout 恢复零残留。
-- **连坐**：测试数 1242→1259（裸 moon test）/1291→1308（native 全量
-  MOON_CC=clang-cl，双口径亲测）；moon info 接口面零漂移（pub 面零变更）；
-  moon fmt/check 全绿；util_wbtest 例锚与本批属性互补零重复。
-- **surface 边表连坐（CI 首轮红实锤）**：moonbit_surface 闸认 for "test"
-  import 的消费边——util→core/quickcheck×3 + quickcheck/shrink +
-  core/debug 共 5 边登记 surface_edges.txt（PR #476 首轮 contract +
-  scripts-ts 两 job 红，补登记后本地 surface -check 与
-  moonbit_surface.test.mts 双绿）。
-
-### test(moonbit)+fix(scripts): PR #476 审阅处置批——P2×3 落地 + P3×4 连坐（2026-11-04）
-
-- **P2-1 QcByteSlice.shrink 域崩溃修复**：Bytes 内置 shrink 会产长度 <8
-  候选，off 域随之变负——反例收缩路径崩溃（js 臂 unreachable / native 臂
-  0xc0000409 整包中断）而非最小反例（审阅双臂实测）。修：shrink 链
-  filter(len>=8)；复验注入 le_u32 <<9 形态从崩溃变为正常 falsified after 1。
-- **P2-2 pkg_deps 判据⑥（test-only 依赖闸）**：审阅实测「删 for "test"
-  尾标后 pkg_deps/surface/mbti_sync/host_shared_guard 四闸全绿」——测试
-  依赖面外溢零机判。新增 rules.json test_only_imports 表 + testOnlyLeaks
-  断言（兼容后缀/前置两种块语法）；J9 删尾标注入：四依赖泄漏全名单红。
-- **P2-3 base64 oracle 分工头注**：roundtrip 对双错互逆注入无判别力
-  （审阅 ^0xFF 实测）——编码正确性唯一语义 oracle 是 RFC 4648 例锚，
-  头注明示「删例锚即该面归零」。
-- **P3 连坐**：①transitivity 加前提命中守卫（审阅「cmp 恒返 1」空真
-  实测，命中 0 即 fail loud）；②QcTextCut 域改测试侧 qc_byte_len 参照
-  （去被测函数循环依赖）；③CHANGELOG 证红口径精确化（13 有效/2 等价性
-  发现/1 重试）；④repr 保真半边补注入证红（falsified after 1）；
-  high_half_dropped 头注登记判别面（符号位泄漏红/截断族恒绿）。
-- 工具链教训再证：本仓 bash 工具层 heredoc 吃反斜杠（陷阱 19）在
-  python 写盘路径复现（chr(0) 标记产 4 个 NUL 字节，source_hygiene
-  兜住）——代码写盘一律 Edit/Write 工具，heredoc 只跑读侧脚本。
+- **P2 首转换前输入失败 → EOF**（C11 §7.21.6.2 p16）：`scanf("%5c")` 输入 "ab"
+  → r=-1（clang 双派；修前返 0）——matched==0 且**流尽**中止（exhausted 而非
+  不匹配）时返 EOF；「仅空白 + %d」存量边角同批顺治；不匹配（字面失配/格式
+  错/nan( 未闭合）仍返 0 不变。sscanf 壳补 exhausted 位（五置位点）+ 尾部
+  同判定。锚 `scanf_c_width_partial_eof`（J9 stash 证红）。
+- **P3 -nan 符号位保留**：scanf_float_value NAN 分支 neg → 0xFFF8..0 符号位
+  NaN（clang 双派 signbit=1；修前静态 not_a_number 丢符号）。锚
+  `scanf_negnan_sign_and_unclosed`（J9 证红）。
+- **P3 nan( 未闭合/域外 = 匹配失败**：NAN 括号体扫描按 C11 6.4.2.3 的
+  n-char-sequence 域 [a-zA-Z0-9_] 判定——未闭合/域外 → 空 token 匹配失败
+  r=0（修前回退成合法 "nan" 误判成功 r=1）。**真值分叉登记**：UCRT 返 -1
+  （输入失败边）、glibc 返 0（匹配失败边）——择 glibc 边（速查表 S4b）。
+- **§四补枚**：`%hhd` 负超域窄档锚（LLONG_MIN 低 8 位 0x00，t9 探针双派）。
+- **P1 lexer digest 漏连坐**（首笔 CI 红）与 conv_specs J9 探针 e→p 见前笔；
+  本笔 README cargo test 历史快照复原 1209（W4 批 1235 误伤 + 本批 rebase
+  叠加 1240 的第三犯修正）。
+- **演化建议落盘**（审阅 §五，未过闸直接进 skill references）：D23「诊断面
+  认/执行面不认三面不一致」形态（j/z/t 长度修饰族存量缺口登记）/ safe-delete
+  上限坑 / 新语料五 digest 连坐清单。
+- 数字口径：moon test 1243（+3 处置锚）/ native 1292；vm_diff 817 SAME
+  零漂移（EOF 判定对既有语料无影响）。
 
 ### fix(engine): W4 尾件批——普查钉出的四缺陷修复（abort 族×2 + note 泄漏 + 栈迭代化，Closes #418 #419 #420 #421，2026-11-04）
 

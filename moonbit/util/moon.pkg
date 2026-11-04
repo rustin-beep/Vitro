@@ -11,3 +11,13 @@
 import {
   "moonbitlang/core/encoding/utf8",
 }
+
+// quickcheck 属性批（QC 批，2026-11-04）：moon prove 盲区（String/浮点/
+// 组合语义）的采样级互补防线——仅测试构建可见，不进包依赖面（pkg_deps
+// L0 边表与 surface 边表均不受影响）。core 自带，moon.mod 零新增依赖。
+import {
+  "moonbitlang/core/quickcheck",
+  "moonbitlang/core/quickcheck/splitmix",
+  "moonbitlang/core/quickcheck/shrink",
+  "moonbitlang/core/debug",
+} for "test"

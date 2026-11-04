@@ -42,6 +42,9 @@ export interface RulesDoc {
   exempt_prefixes: string[];
   /** 判据⑤登记表；缺席 = 不判（fixture 兼容），真实 rules.json 必带（test 锚） */
   bridges?: BridgesDoc;
+  /** 判据⑥登记表（PR #476 审阅 P2-2）：包 → 只许出现在 for "test" 块的外部依赖；
+   *  缺席 = 不判（fixture 兼容）。泄漏进主 import 块即红（测试依赖变运行时依赖）。 */
+  test_only_imports?: Record<string, string[]>;
 }
 
 export interface PkgInfo {
@@ -91,6 +94,55 @@ export function parseDeps(pkgPath: string, module: string, selfName: string): st
     }
   }
   return byteSort(out);
+}
+
+/** testOnlyLeaks：test-only 表内的外部依赖若出现在主（非 for "test"）import 块即泄漏。
+ *  兼容两种块语法：后缀式 `import { ... } for "test"` 与前置式 `for "test" { import { ... } }`。 */
+export function testOnlyLeaks(pkgPath: string, testOnly: string[]): string[] {
+  if (testOnly.length === 0) return [];
+  let data: string;
+  try {
+    data = fs.readFileSync(abs(pkgPath), "utf8");
+  } catch (e) {
+    fatal(`读 ${pkgPath} 失败: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const testDeps = new Set<string>();
+  // 前置式整段摘除（内容计入 test 块）
+  const rest = data.replace(
+    /for\s+"test"\s*\{\s*import\s*\{([\s\S]*?)\}\s*\}/g,
+    (_all: string, body: string) => {
+      for (const m of body.matchAll(RE_QUOTED)) testDeps.add(m[1] ?? "");
+      return "";
+    },
+  );
+  // 后缀式：组 2 存在 = test 块
+  for (const blk of rest.matchAll(/import\s*\{([\s\S]*?)\}(\s*for\s+"test")?/g)) {
+    if (blk[2] !== undefined) {
+      for (const m of (blk[1] ?? "").matchAll(RE_QUOTED)) testDeps.add(m[1] ?? "");
+      continue;
+    }
+    for (const m of (blk[1] ?? "").matchAll(RE_QUOTED)) {
+      const dep = m[1] ?? "";
+      if (testOnly.includes(dep) && !testDeps.has(dep)) testDeps.add("@LEAK@" + dep);
+    }
+  }
+  const leaked: string[] = [];
+  for (const d of testDeps) {
+    if (d.startsWith("@LEAK@")) leaked.push(d.slice(6));
+  }
+  return byteSort(leaked);
+}
+
+/** collectTestOnlyLeaks：按 rules.test_only_imports 逐包判定（main 流程用）。 */
+function collectTestOnlyLeaks(rd: RulesDoc, order: string[]): string[] {
+  const out: string[] = [];
+  for (const n of order) {
+    const t = rd.test_only_imports?.[n];
+    if (t === undefined || t.length === 0) continue;
+    const found = testOnlyLeaks(`${rd.root}/${n}/moon.pkg`, t);
+    if (found.length > 0) out.push(`${n} 主 import 块出现 test-only 依赖: ${found.join(", ")}`);
+  }
+  return out;
 }
 
 /** 最长前缀匹配（子包继承父包层号）。 */
@@ -411,6 +463,12 @@ export function main(argv: string[]): number {
   const rd = loadRules();
   const { pkgs, order } = scan(rd);
   const bridges = scanBridges(rd);
+  const leaks = collectTestOnlyLeaks(rd, order);
+  if (leaks.length > 0) {
+    process.stdout.write("pkg_deps: FAIL——test-only 依赖泄漏进主 import 块（PR #476 审阅 P2-2）:\n");
+    for (const l of leaks) process.stdout.write("  " + l + "\n");
+    return 1;
+  }
   if (!check) report(rd, pkgs, order, bridges);
   if (selftest) return selftestRun(rd, pkgs, order, bridges);
   if (verdict(rd, pkgs, order, bridges)) {

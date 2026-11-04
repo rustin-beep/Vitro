@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { findCycle, longestPrefixLevel, loadRules, parseDeps, scan, scanBridges, verdict, verdictBridges } from "./main.mts";
+import { findCycle, longestPrefixLevel, loadRules, parseDeps, scan, scanBridges, testOnlyLeaks, verdict, verdictBridges } from "./main.mts";
 import type { PkgInfo, RulesDoc } from "./main.mts";
 import { projectRoot } from "../../internal/capi.mts";
 
@@ -101,6 +101,34 @@ test("真实 rules.json 带 bridges 段且真仓两桥逐项相等（判据⑤�
   assert.ok(Object.keys(rd.bridges.files).length >= 2, "至少两座合法出口桥（gateway/wasm + teaching/langpack）");
   const found = scanBridges(rd);
   assert.equal(verdictBridges(rd.bridges, found), true, `真仓桥面应与登记相等，实际：${JSON.stringify([...found])}`);
+});
+
+test("testOnlyLeaks：判据⑥三形态（PR #476 审阅 P2-2）", () => {
+  const qc = "moonbitlang/core/quickcheck";
+  const to = [qc];
+  // 后缀式干净：依赖在 for "test" 块 → 零泄漏
+  const cleanSuffix = tmp({
+    "root/a/moon.pkg": ['import { "vitro/engine/b" }', '', 'import {', '  "' + qc + '",', '} for "test"', ''].join(String.fromCharCode(10)),
+  });
+  assert.deepEqual(testOnlyLeaks(path.join(cleanSuffix, "root/a/moon.pkg"), to), []);
+  // 前置式干净：for "test" { import { ... } } → 零泄漏
+  const cleanPrefix = tmp({
+    "root/a/moon.pkg": ['import { "vitro/engine/b" }', 'for "test" { import { "' + qc + '" } }', ''].join(String.fromCharCode(10)),
+  });
+  assert.deepEqual(testOnlyLeaks(path.join(cleanPrefix, "root/a/moon.pkg"), to), []);
+  // 泄漏：删 for "test" 尾标（审阅注入形态）→ 必红
+  const leak = tmp({
+    "root/a/moon.pkg": ['import {', '  "vitro/engine/b",', '  "' + qc + '",', '}', ''].join(String.fromCharCode(10)),
+  });
+  assert.deepEqual(testOnlyLeaks(path.join(leak, "root/a/moon.pkg"), to), [qc]);
+  // 空表短路
+  assert.deepEqual(testOnlyLeaks(path.join(leak, "root/a/moon.pkg"), []), []);
+});
+
+test("真实 rules.json 带 test_only_imports 段且真仓零泄漏（判据⑥真实面）", () => {
+  const rd = loadRules();
+  assert.ok(rd.test_only_imports !== undefined, "真实 rules.json 必须带 test_only_imports（缺席 = 判据⑥脱管）");
+  assert.ok((rd.test_only_imports?.["util"] ?? []).length >= 4, "util 至少登记 quickcheck 族四依赖");
 });
 
 test("真实仓库端到端：默认 / -check / --selftest 全绿；未知参数 exit 2", () => {

@@ -40,7 +40,8 @@
         "diag/e4_export.mbt",
         "gateway/serve_run_wbtest.mbt",
         "teaching/steps/catalog.mbt",
-        "util/json_escape_wbtest.mbt"
+        "util/json_escape_wbtest.mbt",
+        "util/json_qc_test.mbt"
       ],
       "note": "util 版（String→String）；ast/json_emit.mbt 里有对 json_escape_string 的转发/并存——两函数独立登记"
     },
@@ -70,6 +71,7 @@
         "parser/expr.mbt",
         "typeck/expr.mbt",
         "typeck/init.mbt",
+        "util/util_qc_test.mbt",
         "util/util_wbtest.mbt",
         "vm/state.mbt"
       ]
@@ -79,14 +81,16 @@
       "def_anchor": "pub fn utf8_bytes(",
       "consumers": [
         "diagnostics/auto_fix.mbt",
-        "diagnostics/fix_gen.mbt"
+        "diagnostics/fix_gen.mbt",
+        "util/util_qc_test.mbt"
       ]
     },
     "utf8_text": {
       "def": "util/util.mbt",
       "def_anchor": "pub fn utf8_text(",
       "consumers": [
-        "diagnostics/auto_fix.mbt"
+        "diagnostics/auto_fix.mbt",
+        "util/util_qc_test.mbt"
       ]
     },
     "utf8_text_partial": {
@@ -101,6 +105,7 @@
         "cmd/lib/cli/cli_wbtest.mbt",
         "gateway/serve_io.mbt",
         "mcp/engine.mbt",
+        "util/util_qc_test.mbt",
         "util/util_wbtest.mbt"
       ]
     }

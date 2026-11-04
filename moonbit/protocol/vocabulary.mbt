@@ -182,7 +182,12 @@ pub fn classify(label : String) -> String? {
   if label.is_empty() {
     return None
   }
-  if label.has_prefix("交换 arr[") && label.contains("↔") {
+  // #436（M30-A1 连坐）：判定面放宽——collector 交换 label 的数组名自
+  // #436 起从行内容提取（`a[0]↔a[1]`/`visited[..]` 等真实数组名），旧
+  // 判定硬编码「交换 arr[」前缀致非 arr 数组名的 swap 帧 label_id 空串。
+  // 词汇纪律「id 与 template 不得改语义」不受影响（template/example 的
+  // arr 是文档示例形态；本处只放宽 label→id 的匹配域）。
+  if label.has_prefix("交换 ") && label.contains("[") && label.contains("↔") {
     return Some("swap")
   }
   if label.has_prefix("递归调用 ") {

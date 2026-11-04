@@ -194,7 +194,7 @@ pub fn infer_algorithm_step(
   }
   let vars = VarMap::new(local_vars)
   match alg.name {
-    "bubble_sort" => infer_bubble_sort(source_line, vars, alg)
+    "bubble_sort" => infer_bubble_sort(source_line, vars, alg, env)
     "selection_sort" => infer_selection_sort(source_line, vars, alg)
     "insertion_sort" => infer_insertion_sort(source_line, vars, alg, env)
     "quick_sort" => infer_quick_sort(source_line, vars, alg, func_name, env)
@@ -207,7 +207,7 @@ pub fn infer_algorithm_step(
     "binary_search" => infer_binary_search(source_line, vars, alg)
     "string_reverse" => infer_string_reverse(source_line, vars, alg)
     "string_match_bf" => infer_string_match_bf(source_line, vars, alg)
-    "string_match_kmp" => infer_string_match_kmp(source_line, vars, alg)
+    "string_match_kmp" => infer_string_match_kmp(source_line, vars, alg, env)
     // 批三号（tree 族）
     "bst_insert" => infer_bst_insert(source_line, vars, alg, func_name)
     "bst_validate" => infer_bst_validate(source_line, vars, alg, func_name, env)
@@ -218,8 +218,8 @@ pub fn infer_algorithm_step(
     "huffman_tree" => infer_huffman_tree(source_line, vars, alg)
     "avl_tree" => infer_avl_tree(source_line, vars, alg)
     // 批四号（graph 族）
-    "bfs" => infer_bfs(source_line, vars, alg)
-    "dfs" => infer_dfs(source_line, vars, alg, func_name)
+    "bfs" => infer_bfs(source_line, vars, alg, env)
+    "dfs" => infer_dfs(source_line, vars, alg, func_name, env)
     "prim_mst" => infer_prim_mst(source_line, vars, alg)
     "kruskal_mst" => infer_kruskal_mst(source_line, vars, alg)
     "dijkstra" => infer_dijkstra(source_line, vars, alg)

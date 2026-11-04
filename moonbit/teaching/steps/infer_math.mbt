@@ -52,21 +52,21 @@ fn infer_gcd(
   if has_mod_expr && !is_io_line {
     // U1#1 管道批（P0-4 收口）：运算过程类 phase 用**行入口操作数**拼
     // 算式——行末帧的 b 已被 `b = a % b` 赋值（48 % 12 = 0 是错的），
-    // prev 是进入本行前一刻（48 % 18），结果恰是行末的 b（余数 12）。
+    // prev 是进入本行前一刻（48 % 18）。
+    // #436 翻面（M34b A1）：余数是算术事实 x % y，不再锚定行末 b——
+    // t 换行暂存形态（`t = a % b; a = b; b = t;`）的 mod 行末 b 尚未
+    // 更新（=18），此前「= 18」每帧皆错（真余数在 t=12）；标准单行
+    // 形态行末 b 恰等于余数，统一为 x % y 后语义不变。
     let pa = prev_get_int(env.prev_vars, "a")
     let pb = prev_get_int(env.prev_vars, "b")
-    let b_now = match vars.get_int("b") {
-      Some(v) => v
-      None => -1
-    }
     match (pa, pb) {
       (Some(x), Some(y)) =>
-        if x > 0 && y > 0 && b_now >= 0 {
+        if x > 0 && y > 0 {
           return Some(
             build_step(
               algorithm,
               "mod",
-              "计算 \{x} % \{y} = \{b_now}（余数作为新的 b）",
+              "计算 \{x} % \{y} = \{x % y}（余数作为新的 b）",
             ),
           )
         }

@@ -53,10 +53,26 @@
     {
       "algorithm": "bfs",
       "display_name": "BFS 广度优先搜索",
+      "phase": "visit",
+      "desc": "标记节点 1 为已访问",
+      "code_line": 22,
+      "src": "visited[v] = 1;"
+    },
+    {
+      "algorithm": "bfs",
+      "display_name": "BFS 广度优先搜索",
       "phase": "enqueue",
       "desc": "邻居节点入队",
       "code_line": 23,
       "src": "queue[rear++] = v;"
+    },
+    {
+      "algorithm": "bfs",
+      "display_name": "BFS 广度优先搜索",
+      "phase": "visit",
+      "desc": "标记节点 2 为已访问",
+      "code_line": 22,
+      "src": "visited[v] = 1;"
     },
     {
       "algorithm": "bfs",
@@ -78,9 +94,17 @@
       "algorithm": "bfs",
       "display_name": "BFS 广度优先搜索",
       "phase": "visit",
-      "desc": "标记节点 1 为已访问",
-      "code_line": 21,
-      "src": "if (graph[u][v] == 1 \u0026\u0026 visited[v] == 0) {"
+      "desc": "标记节点 3 为已访问",
+      "code_line": 22,
+      "src": "visited[v] = 1;"
+    },
+    {
+      "algorithm": "bfs",
+      "display_name": "BFS 广度优先搜索",
+      "phase": "visit",
+      "desc": "标记节点 4 为已访问",
+      "code_line": 22,
+      "src": "visited[v] = 1;"
     },
     {
       "algorithm": "bfs",
@@ -101,14 +125,6 @@
     {
       "algorithm": "bfs",
       "display_name": "BFS 广度优先搜索",
-      "phase": "visit",
-      "desc": "标记节点 2 为已访问",
-      "code_line": 21,
-      "src": "if (graph[u][v] == 1 \u0026\u0026 visited[v] == 0) {"
-    },
-    {
-      "algorithm": "bfs",
-      "display_name": "BFS 广度优先搜索",
       "phase": "loop",
       "desc": "队列非空，继续广度优先搜索 [front=3, rear=5]",
       "code_line": 17,
@@ -125,14 +141,6 @@
     {
       "algorithm": "bfs",
       "display_name": "BFS 广度优先搜索",
-      "phase": "visit",
-      "desc": "标记节点 3 为已访问",
-      "code_line": 21,
-      "src": "if (graph[u][v] == 1 \u0026\u0026 visited[v] == 0) {"
-    },
-    {
-      "algorithm": "bfs",
-      "display_name": "BFS 广度优先搜索",
       "phase": "loop",
       "desc": "队列非空，继续广度优先搜索 [front=4, rear=5]",
       "code_line": 17,
@@ -145,14 +153,6 @@
       "desc": "出队节点 u=4",
       "code_line": 18,
       "src": "int u = queue[front++];"
-    },
-    {
-      "algorithm": "bfs",
-      "display_name": "BFS 广度优先搜索",
-      "phase": "visit",
-      "desc": "标记节点 4 为已访问",
-      "code_line": 21,
-      "src": "if (graph[u][v] == 1 \u0026\u0026 visited[v] == 0) {"
     }
   ],
   "binary": [
@@ -433,14 +433,6 @@
     {
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
-      "phase": "swap",
-      "desc": "交换 arr[1]↔arr[2]，较大的元素向右移动",
-      "code_line": 9,
-      "src": "arr[j + 1] = temp;"
-    },
-    {
-      "algorithm": "bubble_sort",
-      "display_name": "冒泡排序",
       "phase": "inner_loop",
       "desc": "内层循环 j=1，比较相邻元素",
       "code_line": 5,
@@ -473,14 +465,6 @@
     {
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
-      "phase": "swap",
-      "desc": "交换 arr[3]↔arr[4]，较大的元素向右移动",
-      "code_line": 9,
-      "src": "arr[j + 1] = temp;"
-    },
-    {
-      "algorithm": "bubble_sort",
-      "display_name": "冒泡排序",
       "phase": "inner_loop",
       "desc": "内层循环 j=3，比较相邻元素",
       "code_line": 5,
@@ -497,6 +481,14 @@
     {
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
+      "phase": "swap",
+      "desc": "交换 arr[3]↔arr[4]，较大的元素向右移动",
+      "code_line": 8,
+      "src": "arr[j] = arr[j + 1];"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
       "phase": "outer_loop",
       "desc": "第 2 趟：将第 2 大的元素放到正确位置",
       "code_line": 4,
@@ -509,6 +501,14 @@
       "desc": "比较 arr[1] 与 arr[2]",
       "code_line": 6,
       "src": "if (arr[j] \u003e arr[j + 1]) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "swap",
+      "desc": "交换 arr[1]↔arr[2]，较大的元素向右移动",
+      "code_line": 8,
+      "src": "arr[j] = arr[j + 1];"
     },
     {
       "algorithm": "bubble_sort",
@@ -604,7 +604,7 @@
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
       "phase": "compare",
-      "desc": "比较 arr[0] 与 arr[1]",
+      "desc": "比较 arr[5] 与 arr[5]",
       "code_line": 16,
       "src": "if (bucket[i][k] \u003e bucket[i][k + 1]) {"
     },
@@ -612,7 +612,7 @@
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
       "phase": "swap",
-      "desc": "交换 arr[0]↔arr[1]，较大的元素向右移动",
+      "desc": "交换 bucket[5]↔bucket[5]，较大的元素向右移动",
       "code_line": 18,
       "src": "bucket[i][k] = bucket[i][k + 1];"
     },
@@ -631,14 +631,6 @@
       "desc": "第 10 趟：将第 ? 大的元素放到正确位置",
       "code_line": 13,
       "src": "for (int i = 0; i \u003c 10; i++) {"
-    },
-    {
-      "algorithm": "bubble_sort",
-      "display_name": "冒泡排序",
-      "phase": "swap",
-      "desc": "交换 arr[1]↔arr[2]，较大的元素向右移动",
-      "code_line": 27,
-      "src": "arr[idx++] = bucket[i][j];"
     }
   ],
   "computeNextVal": [
@@ -677,8 +669,8 @@
     {
       "algorithm": "string_match_kmp",
       "display_name": "KMP 模式匹配",
-      "phase": "build_next",
-      "desc": "构建 next 数组，next[1]=-1",
+      "phase": "skip",
+      "desc": "k 回溯到 next 值 -1",
       "code_line": 14,
       "src": "k = next[k];"
     },
@@ -717,16 +709,16 @@
     {
       "algorithm": "string_match_kmp",
       "display_name": "KMP 模式匹配",
-      "phase": "build_next",
-      "desc": "构建 next 数组，next[5]=1",
+      "phase": "skip",
+      "desc": "k 回溯到 next 值 1",
       "code_line": 14,
       "src": "k = next[k];"
     },
     {
       "algorithm": "string_match_kmp",
       "display_name": "KMP 模式匹配",
-      "phase": "build_next",
-      "desc": "构建 next 数组，next[5]=0",
+      "phase": "skip",
+      "desc": "k 回溯到 next 值 0",
       "code_line": 14,
       "src": "k = next[k];"
     },
@@ -737,14 +729,6 @@
       "desc": "构建 next 数组，next[6]=1",
       "code_line": 12,
       "src": "next[j] = k;"
-    },
-    {
-      "algorithm": "string_match_kmp",
-      "display_name": "KMP 模式匹配",
-      "phase": "build_next",
-      "desc": "构建 next 数组，next[6]=0",
-      "code_line": 14,
-      "src": "k = next[k];"
     },
     {
       "algorithm": "string_match_kmp",
@@ -769,6 +753,14 @@
       "desc": "构建 nextval 数组，nextval[0]=-1",
       "code_line": 23,
       "src": "nextval[0] = -1;"
+    },
+    {
+      "algorithm": "string_match_kmp",
+      "display_name": "KMP 模式匹配",
+      "phase": "build_next",
+      "desc": "构建 next 数组，next[1]=-1",
+      "code_line": 25,
+      "src": "if (T[j] == T[next[j]])"
     },
     {
       "algorithm": "string_match_kmp",
@@ -1857,6 +1849,72 @@
       "src": "arr[j + 1] = key;"
     }
   ],
+  "isPrime": [
+    {
+      "algorithm": "is_prime",
+      "display_name": "素数判断",
+      "phase": "check_small",
+      "desc": "排除小于等于 1 的数",
+      "code_line": 4,
+      "src": "if (n \u003c= 1) return 0;"
+    },
+    {
+      "algorithm": "is_prime",
+      "display_name": "素数判断",
+      "phase": "test_divisor",
+      "desc": "试除 i=2，检查 17 % 2 == 0",
+      "code_line": 5,
+      "src": "for (int i = 2; i * i \u003c= n; i++) {"
+    },
+    {
+      "algorithm": "is_prime",
+      "display_name": "素数判断",
+      "phase": "found_factor",
+      "desc": "发现因子 3，17 不是素数",
+      "code_line": 6,
+      "src": "if (n % i == 0) return 0;"
+    },
+    {
+      "algorithm": "is_prime",
+      "display_name": "素数判断",
+      "phase": "test_divisor",
+      "desc": "试除 i=3，检查 17 % 3 == 0",
+      "code_line": 5,
+      "src": "for (int i = 2; i * i \u003c= n; i++) {"
+    },
+    {
+      "algorithm": "is_prime",
+      "display_name": "素数判断",
+      "phase": "found_factor",
+      "desc": "发现因子 4，17 不是素数",
+      "code_line": 6,
+      "src": "if (n % i == 0) return 0;"
+    },
+    {
+      "algorithm": "is_prime",
+      "display_name": "素数判断",
+      "phase": "test_divisor",
+      "desc": "试除 i=4，检查 17 % 4 == 0",
+      "code_line": 5,
+      "src": "for (int i = 2; i * i \u003c= n; i++) {"
+    },
+    {
+      "algorithm": "is_prime",
+      "display_name": "素数判断",
+      "phase": "found_factor",
+      "desc": "发现因子 5，17 不是素数",
+      "code_line": 6,
+      "src": "if (n % i == 0) return 0;"
+    },
+    {
+      "algorithm": "is_prime",
+      "display_name": "素数判断",
+      "phase": "finish",
+      "desc": "17 是素数",
+      "code_line": 8,
+      "src": "return 1;"
+    }
+  ],
   "kruskalMST": [
     {
       "algorithm": "kruskal_mst",
@@ -2555,8 +2613,8 @@
     {
       "algorithm": "string_match_kmp",
       "display_name": "KMP 模式匹配",
-      "phase": "build_next",
-      "desc": "构建 next 数组，next[1]=-1",
+      "phase": "skip",
+      "desc": "k 回溯到 next 值 -1",
       "code_line": 14,
       "src": "k = next[k];"
     },
@@ -2567,14 +2625,6 @@
       "desc": "构建 next 数组，next[2]=0",
       "code_line": 12,
       "src": "next[j] = k;"
-    },
-    {
-      "algorithm": "string_match_kmp",
-      "display_name": "KMP 模式匹配",
-      "phase": "build_next",
-      "desc": "构建 next 数组，next[2]=-1",
-      "code_line": 14,
-      "src": "k = next[k];"
     },
     {
       "algorithm": "string_match_kmp",
@@ -2599,6 +2649,22 @@
       "desc": "比较主串与模式串字符",
       "code_line": 26,
       "src": "if (j == -1 || S[i] == T[j]) {"
+    },
+    {
+      "algorithm": "string_match_kmp",
+      "display_name": "KMP 模式匹配",
+      "phase": "skip",
+      "desc": "j 回溯到 next 值 0",
+      "code_line": 30,
+      "src": "j = next[j];"
+    },
+    {
+      "algorithm": "string_match_kmp",
+      "display_name": "KMP 模式匹配",
+      "phase": "skip",
+      "desc": "j 回溯到 next 值 1",
+      "code_line": 30,
+      "src": "j = next[j];"
     }
   ],
   "topologicalSort": [

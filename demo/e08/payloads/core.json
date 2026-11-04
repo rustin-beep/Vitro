@@ -5492,7 +5492,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -5573,7 +5573,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -5645,7 +5645,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -5717,7 +5717,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -5789,7 +5789,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -5866,7 +5866,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -5938,7 +5938,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6010,7 +6010,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6082,7 +6082,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6154,7 +6154,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6226,7 +6226,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6298,7 +6298,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6370,7 +6370,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6442,7 +6442,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6519,7 +6519,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6591,7 +6591,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6663,7 +6663,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6735,7 +6735,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6807,7 +6807,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6879,7 +6879,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -6951,7 +6951,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7023,7 +7023,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7095,7 +7095,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7167,13 +7167,13 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": {
         "algorithm_name": "bubble_sort",
         "display_name": "冒泡排序",
         "phase": "swap",
-        "description": "交换 arr[0]↔arr[1]，较大的元素向右移动"
+        "description": "交换 a[0]↔a[1]，较大的元素向右移动"
       },
       "local_vars": [
         {
@@ -7244,7 +7244,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7316,7 +7316,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7388,7 +7388,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7460,7 +7460,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7532,7 +7532,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7609,7 +7609,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7681,7 +7681,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7753,7 +7753,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7825,7 +7825,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7897,7 +7897,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -7969,7 +7969,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8041,7 +8041,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8113,7 +8113,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8190,7 +8190,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8262,7 +8262,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8334,7 +8334,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8406,7 +8406,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8478,7 +8478,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8555,7 +8555,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8627,7 +8627,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8699,7 +8699,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8771,7 +8771,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8848,7 +8848,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8920,7 +8920,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -8992,7 +8992,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -9069,7 +9069,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -9146,7 +9146,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -9218,7 +9218,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -9290,7 +9290,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -9367,7 +9367,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -9439,7 +9439,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -9511,14 +9511,9 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
-      "algorithm_step": {
-        "algorithm_name": "bubble_sort",
-        "display_name": "冒泡排序",
-        "phase": "swap",
-        "description": "交换 arr[1]↔arr[2]，较大的元素向右移动"
-      },
+      "algorithm_step": null,
       "local_vars": [
         {
           "name": "a",
@@ -12062,7 +12057,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12143,7 +12138,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12215,7 +12210,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12287,7 +12282,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12359,7 +12354,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12436,7 +12431,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12508,7 +12503,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12580,7 +12575,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12652,7 +12647,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12724,7 +12719,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12796,7 +12791,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12868,7 +12863,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -12940,7 +12935,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13012,7 +13007,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13089,7 +13084,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13161,7 +13156,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13233,7 +13228,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13305,7 +13300,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13377,7 +13372,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13449,7 +13444,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13521,7 +13516,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13593,7 +13588,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13665,7 +13660,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13737,13 +13732,13 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": {
         "algorithm_name": "bubble_sort",
         "display_name": "冒泡排序",
         "phase": "swap",
-        "description": "交换 arr[1]↔arr[2]，较大的元素向右移动"
+        "description": "交换 a[1]↔a[2]，较大的元素向右移动"
       },
       "local_vars": [
         {
@@ -13814,7 +13809,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13886,7 +13881,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -13958,7 +13953,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14030,7 +14025,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14102,7 +14097,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14179,7 +14174,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14251,7 +14246,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14323,7 +14318,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14395,7 +14390,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14467,7 +14462,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14539,7 +14534,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14611,7 +14606,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14683,7 +14678,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14760,7 +14755,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14832,7 +14827,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14904,7 +14899,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -14976,7 +14971,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15048,7 +15043,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15125,7 +15120,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15197,7 +15192,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15269,7 +15264,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15341,7 +15336,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15418,7 +15413,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15490,7 +15485,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15562,7 +15557,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15639,7 +15634,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15716,7 +15711,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15788,7 +15783,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15860,7 +15855,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -15937,7 +15932,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -16009,7 +16004,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -16081,14 +16076,9 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
-      "algorithm_step": {
-        "algorithm_name": "bubble_sort",
-        "display_name": "冒泡排序",
-        "phase": "swap",
-        "description": "交换 arr[2]↔arr[3]，较大的元素向右移动"
-      },
+      "algorithm_step": null,
       "local_vars": [
         {
           "name": "a",
@@ -18632,7 +18622,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -18713,7 +18703,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -18785,7 +18775,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -18857,7 +18847,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -18929,7 +18919,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19006,7 +18996,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19078,7 +19068,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19150,7 +19140,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19222,7 +19212,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19294,7 +19284,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19366,7 +19356,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19438,7 +19428,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19510,7 +19500,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19582,7 +19572,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19659,7 +19649,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19731,7 +19721,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19803,7 +19793,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19875,7 +19865,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -19947,7 +19937,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20019,7 +20009,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20091,7 +20081,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20163,7 +20153,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20235,7 +20225,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20307,13 +20297,13 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": {
         "algorithm_name": "bubble_sort",
         "display_name": "冒泡排序",
         "phase": "swap",
-        "description": "交换 arr[2]↔arr[3]，较大的元素向右移动"
+        "description": "交换 a[2]↔a[3]，较大的元素向右移动"
       },
       "local_vars": [
         {
@@ -20384,7 +20374,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20456,7 +20446,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20528,7 +20518,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20600,7 +20590,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20672,7 +20662,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20749,7 +20739,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20821,7 +20811,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20893,7 +20883,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -20965,7 +20955,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21037,7 +21027,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21109,7 +21099,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21181,7 +21171,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21253,7 +21243,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21330,7 +21320,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21402,7 +21392,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21474,7 +21464,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21546,7 +21536,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21618,7 +21608,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21695,7 +21685,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21767,7 +21757,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21839,7 +21829,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21911,7 +21901,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -21988,7 +21978,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -22060,7 +22050,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -22132,7 +22122,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -22209,7 +22199,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -22286,7 +22276,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -22358,7 +22348,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -22430,7 +22420,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -22507,7 +22497,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -22579,7 +22569,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -22651,14 +22641,9 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
-      "algorithm_step": {
-        "algorithm_name": "bubble_sort",
-        "display_name": "冒泡排序",
-        "phase": "swap",
-        "description": "交换 arr[3]↔arr[4]，较大的元素向右移动"
-      },
+      "algorithm_step": null,
       "local_vars": [
         {
           "name": "a",
@@ -25202,7 +25187,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25283,7 +25268,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25355,7 +25340,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25427,7 +25412,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25499,7 +25484,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25576,7 +25561,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25648,7 +25633,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25720,7 +25705,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25792,7 +25777,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25864,7 +25849,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -25936,7 +25921,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26008,7 +25993,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26080,7 +26065,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26152,7 +26137,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26229,7 +26214,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26301,7 +26286,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26373,7 +26358,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26445,7 +26430,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26517,7 +26502,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26589,7 +26574,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26661,7 +26646,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26733,7 +26718,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26805,7 +26790,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -26877,13 +26862,13 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": {
         "algorithm_name": "bubble_sort",
         "display_name": "冒泡排序",
         "phase": "swap",
-        "description": "交换 arr[3]↔arr[4]，较大的元素向右移动"
+        "description": "交换 a[3]↔a[4]，较大的元素向右移动"
       },
       "local_vars": [
         {
@@ -26954,7 +26939,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27026,7 +27011,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27098,7 +27083,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27170,7 +27155,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27242,7 +27227,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27319,7 +27304,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27391,7 +27376,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27463,7 +27448,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27535,7 +27520,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27607,7 +27592,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27679,7 +27664,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27751,7 +27736,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27823,7 +27808,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27900,7 +27885,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -27972,7 +27957,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28044,7 +28029,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28116,7 +28101,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28188,7 +28173,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28265,7 +28250,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28337,7 +28322,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28409,7 +28394,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28481,7 +28466,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28558,7 +28543,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28630,7 +28615,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28702,7 +28687,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28779,7 +28764,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28856,7 +28841,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -28928,7 +28913,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29000,7 +28985,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29077,7 +29062,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29149,7 +29134,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29221,7 +29206,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29293,7 +29278,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29370,7 +29355,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29442,7 +29427,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29514,7 +29499,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29586,7 +29571,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29663,7 +29648,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29735,7 +29720,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29807,7 +29792,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29884,7 +29869,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -29961,7 +29946,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -30033,7 +30018,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -30105,7 +30090,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -30177,7 +30162,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[4]↔arr[5]",
+      "semantic_label": "交换 a[4]↔a[5]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -33613,7 +33598,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -33694,7 +33679,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -33766,7 +33751,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -33838,7 +33823,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -33910,7 +33895,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -33987,7 +33972,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34059,7 +34044,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34131,7 +34116,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34203,7 +34188,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34275,7 +34260,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34347,7 +34332,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34419,7 +34404,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34491,7 +34476,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34563,7 +34548,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34640,7 +34625,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34712,7 +34697,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34784,7 +34769,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34856,7 +34841,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -34928,7 +34913,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35000,7 +34985,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35072,7 +35057,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35144,7 +35129,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35216,7 +35201,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35288,13 +35273,13 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": {
         "algorithm_name": "bubble_sort",
         "display_name": "冒泡排序",
         "phase": "swap",
-        "description": "交换 arr[0]↔arr[1]，较大的元素向右移动"
+        "description": "交换 a[0]↔a[1]，较大的元素向右移动"
       },
       "local_vars": [
         {
@@ -35365,7 +35350,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35437,7 +35422,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35509,7 +35494,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35581,7 +35566,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35653,7 +35638,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35730,7 +35715,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35802,7 +35787,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35874,7 +35859,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -35946,7 +35931,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36018,7 +36003,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36090,7 +36075,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36162,7 +36147,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36234,7 +36219,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36311,7 +36296,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36383,7 +36368,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36455,7 +36440,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36527,7 +36512,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36599,7 +36584,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36676,7 +36661,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36748,7 +36733,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36820,7 +36805,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[0]↔arr[1]",
+      "semantic_label": "交换 a[0]↔a[1]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36892,7 +36877,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -36969,7 +36954,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -37041,7 +37026,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -37113,7 +37098,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -37190,7 +37175,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -37267,7 +37252,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -37339,7 +37324,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -37411,7 +37396,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -37488,7 +37473,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -37560,7 +37545,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -37632,14 +37617,9 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
-      "algorithm_step": {
-        "algorithm_name": "bubble_sort",
-        "display_name": "冒泡排序",
-        "phase": "swap",
-        "description": "交换 arr[1]↔arr[2]，较大的元素向右移动"
-      },
+      "algorithm_step": null,
       "local_vars": [
         {
           "name": "a",
@@ -42781,7 +42761,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -42862,7 +42842,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -42934,7 +42914,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43006,7 +42986,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43078,7 +43058,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43155,7 +43135,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43227,7 +43207,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43299,7 +43279,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43371,7 +43351,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43443,7 +43423,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43515,7 +43495,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43587,7 +43567,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43659,7 +43639,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43731,7 +43711,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43808,7 +43788,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43880,7 +43860,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -43952,7 +43932,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44024,7 +44004,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44096,7 +44076,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44168,7 +44148,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44240,7 +44220,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44312,7 +44292,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44384,7 +44364,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44456,13 +44436,13 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": {
         "algorithm_name": "bubble_sort",
         "display_name": "冒泡排序",
         "phase": "swap",
-        "description": "交换 arr[2]↔arr[3]，较大的元素向右移动"
+        "description": "交换 a[2]↔a[3]，较大的元素向右移动"
       },
       "local_vars": [
         {
@@ -44533,7 +44513,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44605,7 +44585,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44677,7 +44657,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44749,7 +44729,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44821,7 +44801,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44898,7 +44878,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -44970,7 +44950,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45042,7 +45022,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45114,7 +45094,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45186,7 +45166,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45258,7 +45238,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45330,7 +45310,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45402,7 +45382,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45479,7 +45459,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45551,7 +45531,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45623,7 +45603,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45695,7 +45675,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45767,7 +45747,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45844,7 +45824,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45916,7 +45896,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -45988,7 +45968,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46060,7 +46040,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46137,7 +46117,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46209,7 +46189,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46281,7 +46261,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46358,7 +46338,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46435,7 +46415,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46507,7 +46487,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46579,7 +46559,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46656,7 +46636,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46728,7 +46708,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46800,7 +46780,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46872,7 +46852,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -46949,7 +46929,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47021,7 +47001,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47093,7 +47073,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47165,7 +47145,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47242,7 +47222,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47314,7 +47294,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47386,7 +47366,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47463,7 +47443,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47540,7 +47520,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47612,7 +47592,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47684,7 +47664,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -47756,7 +47736,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[3]↔arr[4]",
+      "semantic_label": "交换 a[3]↔a[4]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -53790,7 +53770,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -53871,7 +53851,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -53943,7 +53923,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54015,7 +53995,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54087,7 +54067,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54164,7 +54144,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54236,7 +54216,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54308,7 +54288,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54380,7 +54360,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54452,7 +54432,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54524,7 +54504,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54596,7 +54576,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54668,7 +54648,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54740,7 +54720,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54817,7 +54797,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54889,7 +54869,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -54961,7 +54941,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55033,7 +55013,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55105,7 +55085,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55177,7 +55157,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55249,7 +55229,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55321,7 +55301,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55393,7 +55373,7 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55465,13 +55445,13 @@
       "code_line": 18,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": {
         "algorithm_name": "bubble_sort",
         "display_name": "冒泡排序",
         "phase": "swap",
-        "description": "交换 arr[1]↔arr[2]，较大的元素向右移动"
+        "description": "交换 a[1]↔a[2]，较大的元素向右移动"
       },
       "local_vars": [
         {
@@ -55542,7 +55522,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55614,7 +55594,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55686,7 +55666,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55758,7 +55738,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55830,7 +55810,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55907,7 +55887,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -55979,7 +55959,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56051,7 +56031,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56123,7 +56103,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56195,7 +56175,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56267,7 +56247,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56339,7 +56319,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56411,7 +56391,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56488,7 +56468,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56560,7 +56540,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56632,7 +56612,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56704,7 +56684,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56776,7 +56756,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56853,7 +56833,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56925,7 +56905,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -56997,7 +56977,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[1]↔arr[2]",
+      "semantic_label": "交换 a[1]↔a[2]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57069,7 +57049,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57146,7 +57126,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57218,7 +57198,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57290,7 +57270,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57367,7 +57347,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57444,7 +57424,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57516,7 +57496,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57588,7 +57568,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57665,7 +57645,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57737,7 +57717,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57809,7 +57789,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57881,7 +57861,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -57958,7 +57938,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58030,7 +58010,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58102,7 +58082,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58174,7 +58154,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58251,7 +58231,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58323,7 +58303,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58395,7 +58375,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58472,7 +58452,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58549,7 +58529,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58621,7 +58601,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58693,7 +58673,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -58765,7 +58745,7 @@
       "code_line": 19,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "交换 arr[2]↔arr[3]",
+      "semantic_label": "交换 a[2]↔a[3]",
       "semantic_label_id": "swap",
       "algorithm_step": null,
       "local_vars": [
@@ -63122,7 +63102,12 @@
       "func_name": "main",
       "semantic_label": "循环 n=5, i=4, j=1",
       "semantic_label_id": "loop",
-      "algorithm_step": null,
+      "algorithm_step": {
+        "algorithm_name": "bubble_sort",
+        "display_name": "冒泡排序",
+        "phase": "compare",
+        "description": "比较 arr[1] 与 arr[2]"
+      },
       "local_vars": [
         {
           "name": "a",
@@ -75285,6 +75270,20 @@
         "只写了函数原型，忘记补函数体",
         "函数体在另一个文件里，该文件没有加入编译",
         "定义处的函数名拼写与声明不一致，被当成了另一个函数"
+      ]
+    },
+    {
+      "code": 3090,
+      "code_str": "W3090",
+      "lang": "c",
+      "category": "语义",
+      "icon": "operator",
+      "title": "常量表达式整数溢出（已按回绕折叠）",
+      "explanation": "初始化器里的整数运算结果超出了 int 能表示的范围。C 标准里这是未定义行为——本编译器按二补码回绕折叠出值（与 clang 的静态折叠一致），并给出这条警告提醒你结果已经不直观了。注意：同样的运算如果写在函数体里执行，会触发「整数溢出」运行时错误（教学防护口径）——两个上下文的处理方式不同，但都说明这个表达式的结果不可依赖。",
+      "common_causes": [
+        "两个很大的数相加/相乘（如 2147483647 + 1、1000000 * 100000）",
+        "对 INT_MIN 取负或做减法导致下溢",
+        "本想用 long long 承载结果，但操作数仍是 int（int 运算先在 int 域内溢出了）——把任一操作数写成 long long 字面量（如 2147483647LL + 1）"
       ]
     }
   ],

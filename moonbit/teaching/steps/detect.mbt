@@ -163,14 +163,15 @@ pub fn detect_sorting(
       ),
     )
   }
-  // 快速排序
+  // 快速排序（#436 翻面 M33b-A3：结构分支去 has_nested_loops——三特征
+  // **同函数**共存不可满足：教科书形态 A（递归主函数调 partition、嵌套
+  // 循环在 partition 内）无循环；形态 B（内联分区）无 partition 名。原
+  // AND 链对两形态双双漏检=死分支。`is_recursive && has_partition_pattern`
+  // 覆盖形态 A（调用名含 partition 的分区排序语境）；形态 B（内联无
+  // partition 名）维持漏检——由命名规范兜底，与 graph 族 U1#1 P0-2
+  // 收紧后的决策同型。）
   let quick_name = name_lower.contains("quick")
-  if quick_name ||
-    (
-      features.is_recursive &&
-      features.has_partition_pattern &&
-      features.has_nested_loops
-    ) {
+  if quick_name || (features.is_recursive && features.has_partition_pattern) {
     matches.push(
       build_match(
         "quick_sort",
@@ -184,12 +185,18 @@ pub fn detect_sorting(
   }
   // 归并排序（U1#1 P0-2：merge 整词 + sort 语境——mergeSortedLists
   // 的链表归并函数不误判）
+  // #436 翻面（M33b-A4）：结构分支补 sort 语境门槛 has_single_loop——
+  // 真归并排序的 merge 阶段必有线性扫描循环；纯递归链表归并
+  //（mergeTwoLists：自递归调用名含 merge 置位 has_merge_pattern，
+  // call_pattern_flags 是 contains 包含性）无循环，被误判 merge_sort
+  //（recursive_split 帧照投）。
   let merge_name = has_word(func_name, "merge") && has_word(func_name, "sort")
   if merge_name ||
     (
       features.is_recursive &&
       features.has_merge_pattern &&
-      !features.has_partition_pattern
+      !features.has_partition_pattern &&
+      features.has_single_loop
     ) {
     matches.push(
       build_match(

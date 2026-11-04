@@ -1614,9 +1614,12 @@ test "issue325_swap_phase_structural_naming_free" {
     caller_is_main: false,
     lookahead: "",
   }
-  // 命中面：主行/回写行 × 暂存名 t/tmp/temp（命名无关）
+  // 命中面：主行/回写行 × 暂存名 t/tmp/temp（命名无关）。
+  // #436（M34b-A7）语义翻面：`arr[min_idx] = arr[i];` 在帧 vars 无
+  // min_idx 值时**不产步**（旧形态硬拼 j/j+1 数值编造）——移入下方
+  // 有据/无据分野锚。
   let swap_lines = [
-    "a[j] = a[j + 1];", "a[j + 1] = t;", "a[j + 1] = tmp;", "a[j + 1] = temp;", "arr[min_idx] = arr[i];",
+    "a[j] = a[j + 1];", "a[j + 1] = t;", "a[j + 1] = tmp;", "a[j + 1] = temp;",
   ]
   for line in swap_lines {
     let r = infer_algorithm_step(9, vars, "bubbleSort", line, Some(alg), mk_env)
@@ -1625,6 +1628,41 @@ test "issue325_swap_phase_structural_naming_free" {
     }
     assert_eq(s.phase, "swap", msg="左侧下标写——\{line}")
   }
+  // #436 有据/无据分野（M34b-A7）：下标可求值才产步——min_idx 在帧
+  // vars 缺值 → None（旧形态产「交换 arr[2]↔arr[3]」硬拼 j/j+1）；
+  // 有值 → 真值对 (min_idx_val, i_val)。
+  let r_no_val = infer_algorithm_step(
+    9,
+    vars,
+    "bubbleSort",
+    "arr[min_idx] = arr[i];",
+    Some(alg),
+    mk_env,
+  )
+  assert_true(
+    r_no_val is None,
+    msg="min_idx 帧缺值：无据不产步（不得硬拼 j/j+1）",
+  )
+  let vars_full = [
+    { name: "i", value: "0", },
+    { name: "j", value: "2", },
+    { name: "n", value: "5", },
+    { name: "min_idx", value: "3", },
+  ]
+  let r_val = infer_algorithm_step(
+    9,
+    vars_full,
+    "bubbleSort",
+    "arr[min_idx] = arr[i];",
+    Some(alg),
+    mk_env,
+  )
+  guard r_val is Some(sv) else { fail("min_idx 有值：主行必产步") }
+  assert_eq(
+    sv.description,
+    "交换 arr[3]↔arr[0]，较大的元素向右移动",
+    msg="下标对=行内求值真值 (min_idx=3, i=0)",
+  )
   // 反例矩阵（PR #347 审阅 P1 实测的 v1 误报面 + 天然排除面）
   let miss_lines = [
     "int t = a[j];", // 暂存读（v2 语义：单向读无交换动作）
@@ -1673,5 +1711,57 @@ test "issue325_swap_phase_structural_naming_free" {
   assert_true(
     !(r_shell_neg is Some(sn) && sn.phase == "insert"),
     msg="shell：纯赋值读 x = arr[i] 不是声明暂存",
+  )
+}
+
+///|
+/// 幽灵帧守卫真值锚（PR #463 审阅 P3-1——回写行帧串末帧的跨迭代幽灵）：
+/// 回写行 `arr[j + 1] = temp;` 的行入口快照 j=1、帧 j=2（for 增量已推进）
+/// ⇒ 末帧行归属是「块尾跳转」而非回写语句本身——产 swap 帧=给未发生的
+/// 交换报文案。行级 forbid 锚不可用（发布流中回写行零帧——安慰性锚防呆
+/// 红），守卫的牙证锚定在 infer 层：推进态帧必须 None；无推进（行入口
+/// j==帧 j——主行/真回写执行态）不受影响仍产步。
+test "issue436_swap_ghost_frame_guard" {
+  let alg = mk_alg("bubble_sort", "冒泡排序")
+  let line = "arr[j + 1] = temp;"
+  // 推进态（幽灵帧形态：入口 j=1，帧 j=2）
+  let ghost_env : InferEnv = {
+    prev_vars: [{ name: "j", value: "1", }, { name: "n", value: "5", }],
+    at_callee_entry: false,
+    caller_is_main: false,
+    lookahead: "",
+  }
+  let r_ghost = infer_algorithm_step(
+    10,
+    [{ name: "j", value: "2", }, { name: "n", value: "5", }],
+    "bubbleSort",
+    line,
+    Some(alg),
+    ghost_env,
+  )
+  assert_true(
+    r_ghost is None,
+    msg="跨迭代推进态（入口 j=1 帧 j=2）不得产 swap 帧（幽灵交换）",
+  )
+  // 无推进态（真回写执行态：入口==帧）——相邻回写行产步 (j, j+1)
+  let live_env : InferEnv = {
+    prev_vars: [{ name: "j", value: "1", }, { name: "n", value: "5", }],
+    at_callee_entry: false,
+    caller_is_main: false,
+    lookahead: "",
+  }
+  let r_live = infer_algorithm_step(
+    10,
+    [{ name: "j", value: "1", }, { name: "n", value: "5", }],
+    "bubbleSort",
+    line,
+    Some(alg),
+    live_env,
+  )
+  guard r_live is Some(sl) else { fail("无推进态回写行必产 swap 步") }
+  assert_eq(
+    sl.description,
+    "交换 arr[1]↔arr[2]，较大的元素向右移动",
+    msg="相邻回写（j+1 偏移形态）对 = (j, j+1)",
   )
 }

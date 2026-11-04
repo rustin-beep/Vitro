@@ -505,6 +505,8 @@ vitro/engine/time_travel vitro/engine/source SourceLoc
 vitro/engine/time_travel vitro/engine/teaching/assets trap_messages
 vitro/engine/time_travel vitro/engine/teaching/steps is_swap_assign_line
 vitro/engine/time_travel vitro/engine/teaching/steps InferEnv
+vitro/engine/time_travel vitro/engine/teaching/steps VarMap
+vitro/engine/time_travel vitro/engine/teaching/steps swap_index_pair
 vitro/engine/time_travel vitro/engine/teaching/steps VarSnapshot
 vitro/engine/time_travel vitro/engine/teaching/steps infer_algorithm_step
 vitro/engine/time_travel vitro/engine/util render_template

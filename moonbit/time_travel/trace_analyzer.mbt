@@ -18,13 +18,18 @@ priv struct LoopInfo {
   lines : Array[Int32]
   mut has_le : Bool
   mut increment : Int32?
+  /// #436 翻面（M31-A1）：循环头 init 值（`for (int i = 0;` → 0）——
+  /// 初值的**权威源**（slice_variable_history lookback=20 帧截断会把
+  /// start_val 读成窗口首值 4，i 从 0 起的 OffByOne 被第二判据误读
+  /// WrongInit「建议将初始值改为 0」）。while 形态无 init → None。
+  mut init_val : Int32?
 }
 
 ///|
 fn LoopInfo::new() -> LoopInfo {
   // has_ge/start_val 已删（病 5，#47 2026-10-09——oracle utils.rs 同形死字段，
   // 照搬期注释登记后随死字段清理批摘除；bounds 判定消费的是局部 start_val）
-  { lines: [], has_le: false, increment: None, }
+  { lines: [], has_le: false, increment: None, init_val: None, }
 }
 
 ///|
@@ -175,6 +180,78 @@ fn take_digits(s : String) -> Int32? {
 
 ///|
 /// trap 行 ±6 行的循环构造扫描（utils.rs scan_loop_info 照搬）。
+
+///|
+/// for 头 init 解析（#436 翻面 M31-A1）：`for (int i = 0;` / `for (i=0;`
+/// → 0。只在循环头文本上调用（scan_loop_info 语境）——`i==0` 比较形态
+/// 的第二个 '=' 非数字自然解析失败；`i <= 5` 不含 `i=` 子串不误配。
+fn parse_loop_init(text : String, var_name : String) -> Int32? {
+  // 词边界扫描：var_name 前后均非标识符字符（`int i = 0` 不误配 int
+  // 内的 i）；名字后跳空白遇裸 =（非 ==）再取整数字面
+  let n = text.length()
+  let vn = var_name.length()
+  let is_idc = fn(c : Char) -> Bool {
+    (c >= 'a' && c <= 'z') ||
+    (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') ||
+    c == '_'
+  }
+  let mut k = 0
+  while k + vn <= n {
+    if k > 0 {
+      let pc = Char::from_int(text[k - 1].to_int())
+      if is_idc(pc) {
+        k = k + 1
+        continue
+      }
+    }
+    let mut hit = true
+    let mut si = 0
+    while si < vn {
+      if text[k + si] != var_name[si] {
+        hit = false
+        break
+      }
+      si = si + 1
+    }
+    if hit {
+      let after = k + vn
+      let bad_tail = after < n && is_idc(Char::from_int(text[after].to_int()))
+      if !bad_tail {
+        let mut m = after
+        while m < n && (text[m] == ' ' || text[m].to_int() == 9) {
+          m = m + 1
+        }
+        if m < n && text[m] == '=' && (m + 1 >= n || text[m + 1] != '=') {
+          let mut q = m + 1
+          // = 与数字间的空白（`i = 0` 形态）
+          while q < n && (text[q] == ' ' || text[q].to_int() == 9) {
+            q = q + 1
+          }
+          let mut sign : Int32 = 1
+          if q < n && text[q] == '-' {
+            sign = -1
+            q = q + 1
+          }
+          let mut acc : Int32 = 0
+          let mut got = false
+          while q < n && text[q] >= '0' && text[q] <= '9' {
+            acc = acc * 10 + (text[q].to_int() - '0'.to_int())
+            got = true
+            q = q + 1
+          }
+          if got {
+            return Some(sign * acc)
+          }
+        }
+      }
+    }
+    k = k + 1
+  }
+  None
+}
+
+///|
 fn scan_loop_info(
   get_line : (Int32) -> String,
   trap_line : Int32,
@@ -201,6 +278,11 @@ fn scan_loop_info(
       }
       if text.contains("<=") {
         info.has_le = true
+      }
+      // #436（M31-A1）：for 头 init 解析（首个命中行优先——多行循环头
+      // 形态 init 在首行）
+      if info.init_val is None && looks_like_loop {
+        info.init_val = parse_loop_init(text, var_name)
       }
     }
     if refers_var && !looks_like_loop && !looks_like_while {
@@ -482,7 +564,13 @@ fn infer_bounds_category(
   if hist_vals.length() < 2 {
     return UninitializedIndex
   }
-  let start_val = hist_vals[0]
+  // #436 翻面（M31-A1）：初值权威源=循环头 init（窗口截断时 hist_vals[0]
+  // 是截断伪值——i 从 0 起被读成 4 致 WrongInit 误命中）；无 for 头
+  //（while 形态）退回窗口首值（现状语义）。
+  let start_val = match loop_info.init_val {
+    Some(v) => v
+    None => hist_vals[0]
+  }
   let mut is_mono = true
   let mut max_step = 0
   for i in 1..<hist_vals.length() {

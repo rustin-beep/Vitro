@@ -38,6 +38,8 @@ pub fn infer_algorithm_step(Int32, Array[VarSnapshot], String, String, @protocol
 
 pub fn is_swap_assign_line(String) -> Bool
 
+pub fn swap_index_pair(String, Array[VarSnapshot], VarMap, String, Int32, allow_fallback? : Bool) -> (String, Int32, Int32)?
+
 // Errors
 
 // Types and methods

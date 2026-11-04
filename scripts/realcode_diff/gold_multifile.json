@@ -1,9 +1,9 @@
 {
   "_meta": {
-    "as_of": "2026-10-24",
+    "as_of": "2026-11-04",
     "buckets": {
-      "clang_red": 0,
       "both_green": 36,
+      "clang_red": 0,
       "vitro_red": 0
     },
     "gcc_buckets": {
@@ -12,11 +12,11 @@
       "divergence": 0,
       "rescued": 0
     },
-    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,零源码文本。RC-MF-UNIT 69→0 errs：A 线 #221 __FILE__ 修复良性重冻（2026-10-24 CI 对拍接线批）。 RC-MF-STATE W3053 3→1：#285 螺旋 const 修复消两处误报，良性重冻（2026-10-24 批四）。",
+    "note": "金样本签名清单——零源码文本。RC-MF-UNIT 69→0(#221 修复,2026-10-24);RC-MF-STATE W3053 3→1(#285,2026-10-24 批四);2026-11-04 #459 重冻(W3053 char 域豁免,CRYPTO 1/SERIAL 1 消失,零连坐)。",
     "repo": "multifile-llm-20261021",
-    "total": 36,
+    "source_commit": "local-20261021",
     "source_fork": "in-repo:scripts/realcode_diff/corpus/multifile",
-    "source_commit": "local-20261021 (tmp/multifile_corpus{,2,3}_20261021)"
+    "total": 36
   },
   "files": {
     "RC-MF-ARGS/": {
@@ -92,10 +92,10 @@
       "clang_ok": true,
       "gcc_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 7,
+      "vitro_warns": 6,
       "codes": {
         "H3057": 4,
-        "W3053": 3
+        "W3053": 2
       },
       "layer": "ok",
       "run": ""
@@ -307,10 +307,10 @@
       "clang_ok": true,
       "gcc_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 21,
+      "vitro_warns": 20,
       "codes": {
         "H3057": 10,
-        "W3053": 11
+        "W3053": 10
       },
       "layer": "ok",
       "run": ""

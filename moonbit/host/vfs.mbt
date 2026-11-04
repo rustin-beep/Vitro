@@ -102,7 +102,15 @@ fn logical_to_physical(data : Array[Byte], logical_pos : Int32) -> Int32 {
       physical = physical + 1
     }
   }
-  physical
+  // B10（#434 / M23 A3）：逻辑位超出文件尾不钳位——剩余逻辑位按 1:1
+  // 展开为物理偏移（过尾 fseek 合法；读时自然 0 读+EOF，写时过尾留 0 洞
+  // ——C 语义）。修前 data 耗尽即返回物理末尾（文本臂 fseek(SEEK_SET,
+  // 过尾) 被钳，ftell=6/写落 @6；二进制臂修前即正确）。
+  if logical < logical_pos {
+    physical + (logical_pos - logical)
+  } else {
+    physical
+  }
 }
 
 ///|
@@ -437,12 +445,16 @@ pub fn VirtualFileSystem::fread(
     }
     desc.cursor = desc.cursor + actual
   }
-  if actual == 0 {
+  // B10（#434 / M23 A1）：EOF 仅在**尝试读过尾**后置位（C11
+  // §7.21.10.2）——判据 = 请求量 > 实得量（to_read > actual：短读/过读
+  // 都发生过读尝试，A2 F7 短读形态 clang=1；恰满 actual==to_read 不置，
+  // 修前尾部 `cursor >= size ⇒ eof=true` 把恰满提前一圈置位，教学经典
+  // while(!feof) 反模式少跑一圈——真机 loops=4 vs 修前 3）。
+  if actual.to_uint64() < to_read {
     desc.eof = true
-    return 0
   }
-  if desc.cursor >= meta.size {
-    desc.eof = true
+  if actual == 0 {
+    return 0
   }
   actual / size
 }
@@ -563,8 +575,18 @@ pub fn VirtualFileSystem::fgets(
   buf : UInt32,
   n : Int32,
 ) -> UInt32 {
-  if n == 0 {
+  // B10（#434 / M23 A2）：n 边界族——C11 §7.21.7.2「最多读 n-1 字符 +
+  // NUL」：n=1 → 读 0 字符、写 NUL、返回 buf（不置 eof、游标不动）；修前
+  // n=1 落入 read_count==0 分支误返 NULL 且误置 eof。n<=0（UB 域）按
+  // glibc 口径零副作用返 NULL（修前负 n 误置 eof）。
+  if n <= 0 {
     return 0U
+  }
+  if n == 1 {
+    return match mem.write_bytes(map, buf, b"\x00") {
+      Ok(_) => buf
+      Err(_) => 0U
+    }
   }
   let desc = match self.descriptors.get(fd) {
     Some(d) => d
@@ -606,6 +628,9 @@ pub fn VirtualFileSystem::fgets(
     }
   }
   if read_count == 0 {
+    // 过读（cursor 已在尾、fgets 语义内含尝试读过尾）→ 置 EOF 返 NULL；
+    // 恰满（停于 \n 或读满 n-1 且未过尾）不置——B10（#434 / M23 A1），
+    // 修前尾部 `cursor >= size ⇒ eof=true` 提前一圈。
     desc.eof = true
     return 0U
   }
@@ -613,9 +638,6 @@ pub fn VirtualFileSystem::fgets(
   match mem.write_bytes(map, buf, Bytes::from_array(tmp)) {
     Ok(_) => ()
     Err(_) => return 0U
-  }
-  if desc.cursor >= meta.size {
-    desc.eof = true
   }
   buf
 }
@@ -685,11 +707,11 @@ pub fn VirtualFileSystem::write_direct(
   let data_to_write : Array[Byte] = []
   if desc.is_text_mode {
     for b in data {
-      if b == b'
-' {
-        data_to_write.push(b'\x0d')
-        data_to_write.push(b'
-')
+      // M23 B1（#434 顺带）：源内嵌裸换行字节改规范写法 b'\n'——语义
+      // 等价（值同 0x0A），可读性/审计噪声修
+      if b == b'\n' {
+        data_to_write.push(b'\r')
+        data_to_write.push(b'\n')
       } else {
         data_to_write.push(b)
       }
@@ -731,6 +753,21 @@ fn vfs_append_bytes(
     let new_cap = @bytecode.align4(grow.reinterpret_as_uint()).reinterpret_as_int()
     if !vfs_realloc_file(map, mem, meta, new_cap) {
       return -1
+    }
+  }
+  // B10（#434 / M23 A3）：过尾写（fseek 过尾后 fwrite）显式补 0 洞
+  // [meta.size, desc.cursor)——C 语义文件洞读作 0；块若来自 free_list
+  // 复用则带旧数据，不补洞即脏读。
+  if desc.cursor > meta.size {
+    let hole : Array[Byte] = []
+    let hole_len = desc.cursor - meta.size
+    for j = 0; j < hole_len; j = j + 1 {
+      hole.push(b'\x00')
+    }
+    let hole_dst = meta.heap_addr + meta.size.reinterpret_as_uint()
+    match mem.write_bytes(map, hole_dst, Bytes::from_array(hole)) {
+      Ok(_) => ()
+      Err(_) => return -1
     }
   }
   let dst = meta.heap_addr + desc.cursor.reinterpret_as_uint()
@@ -778,9 +815,8 @@ pub fn VirtualFileSystem::fgetc(
     (data[desc.cursor], desc.cursor + 1)
   }
   desc.cursor = pair.1
-  if desc.cursor >= meta.size {
-    desc.eof = true
-  }
+  // 恰满（读到末字节）不置 EOF（B10 #434 / M23 A1——C11 §7.21.10.2 仅
+  // 过读置位）；过读由入口 cursor>=size 分支置位。
   pair.0.to_int()
 }
 
@@ -962,9 +998,14 @@ pub fn VirtualFileSystem::remove(
 }
 
 ///|
-/// `rename(old, new)` → 0/-1——文件表换键 + 描述符指向跟随。
+/// `rename(old, new)` → 0/-1——文件表换键 + 描述符指向跟随；目标已存在
+/// 时替换（glibc 口径——UCRT 是失败保留口径，M23b 四端定责在案）。
+/// B10（#434 / M23 B3）：覆盖分支先 `vfs_free_raw` 旧目标块——修前
+/// `Map.set` 直接换键，旧目标 `heap_addr` 块泄漏在 regions 表（教学长
+/// 会话可耗尽堆；可观测面修前即与 glibc 同形，本修不动）。
 pub fn VirtualFileSystem::rename(
   self : VirtualFileSystem,
+  map : @memory.MemoryMap,
   old_path : String,
   new_path : String,
 ) -> Int32 {
@@ -977,6 +1018,10 @@ pub fn VirtualFileSystem::rename(
   }
   match moved {
     Some(meta) => {
+      match self.files.get(new_path) {
+        Some(old_meta) => vfs_free_raw(map, old_meta.heap_addr)
+        None => ()
+      }
       self.files.set(new_path, meta)
       for _, desc in self.descriptors {
         if desc.file_name == old_path {

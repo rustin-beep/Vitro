@@ -31,7 +31,7 @@ pub const MEM_SIZE : UInt32 = 1048576
 
 pub const NULL_TRAP_SIZE : UInt32 = 0x1000
 
-pub const SHADOWED_HOST_NAME_COUNT : Int32 = 16
+pub const SHADOWED_HOST_NAME_COUNT : Int32 = 15
 
 pub const STACK_START : UInt32 = 1048576
 

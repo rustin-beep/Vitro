@@ -461,7 +461,7 @@ pub fn VirtualFileSystem::inject_preset_file(Self, @memory.MemoryMap, @memory.Me
 pub fn VirtualFileSystem::list_files(Self) -> Array[(String, Int32)]
 pub fn VirtualFileSystem::new() -> Self
 pub fn VirtualFileSystem::remove(Self, @memory.MemoryMap, String) -> Int32
-pub fn VirtualFileSystem::rename(Self, String, String) -> Int32
+pub fn VirtualFileSystem::rename(Self, @memory.MemoryMap, String, String) -> Int32
 pub fn VirtualFileSystem::restore(Self, VfsSnapshot) -> Unit
 pub fn VirtualFileSystem::rewind(Self, UInt32) -> Unit
 pub fn VirtualFileSystem::snapshot(Self) -> VfsSnapshot

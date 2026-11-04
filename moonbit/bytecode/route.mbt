@@ -7,8 +7,10 @@
 /// `Call <固定索引>`，未命中才查 `by_user_name` 发 `CallHost`。结果：**host
 /// handler 里有 20 个在"用户按名调用"路径上被静默遮蔽**（两者各写一张表，无一处
 /// 能列出这些名字——2026-10-06 三函数改判出表后 20→17，2026-10-13 strcmp 改判
-/// 出表后 17→16，名单锚 `shadowed_host_names_are_declared`）。同族分裂也由此而来
-/// （`atoi` 走 Bytecode 而 `atof/atol` 走 Host；`memcpy` 走 Bytecode 而 `memset` 走 Host）。
+/// 出表后 17→16，B10 #434 atoi 改判出表后 16→15，名单锚
+/// `shadowed_host_names_are_declared`）。同族分裂也由此而来
+/// （`memcpy` 走 Bytecode 而 `memset` 走 Host；atoi 自 B10 起与 atof/atol
+/// 同走 Host）。
 ///
 /// **本表把隐式覆盖变成显式声明**：`call_route(name)` 对每个名字给出**唯一**形态，
 /// 派生规则只有一条 + 一个显式例外集，`shadowed_host_names()` 把那 16 个名字
@@ -44,15 +46,17 @@ pub extend CallRoute with Eq::{not_equal, equal}
 pub const HOST_FUNC_NAME_COUNT : Int32 = 114
 
 ///|
-/// 被固定索引段遮蔽的 host 名数（= 两表交集 22 − 改判集 6）。
+/// 被固定索引段遮蔽的 host 名数（= 两表交集 22 − 改判集 7）。
 ///
-/// 这 16 个名字**有 host handler 但按名调用到不了**（`func_index` 先命中）：
+/// 这 15 个名字**有 host handler 但按名调用到不了**（`func_index` 先命中）：
 /// `isdigit isalpha islower isupper tolower toupper isspace isalnum isprint
-/// iscntrl isxdigit abs atoi srand rand strlen`。
+/// iscntrl isxdigit abs srand rand strlen`。
 ///（2026-10-06 strncpy/memcpy/memmove 改判 Host——负 n 越界写 trap 的
 /// 教学语义在 Host 版（Bytecode 预编译段对负 n 静默穿过实测）；2026-10-13
-/// strcmp 改判 Host——病 45 unsigned char 差，自此按名可达；改判集 6。）
-pub const SHADOWED_HOST_NAME_COUNT : Int32 = 16
+/// strcmp 改判 Host——病 45 unsigned char 差，自此按名可达；B10 #434
+/// 2026-11-05 atoi 改判 Host——Bytecode 段空白前缀只认空格 + 超域整程序
+/// trap，Host 版 strtol_core 饱和单源，自此按名可达；改判集 7。）
+pub const SHADOWED_HOST_NAME_COUNT : Int32 = 15
 
 ///|
 /// 从固定索引段**改判回 Host** 的显式例外集。
@@ -68,7 +72,7 @@ pub const SHADOWED_HOST_NAME_COUNT : Int32 = 16
 /// 只改这里——预注册自动跳过、`call.mbt` 的 func_index 判定自动落 CallHost、
 /// `shadowed_host_names()` 清单与锚随之变红逼登记。
 /// 函数指针值的 Host 函数编码段基址（#136 缺陷 3，2026-10-17）：
-/// host_rerouted 六函数不进 func_index（病 45 改判 Host），取地址压
+/// host_rerouted 七函数不进 func_index（病 45 改判 Host），取地址压
 /// `BASE + host_id` 编码；VM CallPtr 对 >= BASE 的指针值转
 /// execute_host_func（与 CallHost 同通道同语义）。取值远超函数索引域
 ///（MAX_FUNCTIONS=65536）永不混淆。
@@ -85,7 +89,15 @@ pub fn is_host_rerouted(name : String) -> Bool {
   // 差（C11 §7.24.4）；Bytecode 预编译段是有符号差（*s1 - *s2），且该
   // 段系 Rust oracle 冻结产物无法重产（precompile 闸 check-only）——
   // 行为修复走 Host 侧单点。
-  name == "strcmp"
+  name == "strcmp" ||
+  // B10（#434 / M17b-A1 + M22 A-2，2026-11-05）：atoi 改判 Host——
+  // Bytecode 预编译段（ip 297-300）空白前缀只认空格（\t\n\v\f\r 前缀
+  // 全返 0，C11 §7.22.1.2 同 strtol 须跳 isspace 全集）且超 i32 域走带
+  // 溢出检查的展开指令**整程序 trap**（归因「第 69 行」与用户源码无关）；
+  // Host 侧 strtol_core 饱和单源（≡ (int)strtol，UCRT 实测同）——改判
+  // 后双源不同义消除。atoi 段（~20 条指令）随之死代码化（同 strcmp 段
+  // 形态，M17b-B2 登记面）。
+  name == "atoi"
 }
 
 ///|
@@ -114,8 +126,8 @@ pub fn is_host_func_name(name : String) -> Bool {
 ///
 /// 派生规则（全表唯一）：
 /// 1. 在 Bytecode Libc 88 名表内：
-///    - 命中改判集（`is_host_rerouted` 六名：strcpy/strcat/strncpy/memcpy/
-///      memmove/strcmp）→ `Host`；
+///    - 命中改判集（`is_host_rerouted` 七名：strcpy/strcat/strncpy/memcpy/
+///      memmove/strcmp/atoi）→ `Host`；
 ///    - 否则 → `BytecodeLibc(固定索引)`；
 /// 2. 不在 88 名表内但在 host 114 名表内 → `Host(id)`；
 /// 3. 两表都不在 → `None`。

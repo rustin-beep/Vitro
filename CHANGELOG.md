@@ -1,5 +1,47 @@
 ## [Unreleased]
 
+### feat(scripts+ci): step 帧流不变量检查器——过程语义防线全语料落地 + PR #478 审阅处置（moon_prove §8.2 方案 B，登记 #477，2026-11-04）
+
+- **检查器主体（`scripts/step_invariant/`）**：TS 消费 `vitro step --json`
+  NDJSON 帧流逐帧断言——四条语义不变量：INV1a/1b/1c 内存视图域（变量
+  addr ∈ [NULL_TRAP_SIZE, MEM_SIZE-4]、全局变量域 [GLOBAL_START,
+  GLOBAL_REGION_LIMIT)、Freed 指针 target ≥ HEAP_START——布局常量
+  bytecode/memory.mbt 单源镜像）；INV2a/2b/2c 栈深（域 [0,10000]、相邻帧
+  增量 ∈ {-1,0,+1}、底帧恒 main）；INV3a cursor 严格 +1 连续（CLI 路径
+  无 seek）；INV4 指针四态域自洽（collector.mbt 判定镜像：Null⇒0 /
+  Dangling⇒越区 / Valid|Freed⇒域内）。结构层契约 ST1-7（JSON 合法 /
+  **ST2 含帧形状断言**〔三数组必为数组、字段类型必达——发射层退化防线，
+  PR #478 审阅 P2-2：`local_vars:null` 形态曾零判别力〕/ id 递增 / 终态
+  恰一行 / 首行空缓冲 / payloads ≤ 2 / summary 对账）。**流式
+  StreamChecker**（逐行 feed 即弃——首版行数组终检在全量并发下 4GB OOM，
+  208 万帧无压力）。
+- **J9 证红**：28 测试锚（每不变量一例篡改帧必红 + INV1a 4 字节上边界
+  锚〔MEM_SIZE-4 恰绿 / -3 必红，P3-1〕+ ST2 形状锚×3〔P2-3〕+ 白名单
+  形态锚 + 布局常量六值镜像锚）；真实帧流全绿。
+- **全量实测（本地 jobs=8）**：995 语料 / 2,080,042 帧 / ~644s——唯一
+  真实违例形态 = INV3a 宿主回调跳号（qsort/bsearch comparator 在
+  `vm/host_dispatch3.mbt::call_user_function` 内推进 step_count 不产帧，
+  18 例/7 语料），**登记不修**（#477，行为修复归 B 轮线）；白名单
+  `known_violations.json` 三态收编（RED/EXPECTED_RED/ZOMBIE——
+  `--audit-known` 僵尸审计）+ **count 期望条数恶化检测**（P3-2：同根因
+  违例数超登记上限即红，防恶化静默放行）。
+- **CI 接线（gates-native job）双档**：PR 轮 spot 抽样 `--sample 60
+  --step-budget 20000`（实测 10.6s——大语料步数预算封顶换墙钟，截断流
+  仍是合法检查面；P1-2 处置：无预算时 spot 曾实测 345.8s，stride 必中
+  19 个 10 万步上限语料）；夜间 schedule 轮全量 + `--audit-known`。
+  **超时单列不红 + 两轮预算自动复跑**（P1-1：挂起复现率 ~0.2%/spawn
+  复跑即解，两轮尽收 timeout 单列——预算问题与防线违例分账，不再同红）；
+  `child.on("error")` spawn 级失败立即落账；rc=4（用法错/源不可读）
+  单列 unreadable 不红（P3-6）。
+- **口径登记（PR #478 审阅 P3-3/P3-4）**：全量数字含 compile-error 111
+  （其中显式负例文件名 `*reject*` 仅 14——余 97 的负例/回归分类未做，
+  登记 P3-4 遗留：闸暂不区分「预期编不过」与「回归到编不过」，无阈值
+  报警）、trapped 19 / waiting_input 39 的帧流只检查到截断点；
+  **js 单臂**——帧 schema 单源（cmd/lib/cli 三臂同表），但按
+  AGENTS §14 应有的 native/wasm 臂同跑未接入，登记为已知豁免（后续
+  批次补臂，非本批收口面）。
+- 零引擎行为：moonbit/ 零改动，digest 零漂移。
+
 ### fix(engine): W4 尾件批——普查钉出的四缺陷修复（abort 族×2 + note 泄漏 + 栈迭代化，Closes #418 #419 #420 #421，2026-11-04）
 
 - **#418（dump 族深嵌套 abort）**：合法深 AST 的 dump JSON 深度可达数百层

@@ -496,21 +496,23 @@ jobs:
         shell: bash
 
       # step 帧流不变量检查器（过程语义防线，moon_prove 试点报告 §8.2 方案 B，
-      # 2026-11-04）：`vitro step --json` NDJSON 逐帧断言四条语义不变量
-      # （内存视图域/栈深/cursor 连续/指针四态）+ 帧流结构契约。双档：
-      # PR 轮 spot 抽样（--sample 60，~1min）；夜间 schedule 轮全量
-      # （987 语料 163 万帧，本地 jobs=8 实测 ~5min）+ --audit-known 白名单
-      # 僵尸审计。已知违例白名单 known_violations.json 三态
-      # （RED/EXPECTED_RED/ZOMBIE）。js 臂壳现场构建（ensureFresh 只兜陈旧
-      # 不兜缺失——上步 Protocol frames 同款形态）。timeout 600s：llm_scale
-      # 大语料单例可达数分钟（并发资源竞争下 120s 默认曾超时×10）。
+      # 2026-11-04；PR #478 审阅处置批 P1-1/P1-2 同日）：`vitro step --json`
+      # NDJSON 逐帧断言四条语义不变量（内存视图域/栈深/cursor 连续/指针四态）
+      # + 帧流结构契约（ST2 含形状断言——发射层退化防线）。双档：
+      # PR 轮 spot 抽样 --sample 60 --step-budget 20000（大语料步数预算封顶
+      # 换墙钟——19 个跑到 10 万步上限的语料 stride 命中时单例 300s 量级，
+      # 截断流仍是合法检查面）；夜间 schedule 轮全量无预算 + --audit-known
+      # 白名单僵尸审计。超时两轮预算（挂起复现率 ~0.2%/spawn 复跑即解，
+      # 两轮尽单列 timeout 不计红——预算问题与防线违例分账）。白名单
+      # known_violations.json 三态 + count 恶化检测（RED/EXPECTED_RED/ZOMBIE）。
+      # js 臂壳现场构建（ensureFresh 只兜陈旧不兜缺失）。
       - name: Step invariant gate (per-frame runtime invariants)
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target js cmd/vitro_js && cd ..
           if [ "${{ github.event_name }}" = "schedule" ]; then
             node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known
           else
-            node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000
+            node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000 --step-budget 20000
           fi
         shell: bash
 

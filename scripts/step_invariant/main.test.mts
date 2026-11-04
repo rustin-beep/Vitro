@@ -242,10 +242,10 @@ test("布局常量镜像：与 bytecode/memory.mbt 单源对齐", () => {
   assert.equal(CALL_DEPTH_LIMIT, 10000);
 });
 
-// ── 白名单形态锚（三态 RED/EXPECTED_RED/ZOMBIE 的判定面在 main() 内联，
-// 实机三态验证见批报告；此处锁登记文件形态防僵尸化源头）──
+// ── 白名单形态锚（三态判定已抽 classifyViolations 纯函数，锚见下方；
+// 此处锁登记文件形态防僵尸化源头）──
 
-test("known_violations.json：条目形态合法（case 正斜杠 + invariant 在册 + reason/issue 非空）", async () => {
+test("known_violations.json：条目形态合法（case 正斜杠 + invariant 在册 + reason/issue/count 非空）", async () => {
   const { loadKnown } = await import("./main.mts");
   const { projectRoot } = await import("../internal/capi.mts");
   const known = loadKnown(projectRoot());
@@ -259,5 +259,58 @@ test("known_violations.json：条目形态合法（case 正斜杠 + invariant �
     assert.ok(invariants.has(k.invariant), `invariant 在册：${k.invariant}`);
     assert.ok(k.reason.length > 10, `reason 须实质（为什么放行）：${k.case}`);
     assert.ok(k.issue.length > 0, `issue 引用非空：${k.case}`);
+    assert.ok(k.count !== undefined && k.count >= 1, `count 期望条数必填（P3-2 恶化检测）：${k.case}`);
   }
+});
+
+// ── 审阅处置批锚（PR #478 P2-2/P2-3/P3-1/P3-2）──
+
+test("ST2 证红：帧内数组字段退化 null（发射层形状防线——曾零判别力）", () => {
+  const s = greenStream();
+  const bad = mkFrame({ step_index: 0 });
+  bad["local_vars"] = null;
+  bad["call_stack"] = null;
+  bad["pointer_snapshots"] = null;
+  s[1] = stepRow(7, [bad]);
+  const inv = invariantsOf(s);
+  assert.ok(inv.includes("ST2"), `应含 ST2，得 ${JSON.stringify(inv)}`);
+});
+
+test("ST2 证红：payloads 整体 null（不再静默吞成空数组）", () => {
+  const s = greenStream();
+  s[1] = JSON.stringify({ id: 7, ok: true, result: { payloads: null, finished: false, trapped: false, waiting_input: false, paused: false, current_line: 1, trap_message: null, cache_start_step: 0 } });
+  assert.ok(invariantsOf(s).includes("ST2"));
+});
+
+test("ST2 证红：local_vars 元素缺 is_local（类型形状）", () => {
+  const s = greenStream();
+  const bad = mkFrame({ step_index: 0 });
+  bad["local_vars"] = [{ name: "x", addr: 0xfff00 }];
+  s[1] = stepRow(7, [bad]);
+  assert.ok(invariantsOf(s).includes("ST2"));
+});
+
+test("INV1a 边界锚：addr = MEM_SIZE-4 恰好绿；MEM_SIZE-3 必红（4 字节上界窗口）", () => {
+  const atBound = greenStream();
+  atBound[1] = stepRow(7, [mkFrame({ step_index: 0, vars: [{ name: "x", addr: MEM_SIZE - 4, is_local: true }] })]);
+  assert.deepEqual(invariantsOf(atBound), [], "addr+4 == MEM_SIZE 恰在域内");
+  const overBound = greenStream();
+  overBound[1] = stepRow(7, [mkFrame({ step_index: 0, vars: [{ name: "x", addr: MEM_SIZE - 3, is_local: true }] })]);
+  assert.deepEqual(invariantsOf(overBound), ["INV1a"], "addr+4 > MEM_SIZE 越界");
+});
+
+test("classifyViolations：count 内 expected 放行 / 超限恶化红 / 未登记红", async () => {
+  const { classifyViolations } = await import("./main.mts");
+  const mk = (n: number): Array<{ source: string; line: number; invariant: string; detail: string }> =>
+    Array.from({ length: n }, () => ({ source: "corpus/a.c", line: 1, invariant: "INV3a", detail: "d" }));
+  const known = [{ case: "corpus/a.c", invariant: "INV3a", reason: "r", issue: "#477", count: 1 }];
+  const one = classifyViolations(mk(1), known);
+  assert.equal(one.reds.length, 0);
+  assert.equal(one.expected.length, 1);
+  const two = classifyViolations(mk(2), known);
+  assert.equal(two.reds.length, 1, "超出 count 的违例恶化红");
+  assert.equal(two.expected.length, 1);
+  assert.ok(two.hitKeys.has("corpus/a.c::INV3a"));
+  const none = classifyViolations(mk(1), []);
+  assert.equal(none.reds.length, 1);
 });

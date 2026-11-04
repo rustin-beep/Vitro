@@ -89,8 +89,11 @@ export interface StreamCheckResult {
   violations: Violation[];
   /** payload 帧总数（step_index 计数）。 */
   frames: number;
-  /** 流终态（compile-error = 编译失败单行形态，不变量面不适用）。 */
-  terminal: "finished" | "trapped" | "waiting_input" | "compile-error" | "none";
+  /** 流终态。compile-error = 编译失败单行形态（不变量面不适用）；
+   * timeout = 两轮预算尽仍超时（单列不红——预算问题与防线违例分账，
+   * PR #478 审阅 P1-1）；unreadable = 源不可读/用法错（cli_step rc=4，
+   * P3-6——语料形态问题非防线红）。 */
+  terminal: "finished" | "trapped" | "waiting_input" | "compile-error" | "timeout" | "unreadable" | "none";
 }
 
 interface StepRow {
@@ -233,7 +236,13 @@ export class StreamChecker {
     }
     const r = result as StepRow["result"];
     if (r === undefined) return;
-    const payloads = Array.isArray(r.payloads) ? (r.payloads as FramePayload[]) : [];
+    // ST2 形状：payloads 必为数组（null/退化形态不静默吞——帧形状退化曾零判别力，
+    // PR #478 审阅 P2-2 探针：payloads:null 时 frames 计 0 只靠 ST7 兜底）
+    if (!Array.isArray(r.payloads)) {
+      this.push(lineNo, "ST2", `payloads 非数组：${typeof r.payloads}`);
+      return;
+    }
+    const payloads = r.payloads as FramePayload[];
     if (this.firstStepRow && payloads.length !== 0) {
       this.push(lineNo, "ST5", `首 step 行 payloads 非空（滞后一帧缓冲）：${payloads.length}`);
     }
@@ -296,8 +305,40 @@ interface FrameState {
   prevDepth: number;
 }
 
+/** 帧级形状断言（ST2 后半——发射层退化防线：三数组必为数组、字段类型必达，
+ * PR #478 审阅 P2-2：local_vars/call_stack/pointer_snapshots 全 null 曾零违例）。
+ * 值域正确性归 INV 族，此处只管「形状在」——类型错即红，防静默退化。 */
+function checkFrameShape(p: unknown, lineNo: number, push: PushFn): void {
+  if (!isObj(p)) {
+    push(lineNo, "ST2", `帧 payload 非对象：${typeof p}`);
+    return;
+  }
+  for (const f of ["local_vars", "call_stack", "pointer_snapshots", "vis_events", "accessed_vars", "array_snapshots"] as const) {
+    const v = p[f];
+    if (v !== undefined && !Array.isArray(v)) {
+      push(lineNo, "ST2", `帧字段 ${f} 非数组：${typeof v}`);
+    }
+  }
+  for (const v of (Array.isArray(p["local_vars"]) ? p["local_vars"] : []) as unknown[]) {
+    if (!isObj(v) || typeof v["name"] !== "string" || typeof v["addr"] !== "number" || typeof v["is_local"] !== "boolean") {
+      push(lineNo, "ST2", `local_vars 元素形状缺（name/addr/is_local）：${JSON.stringify(v)?.slice(0, 80)}`);
+    }
+  }
+  for (const v of (Array.isArray(p["call_stack"]) ? p["call_stack"] : []) as unknown[]) {
+    if (!isObj(v) || typeof v["func_name"] !== "string") {
+      push(lineNo, "ST2", `call_stack 元素形状缺（func_name）：${JSON.stringify(v)?.slice(0, 80)}`);
+    }
+  }
+  for (const v of (Array.isArray(p["pointer_snapshots"]) ? p["pointer_snapshots"] : []) as unknown[]) {
+    if (!isObj(v) || typeof v["addr"] !== "number" || typeof v["target_addr"] !== "number" || typeof v["status"] !== "string") {
+      push(lineNo, "ST2", `pointer_snapshots 元素形状缺（addr/target_addr/status）：${JSON.stringify(v)?.slice(0, 80)}`);
+    }
+  }
+}
+
 /** 单帧语义不变量（INV1-4）；跨帧状态经 state 对象就地推进。 */
 function checkFrame(p: FramePayload, lineNo: number, push: PushFn, st: FrameState): void {
+  checkFrameShape(p, lineNo, push);
   // INV3a cursor 连续
   const idx = p.step_index;
   if (typeof idx !== "number" || !Number.isSafeInteger(idx)) {
@@ -373,19 +414,25 @@ function jsShellPath(root: string): string {
   return path.join(root, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js");
 }
 
-/** 采一语料帧流并检查（流式逐行 feed 即弃——大语料 NDJSON 数十 MB 不驻留）。 */
+/** 采一语料帧流并检查（流式逐行 feed 即弃——大语料 NDJSON 数十 MB 不驻留）。
+ * stepBudget > 0 时透传 `--max-steps`（spot 轮大语料降档——预算封顶换墙钟，
+ * 截断流仍是合法检查面；PR #478 审阅 P1-2）。 */
 export async function checkFile(
   shell: string,
   file: string,
   source: string,
   timeoutMs: number,
+  stepBudget = 0,
 ): Promise<StreamCheckResult & { rc: number; timedOut: boolean }> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [shell, "step", file, "--json"], {
+    const args = [shell, "step", file, "--json"];
+    if (stepBudget > 0) args.push("--max-steps", String(stepBudget));
+    const child = spawn(process.execPath, args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
     const checker = new StreamChecker(source);
     let timedOut = false;
+    let settled = false;
     const timer = setTimeout(() => {
       timedOut = true;
       child.kill();
@@ -396,10 +443,25 @@ export async function checkFile(
     child.stderr.on("data", (d: Buffer) => {
       if (stderrTail.length < 2000) stderrTail += d.toString("utf8");
     });
+    // spawn 级失败（node 缺失/脚本路径坏）立即落账——不等超时（P1-1 处方）
+    child.on("error", (e) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ violations: [{ source, line: 0, invariant: "DRIVER", detail: `spawn 失败：${String(e)}` }], frames: 0, terminal: "none", rc: -1, timedOut: false });
+    });
     child.on("close", (rc) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
       if (timedOut) {
-        resolve({ violations: [{ source, line: 0, invariant: "DRIVER", detail: `超时 ${timeoutMs}ms` }], frames: checker.frameCount, terminal: "none", rc: rc ?? -1, timedOut });
+        // 超时不在此落违例——driver 层复跑一次，两轮尽才收 timeout 单列（P1-1）
+        resolve({ violations: [], frames: checker.frameCount, terminal: "timeout", rc: rc ?? -1, timedOut: true });
+        return;
+      }
+      // rc=4 = 用法错/源不可读（cli_step 契约）——语料形态单列，不红（P3-6）
+      if (rc === 4) {
+        resolve({ violations: [], frames: 0, terminal: "unreadable", rc, timedOut: false });
         return;
       }
       // rc 非 0/1/2/3 的驱动级失败（js 壳崩溃等）——fail loud
@@ -410,6 +472,21 @@ export async function checkFile(
       resolve({ ...checker.finish(), rc: rc ?? -1, timedOut: false });
     });
   });
+}
+
+/** 两轮预算：首跑超时自动复跑一次（编码原手工 workaround——挂起复现率
+ * ~0.2%/spawn，复跑即解；预算真不够则两轮尽收 timeout 单列不红，P1-1）。 */
+export async function checkFileRetry(
+  shell: string,
+  file: string,
+  source: string,
+  timeoutMs: number,
+  stepBudget = 0,
+): Promise<StreamCheckResult & { rc: number; timedOut: boolean }> {
+  const first = await checkFile(shell, file, source, timeoutMs, stepBudget);
+  if (!first.timedOut) return first;
+  const second = await checkFile(shell, file, source, timeoutMs, stepBudget);
+  return second;
 }
 
 function listCorpus(dir: string): string[] {
@@ -428,7 +505,8 @@ function listCorpus(dir: string): string[] {
 
 function usage(): never {
   process.stderr.write(`用法: node scripts/step_invariant/main.mts <file.c> [...]
-      node scripts/step_invariant/main.mts --corpus <dir> [--sample N] [--jobs N] [--timeout-ms N] [--json] [--audit-known]
+      node scripts/step_invariant/main.mts --corpus <dir> [--sample N] [--jobs N]
+            [--timeout-ms N] [--step-budget N] [--json] [--audit-known]
 `);
   process.exit(1);
 }
@@ -439,12 +517,14 @@ interface Opts {
   sample: number;
   jobs: number;
   timeoutMs: number;
+  /** 透传 `vitro step --max-steps`（spot 轮大语料降档，0 = 不透传）。 */
+  stepBudget: number;
   json: boolean;
   auditKnown: boolean;
 }
 
 function parseArgs(argv: string[]): Opts {
-  const o: Opts = { files: [], corpus: null, sample: 0, jobs: 4, timeoutMs: 120_000, json: false, auditKnown: false };
+  const o: Opts = { files: [], corpus: null, sample: 0, jobs: 4, timeoutMs: 120_000, stepBudget: 0, json: false, auditKnown: false };
   let i = 0;
   while (i < argv.length) {
     const a = argv[i++];
@@ -463,6 +543,10 @@ function parseArgs(argv: string[]): Opts {
       const v = Number(argv[i++]);
       if (!Number.isInteger(v) || v < 1000) usage();
       o.timeoutMs = v;
+    } else if (a === "--step-budget") {
+      const v = Number(argv[i++]);
+      if (!Number.isInteger(v) || v < 1) usage();
+      o.stepBudget = v;
     } else if (a === "--json") {
       o.json = true;
     } else if (a === "--audit-known") {
@@ -477,12 +561,14 @@ function parseArgs(argv: string[]): Opts {
   return o;
 }
 
-/** 白名单条目（(case, invariant) 粒度）。 */
+/** 白名单条目（(case, invariant) 粒度；count = 期望命中条数上限——
+ * 超过即「白名单数量恶化」红，防同根因恶化静默放行，PR #478 审阅 P3-2）。 */
 export interface KnownEntry {
   case: string;
   invariant: string;
   reason: string;
   issue: string;
+  count?: number;
 }
 
 export const KNOWN_PATH = "scripts/step_invariant/known_violations.json";
@@ -493,7 +579,47 @@ export function loadKnown(root: string): KnownEntry[] {
   return JSON.parse(fs.readFileSync(p, "utf8")) as KnownEntry[];
 }
 
-/** 抽样（确定性——语料序号 hash 取样，可复现）。 */
+/** 白名单三态判定（纯函数）：RED（未登记或超 count 恶化）/ EXPECTED_RED
+ * （登记命中）/ ZOMBIE 候选（登记未命中——audit 轮收）。case 斜杠归一
+ * （Windows path.relative 产反斜杠——白名单一律正斜杠）。 */
+export function classifyViolations(
+  allViolations: readonly Violation[],
+  known: readonly KnownEntry[],
+  source = "",
+): { reds: Violation[]; expected: Violation[]; hitKeys: Set<string>; worsened: Violation[] } {
+  const hitCount = new Map<string, number>();
+  const reds: Violation[] = [];
+  const expected: Violation[] = [];
+  const worsened: Violation[] = [];
+  for (const v of allViolations) {
+    const key = `${v.source.split(path.sep).join("/")}::${v.invariant}`;
+    const entry = known.find((k) => `${k.case}::${k.invariant}` === key);
+    if (entry === undefined) {
+      reds.push(v);
+      continue;
+    }
+    hitCount.set(key, (hitCount.get(key) ?? 0) + 1);
+    const cap = entry.count ?? Number.POSITIVE_INFINITY;
+    if (hitCount.get(key) === cap + 1) {
+      worsened.push(v);
+    }
+    expected.push(v);
+  }
+  // 恶化条目从 expected 挪入 red（cap 内仍 expected，超出即红）
+  if (worsened.length > 0) {
+    const wset = new Set(worsened);
+    for (let i = expected.length - 1; i >= 0; i--) {
+      if (wset.has(expected[i] ?? ({} as Violation))) {
+        const x = expected.splice(i, 1)[0];
+        if (x !== undefined && !reds.includes(x)) reds.push(x);
+      }
+    }
+  }
+  void source;
+  return { reds, expected, hitKeys: new Set(hitCount.keys()), worsened };
+}
+
+/** 抽样（确定性——等距 stride 取样，可复现；P3-5 勘正原「hash 取样」误注）。 */
 function sampleFiles(files: string[], n: number): string[] {
   const picked: string[] = [];
   const step = Math.max(1, Math.floor(files.length / n));
@@ -523,7 +649,7 @@ async function main(): Promise<void> {
       const f = files[cursor];
       if (f === undefined) break;
       cursor++;
-      const r = await checkFile(shell, f, path.relative(root, f), opts.timeoutMs);
+      const r = await checkFileRetry(shell, f, path.relative(root, f), opts.timeoutMs, opts.stepBudget);
       results.push({ file: f, r });
     }
   };
@@ -532,26 +658,14 @@ async function main(): Promise<void> {
   const elapsed = Date.now() - t0;
   const totalFrames = results.reduce((s, x) => s + x.r.frames, 0);
   const compileError = results.filter((x) => x.r.terminal === "compile-error").length;
-  const terminals = { finished: 0, trapped: 0, waiting_input: 0, none: 0, "compile-error": 0 } as Record<string, number>;
+  const terminals = { finished: 0, trapped: 0, waiting_input: 0, none: 0, "compile-error": 0, timeout: 0, unreadable: 0 } as Record<string, number>;
   for (const x of results) terminals[x.r.terminal] = (terminals[x.r.terminal] ?? 0) + 1;
   const allViolations = results.flatMap((x) => x.r.violations);
-  // 白名单三态：RED / EXPECTED_RED / ZOMBIE（--audit-known 全量轮专用）。
-  // case 路径斜杠归一（Windows path.relative 产反斜杠——白名单一律正斜杠）。
+  // 白名单三态（classifyViolations 纯函数——RED/EXPECTED_RED/恶化/ZOMBIE；
+  // timeout/unreadable 已在 checkFile 单列不产生违例）
   const known = loadKnown(root);
-  const knownHit = new Set<string>();
-  const reds: Violation[] = [];
-  const expected: Violation[] = [];
-  for (const v of allViolations) {
-    const key = `${v.source.split(path.sep).join("/")}::${v.invariant}`;
-    const entry = known.find((k) => `${k.case}::${k.invariant}` === key);
-    if (entry !== undefined) {
-      knownHit.add(key);
-      expected.push(v);
-    } else {
-      reds.push(v);
-    }
-  }
-  const zombies = opts.auditKnown ? known.filter((k) => !knownHit.has(`${k.case}::${k.invariant}`)) : [];
+  const { reds, expected, hitKeys } = classifyViolations(allViolations, known);
+  const zombies = opts.auditKnown ? known.filter((k) => !hitKeys.has(`${k.case}::${k.invariant}`)) : [];
   if (opts.json) {
     process.stdout.write(
       JSON.stringify(

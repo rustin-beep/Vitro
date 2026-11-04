@@ -2354,6 +2354,12 @@
       "stdout_sha": "6b86b273ff34fce1",
       "memory_sha": "5c554cb16edd21cb"
     },
+    "baseline/qsort_bsearch_frames.c": {
+      "src_sha": "2507ffcf",
+      "exit_code": 0,
+      "stdout_sha": "3fb60dcd799b12c8",
+      "memory_sha": "11949500abc96172"
+    },
     "baseline/qsort_strcmp_callback.c": {
       "src_sha": "4bf4bd33",
       "exit_code": 0,

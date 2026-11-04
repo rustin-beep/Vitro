@@ -178,8 +178,17 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| var D=window.__VITRO__;
   #| var S={cur:0,playing:false,timer:null,speed:200,frames:D.frames||[],prevC:null,speakOn:false,lastCap:""};
   #| function $(id){return document.getElementById(id)}
-  #| function swapPair(fr){var m=/\u4ea4\u6362\s+(\w+)\[(\d+)\]\s*\u2194\s*\w+\[(\d+)\]/.exec(fr.s);if(m)return{name:m[1],i:+m[2],j:+m[3]};for(var k=0;k<fr.e.length;k++)if(fr.e[k][0]===2)return{name:null,i:fr.e[k][2],j:fr.e[k][3]};return null}
-  #| function renderCode(){var lines=D.source.split("\n");var h="";var heat=D.heat||{};
+  #| function ctxMentions(ctx,nm){if(!nm)return false;var esc=nm.replace(/[.*+?^\${}()|[\]\\\\]/g,"\\\\$&");return new RegExp("(^|[^\\\\w.])"+esc+"\\\\s*\\\\[").test(ctx)}
+  #| function swapPair(fr,nm,len){
+  #| for(var k=0;k<fr.e.length;k++){var ev=fr.e[k];
+  #| if(ev[0]!==2||!ctxMentions(ev[5],nm))continue;
+  #| var x=ev[2],y=ev[3];
+  #| if(!Number.isInteger(x)||!Number.isInteger(y)||x<0||y<0||x===y)continue;
+  #| var lo=Math.min(x,y),hi=Math.max(x,y);
+  #| if(hi>=len)continue;
+  #| return{i:lo,j:hi}}
+  #| return null}
+  #| function renderCode(){var lines=D.source.split("\\n");var h="";var heat=D.heat||{};
   #| for(var n=1;n<=lines.length;n++){var cls="ln"+(D.errLines&&D.errLines.indexOf(n)>=0?" err":"");
   #| h+='<div class="'+cls+'" data-l="'+n+'"><span class="no">'+n+'</span><code>'+esc(lines[n-1]||" ")+'</code></div>'}
   #| $("codeWrap").innerHTML=h}
@@ -188,14 +197,14 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| if(!fr)return;
   #| var cur=document.querySelector(".ln.cur");if(cur)cur.classList.remove("cur");
   #| var row=document.querySelector('.ln[data-l="'+fr.l+'"]');if(row){row.classList.add("cur");row.scrollIntoView({block:"nearest"})}
-  #| var sp=swapPair(fr);
   #| var names=D.focus||Object.keys(fr.r||{});
   #| var h="";
   #| for(var ai=0;ai<names.length;ai++){var nm=names[ai],els=(fr.r||{})[nm]||[];
   #| if(!els.length)continue;var pels=pv&&(pv.r||{})[nm]||[];
+  #| var sp=swapPair(fr,nm,els.length);
   #| var max=1;for(var q=0;q<els.length;q++){var fv=parseFloat(els[q]);if(isFinite(fv)&&Math.abs(fv)>max)max=Math.abs(fv)}
   #| h+='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> \u00b7 '+els.length+' \u5143\u7d20</span></div><div class="cells" style="--n:'+els.length+';--cw:64px">';
-  #| for(var i2=0;i2<els.length;i2++){var cls2="cell";var sp2=sp&&sp.name===nm&&(i2===sp.i||i2===sp.j);
+  #| for(var i2=0;i2<els.length;i2++){var cls2="cell";var sp2=sp&&(i2===sp.i||i2===sp.j);
   #| if(sp2)cls2+=" swap"; else if(pels.length&&pels[i2]!==els[i2])cls2+=" changed";
   #| var v=parseFloat(els[i2]);var ratio=isFinite(v)?Math.max(.06,Math.abs(v)/max):.3;
   #| h+='<div class="'+cls2+'" style="--v:'+ratio.toFixed(2)+'"><span class="idx">'+i2+'</span>'+esc(els[i2])+'<span class="bar"></span></div>'}

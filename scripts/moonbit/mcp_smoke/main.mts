@@ -2,17 +2,19 @@
 // 驱动 moon build --release --target js 的单文件产物：协议契约（initialize/
 // listChanged）+ 渐进披露（L0 5 → session_open → list_changed → L1 12 → 收回）+
 // readOnlyHint + 池语义（run_to 事件停/终局回看）+ 投影（默认 {i,l,f,s} 分页
-// + fields/filter）+ render 落盘（301 帧 HTML）+ interactive 无 wasm 回落
+// + fields/filter）+ render 落盘（301 帧 HTML）+ 产物 script 语法门与 PLAYER
+// 驱动对拍（#468/#469 防回归，2026-11-04）+ interactive 无 wasm 回落
 // static（CI 无 wasm 资产——恰测回落路径；真 interactive 归本地 accept.mts）。
 // 锚值与 mcp_wbtest/accept 同源（bubble.c：1126 步 / swap 7 / 首交换帧 93 行 8
 // / stdout "1 2 3 5 8 9 \n" / budget 300 → 301 帧）——引擎行为变更连坐红。
 // 用法：node scripts/moonbit/mcp_smoke/main.mts（前置：moon build --release
 // --target js cmd/mcp_js；产物路径可用 VITRO_MCP_JS 覆盖，缺产物 fail loud）。
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import vm from "node:vm";
 
 /// bubble.c（v1 samples 逐字同源——锚值依据，改语料须连坐锚）。
 const BUBBLE_C = `#include <stdio.h>
@@ -36,6 +38,12 @@ int main(void) {
     printf("\\n");
     return 0;
 }
+`;
+
+/// bubble_sort.c（corpus/baseline/bubble_sort.c 逐字同源——数组真名 a ≠
+/// 字幕展示名 arr，#469 分叉面锚：swap 高亮靠 vis_events context 归属）。
+const BUBBLE_SORT_A = `// @category: baseline
+int main() { int a[5] = {5,3,4,1,2}; for (int i = 0; i < 4; i++) for (int j = 0; j < 4-i; j++) if (a[j] > a[j+1]) { int t = a[j]; a[j] = a[j+1]; a[j+1] = t; } printf("%d", a[0]); return 0; }
 `;
 
 /** 行缓冲累积器：feed 返回本次成行的完整帧（不带换行）；残行留存。 */
@@ -78,6 +86,87 @@ export class CheckRun {
 }
 
 interface Frame { id?: number | null; method?: string; result?: unknown; error?: { code: number } }
+
+/** 产物 HTML 的 <script> 段提取（#468 语法门取段器）：无段 fail loud。 */
+export function extractScript(html: string): string {
+  const m = /<script>([\s\S]*?)<\/script>/.exec(html);
+  if (m === null || m[1] === undefined) throw new Error("extractScript: 产物无 <script> 段");
+  return m[1];
+}
+
+interface StubEl {
+  id: string;
+  innerHTML: string;
+  textContent: string;
+  value: string;
+  max: string;
+  disabled: boolean;
+  dataset: Record<string, string>;
+  classList: { add(): void; remove(): void; contains(): boolean };
+  onclick: (() => void) | null;
+  oninput: ((this: StubEl) => void) | null;
+  onchange: (() => void) | null;
+  scrollIntoView(): void;
+}
+
+function makeEl(id: string): StubEl {
+  return {
+    id, innerHTML: "", textContent: "", value: "0", max: "0", disabled: false,
+    dataset: {},
+    classList: { add() {}, remove() {}, contains: () => false },
+    onclick: null, oninput: null, onchange: null,
+    scrollIntoView() {},
+  };
+}
+
+/** 产物 script 驱动（#468 语法门 + #469 swap 对拍）：stub DOM 里跑完整
+ * PLAYER（init 自然执行），再逐帧拨 slider 复算每帧 stage.innerHTML，统计
+ * 含 swap 类名的帧数。首个 new vm.Script 即语法门——#468 形态（模板字面量
+ * 转义丢失的裸换行/退化正则）在编译期 throw，不再依赖「生成成功+帧数正确」
+ * 的盲验收。只 stub static 路径 PLAYER 触碰的宿主面（interactive 分支不达）。 */
+export function driveScript(scriptText: string): { swapFrames: number; total: number } {
+  const els = new Map<string, StubEl>();
+  const stage = makeEl("stage");
+  els.set("stage", stage);
+  const slider = makeEl("slider");
+  els.set("slider", slider);
+  const documentStub = {
+    getElementById: (id: string): StubEl => els.get(id) ?? makeEl(id),
+    querySelector: (): null => null,
+    documentElement: { dataset: {} as Record<string, string> },
+    onkeydown: null as (() => void) | null,
+  };
+  const sandbox: Record<string, unknown> = {
+    document: documentStub,
+    location: { hash: "" },
+    matchMedia: () => ({ matches: false }),
+    setInterval: () => 0,
+    clearInterval: () => {},
+    setTimeout: () => 0,
+    console,
+  };
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(scriptText, sandbox); // 语法门：SyntaxError 在此 throw
+  const total = Number(slider.max) + 1;
+  let swapFrames = 0;
+  for (let k = 0; k < total; k++) {
+    slider.value = String(k);
+    if (slider.oninput !== null) slider.oninput.call(slider);
+    if (stage.innerHTML.includes("cell swap")) swapFrames++;
+  }
+  return { swapFrames, total };
+}
+
+/** render 产物探针（读盘 + 提段 + 驱动；异常折叠为 {ok:false,err}）。 */
+function probeHtml(htmlPath: string): { ok: boolean; swapFrames: number; total: number; err?: string } {
+  try {
+    const { swapFrames, total } = driveScript(extractScript(readFileSync(htmlPath, "utf8")));
+    return { ok: true, swapFrames, total };
+  } catch (e) {
+    return { ok: false, swapFrames: -1, total: -1, err: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 async function drive(): Promise<number> {
   const product = process.env.VITRO_MCP_JS ?? "moonbit/_build/js/release/build/cmd/mcp_js/mcp_js.js";
@@ -179,12 +268,34 @@ async function drive(): Promise<number> {
     chk.check("render（301 帧 HTML 落盘）",
       rendered.ok && rendered.frame_count === 301 && rendered.size_bytes > 50_000 && existsSync(rendered.html_path),
       `${rendered.frame_count} 帧 ${rendered.size_bytes}B`);
+    // ── 产物 script 语法门 + PLAYER 驱动对拍（#468/#469 防回归）──
+    // #468：extern 模板字面量转义丢失曾致整段 script SyntaxError（播放器
+    // 交互全灭，而「生成成功+帧数正确」验收不暴露）——vm.Script 编译 + 逐帧
+    // 驱动是唯一会红的面。锚 5 = BUBBLE_C（真名恰为 arr）抽稀后事件帧全
+    // 点亮（纯 vis_events 驱动——字幕正则兜底已随 #469 退役）。
+    const pa = probeHtml(rendered.html_path);
+    chk.check("render 产物 script 语法门 + PLAYER 驱动（BUBBLE_C swap 锚 5/#468·#469）",
+      pa.ok && pa.swapFrames === 5 && pa.total === 301,
+      pa.ok ? `swap=${pa.swapFrames}/${pa.total}` : `驱动失败: ${pa.err ?? "?"}`);
     // interactive 回落（CI 无 wasm 资产——恒走回落，恰锁该路径）
     const anim = body<{ ok: boolean; mode: string; frame_count: number; warnings: string[] }>(
       await call("animate", { source: BUBBLE_C, mode: "interactive", out_dir: outDir, preview_png: false }));
     chk.check("animate interactive 无 wasm 回落 static（401 帧 + 回落 warning）",
       anim.ok && anim.mode === "static" && anim.frame_count === 401 && anim.warnings.some((w) => w.includes("回落")),
       `mode=${anim.mode} frames=${anim.frame_count}`);
+
+    // ── #469 分叉面语料：数组真名 a ≠ 字幕展示名 arr ──
+    // 语义标注模板硬编码展示名 arr，正则咬字幕形态恒假（swap 全灭）；修复后
+    // swap 高亮走 vis_events context 归属（demo visEvents.ts 同款）。锚 21 =
+    // 301 帧里 21 个 ty=2 事件帧全点亮（context 形如 "a[j]:a[j + 1]"）。
+    const openedC = body<{ session_id: string }>(await call("session_open", { source: BUBBLE_SORT_A }));
+    const renderedC = body<{ ok: boolean; html_path: string; frame_count: number; error?: string }>(
+      await call("render", { session_id: openedC.session_id, budget: 300, out_dir: outDir, preview_png: false }));
+    const pc = probeHtml(renderedC.ok ? renderedC.html_path : "");
+    chk.check("swap 高亮归属（真名 a ≠ 展示名 arr，vis_events context 归属锚 21/#469）",
+      renderedC.ok && pc.ok && pc.swapFrames === 21,
+      renderedC.ok ? (pc.ok ? `swap=${pc.swapFrames}/${pc.total}` : `驱动失败: ${pc.err ?? "?"}`) : `render 红本文: ${renderedC.error ?? "?"}`);
+    await call("session_close", { session_id: openedC.session_id });
 
     // ── 收回披露 ──
     notifications.length = 0;

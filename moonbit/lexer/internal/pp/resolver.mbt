@@ -203,11 +203,84 @@ fn[P : @token.SourceProvider] Pp::walk_cycle(
 }
 
 ///|
+/// 环检测/守卫检测共用的轻量行预处理（#432 A2/A3，2026-11-04）：
+/// 物理行拆分 → `\` 续行拼接 → 注释剥离（直接复用主管线
+/// strip_comments_stateful——字符串感知、跨行块注释态）→ 裸 `#if 0`
+/// 条件态跳过。真值（Win/WSL gcc+clang -E 一致）：块注释内与
+/// `#if 0` 块内的 `#include` 不是依赖边——旧 custom_includes_of /
+/// has_include_guard 对原始文本逐行扫描，注释/`#if 0` 内的 include
+/// 与守卫指令被当真边/真守卫（E1015 依赖环误报拒编译）。条件态边界：
+/// ①只识别裸 `#if 0`（trim 后参数恰为 "0"；`#if (0)` 等表达式不做
+/// 轻量求值，照常出边=保守方向）；②`#else`（组内零嵌套处）停止
+/// 跳过——`#if 0 … #else` 分支激活，其内 include 是真边（gcc/clang
+/// 嵌套过深拦截同向，vitro E1015 提前拦截口径一致）；③`#elif`
+/// 表达式无法轻量求值，维持跳过（漏检方向=漏报环，守卫方向可接受）。
+fn preprocessed_lines(text : String) -> Array[String] {
+  let physical = split_physical_lines(text, 0)
+  let logical = splice_continuations(physical)
+  let stripped = strip_comments_stateful(logical)
+  let lines : Array[String] = []
+  for l in stripped.lines {
+    lines.push(l.text)
+  }
+  let out : Array[String] = []
+  let mut skipping = false
+  let mut nested : Int32 = 0
+  for line in lines {
+    let t = leading_trim(line)
+    let is_directive = t.length() > 0 && t[0].to_int() == '#'
+    if skipping {
+      if is_directive {
+        match directive_name_of(t) {
+          "if" | "ifdef" | "ifndef" => nested += 1
+          "endif" => if nested > 0 { nested -= 1 } else { skipping = false }
+          "else" =>
+            if nested == 0 {
+              skipping = false // #else 分支激活（真值对齐）
+            }
+          _ => () // #elif 族：无法轻量求值，维持跳过
+        }
+      }
+      continue
+    }
+    if is_directive {
+      let name = directive_name_of(t)
+      let arg = trailing_trim(leading_trim(t[name.length() + 1:].to_owned()))
+      if name == "if" && arg == "0" {
+        skipping = true
+        nested = 0
+        continue
+      }
+    }
+    out.push(line)
+  }
+  out
+}
+
+///|
+/// 指令名提取（`#`-开头行 → 不含 `#` 的指令名；与 handle_directive
+/// 首段扫描同形：字母/下划线段）。
+fn directive_name_of(t : String) -> String {
+  let mut n = 1
+  while n < t.length() {
+    let c = t[n].to_int()
+    if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' {
+      n += 1
+    } else {
+      break
+    }
+  }
+  t[1:n].to_owned()
+}
+
+///|
 /// 提取头文件文本中的自定义 `#include "..."` 依赖（`<...>` 存根不算依赖边）。
+/// #432 A2/A3：消费轻量预处理产物（注释剥离 + `#if 0` 条件态）——
+/// 旧逐行文本扫描把注释内/`#if 0` 块内的 include 当真边（E1015 误报）。
 fn custom_includes_of(text : String) -> Array[String] {
   let out : Array[String] = []
-  for line_raw in text.split("\n") {
-    let t = leading_trim(line_raw.to_owned())
+  for line_raw in preprocessed_lines(text) {
+    let t = leading_trim(line_raw)
     if t.length() == 0 || t[0].to_int() != '#' {
       continue
     }
@@ -244,8 +317,10 @@ fn rest_starts_with_include(rest : String) -> Bool {
 /// `#ifndef X` 与同名 `#define X` 恰好成对散布，语料域无此形态。
 fn has_include_guard(text : String) -> Bool {
   let mut pending : String? = None
-  for line_raw in text.split("\n") {
-    let t = leading_trim(line_raw.to_owned())
+  // #432 A2/A3：与 custom_includes_of 共用轻量预处理——注释/`#if 0`
+  // 块内的 #ifndef/#define 对不得误判守卫（同根因误检面）
+  for line_raw in preprocessed_lines(text) {
+    let t = leading_trim(line_raw)
     match pending {
       None =>
         if t.length() > 8 && t[0:8] == "#ifndef " {

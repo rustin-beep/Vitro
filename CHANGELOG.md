@@ -42,6 +42,28 @@
   批次补臂，非本批收口面）。
 - 零引擎行为：moonbit/ 零改动，digest 零漂移。
 
+### test(moonbit): QC 属性批——util 层 quickcheck 程序级属性（moon prove 盲区互补防线，2026-11-04）
+
+- **17 条属性入 vitro/engine/util 黑盒**（util_qc_test.mbt + json_qc_test.mbt；
+  core/quickcheck 自带——moon.mod 零新增依赖，import 走 for "test" 不进包
+  依赖面与接口面）：count=300 × 双种子固定（20261104/427）+ 内置 @shrink
+  反例收缩，反例可由 seed 直接复现。
+- **属性清单（prove 三态对照详 tmp/batch_QC_REPORT.md）**：str_cmp 反对称
+  （prove 60s 超时的 ∃ witness 卡点——本批旗舰）/自反/传递；json_escape
+  roundtrip + 无裸控制字符（prove 模型 17/18）；base64 roundtrip + 输出
+  形态；valid_json_number 合法构造必过（含 json_parse repr 保真断言）/非法
+  变异必拒（#466 pub 化面的两向）；i64_to_i32_bits 界内恒等/高 32 位丢弃；
+  le_u32/u64 写读对偶 + u64=u32|u32<<32 组合一致；utf8 roundtrip/字节长
+  码点累加/utf8_text_partial 前缀止（#363 语义属性化）。
+- **J9 注入证红 16 次**：13 次有效红 + 2 次无效注入形态的等价性发现
+  （Int64::to_int 低 32 位截断语义下 i64_to_i32_bits 分支减法等价——单点
+  注入被吞，换符号位泄漏形态证红）+ 1 次 sed 转义损坏重试；传递性属性
+  无现实可注入形态（单臂缺陷恒被反对称/自反锚先行覆盖）——诚实登记；
+  注入后源码全程 git checkout 恢复零残留。
+- **连坐**：测试数 1242→1259（裸 moon test）/1291→1308（native 全量
+  MOON_CC=clang-cl，双口径亲测）；moon info 接口面零漂移（pub 面零变更）；
+  moon fmt/check 全绿；util_wbtest 例锚与本批属性互补零重复。
+
 ### fix(engine): W4 尾件批——普查钉出的四缺陷修复（abort 族×2 + note 泄漏 + 栈迭代化，Closes #418 #419 #420 #421，2026-11-04）
 
 - **#418（dump 族深嵌套 abort）**：合法深 AST 的 dump JSON 深度可达数百层

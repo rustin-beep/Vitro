@@ -213,7 +213,7 @@ pub fn VitroVM::snapshot(self : VitroVM) -> VMSnapshot {
 /// 用户断点被静默清空、续跑永不命中（M26 A1 P1）；若快照采于
 /// paused=true 还会反向引入假暂停（同一缺陷另一面）。快照侧两字段仍
 /// 记录（诊断价值），仅 restore 不消费——有意偏离 Rust oracle 照搬渊源
-/// （oracle 同病，双侧同构；#430 裁定会话配置归会话层单源）。
+/// （#430 拍板会话配置归会话层单源；oracle 侧缺陷形态已随删区不可追修）。
 pub fn VitroVM::restore(self : VitroVM, snap : VMSnapshot) -> Unit {
   // #430：现役会话配置快照暂存（restore 尾回填）
   let keep_paused = self.paused

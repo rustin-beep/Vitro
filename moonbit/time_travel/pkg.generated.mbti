@@ -76,6 +76,8 @@ pub struct UnifiedEngine {
   mut is_finished : Bool
   mut is_trapped : Bool
   mut last_trap_message : String?
+  mut saw_trap : Bool
+  mut viewport_step : Int32?
   algo : AlgoInferCtx
 }
 pub fn UnifiedEngine::cancel(Self) -> Unit

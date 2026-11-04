@@ -188,6 +188,34 @@
 - 边界登记（不越界）：json_parse 的 `\uXXXX` 转义 write_char 对孤立代理在
   wasm-gc 后端 abort 是 #429 面（B6 批）；`input.feed`/argv 运行时字节域
   通道的 surrogate 形态另行登记。
+### fix(engine): 审阅 v2 批 B5——#428 scanf 族修复（%Nc 宽度 + 溢出 clamp + hexfloat/inf/nan + ungetc(EOF) + 缺臂 e/E/g/G/a/A/F/X）
+
+- **A-3 %Nc 宽度**（P1）：scanf/sscanf 双臂 %c 执行臂宽度未实现（只读 1 字节——#71 病 23 修漏 %c）→
+  `k = wopt 或 1` 逐字节 store_i8、不写 NUL（%c 无终止符语义）、中途流尽部分写入保留不计 matched；
+  %*Nc 抑制臂同吃宽度。clang 真值：`scanf("%3c")` 输入 abcdef → buf="abc" next='d'。
+- **A-9 溢出 clamp**（P2）：d/u 臂 parse_*_or_zero 族「溢出 catch→0」+ i/x/o 臂裸回绕 → 统一
+  `scan_int_clamp` 累加器（strtoll 语义 + 边界位模式 clamp，glibc+UCRT 双派真值 t2/t2b/t2c/t3/t8）：
+  有符号（d/i）负溢出 LLONG_MIN 全档 / 正溢出 ll 档 LLONG_MAX·其余档 ULLONG_MAX 截位（%d → -1）；
+  无符号（u/x/X/o）正负溢出 ULLONG_MAX（**负号吞**——clamp 压过回绕）；域内负号回绕与域内截断
+  现状对（防误翻锚锁定）。五个 parse_*_or_zero 死函数删除（病灶载体防复用）。
+- **A-10 hexfloat + inf/nan**（P2）：病 24 半修收口——token 收对、解析层丢（@string.parse_double
+  不认 hexfloat → 0.0）→ 值转换接 host_convert `parse_float_token` 单源；INF/INFINITY/NAN/NAN(n)
+  token 形态同批（read_float_token 收集〔INITY 尾段大小写不敏感〕+ `scanf_float_value` 值层，
+  带符号 -inf 支持）。atof/strtod 侧 inf/nan 缺口登记（host_convert 域，非本批）。
+- **A-11 ungetc(EOF)**（P3）：-1 被当回退字节缓存回吐（教学惯用法 `ungetc(getchar(),stdin)` 在
+  EOF 处吞流）→ ch==-1 早退无操作返 EOF（C11 §7.21.7.10 流不变）。
+- **缺臂扩面**（R1a-F3 / rules.json B 轮清账）：e/E/g/G/a/A/F 八转换符并 f 族臂（C11 §7.21.6.2 p12
+  浮点族输入语义全同 strtod——此前落「不消费不计数」else 兜底但消耗指针参数）；大写 X 并 i/x/o 臂
+  （%X ≡ %x——base 判定与 0x 前缀探三条件点双壳连坐）。typeck 面零改动（a/A 兜底放行零误报，
+  rules.json divergence 登记——printf 侧 a/A 同形态先例）。
+- **顺手**：scanf 壳 %f 臂死代码 lim 删（M20 B-2——read_float_token 自带 max 重算）。
+- **锚**：wbtest 5 锚红→绿（`scanf_c_width_field` / `scanf_overflow_clamp_bitpattern` /
+  `scanf_hexfloat_input` / `ungetc_eof_noop` / `scanf_missing_conv_arms`——真值全部双派亲采）；
+  corpus/baseline 4 例新语料（+3 .in）三臂=clang 逐字节；vm_diff golden 受控重冻纯增量 4 条
+  （814 全 SAME，既有语料零漂移）；clang_direct 945 全对拍零 DIFF。
+- **连坐**：conv_specs rules.json scanf 面 X/e/E/g/G/F 置 host:true 删 divergence、a/A 置
+  host:true + typeck divergence 登记（闸 PASS）；C 真值速查表 S1/S2/S4/S5 翻面 + S3 防误翻注。
+
 ### fix(corpus+scripts): PR #464 审阅处置批——P2×2 落地（fuzz 采样域 + facts 计数键）+ P3×7 连坐（2026-11-04）
 
 - **P2-1 fuzz 采样域**：`corpus_fuzz/rules.json` `suites` 加 `chibicc_port` + 一次 `-freeze`（纯增量

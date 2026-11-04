@@ -1097,3 +1097,376 @@ test "scanf_h_family_widths_canary" {
   ignore(host_sscanf(map, mem, 0x6C00U, 0x6400U, [pu]))
   assert_eq(mem.load_u32(map, 0x8814U), Ok(0xDEAD81CDU), msg="%hu 低 2 字节")
 }
+
+// ── B5 批（#428，2026-11-04）：scanf 族四缺陷 + 缺臂红→绿锚 ──────────────
+// 真值源：Win clang(UCRT) + WSL gcc/clang(glibc) 双派亲采一致
+// （/d/tmp/b5_truth 探针 t1-t7，2026-11-04）；速查表 S1-S5 连坐。
+
+///|
+/// #428 A-3：`%Nc` 字段宽度（C11 §7.21.6.2——宽度适用所有转换；#71 病 23
+/// 修漏 %c 臂）。clang 真值：`scanf("%3c",buf)` 输入 "abcdef42" → r=1
+/// buf="abc" 不写 NUL、next='d'(100)、随后 `%*2c%d` 吃 "ef" 后 x=42。
+/// 修前红：执行臂只读 1 字节忽略宽度（scanf+sscanf 双臂同漏）。
+test "scanf_c_width_field" {
+  let (map, mem) = fresh()
+  let buf = 0x8000U
+  let px = 0x8300U
+  // scanf 壳：%3c 写 3 字节、不写 NUL（buf[3] 哨兵不动）
+  let input = InputState::new([b"abcdef42"], true)
+  ignore(mem.store_i8(map, buf + 3U, 33)) // '!' 哨兵
+  let r = scanf_run(map, mem, input, "%3c", [buf])
+  guard r is InputOutcome::Value(n) else { fail("应匹配 1 项") }
+  assert_eq(n, 1UL)
+  assert_eq(mem.load_i8(map, buf), Ok(97))
+  assert_eq(mem.load_i8(map, buf + 1U), Ok(98))
+  assert_eq(mem.load_i8(map, buf + 2U), Ok(99))
+  assert_eq(
+    mem.load_i8(map, buf + 3U),
+    Ok(33),
+    msg="%c 无终止符语义——不写 NUL",
+  )
+  // 宽度消费后游标：getchar 应读 'd'
+  assert_eq(host_getchar(input), InputOutcome::Value(100UL))
+  // %*2c 抑制臂 + %d：吃 "ef" 后读 42（clang r=1 x=42）
+  let r2 = scanf_run(map, mem, input, "%*2c%d", [px])
+  guard r2 is InputOutcome::Value(n2) else { fail("抑制+宽度应匹配") }
+  assert_eq(n2, 1UL)
+  assert_eq(mem.load_u32(map, px), Ok(42U))
+  // %1c：宽度 1 = 单字节（与无宽度同形）
+  let input2 = InputState::new([b"ZZ"], true)
+  let b1 = 0x8100U
+  ignore(mem.store_i8(map, b1 + 1U, 81)) // 'Q' 哨兵
+  let r3 = scanf_run(map, mem, input2, "%1c", [b1])
+  guard r3 is InputOutcome::Value(n3) else { fail("%1c 应匹配") }
+  assert_eq(n3, 1UL)
+  assert_eq(mem.load_i8(map, b1), Ok(90))
+  assert_eq(mem.load_i8(map, b1 + 1U), Ok(81), msg="%1c 只写 1 字节")
+  // sscanf 壳：%3c（双臂同漏防单侧修——M20 A-3 实证双臂同漏）
+  put_cstr(mem, map, 0x6800U, "abcdef")
+  put_cstr(mem, map, 0x6000U, "%3c")
+  let sb = 0x8200U
+  ignore(mem.store_i8(map, sb + 3U, 33))
+  let rs = host_sscanf(map, mem, 0x6800U, 0x6000U, [sb])
+  assert_eq(rs.value, Some(1UL))
+  assert_eq(mem.load_i8(map, sb), Ok(97))
+  assert_eq(mem.load_i8(map, sb + 1U), Ok(98))
+  assert_eq(mem.load_i8(map, sb + 2U), Ok(99))
+  assert_eq(mem.load_i8(map, sb + 3U), Ok(33))
+  // sscanf %*2c%1c：抑制 2 字节后宽度 1（clang "xyz" → b4=[z*] r=1）
+  put_cstr(mem, map, 0x6900U, "xyz")
+  put_cstr(mem, map, 0x6100U, "%*2c%1c")
+  let sb2 = 0x8400U
+  ignore(mem.store_i8(map, sb2, 81))
+  let rs2 = host_sscanf(map, mem, 0x6900U, 0x6100U, [sb2])
+  assert_eq(rs2.value, Some(1UL))
+  assert_eq(mem.load_i8(map, sb2), Ok(122), msg="%*2c 吃 xy 后 %1c 读 z")
+}
+
+///|
+/// #428 A-9：数字转换超 i64/u64 域 **clamp 到边界位模式**（C 是
+/// strtoll/strtoul ERANGE 语义 + glibc/UCRT vfscanf 溢出处理一致），
+/// 非「归 0」。窄档取 clamp 值低位。修前红：parse_int64_or_zero 族
+/// catch → 0、i/x/o 自写累加器裸回绕。
+/// 真值（双派一致，t2/t2b/t2c/t3/t5 探针）：
+/// - %d 正超域 20 位 → ULLONG_MAX 低 32 位 = -1；%d 负超域 → LLONG_MIN
+///   低 32 位 = 0
+/// - %u 正超域 → 4294967295；%lld 正超域 → LLONG_MAX；%lld 负超域 →
+///   LLONG_MIN；%llu 负超域 → ULLONG_MAX（负号吞——clamp 压过回绕）
+/// - %hd 正超域 → 0xFFFF；%hhu → 0xFF；%hu → 0xFFFF
+/// - 域内截断（4294967297 %d → 1）与域内负号回绕（-5 %u → 4294967291）
+///   **现状已对**——防误翻锚（速查表 S3 同款）
+test "scanf_overflow_clamp_bitpattern" {
+  let (map, mem) = fresh()
+  let pd = 0x8000U
+  let pu = 0x8010U
+  let plld = 0x8020U
+  let pllu = 0x8030U
+  let input = InputState::new(
+    [
+      b"99999999999999999999", b"-99999999999999999999", b"18446744073709551616",
+      b"99999999999999999999", b"-99999999999999999999", b"99999999999999999999",
+      b"-18446744073709551616",
+    ],
+    true,
+  )
+  // %d 正超域 → 0xFFFFFFFF（= -1 位模式）
+  guard scanf_run(map, mem, input, "%d", [pd]) is InputOutcome::Value(1UL) else {
+    fail("正超域 %d r=1（clang 真值）")
+  }
+  assert_eq(
+    mem.load_u32(map, pd),
+    Ok(0xFFFFFFFFU),
+    msg="%d 超域 clamp ULLONG_MAX 低 32 位（修前归 0）",
+  )
+  // %d 负超域 → 0x00000000（LLONG_MIN 低 32 位）
+  guard scanf_run(map, mem, input, "%d", [pd]) is InputOutcome::Value(1UL) else {
+    fail("负超域 %d r=1（clang 真值——负溢出不是失败）")
+  }
+  assert_eq(
+    mem.load_u32(map, pd),
+    Ok(0U),
+    msg="%d 负超域 clamp LLONG_MIN 低 32 位 = 0",
+  )
+  // %u 正超域 → 4294967295
+  guard scanf_run(map, mem, input, "%u", [pu]) is InputOutcome::Value(1UL) else {
+    fail("正超域 %u r=1")
+  }
+  assert_eq(mem.load_u32(map, pu), Ok(4294967295U), msg="%u 超域 clamp")
+  // %lld 正超域 → LLONG_MAX
+  guard scanf_run(map, mem, input, "%lld", [plld]) is InputOutcome::Value(1UL) else {
+    fail("正超域 %lld r=1")
+  }
+  assert_eq(
+    mem.load_u64(map, plld),
+    Ok(9223372036854775807UL),
+    msg="%lld 超域 clamp LLONG_MAX（修前归 0）",
+  )
+  // %lld 负超域 → LLONG_MIN（0x8000...0）
+  guard scanf_run(map, mem, input, "%lld", [plld]) is InputOutcome::Value(1UL) else {
+    fail("负超域 %lld r=1")
+  }
+  assert_eq(
+    mem.load_u64(map, plld),
+    Ok(0x8000000000000000UL),
+    msg="%lld 负超域 clamp LLONG_MIN（修前归 0）",
+  )
+  // %llu 负超域 → ULLONG_MAX（负号吞）
+  guard scanf_run(map, mem, input, "%llu", [pllu]) is InputOutcome::Value(1UL) else {
+    fail("负超域 %llu r=1")
+  }
+  assert_eq(
+    mem.load_u64(map, pllu),
+    Ok(0xFFFFFFFFFFFFFFFFUL),
+    msg="%llu 负超域 clamp ULLONG_MAX 负号吞（修前 parse 失败归 0）",
+  )
+  // 窄档：正超域取 clamp 低位（%hd=0xFFFF / %hhu=0xFF / %hu=0xFFFF）
+  let ph = 0x8040U
+  let phh = 0x8050U
+  let phu = 0x8060U
+  let input2 = InputState::new(
+    [b"99999999999999999999 99999999999999999999 99999999999999999999"],
+    true,
+  )
+  guard scanf_run(map, mem, input2, "%hd %hhu %hu", [ph, phh, phu])
+    is InputOutcome::Value(3UL) else {
+    fail("窄档超域 r=3")
+  }
+  assert_eq(
+    mem.load_u32(map, ph),
+    Ok(0x0000FFFFU),
+    msg="%hd 超域低 16 位 0xFFFF",
+  )
+  assert_eq(
+    mem.load_u32(map, phh),
+    Ok(0x000000FFU),
+    msg="%hhu 超域低 8 位 0xFF",
+  )
+  assert_eq(
+    mem.load_u32(map, phu),
+    Ok(0x0000FFFFU),
+    msg="%hu 超域低 16 位 0xFFFF",
+  )
+  // sscanf 壳 + %llx 负超域（负号吞 → ULLONG_MAX；修前裸回绕）
+  put_cstr(mem, map, 0x6800U, "99999999999999999999")
+  put_cstr(mem, map, 0x6000U, "%llu")
+  let sll = 0x8070U
+  ignore(host_sscanf(map, mem, 0x6800U, 0x6000U, [sll]))
+  assert_eq(
+    mem.load_u64(map, sll),
+    Ok(0xFFFFFFFFFFFFFFFFUL),
+    msg="sscanf %llu 超域 clamp（双臂同修防单侧）",
+  )
+  put_cstr(mem, map, 0x6900U, "-10000000000000000") // 0x10^16 恰超 u64
+  put_cstr(mem, map, 0x6100U, "%llx")
+  ignore(host_sscanf(map, mem, 0x6900U, 0x6100U, [sll]))
+  assert_eq(
+    mem.load_u64(map, sll),
+    Ok(0xFFFFFFFFFFFFFFFFUL),
+    msg="%llx 负超域 clamp ULLONG_MAX 负号吞（修前裸回绕 0 - 2^64 = 0）",
+  )
+  // 防误翻锚①：i64 域内截断（速查表 S3——4294967297 %d → 1 现状对）
+  let input3 = InputState::new([b"4294967297"], true)
+  guard scanf_run(map, mem, input3, "%d", [pd]) is InputOutcome::Value(1UL) else {
+    fail("域内 %d r=1")
+  }
+  assert_eq(
+    mem.load_u32(map, pd),
+    Ok(1U),
+    msg="域内截断不翻（防误翻锚）",
+  )
+  // 防误翻锚②：域内负号回绕（-5 %u → 4294967291 现状对）
+  let input4 = InputState::new([b"-5"], true)
+  guard scanf_run(map, mem, input4, "%u", [pu]) is InputOutcome::Value(1UL) else {
+    fail("域内负号 %u r=1")
+  }
+  assert_eq(
+    mem.load_u32(map, pu),
+    Ok(4294967291U),
+    msg="域内负号回绕不翻",
+  )
+}
+
+///|
+/// #428 A-10：hexfloat 输入 + inf/nan 形态（病 24 半修收口——token 收对
+/// 解析层丢；inf/nan 是 strtod subject sequence 同族形态，双派真值
+/// r=4 全配）。修前红：parse_double_or_zero 不认 hexfloat → 0.0、
+/// read_float_token 不收 inf/nan token → 匹配失败。
+test "scanf_hexfloat_input" {
+  let (map, mem) = fresh()
+  let plf = 0x8000U
+  let pf = 0x8010U
+  // %lf hexfloat（clang "0x1.8p3" → 12.00）
+  let input = InputState::new([b"0x1.8p3 0x10p1"], true)
+  guard scanf_run(map, mem, input, "%lf %lf", [plf, 0x8020U])
+    is InputOutcome::Value(2UL) else {
+    fail("hexfloat %lf r=2（clang 真值）")
+  }
+  assert_eq(
+    mem.load_u64(map, plf),
+    Ok(12.0.reinterpret_as_uint64()),
+    msg="%lf 读 0x1.8p3 = 12.0（修前归 0）",
+  )
+  assert_eq(
+    mem.load_u64(map, 0x8020U),
+    Ok(32.0.reinterpret_as_uint64()),
+    msg="%lf 读 0x10p1 = 32.0",
+  )
+  // %f（float 4 字节位模式）hexfloat + %la（缺臂同批）
+  let input2 = InputState::new([b"0x1.8p3 0x1p-2"], true)
+  guard scanf_run(map, mem, input2, "%f %la", [pf, 0x8030U])
+    is InputOutcome::Value(2UL) else {
+    fail("%f/%la hexfloat r=2")
+  }
+  assert_eq(
+    mem.load_u32(map, pf),
+    Ok(Float::reinterpret_as_uint(Float::from_double(12.0))),
+    msg="%f hexfloat float 位模式",
+  )
+  assert_eq(
+    mem.load_u64(map, 0x8030U),
+    Ok(0.25.reinterpret_as_uint64()),
+    msg="%la 读 0x1p-2 = 0.25",
+  )
+  // inf/nan：inf INFINITY nan NAN(1) 全配（clang r=4）
+  let input3 = InputState::new([b"inf INFINITY nan NAN(1)"], true)
+  guard scanf_run(map, mem, input3, "%lf %le %lf %le", [
+      0x8040U, 0x8050U, 0x8060U, 0x8070U,
+    ])
+    is InputOutcome::Value(4UL) else {
+    fail("inf/nan 形态 r=4（clang 真值）")
+  }
+  assert_eq(
+    mem.load_u64(map, 0x8040U),
+    Ok(@double.infinity.reinterpret_as_uint64()),
+    msg="%lf 读 inf（修前 token 不收 → 失败）",
+  )
+  assert_eq(
+    mem.load_u64(map, 0x8050U),
+    Ok(@double.infinity.reinterpret_as_uint64()),
+    msg="%le 读 INFINITY 长形态",
+  )
+  assert_eq(
+    mem.load_u64(map, 0x8060U),
+    Ok(@double.not_a_number.reinterpret_as_uint64()),
+    msg="%lf 读 nan",
+  )
+  assert_eq(
+    mem.load_u64(map, 0x8070U),
+    Ok(@double.not_a_number.reinterpret_as_uint64()),
+    msg="%le 读 NAN(1) 带尾缀形态",
+  )
+  // sscanf 壳 hexfloat（双臂同修）
+  put_cstr(mem, map, 0x6800U, "0x1.8p3")
+  put_cstr(mem, map, 0x6000U, "%la")
+  let sd = 0x8080U
+  ignore(host_sscanf(map, mem, 0x6800U, 0x6000U, [sd]))
+  assert_eq(
+    mem.load_u64(map, sd),
+    Ok(12.0.reinterpret_as_uint64()),
+    msg="sscanf %la hexfloat（双臂同修防单侧）",
+  )
+  // 防误翻锚：十进制含 e 指数形态现状对（"2.5e1" → 25.0）
+  let input4 = InputState::new([b"2.5e1"], true)
+  guard scanf_run(map, mem, input4, "%le", [sd]) is InputOutcome::Value(1UL) else {
+    fail("十进制指数 %le r=1")
+  }
+  assert_eq(mem.load_u64(map, sd), Ok(25.0.reinterpret_as_uint64()))
+}
+
+///|
+/// #428 A-11：`ungetc(EOF, stdin)` 是**无操作**（C11 §7.21.7.10——
+/// ungetc 失败含 EOF 实参时流不变，返回 EOF）。修前红：-1 被当回退
+/// 字节缓存回吐。教学惯用法 `ungetc(getchar(), stdin)` 在 EOF 处踩。
+test "ungetc_eof_noop" {
+  let input = InputState::new([b"xy"], true)
+  let rc = host_ungetc(input, -1)
+  assert_eq(
+    rc,
+    0xFFFFFFFFFFFFFFFFUL,
+    msg="ungetc(EOF) 返回 -1（C 失败语义）",
+  )
+  // 流不动：getchar 应读 'x'=120（修前吐缓存 -1）
+  assert_eq(
+    host_getchar(input),
+    InputOutcome::Value(120UL),
+    msg="ungetc(EOF) 无操作——流内容原样可读",
+  )
+  // 缓存槽未被占用：后续正常 ungetc 往返不受染
+  ignore(host_ungetc(input, 81)) // 'Q'
+  assert_eq(host_getchar(input), InputOutcome::Value(81UL))
+  assert_eq(
+    host_getchar(input),
+    InputOutcome::Value(121UL),
+    msg="'y' 顺序读",
+  )
+}
+
+///|
+/// #428 形态 5 / R1a-F3 / rules.json B 轮清账：scanf 缺 e/E/g/G/a/A/F/X
+/// 臂——C11 §7.21.6.2 p12 浮点族 a/A/e/E/f/F/g/G 输入语义**全同**
+/// （strtod subject sequence，不区分输出记法）；%X ≡ %x。修前红：
+/// 落「未知转换符」else 兜底——不消费不计数（R1a 探针
+/// `sscanf("2.5","%e",&d)` → clang r=1 / vitro r=0）。
+test "scanf_missing_conv_arms" {
+  let (map, mem) = fresh()
+  // sscanf 壳：e/g/F/a 浮点族连读（clang t6 真值）
+  put_cstr(mem, map, 0x6800U, "2.5 2.5e1 .5 0x10p1 1e2")
+  put_cstr(mem, map, 0x6000U, "%le %le %le %lF %le")
+  let pa = 0x8000U
+  let pb = 0x8010U
+  let pc = 0x8020U
+  let pF = 0x8030U
+  let pe = 0x8040U
+  let rs = host_sscanf(map, mem, 0x6800U, 0x6000U, [pa, pb, pc, pF, pe])
+  assert_eq(rs.value, Some(5UL), msg="缺臂浮点族全配（clang r=5）")
+  assert_eq(mem.load_u64(map, pa), Ok(2.5.reinterpret_as_uint64()))
+  assert_eq(mem.load_u64(map, pb), Ok(25.0.reinterpret_as_uint64()))
+  assert_eq(mem.load_u64(map, pc), Ok(0.5.reinterpret_as_uint64()))
+  assert_eq(
+    mem.load_u64(map, pF),
+    Ok(32.0.reinterpret_as_uint64()),
+    msg="%lF 认 hexfloat（与 f 同语义）",
+  )
+  assert_eq(mem.load_u64(map, pe), Ok(100.0.reinterpret_as_uint64()))
+  // sscanf：%X ≡ %x（clang "ff FF" → 255 255）
+  put_cstr(mem, map, 0x6900U, "ff FF")
+  put_cstr(mem, map, 0x6100U, "%X %llX")
+  let px = 0x8050U
+  let pllx = 0x8060U
+  let rs2 = host_sscanf(map, mem, 0x6900U, 0x6100U, [px, pllx])
+  assert_eq(rs2.value, Some(2UL), msg="%X 双配")
+  assert_eq(mem.load_u32(map, px), Ok(255U))
+  assert_eq(mem.load_u64(map, pllx), Ok(255UL))
+  // scanf 壳：%e/%g/%a/%F（防 sscanf 单侧修——双臂同漏实证）
+  let input = InputState::new([b"2.5 3.5 4.5 5.5"], true)
+  guard scanf_run(map, mem, input, "%le %lg %la %lF", [
+      0x8070U, 0x8080U, 0x8090U, 0x80A0U,
+    ])
+    is InputOutcome::Value(4UL) else {
+    fail("scanf 壳缺臂 r=4")
+  }
+  assert_eq(mem.load_u64(map, 0x8070U), Ok(2.5.reinterpret_as_uint64()))
+  assert_eq(mem.load_u64(map, 0x8080U), Ok(3.5.reinterpret_as_uint64()))
+  assert_eq(mem.load_u64(map, 0x8090U), Ok(4.5.reinterpret_as_uint64()))
+  assert_eq(mem.load_u64(map, 0x80A0U), Ok(5.5.reinterpret_as_uint64()))
+}

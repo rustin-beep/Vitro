@@ -654,6 +654,14 @@ jobs:
           node scripts/moonbit/mcp_smoke/main.mts
         shell: bash
 
+      # MCP 黑盒验收（v1 samples 同源锚 27 断言；PNG 预览断言仅本地——CI 无
+      # Edge/Chrome 条件跳过）。PR #457 审阅 v2 P3-④ 销案：原 D:/tmp 仓外件
+      # 收编入仓（2026-11-04）——读者可核对，ci_checklist 活行引用。
+      - name: MCP accept (cmd/mcp_js stdio 黑盒——每工具 happy path/池/边界/错误帧)
+        if: matrix.slice == 'cli_smoke'
+        run: node scripts/moonbit/mcp_smoke/accept.mts
+        shell: bash
+
       # algorithms.catalog 对账（#36，2026-10-16 建；2026-10-31 收编批 D 路
       # 退役）：判据源码 build_match 提取物 ↔ 引擎导出（native vitro.exe +
       # js vitro_js.js 双臂互拍）↔ rules.json 43 族。D 路（生成器分组表对账）

@@ -6,7 +6,7 @@
 
 DeepSeek Harness（DSH）插件的 **MCP server 核心**——stdio JSON-RPC 2.0 上承载 Vitro 引擎的有状态会话工具面。单源 MoonBit（`vitro/engine/mcp`，L9 宿主层），随 mooncakes 主包发布；npm 侧只带 `moon build --release --target js cmd/mcp_js` 单文件产物 + DSH 包装（hub 层，实验目录 D:/tmp/vitro-dsh-plugin/hub）。
 
-设计单源：`D:/tmp/vitro-dsh-plugin/design.md` v2（Serena 形态——动词化小工具 + 会话池 + 渐进披露 + 返回值投影 + readOnlyHint）。**工具数勘误**：design.md 自计「11 工具 / L0 4」，但 session_open 是解锁触发器、无会话时必须可见才能被调用——L0 可见集 5、总计 12；§3.3 的 available_now(5) + unlocks(7) 拆分即权威口径。
+设计单源：[DSH-MCP设计单源.md](DSH-MCP设计单源.md) v2（Serena 形态；2026-11-04 收编入仓——动词化小工具 + 会话池 + 渐进披露 + 返回值投影 + readOnlyHint）。**工具数勘误**：design.md 自计「11 工具 / L0 4」，但 session_open 是解锁触发器、无会话时必须可见才能被调用——L0 可见集 5、总计 12；§3.3 的 available_now(5) + unlocks(7) 拆分即权威口径。
 
 ## 工具面（12）
 
@@ -43,7 +43,7 @@ DeepSeek Harness（DSH）插件的 **MCP server 核心**——stdio JSON-RPC 2.0
 ## 验收与登记
 
 - 白盒：`mcp/mcp_wbtest.mbt` 22 条（js/wasm-gc/native 三 target 全绿——**裸 moon test 含 mcp**，现值裸 1244；注入必红断言实验〔时点基线 1239〕变 1238/1 failed；mcp 挂 +wasm 随 gateway B3 口径入裸计数；含 PR #457 审阅 v2 批 P2×4 + P3-② 锚）。
-- 黑盒：`D:/tmp/vitro-dsh-plugin/accept.mts` 28 断言对 js 产物跑全绿（TTL 过期黑盒不可假钟，白盒覆盖）；CI 产物闸 = `scripts/moonbit/mcp_smoke`（18 断言，含 #468/#469 语法门与驱动对拍）。
+- 黑盒：`scripts/moonbit/mcp_smoke/accept.mts`（2026-11-04 收编入仓并挂 CI——原 D:/tmp 仓外件销案；27 断言 CI + PNG 预览断言仅本地）；CI 产物闸 = `scripts/moonbit/mcp_smoke`（18 断言，含 #468/#469 语法门与驱动对拍）。
 - 登记：pkg_deps L9 / surface 边表 10 条 / mbti_sync 豁免（同 gateway 病：canonical backend=wasm 而包不含 wasm）/ testcount 双 README（裸 1222→1244 / native 1271→1293，mcp 22 条 js/native 双域——as_of 2026-11-04 本地全量实测）。
 
 ## 待拍板

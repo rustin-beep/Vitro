@@ -345,6 +345,73 @@
   两锚（超时杀/stdout 现场保全）+ stack 显示改 KiB。审阅侧已证基线有牙
   （W4_MAX_WASM_STACK=524288 模拟回退 → 4 例 worsened rc=3 红）。
 
+### fix(engine): #427 审阅 v2 批 B4——printf 缺臂族修复（%n/%F/%a/%A 执行臂 + %05.0d 三臂崩溃 + vprintf 变参栈下溢 + %.17g/.17e 精确路径，2026-11-03）
+
+- **%n 执行臂**（M20 A-1）：写回「到此处已输出字符数」（C11 7.21.6.1p8），
+  长度修饰分档（hh=1/h=2/默认·l=4（LLP64）/ll=8）；与 scanf 侧 %n（#269）
+  对称补齐。typeck 判据同步正向化（M10c A-5：旧与 d/i 同组判值类型——
+  合法 `&x` 误报 W3062、非法 `42` 误收零警；现判指针性 + pointee int）。
+- **%F/%a/%A 执行臂**（M20 A-2 / M21 A3）：%F = f 臂 + 大写 inf/nan；
+  %a/%A hexfloat 随 glibc「最短精确」（`0x1.8p+0`——UCRT 13 位全印属实
+  现定义域平台分叉，速查表 P3）；va_spec_width 四符补臂（四消费者口径
+  收口——旧计数面认、输出臂无、预取层不步进的三重分裂致参数错位）。
+  typeck a/A 补判据臂（conv_specs 闸 divergence 清零：printf 族两面
+  18/18 一致）。
+- **%05.0d 三臂进程崩溃治本**（M21 A1）：apply_width 空串索引守卫前置 +
+  C11「d/i/o/u/x/X 精度在场 → 0 旗标被忽略」（`%05.0d` 0 → 空格×5，旧
+  三臂 Index-out-of-bounds/abort 崩溃）。
+- **vprintf 族 len≥4 字符串实参 VM 栈下溢治本**（M21 A2）：根因在
+  codegen `gen_call_ptr` 变参 word 计数——数组类型实参（字符串字面量
+  定型 char[N]）按 `type_size` 4 字节对齐计 word（"abcd"=char[5]→2），
+  而压栈侧按退化指针恒压 1 word → CallVar 多弹即值栈下溢。修：数组实参
+  word 恒 1（C 调用约定数组退化）。
+- **%.17g/%.17e 十进制精确路径**（M20 A-7/A-8 + A2 锚 A2-A8 翻面 + t_prec
+  补探）：format_g/format_e 尾数与指数均改 bigint 精确有理数 half-even
+  （`abs_val / powi10(exp)` 浮点商 ulp 误差根除——1e23 尾数不规格化/指数
+  差 1、1.5e126 丢 15 位有效、次正规 8.88e-320 偏差、DBL_TRUE_MIN
+  `infe-324` 除零泄漏全清）；%f NaN 拼法 `NaN`→`nan`（C11 小写；UCRT
+  `-nan(ind)` 符号/payload 属平台域）。连坐 A2 批 KNOWN_DIVERGENCE 锚
+  8 值全翻面（`format_g_decimal_exact_oracle_alignment`）。
+- **%q 门条件退役**（M21 A4）：未知转换符输出与实参余量无关（clang 恒
+  丢 % 输出字母）；旧门条件参数耗尽位短路致 `[%q]`/`[%d%q]`/`[%5q]`
+  三配置三种输出。
+- **%hhd/%hd/%hhu/%hu 截断**（M20 A-4）+ **%#08x 前缀位置**（M20 A-5：
+  前缀属数值部分经 apply_width `prefix~` 传参——`0x0000ff`）+ **%#g 保
+  尾零**（M20 A-6）+ **scanf %Nc 宽度**（M20 A-3，范围外顺手：#71 病 23
+  宽度修复漏了 %c 臂——双臂同修）。
+- **锚**：新 `host_b4_printf_wbtest.mbt` 11 锚（全部 clang 真值，变异抽样
+  三处证红）；corpus +2（`p427_printf_missing_arms.c`/`p427_scanf_width_c.c`
+  ——%a/%n 平台方言域不入 clang 直拍语料，wbtest 直锚）；三臂（js/native/
+  wasm）探针 25 文件全一致 + vm_diff golden 763 SAME/0 DIFF（freeze 仅
+  新增 2 例零既有漂移）+ clang_direct 876 SAME/0 DIFF + corpus_fuzz PASS。
+
+### fix(engine): PR #462 审阅处置批——P1 sprintf/snprintf float 变参提升 + P2 `#` 族三缺口 + P3 typeck %n 判据扩段（2026-11-04）
+
+- **P1（静默错值）**：`sprintf`/`snprintf` 的 float 实参未提升 double——
+  codegen `CastF2D` 白名单只认 printf/fprintf 两名，float 位模式被当
+  double 位模式直传 CallHost（`sprintf(b,"%f",3.25f)` → `0.000000`、
+  `%g` → `5.33e-315`）。白名单扩为 host printf 家族全枚举四名
+  （printf/fprintf/sprintf/snprintf；vprintf 族变参来自 va_list 无
+  float 直传面，用户变参函数走 8 字节槽路径不经此臂）。语料
+  `p427_printf_missing_arms.c` 扩 float 段（clang 逐位一致）。
+- **P2-1/P2-2（%#o）**：`#` 对 o 的 C11 7.21.6.1p6 语义 =「**提高精度**
+  强制首位 0」——与精度补零同一件事非叠加（旧 pad 补零再拼 prefix 双重
+  给零：`%#.3o` 8 → `0010` vs clang `010`）；非零值+# 精度提至
+  max(prec, 位数+1)、prefix 退役；括号句特例「值 0+精度 0 → 单 0」
+  （`%#.0o` 0 旧空串）；`%#o` 0 不提精度。
+- **P2-3（# 恒含小数点）**：a/A/e/E/f/F/g/G 族的 `#` 恒含点——
+  `format_fixed_case`/`format_e` 补 `alt~` 参数（`%#.0f` 1.5 → `2.`、
+  `%#.0e` → `2.e+00`、大写族同）；g/a 的 alt 路径旧已含此语义。
+- **P3-2（typeck）**：printf `%n` 判据的 l/ll 段补 'n'（pointee 对应
+  宽度）+ 新增 h/hh 段（旧落 `_ => true`——`%hhn` 错实参零警）。
+- **P3-1（登记）**：速查表 D7 备注补 `%hn`×short 交互的变量级口径
+  （写回宽度对、short 4 字节只覆写低半与 C 分叉属架构裁剪下游，不另
+  立案）。
+- **锚**：+2（`printf_b4_hash_o_precision_semantics`/
+  `printf_b4_hash_decimal_point_family`，clang 真值含大写族）；
+  五臂 golden 重算 1 条（语料扩段，digest 受控变化）；裸 1188/1188 +
+  native 1237/1237。
+
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 下游断供；版本号口径见 docs/current/08-发布档案/0.9.1.md）
 
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）

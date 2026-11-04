@@ -1194,22 +1194,34 @@ pub fn host_scanf_n(
           return InputOutcome::Trap(access_fault_text(e), access_fault_code(e))
       }
     } else if spec == SCANF_C {
-      // c（不跳空白）
+      // c（不跳空白；#427 批 B4 范围外顺手 / M20 A-3：字段宽度适用
+      // %c——C11 §7.21.6.2 p12：宽度 w = 逐字节读**写** w 个字符（**不
+      // 写 NUL**——%c 无终止符语义），缺省 1；输入不足时已读部分照写、
+      // 匹配成功。#71 病 23（2026-10-11）宽度修复漏了 %c 臂——旧只读
+      // 1 字节忽略 wopt）
+      let lim = match sl.3 {
+        Some(w) => w
+        None => 1
+      }
       if pos >= chars.length() {
         exhausted = true
         break
       }
-      let ch = chars[pos]
-      pos = pos + 1
-      if !sl.2 {
-        match mem.store_i8(map, ptr, ch.to_int()) {
-          Ok(_) => ()
-          Err(e) =>
-            return InputOutcome::Trap(
-              access_fault_text(e),
-              access_fault_code(e),
-            )
+      let mut k = 0
+      while k < lim && pos < chars.length() {
+        let ch = chars[pos]
+        pos = pos + 1
+        if !sl.2 {
+          match mem.store_i8(map, ptr + k.reinterpret_as_uint(), ch.to_int()) {
+            Ok(_) => ()
+            Err(e) =>
+              return InputOutcome::Trap(
+                access_fault_text(e),
+                access_fault_code(e),
+              )
+          }
         }
+        k = k + 1
       }
     } else if spec == SCANF_S {
       // s
@@ -1826,17 +1838,26 @@ pub fn host_sscanf(
         matched = matched + 1
       }
     } else if spec == SCANF_C {
-      // c
+      // c（宽度语义同 scanf 版——#427 批 B4 / M20 A-3：C11 §7.21.6.2
+      // 宽度 w 个字符逐字节写、不写 NUL，缺省 1）
+      let lim = match sl.3 {
+        Some(w) => w
+        None => 1
+      }
       if pos >= chars.length() {
         break
       }
-      let ch = chars[pos]
-      pos = pos + 1
-      if !sl.2 {
-        match mem.store_i8(map, ptr, ch.to_int()) {
-          Ok(_) => ()
-          Err(e) => return fault_reply(e)
+      let mut k = 0
+      while k < lim && pos < chars.length() {
+        let ch = chars[pos]
+        pos = pos + 1
+        if !sl.2 {
+          match mem.store_i8(map, ptr + k.reinterpret_as_uint(), ch.to_int()) {
+            Ok(_) => ()
+            Err(e) => return fault_reply(e)
+          }
         }
+        k = k + 1
       }
       if !sl.2 {
         matched = matched + 1

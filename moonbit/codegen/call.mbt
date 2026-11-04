@@ -177,10 +177,23 @@ fn BytecodeGen::gen_call_ptr(
       }
     } else {
       self.gen_expr(arg)
-      // printf/fprintf 的 float 实参提升 double（可变参数默认实参提升）
+      // host printf 家族的 float 实参提升 double（可变参数默认实参提升，
+      // C11 6.5.2.2p7——float 实参经 ... 传递前提升为 double）。PR #462
+      // 审阅 P1（2026-11-03）：旧白名单只认 printf/fprintf 两名——
+      // sprintf/snprintf 落空，float 位模式被当 double 位模式直传
+      // CallHost（`sprintf(b,"%f",3.25f)` → `0.000000`、`%g` →
+      // `5.33e-315` 静默错值）；本仓 host printf 家族变参入口全枚举 =
+      // printf/fprintf/sprintf/snprintf 四名（vprintf 族的变参来自
+      // va_list 游标无 float 直传面；用户自定义变参函数走 is_user_call
+      // 的 8 字节槽路径不经此臂）
       match callee {
         Identifier(name, _, _) =>
-          if (name == "printf" || name == "fprintf") &&
+          if (
+              name == "printf" ||
+              name == "fprintf" ||
+              name == "sprintf" ||
+              name == "snprintf"
+            ) &&
             arg_ty.kind() is TK_Float {
             self.emit(@opcode.OpCode::CastF2D, 0, loc)
           }
@@ -219,7 +232,19 @@ fn BytecodeGen::gen_call_ptr(
                 }
                 let mut extra_variadic_words = 0
                 for j in user_named_count..<args.length() {
-                  extra_variadic_words += (self.type_size(args[j].ty()) + 3) / 4
+                  // #427 批 B4（M21 A2 根因）：数组类型实参（字符串字面量
+                  // 定型 char[N]、数组变量）**退化为指针压 1 word**（C 调用
+                  // 约定；gen_expr 的 StringLiteral/数组名臂恒压单个地址）
+                  // ——旧按 type_size(char[N]) 的 4 字节对齐计 word，N>4
+                  // 即多计（"abcd"=char[5]→2 words 实压 1）→ CallVar 多弹
+                  // → 值栈下溢三臂进程崩溃（vprintf 族 len≥4 字符串实参
+                  // 的调用点）。指针/标量照旧按尺寸取 word。
+                  let t = args[j].ty()
+                  extra_variadic_words += if t.is_array() {
+                    1
+                  } else {
+                    (self.type_size(t) + 3) / 4
+                  }
                 }
                 let total_arg_words = named_words + extra_variadic_words
                 self.emit(@opcode.OpCode::PushConst, total_arg_words, loc)

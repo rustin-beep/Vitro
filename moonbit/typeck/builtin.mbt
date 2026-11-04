@@ -263,9 +263,21 @@ pub fn TypeChecker::check_printf_format(
     let ok : Bool = match len_mod {
       "" =>
         match spec {
-          'd' | 'i' | 'u' | 'x' | 'X' | 'o' | 'n' =>
-            ak is TK_Int || ak is TK_Char
-          'f' | 'e' | 'g' | 'E' | 'G' => ak is TK_Float || ak is TK_Double
+          'd' | 'i' | 'u' | 'x' | 'X' | 'o' => ak is TK_Int || ak is TK_Char
+          // %n 实参 = int*（写回输出计数——#427 批 B4 / M10c A-5 判据
+          // 正向化：旧与 d/i 同组判值类型，合法 `printf("%n",&x)` 误报
+          // W3062（int* 非值 int）、非法 `printf("%n",42)` 反而零警——
+          // 反向双错；现判指针性 + pointee int（scanf 侧 %n 同口径）
+          'n' =>
+            match arg_type {
+              Pointer(p, _) => p.kind() is TK_Int
+              Array(element, _, _, _, _, _) => element.kind() is TK_Int
+              _ => false
+            }
+          // #427 批 B4：a/A 补判据臂（fp 族同款——conv_specs 闸的 a/A
+          // divergence 清账；%a 实参经默认实参提升为 double）
+          'f' | 'e' | 'g' | 'E' | 'G' | 'a' | 'A' =>
+            ak is TK_Float || ak is TK_Double
           'F' => ak is TK_Double || ak is TK_Float
           'c' => ak is TK_Int || ak is TK_Char
           's' | 'p' => ak is TK_Pointer || arg_type.is_array()
@@ -274,12 +286,42 @@ pub fn TypeChecker::check_printf_format(
       "l" =>
         match spec {
           'd' | 'i' | 'u' | 'x' | 'X' | 'o' => ak is TK_LongLong || ak is TK_Int
-          'f' | 'e' | 'g' | 'E' | 'G' => ak is TK_Double || ak is TK_Float
+          // %ln 实参 = long*（PR #462 审阅 P3-2：旧落 _ => true 放行零警）
+          'n' =>
+            match arg_type {
+              Pointer(p, _) => p.kind() is TK_LongLong || p.kind() is TK_Int
+              Array(element, _, _, _, _, _) =>
+                element.kind() is TK_LongLong || element.kind() is TK_Int
+              _ => false
+            }
+          'f' | 'e' | 'g' | 'E' | 'G' | 'a' | 'A' =>
+            ak is TK_Double || ak is TK_Float
           _ => true
         }
       "ll" =>
         match spec {
           'd' | 'i' | 'u' | 'x' | 'X' | 'o' => ak is TK_LongLong || ak is TK_Int
+          // %lln = long long*（同 P3-2）
+          'n' =>
+            match arg_type {
+              Pointer(p, _) => p.kind() is TK_LongLong
+              Array(element, _, _, _, _, _) => element.kind() is TK_LongLong
+              _ => false
+            }
+          _ => true
+        }
+      // %hn/%hhn（PR #462 审阅 P3-2：旧落 _ => true——%hhn 错实参零警；
+      // pointee 按 vitro 的 short/char=1 字节架构裁剪判 Char||Int 宽兼容，
+      // 与 "" 段 %n 的 int* 判据同款不苛查 pointee 宽度）
+      "h" | "hh" =>
+        match spec {
+          'n' =>
+            match arg_type {
+              Pointer(p, _) => p.kind() is TK_Int || p.kind() is TK_Char
+              Array(element, _, _, _, _, _) =>
+                element.kind() is TK_Int || element.kind() is TK_Char
+              _ => false
+            }
           _ => true
         }
       _ => true

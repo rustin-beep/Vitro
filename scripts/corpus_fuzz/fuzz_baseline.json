@@ -173,15 +173,6 @@
     "baseline/sizeof_var.c|init_partial": {
       "bucket": "AGREE"
     },
-    "baseline/ternary.c|char_escape": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/ternary.c|cmp_swap": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/ternary.c|static_inject": {
-      "bucket": "CLANG_REJECT"
-    },
     "baseline/unsigned_lshr.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },

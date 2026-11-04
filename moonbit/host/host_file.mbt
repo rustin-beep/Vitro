@@ -156,6 +156,16 @@ fn host_fgets_stdio(
   if n <= 0 {
     return StdioRead::Done(value_only(0UL))
   }
+  // B10（#434 / M23 A2 stdin 臂）：n=1 读 0 字符写 NUL 返 buf——不吞行、
+  // 不置 EOF（修前 take_stdin_line(0) → Some(b"") 落 EOF 分支误返 NULL）。
+  if n == 1 {
+    return StdioRead::Done(
+      match mem.write_bytes(map, buf, b"\x00") {
+        Ok(_) => value_only(buf.to_uint64())
+        Err(f) => fault_reply(f)
+      },
+    )
+  }
   match input.take_stdin_line(n - 1) {
     None => StdioRead::StdioWaiting
     Some(b) => {
@@ -650,5 +660,5 @@ pub fn host_rename(
       AccessFault::Fault(f~) => return fault_reply(f)
     },
   )
-  value_only(vfs.rename(old_path, new_path).to_uint64())
+  value_only(vfs.rename(map, old_path, new_path).to_uint64())
 }

@@ -27,10 +27,10 @@ test {
   guard @bytecode.call_route("strcpy") is Some(@bytecode.CallRoute::Host(_)) else {
     fail("strcpy 必须改判 Host")
   }
-  // 遮蔽名单：16 个"有 Host handler 但按名调用到不了"的名字——可断言的事实，
+  // 遮蔽名单：15 个"有 Host handler 但按名调用到不了"的名字——可断言的事实，
   // 不再是无处可查的隐式覆盖（2026-10-06 三函数改判 Host 出表；2026-10-13
-  // strcmp 改判出表——病 45）
-  inspect(@bytecode.SHADOWED_HOST_NAME_COUNT, content="16")
+  // strcmp 改判出表——病 45；B10 #434 atoi 改判出表）
+  inspect(@bytecode.SHADOWED_HOST_NAME_COUNT, content="15")
 }
 ```
 

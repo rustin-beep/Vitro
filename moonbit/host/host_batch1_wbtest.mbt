@@ -158,23 +158,31 @@ test "atoi_basic_sign_whitespace_garbage" {
 }
 
 ///|
+/// B10（#434 / M22 A-2）翻面：旧「i32 回绕链」（2^32≡0 / 2^31→位模式
+/// 回绕）改 strtol 饱和单源——atoi ≡ (int)strtol（UCRT 实测 4294967296
+/// → 2147483647）。glibc LP64 截断回绕系平台差（速查表 D 域登记）。
 test "atoi_wraps_like_cless_chain" {
   let (map, mem) = fresh()
-  // 2^32 ≡ 0（i32 回绕链）
+  // 2^32 → 饱和 LONG_MAX（修前回绕 0）
   put_cstr(mem, map, 0x6000U, "4294967296")
-  assert_eq(host_atoi(mem, map, 0x6000U).value, Some(0UL))
-  // 2^31 → INT_MIN（符号扩展位模式）
+  assert_eq(host_atoi(mem, map, 0x6000U).value, Some(2147483647UL))
+  // 2^31 → 饱和 LONG_MAX（修前 INT_MIN 位模式回绕）
   put_cstr(mem, map, 0x6100U, "2147483648")
-  assert_eq(host_atoi(mem, map, 0x6100U).value, Some(0xFFFFFFFF80000000UL))
+  assert_eq(host_atoi(mem, map, 0x6100U).value, Some(2147483647UL))
 }
 
 ///|
+/// B10（#434 / M22 A-11）翻面：旧 LP64 值域（atol 返 i64 全宽）改
+/// LLP64 饱和（atol ≡ strtol；long=4 → ±2^31；UCRT 实测同）。
 test "atol_i64_values" {
   let (map, mem) = fresh()
   put_cstr(mem, map, 0x6000U, "9223372036854775807")
-  assert_eq(host_atol(mem, map, 0x6000U).value, Some(9223372036854775807UL))
+  assert_eq(host_atol(mem, map, 0x6000U).value, Some(2147483647UL))
   put_cstr(mem, map, 0x6100U, "-1")
-  assert_eq(host_atol(mem, map, 0x6100U).value, Some(0xFFFFFFFFFFFFFFFFUL))
+  assert_eq(
+    host_atol(mem, map, 0x6100U).value,
+    Some((-1L).reinterpret_as_uint64()),
+  )
 }
 
 ///|
@@ -281,13 +289,13 @@ test "strtol_base_endptr_errno" {
   assert_eq(host_strtol(mem, map, 0x6290U, 0U, 0, None).value, Some(15UL))
   put_cstr(mem, map, 0x6300U, "9")
   assert_eq(host_strtol(mem, map, 0x6300U, 0U, 0, None).value, Some(9UL))
-  // 无数字 → errno=EINVAL(22) + 停止位 = 起点
-  //（审阅 P2 同批：EINVAL 对齐 UCRT=22，与 errno.h stub 宏同值；旧 1）
+  // 无数字 → 停止位 = nptr 起点；**不写 errno**（B10 #434 / M22 A-10
+  // 翻面：修前虚构 EINVAL=22——glibc/UCRT 均不在无转换时设）
   ignore(mem.store_u32(map, errn, 0U))
   put_cstr(mem, map, 0x6400U, "zz")
   let r3 = host_strtol(mem, map, 0x6400U, endp, 10, Some(errn))
   assert_eq(r3.value, Some(0UL))
-  assert_eq(mem.load_u32(map, errn), Ok(22U))
+  assert_eq(mem.load_u32(map, errn), Ok(0U))
   assert_eq(mem.load_u32(map, endp), Ok(0x6400U))
   // errno_addr = None（无 errno 符号）→ 不写不炸
   assert_eq(host_strtol(mem, map, 0x6400U, 0U, 10, None).value, Some(0UL))
@@ -363,9 +371,13 @@ test "strerror_message_with_nul_and_region" {
   let a = r.value.unwrap().to_uint()
   assert_eq(r.trap, None)
   assert_eq(peek(mem, map, a, 26), b"No such file or directory\x00")
-  guard map.region(a) is Some(rec) else { fail("必须登记区域") }
-  assert_eq(rec.alloc_by, "strerror")
-  assert_eq(rec.size, 26, msg="size 含内嵌 NUL（oracle 口径）")
+  // B10（#434 / M22 A-7）翻面：改「无主静态块」——regions 无条目（修前
+  // register_alloc 进泄漏报告）；消息可读（printf %s 走 check_access，
+  // 无 region 条目不阻读写）、free 该地址走无效 free 诊断。
+  assert_true(
+    map.region(a) is None,
+    msg="静态块不登记 region（修前 Some）",
+  )
   // 未知错误号
   let r2 = host_strerror(map, mem, 99, 9)
   let a2 = r2.value.unwrap().to_uint()

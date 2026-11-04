@@ -307,14 +307,19 @@ export function selftestRun(rd: RulesDoc, faces: Record<string, Face>): number {
     process.stdout.write(`  注入① printf host 面抽掉 'o' → ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
     if (!red) fails++;
   }
-  // 注入②：scanf 'e' 分叉去 reason
+  // 注入②：scanf 'p' 分叉去 reason（#428 B5 批后 e 已两面一致——探针换 p：
+  // host:false / typeck:true 现役分叉成员）
   {
     const r2 = cloneRules(rd);
-    const e = r2.families["scanf"]?.letters["e"];
+    const e = r2.families["scanf"]?.letters["p"];
     if (e === undefined) return 2;
+    if (e.host === e.typeck) {
+      process.stdout.write("  注入② 探针字母 p 已不在分叉态——换 a/A/[ 等现役成员\n");
+      return 2;
+    }
     delete e.divergence;
     const red = !quiet(() => verdict(r2, faces));
-    process.stdout.write(`  注入② scanf '%e' host≠typeck 去掉 divergence → ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
+    process.stdout.write(`  注入② scanf '%p' host≠typeck 去掉 divergence → ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
     if (!red) fails++;
   }
   // 注入③：printf 'd' 两面一致却加 divergence（僵尸）

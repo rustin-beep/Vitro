@@ -824,6 +824,12 @@
       "stdout_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
+    "baseline/e2_blank_if0_include_not_edge.c": {
+      "src_sha": "0b19843c",
+      "exit_code": 0,
+      "stdout_sha": "811786ad1ae74adf",
+      "memory_sha": "0e979f8878ede6b9"
+    },
     "baseline/e2_cmt_include_not_edge.c": {
       "src_sha": "75c9ad36",
       "exit_code": 0,
@@ -835,6 +841,12 @@
       "exit_code": 0,
       "stdout_sha": "6e333709ea1368c3",
       "memory_sha": "d28ea93ffb55f34b"
+    },
+    "baseline/e2_elif_true_cycle.c": {
+      "src_sha": "c3a735dc",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
     },
     "baseline/e2_elifdef_missing_name.c": {
       "src_sha": "04ad834c",

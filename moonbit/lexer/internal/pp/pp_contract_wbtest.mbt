@@ -322,6 +322,73 @@ test "commented_include_not_edge" {
     r4.errors.any(e => e.code is E1015_IncludeCycle),
     msg="真环检测能力不回归（防过剥）",
   )
+  // PR #481 审阅 P1（2026-11-05，fail-open 回归）：`#if 0 … #elif 1`
+  // 分支激活——分支内自 include 是真边，须仍报 E1015（clang 嵌套过深
+  // 拦截同向；组栈化前两态版把 #elif 维持跳过 → 真边整段丢弃 → 环检测
+  // 失效放行 clang 明确拒绝的程序）
+  let pp5 = Pp::new(
+    provider=MapProvider::of([
+      (
+        "inc/al_e.h", "#if 0\n#elif 1\n#include \"al_e.h\"\n#endif\n#define AL_E 5\n",
+      ),
+    ]),
+    cpp_mode=false,
+  )
+  let toks5 = pp5.run_pp("#include \"inc/al_e.h\"\n", emit_eof=true)
+  let r5 = pp5.finish_pp(toks5)
+  assert_true(
+    r5.errors.any(e => e.code is E1015_IncludeCycle),
+    msg="#if 0/#elif 1 激活分支内的自 include 是真边（fail-open 回归锚）",
+  )
+  // PR #481 审阅 P1 附带：`#if 0/#elif 1/#else` 的 else 假分支行不出流
+  //（组已 taken——两态跳过/不跳治不了，须组栈；修前 else 假边误报 E1015）
+  let pp6 = Pp::new(
+    provider=MapProvider::of([
+      (
+        "inc/al_ee.h", "#if 0\n#elif 1\n#define AL_EE 1\n#else\n#include \"never_ee.h\"\n#endif\n#define AL_EE2 6\n",
+      ),
+    ]),
+    cpp_mode=false,
+  )
+  let toks6 = pp6.run_pp(
+    "#include \"inc/al_ee.h\"\nint v[AL_EE2];\n",
+    emit_eof=true,
+  )
+  let r6 = pp6.finish_pp(toks6)
+  assert_eq(
+    r6.errors.length(),
+    0,
+    msg="#elif 已 taken 后的 else 假分支 include 不出流（修前红：E1015 误报）",
+  )
+  assert_true(
+    r6.tokens.any(t => t.ty is Number && t.text == "6"),
+    msg="AL_EE2 宏自头文件展开",
+  )
+  // PR #481 审阅 P2（2026-11-05）：`#` 与指令名间空白（C 标准）——
+  // `#  if 0` 形态归一后同裸 `#if 0`（修前 directive_name_of 未归一
+  // 漏检 → E1015 误报）
+  let pp7 = Pp::new(
+    provider=MapProvider::of([
+      (
+        "inc/blank_if0.h", "#  if 0\n#  include \"blank_if0.h\"\n#  endif\n#define BLANK_IF0 7\n",
+      ),
+    ]),
+    cpp_mode=false,
+  )
+  let toks7 = pp7.run_pp(
+    "#include \"inc/blank_if0.h\"\nint v[BLANK_IF0];\n",
+    emit_eof=true,
+  )
+  let r7 = pp7.finish_pp(toks7)
+  assert_eq(
+    r7.errors.length(),
+    0,
+    msg="#后空白形态的 #if 0 内 include 不是边（修前红：E1015 误报）",
+  )
+  assert_true(
+    r7.tokens.any(t => t.ty is Number && t.text == "7"),
+    msg="BLANK_IF0 宏自头文件展开",
+  )
 }
 
 ///|

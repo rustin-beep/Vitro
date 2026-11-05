@@ -141,8 +141,10 @@
         "e1_string_concat.c": "adbf84c9",
         "e1_va_copy.c": "c7a0cf58",
         "e2_angle_local_header.c": "49471035",
+        "e2_blank_if0_include_not_edge.c": "0b19843c",
         "e2_cmt_include_not_edge.c": "75c9ad36",
         "e2_cond_if_elif.c": "4f5f4c1c",
+        "e2_elif_true_cycle.c": "c3a735dc",
         "e2_elifdef_missing_name.c": "04ad834c",
         "e2_elifndef_missing_name.c": "c7a69975",
         "e2_fn_macro_brace_break.c": "71f001a8",
@@ -976,11 +978,18 @@
           "fail": true,
           "fail_stage": "lex"
         },
+        "e2_blank_if0_include_not_edge.c": {
+          "result_sha": "fcade38529ab40ef"
+        },
         "e2_cmt_include_not_edge.c": {
           "result_sha": "3c6854c93df99507"
         },
         "e2_cond_if_elif.c": {
           "result_sha": "925aa6a39e5f5bf6"
+        },
+        "e2_elif_true_cycle.c": {
+          "fail": true,
+          "fail_stage": "lex"
         },
         "e2_elifdef_missing_name.c": {
           "fail": true,

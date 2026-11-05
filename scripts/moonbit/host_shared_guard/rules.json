@@ -78,7 +78,8 @@
       "consumers": [
         "diagnostics/auto_fix.mbt",
         "diagnostics/fix_gen.mbt",
-        "util/util_qc_test.mbt"
+        "util/util_qc_test.mbt",
+        "wasmenc/module.mbt"
       ]
     },
     "utf8_text": {

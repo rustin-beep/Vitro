@@ -71,3 +71,18 @@ vitro/engine/gateway ENGINE_VERSION
 #   mirror_wbtest.mbt/parity_test.mbt 测试消费，白名单条目随批清理。包外引擎代码
 #   零消费，MoonBit 语义面不扩张（.mbti 无消费方）。
 vitro/engine/proofs/arith_mirror floor_div_pos
+
+# REHOST 批 1a（2026-11-05）：wasmenc L0 编码库件与装载协议入口——批 1b/1c 组合模板与
+# 折叠装载器接线时的消费面（当下无跨包消费方，pub 面保留=骨架 API 定形）
+vitro/engine/wasmenc WT_F32
+vitro/engine/wasmenc WT_F64
+vitro/engine/wasmenc WT_I64
+vitro/engine/wasmenc WT_VOID
+vitro/engine/wasmenc fold_instrs
+vitro/engine/wasmenc sleb_decode
+vitro/engine/wasmenc sleb_encode
+vitro/engine/wasmenc uleb_decode
+vitro/engine/wasmenc uleb_encode
+vitro/engine/wasmenc winstr_decode
+vitro/engine/wasmenc winstr_decode_all
+vitro/engine/wasmenc winstr_encode_all

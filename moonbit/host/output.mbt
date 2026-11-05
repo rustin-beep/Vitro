@@ -566,6 +566,18 @@ pub fn OutputLog::join(self : OutputLog, kind : OutputKind) -> Bytes {
 }
 
 ///|
+/// 拼接指定通道并按 UTF-8 优先解码为文本（#449 ①，SWEEP1 批 2026-11-05）
+/// ——下游 DX 出口：`join`/`join_all` 恒返回 `Bytes`（字节保真——
+/// `putchar(200)` 落 1 字节 0xC8），下游第一件事是自写 bytes→String
+///（Latin-1/UTF-8 陷阱各踩一遍，R3 下游模拟实锤）；本方法一个出口消灭
+/// 一族自写——内部走 @util.utf8_text_partial 单源（合法 UTF-8 原样 / 非
+/// 法序列折 U+FFFD）。**注意**：与 Clang 比对等字节精确场景仍须用 `join`
+///（Bytes）——非法字节折 U+FFFD 是有损投影，教学展示用本方法。
+pub fn OutputLog::join_text(self : OutputLog, kind : OutputKind) -> String {
+  @util.utf8_text_partial(self.join(kind))
+}
+
+///|
 /// 展示视图：所有通道按写入顺序拼接。
 pub fn OutputLog::join_all(self : OutputLog) -> Bytes {
   assemble(self.view(), None)

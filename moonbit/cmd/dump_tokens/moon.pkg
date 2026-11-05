@@ -1,6 +1,7 @@
 import {
   "vitro/engine/lexer",
   "vitro/engine/fs",
+  "vitro/engine/util",
   "moonbitlang/core/env",
 }
 

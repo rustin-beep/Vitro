@@ -1,8 +1,11 @@
 // cmd/lib/step：CLI `step` 主体（#37 批②——形态与序列约定见 moon.pkg）。
 // JSON 请求拼装：源码走 JSON 字符串转义（@util.json_escape——gateway
-// 协议输入是标准 JSON）；响应的 summary 提取用轻量字段判（gateway.json_parse 未
-// 导出，本命令 summary 面只要 finished/trapped/payloads 计数——contains
-// + 批计数足够，不做全解析）。
+// 协议输入是标准 JSON）；响应消费 SWEEP1 批（#443 B2，2026-11-05）起统一
+// 结构化路径（invoke_parsed + jfield——与 cli_frame 单源同风格）：文本模式
+// output.delta 的字节还原 = json_parse 转义还原 + latin1_to_bytes 折回
+//（72 行手扫 decode_delta_stdout 已删，D1 负索引 panic 面随之消灭）；
+// summary 面的帧计数/终态标记仍用轻量 contains（计数语义足够，不引入
+// 全解析开销）。
 
 ///|
 pub fn step(
@@ -90,11 +93,18 @@ pub fn step(
     say("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{file}")
     return 4
   }
-  // gateway.invoke 通道（协议单源；id 单调即可）
+  // gateway.invoke 通道（协议单源；id 单调即可）——raw 与结构化两形态
+  //（SWEEP1 #443 B2：结构化消费与 cli_frame 单源同风格）
   let mut id = 0
   let inv = fn(method_name : String, params : String) -> String {
     id += 1
     (channel.invoke)(
+      "{\"id\":\{id},\"method\":\"\{method_name}\",\"params\":\{params}}",
+    )
+  }
+  let inv_tree = fn(method_name : String, params : String) -> Json? {
+    id += 1
+    (channel.invoke_parsed)(
       "{\"id\":\{id},\"method\":\"\{method_name}\",\"params\":\{params}}",
     )
   }
@@ -110,25 +120,52 @@ pub fn step(
   let compile_params = (channel.compile_params)(file, src)
   let comp = inv("compile", compile_params)
   if comp.contains("\"ok\":false") {
-    // 诊断在 compile 帧——json 模式透传 stdout（事件流，type 语义由行内
-    // ok:false 自明）；文本模式走 stderr（#129 通道分立：stdout 只承载
-    // 程序输出）
+    // 诊断在 compile 帧——json 模式 type:diag 包装透传 stdout（SWEEP1
+    // #444，2026-11-05：与 run/compile 的 {"type":"diag","frame":…} 同形
+    // ——消费面按 type 统一分派，失败帧不再需要「行内 ok:false 自明」的
+    // 特判；注：step 正常流的 step.next 帧本就无 type〔spec §6 既有契约〕，
+    // 本变更的价值在失败帧可被 type 路由，不在「全流统一 type」——PR #488
+    // 审阅 P3-3 勘正）；文本模式走 stderr（#129 通道分立：stdout 只
+    // 承载程序输出）
     if json_mode {
-      out_line(write_stdout, comp)
+      out_line(write_stdout, "{\"type\":\"diag\",\"frame\":\{comp}}")
     } else {
       say(comp)
     }
     return 1
   }
   // run 帧带 argv [file]（2026-10-04 二轮审 P1-A 同根：step 无 argv 面但
-  // argv[0] 语义必须有——gateway 默认 [] 会让 argv[0] 解引用 NULL trap）
-  ignore(inv("run", "{\"argv\":[\"\{@util.json_escape(file)}\"]}"))
+  // argv[0] 语义必须有——gateway 默认 [] 会让 argv[0] 解引用 NULL trap）。
+  // SWEEP1 #443 D2：外层 ok:false（协议错帧 {id,ok:false,error} 无 result）
+  // 早退 fail loud——修前 ignore 吞帧照常推进。判定走结构化外层位：内层
+  // result.ok:false 是 trap 帧的合法中间态（run_outcome_json L67），contains
+  // 形态会误判
+  let run_resp = inv("run", "{\"argv\":[\"\{@util.json_escape(file)}\"]}")
+  let run_tree : Json? = json_parse_opt(run_resp)
+  let run_ok = match run_tree {
+    Some(f) => !(jfield(f, "ok") is False)
+    None => false // 解析失败 = 协议破损形态
+  }
+  if !run_ok {
+    if json_mode {
+      out_line(write_stdout, "{\"type\":\"diag\",\"frame\":\{run_resp}}")
+    } else {
+      say("vitro step: run 帧协议错（详见帧文本）：\{run_resp}")
+    }
+    return 1
+  }
   ignore(inv("step.begin", "{}"))
   let mut frames = 0
   let mut last : String = ""
   let mut finished = false
   let mut trapped = false
   let mut running = true
+  // SWEEP1 #443 D2：批次上限兜底——每批 step.next 至少推进 1 步（gateway
+  // 步数预算墙 = config.set max_steps），批数 > max_steps + 余量即帧流
+  // 无三态终止的协议破损形态，fail loud 早退（修前 while running 理论
+  // 死循环——错误帧无 finished/trapped/waiting_input 三标记时永真）
+  let batch_cap = max_steps + 16
+  let mut batches = 0
   while running {
     let r = inv("step.next", "{}")
     last = r
@@ -144,6 +181,13 @@ pub fn step(
       running = false
     } else if r.contains("\"waiting_input\":true") {
       running = false
+    }
+    batches += 1
+    if running && batches >= batch_cap {
+      say(
+        "vitro step: step.next 批次超上限（\{batch_cap}）——帧流无三态终止（协议破损形态）",
+      )
+      return 1
     }
   }
   if json_mode {
@@ -168,9 +212,17 @@ pub fn step(
     }
     // 程序 stdout 原样直写（#57-1：终态行后——文本模式消费面 = shell 管道
     // 拿原文，与 run 文本模式同契约；delta 为 Latin-1 折回文本，反折回字
-    // 节域经 write_stdout 直写，putchar(200) 单字节保真同款）
-    let out = inv("output.delta", "{\"cursor\":0,\"stream\":\"stdout\"}")
-    let bytes = decode_delta_stdout(out)
+    // 节域经 write_stdout 直写，putchar(200) 单字节保真同款）。SWEEP1
+    // #443 B2/D1：消费改结构化路径（invoke_parsed + jfield("delta") +
+    // latin1_to_bytes——与 cli_frame.delta_bytes 单源同风格）；72 行手扫
+    // decode_delta_stdout（RFC 8259 逐字符解码 + \uXXXX 防御臂）已删，
+    // 转义还原语义由 json_parse 单源承担（等价锚 sweep1_443_b2），缺
+    // delta 字段的负索引 panic 面随之消灭（sweep1_443_d1）
+    let bytes = match
+      inv_tree("output.delta", "{\"cursor\":0,\"stream\":\"stdout\"}") {
+      Some(f) => latin1_to_bytes(jstr(jfield(jfield(f, "result"), "delta")))
+      None => b""
+    }
     if bytes.length() > 0 {
       write_stdout(bytes)
     }
@@ -287,105 +339,7 @@ fn parse_int(s : String) -> Int32? {
 }
 
 // to_hex4 已随 escape_json 本地副本一并退役（转义单源 @util.json_escape，
-// issue #55 六份收一）。
-
-///|
-/// output.delta 帧的 stdout 文本反折回字节域（#57-1 文本模式专用，
-/// 单步完整解码——不经 extract_json_string_field：其 \" / \n 部分还原
-/// 对含字面反斜杠的 stdout 有损，程序输出 `\n` 两字节〔JSON 文本 `\\n`〕
-/// 会被误还原为换行）：帧内定位 `"delta":"` 值段，按 RFC 8259 转义还原
-/// （\" \\ \/ \b \f \n \r \t \uXXXX；json_escape 只对 <0x20 与引号反斜杠
-/// 转义，\u 域 ≤0x1F 取低字节）+ 非 ASCII char 取低 8 位（delta 是
-/// Latin-1 逐字节折回文本——gateway serve_io 通道分域，C 程序字节流口
-/// 径），产出与程序原 stdout 逐字节一致。
-fn decode_delta_stdout(frame : String) -> Bytes {
-  let pat = "\"delta\":\""
-  let cs = frame.to_array()
-  let mut start = -1
-  let mut k = 0
-  while k <= cs.length() - pat.length() {
-    if frame[k:k + pat.length()].to_owned() == pat {
-      start = k + pat.length()
-      break
-    }
-    k += 1
-  }
-  let buf : Array[Byte] = []
-  let mut i = start
-  while i < cs.length() {
-    let c = cs[i]
-    if c == '"' {
-      break
-    }
-    if c == '\\' && i + 1 < cs.length() {
-      let n = cs[i + 1]
-      let b : Int32 = match n {
-        '"' => 0x22
-        '\\' => 0x5C
-        '/' => 0x2F
-        'b' => 0x08
-        'f' => 0x0C
-        'n' => 0x0A
-        'r' => 0x0D
-        't' => 0x09
-        'u' => {
-          // \uXXXX：json_escape 域 ≤0x1F（低字节即原字节）；防御性兼容
-          // 高码点——按 UTF-8 编码写入（不可达域，emitter 不产）
-          if i + 5 < cs.length() {
-            let cp = parse_hex4(cs[i + 2], cs[i + 3], cs[i + 4], cs[i + 5])
-            if cp <= 0xFF {
-              buf.push(cp.to_byte())
-              i += 6
-              continue
-            }
-            if cp < 0x80 {
-              buf.push(cp.to_byte())
-            } else if cp < 0x800 {
-              buf.push((0xC0 | (cp >> 6)).to_byte())
-              buf.push((0x80 | (cp & 0x3F)).to_byte())
-            } else if cp < 0x10000 {
-              buf.push((0xE0 | (cp >> 12)).to_byte())
-              buf.push((0x80 | ((cp >> 6) & 0x3F)).to_byte())
-              buf.push((0x80 | (cp & 0x3F)).to_byte())
-            } else {
-              buf.push((0xF0 | (cp >> 18)).to_byte())
-              buf.push((0x80 | ((cp >> 12) & 0x3F)).to_byte())
-              buf.push((0x80 | ((cp >> 6) & 0x3F)).to_byte())
-              buf.push((0x80 | (cp & 0x3F)).to_byte())
-            }
-            i += 6
-            continue
-          }
-          0x5C
-        }
-        _ => 0x5C
-      }
-      buf.push(b.to_byte())
-      i += 2
-    } else {
-      // Latin-1 反折：每 char 低 8 位（≥0x80 字节折回域）
-      buf.push((c.to_int() & 0xFF).to_byte())
-      i += 1
-    }
-  }
-  Bytes::from_array(buf)
-}
-
-///|
-/// 四位十六进制解析（decode_delta_stdout 的 \uXXXX 臂；非法位 = 0——
-/// gateway emitter 只产合法序列，防御性兜底）。
-fn parse_hex4(a : Char, b : Char, c : Char, d : Char) -> Int32 {
-  let h = fn(ch : Char) -> Int32 {
-    let v = ch.to_int()
-    if v >= '0'.to_int() && v <= '9'.to_int() {
-      v - '0'.to_int()
-    } else if v >= 'a'.to_int() && v <= 'f'.to_int() {
-      v - 'a'.to_int() + 10
-    } else if v >= 'A'.to_int() && v <= 'F'.to_int() {
-      v - 'A'.to_int() + 10
-    } else {
-      0
-    }
-  }
-  (h(a) << 12) | ((h(b) << 8) | ((h(c) << 4) | h(d)))
-}
+// issue #55 六份收一）。decode_delta_stdout + parse_hex4 亦随 SWEEP1 批
+//（#443 B2，2026-11-05）退役——output.delta 消费改 invoke_parsed + jfield
+// 结构化路径（json_parse 转义还原 + latin1_to_bytes 折回，与 cli_frame
+// delta_bytes 单源同风格）。

@@ -328,6 +328,7 @@ pub fn OutputLog::has_note(Self, Bytes) -> Bool
 pub fn OutputLog::is_empty(Self) -> Bool
 pub fn OutputLog::join(Self, OutputKind) -> Bytes
 pub fn OutputLog::join_all(Self) -> Bytes
+pub fn OutputLog::join_text(Self, OutputKind) -> String
 pub fn OutputLog::len(Self) -> Int32
 pub fn OutputLog::len_of(Self, OutputKind) -> Int32
 pub fn OutputLog::new() -> Self

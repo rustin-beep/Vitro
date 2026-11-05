@@ -38,6 +38,7 @@
         "cmd/lib/engine_direct/channel.mbt",
         "cmd/vitro_wasm/main.mbt",
         "diag/e4_export.mbt",
+        "gateway/serve_io_sweep1_wbtest.mbt",
         "gateway/serve_run_wbtest.mbt",
         "teaching/steps/catalog.mbt",
         "util/json_escape_wbtest.mbt",
@@ -100,6 +101,7 @@
         "cmd/lib/cli/cli_step.mbt",
         "cmd/lib/cli/cli_wbtest.mbt",
         "gateway/serve_io.mbt",
+        "host/output.mbt",
         "mcp/engine.mbt",
         "util/util_qc_test.mbt",
         "util/util_wbtest.mbt"

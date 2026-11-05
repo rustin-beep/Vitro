@@ -1094,6 +1094,26 @@ export function runMain(argv: readonly string[]): number {
     process.stdout.write("skip D[薄壳 step]（release exe 未构建——本地非全量态）\n");
   }
 
+  // ── D 组补（SWEEP1 #445 C1，2026-11-05）：dump 四壳「输入不可读」子进程锚 ──
+  // #230 治理收尾：修前 main 主循环裸 read_file_to_string 无 catch，不存在
+  // 路径 = PanicError 栈 + rc=127（M36b P4 实测）；修后一行原因 + rc=4。代表
+  // dump_ast（四壳 catch 块/io_error_text/unreadable_reason 同形复制件，
+  // wbtest 四家各锁文案面）；进程 rc 与零 PanicError 面在此锁。native exe
+  // 未构建则 skip（同薄壳形态——CI native 全量态必跑）。
+  const dumpAst = path.join(repoRoot, "moonbit", "_build", "native", "release", "build", "cmd", "dump_ast", "dump_ast.exe");
+  if (fs.existsSync(dumpAst)) {
+    const r = runOut(dumpAst, ["no_such_input_sweep1.c", path.join(tmpDir, "dump_sweep1_out")]);
+    if (r.rc !== 4) {
+      fatalf(`D[dump 输入不可读] rc=${r.rc} want 4（修前 PanicError rc=127）：${r.out}`);
+    } else if (!r.out.includes("输入不可读") || r.out.includes("PanicError")) {
+      fatalf(`D[dump 输入不可读] 输出形态走样（须一行原因、零 PanicError 栈）：${r.out}`);
+    } else {
+      process.stdout.write("ok  D[dump 输入不可读] rc=4 + 一行原因、零 PanicError\n");
+    }
+  } else {
+    process.stdout.write("skip D[dump 输入不可读]（release exe 未构建——本地非全量态）\n");
+  }
+
   // 失败复查点（2026-11-01 审阅 v2 S09-A1 修复）：原检查位于 G/D 组之前，两组
   // fatalf 累计 failures 后再无复查——G/D 失败与「全绿」行同屏、exit 0，CI 恒假绿
   //（探针实锤：G 组语料注入语法错 → 三臂 FAIL + RC=0）。G/D 与 A/B/C 共用

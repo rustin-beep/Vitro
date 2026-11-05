@@ -605,7 +605,9 @@ vitro/engine/util moonbitlang/core/quickcheck/shrink Shrink
 vitro/engine/util moonbitlang/core/quickcheck/splitmix RandomState
 vitro/engine/vm moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm vitro/engine/arith ArithFault
+vitro/engine/vm vitro/engine/arith AddOverflow
 vitro/engine/vm vitro/engine/arith DivByZero
+vitro/engine/vm vitro/engine/arith DivOverflow
 vitro/engine/vm vitro/engine/arith I32
 vitro/engine/vm vitro/engine/arith I64
 vitro/engine/vm vitro/engine/arith IntBinOp
@@ -628,10 +630,12 @@ vitro/engine/vm vitro/engine/arith OpNeg
 vitro/engine/vm vitro/engine/arith OpShl
 vitro/engine/vm vitro/engine/arith OpShr
 vitro/engine/vm vitro/engine/arith OpSub
+vitro/engine/vm vitro/engine/arith ShiftOutOfRange
 vitro/engine/vm vitro/engine/arith U32
 vitro/engine/vm vitro/engine/arith U64
 vitro/engine/vm vitro/engine/arith eval_int_binary
 vitro/engine/vm vitro/engine/arith eval_int_unary
+vitro/engine/vm vitro/engine/arith f2i_saturate_i32
 vitro/engine/vm vitro/engine/arith normalize
 vitro/engine/vm vitro/engine/ast StructField
 vitro/engine/vm vitro/engine/ast Type

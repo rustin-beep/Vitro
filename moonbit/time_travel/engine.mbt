@@ -288,6 +288,39 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
   let mut trapped = false
   let mut waiting_input = false
   let mut trap_message : String? = None
+  // #477 案 a（嵌套帧，2026-11-05）：挂宿主回调步观察者——CallHost
+  // qsort/bsearch 内部 comparator 逐指令执行（step_count 随之推进），
+  // 帧流必须逐步出帧（INV3a 帧号 = 执行前 step_count 全流严格 +1）。
+  // 观察者帧先进 cb 缓冲：回调帧（step S+1..S+N）在 CallHost 指令帧
+  //（step S）**之后**冲刷进 payloads——保序（观察者在 vm.step() 执行
+  // 期间被调，早于顶层帧 push；不缓冲则 step_index 乱序）。every 采样
+  // 门同式（(s+1)%every——终态帧不受门控语义保持：回调内无终态概念，
+  // 回调被吞的 Trap/Waiting 步照通知——该步唯一可观测点）。
+  let cb_frames : Array[@protocol.StepPayload] = []
+  vm.set_host_step_observer(
+    Some(fn(v : @vm.VitroVM, s : Int32) {
+      if every <= 1 || (s + 1) % every == 0 {
+        let l2 = v.get_current_line()
+        cb_frames.push(
+          collect(
+            v,
+            src,
+            v.heatmap_count_at(l2),
+            s,
+            self.algo,
+            code_line=Some(l2),
+          ),
+        )
+      }
+    }),
+  )
+  // 本步回调帧冲刷（CallHost 帧 push 之后调——保序收口点）
+  let flush_cb = fn() {
+    for p in cb_frames {
+      payloads.push(p)
+    }
+    cb_frames.clear()
+  }
   for _ in 0..<batch_size {
     if self.is_paused || self.is_cancelled {
       break
@@ -322,9 +355,10 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
     if self.checkpoints.should_checkpoint(step, label) {
       self.checkpoints.save(step, vm)
     }
+    cb_frames.clear()
     // ⑤-5.1：无每步快照（pre_step_snap 不迁）
     match vm.step() {
-      Ok =>
+      Ok => {
         // 帧行 = 步进后 current_line：StepEvent 指令帧取本行（发射器每行
         // 首指令 StepEvent 先更行再产帧），非 StepEvent 帧保持最近行。
         // #34 同源化曾统一为循环顶行（步进前行）——StepEvent 帧滞后一行，
@@ -346,6 +380,8 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             ),
           )
         }
+        flush_cb()
+      }
       Paused => {
         // 断点命中帧的 code_line = 断点行：StepEvent 处理先更新
         // current_line 再判暂停（exec_debug.mbt）⇒ 此刻 l2 即断点行
@@ -362,6 +398,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             code_line=Some(l2),
           ),
         )
+        flush_cb()
         self.is_paused = true
       }
       WaitingInput => {
@@ -376,6 +413,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             code_line=Some(l2),
           ),
         )
+        flush_cb()
         waiting_input = true
         break
       }
@@ -391,11 +429,15 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             code_line=Some(l2),
           ),
         )
+        flush_cb()
         finished = true
         self.is_finished = true
         break
       }
       Trap => {
+        // 卸观察者：rollback 重放段不采帧（重放步不 collect 不入窗——
+        // ⑤-5.1 restore 语义；观察者残留会把重放帧灌进 cb 缓冲）
+        vm.set_host_step_observer(None)
         // ⑤-5.1：最近检查点 + 正向重放到 trap 前一步（restore 语义对齐
         // Rust pre_step_snap 回退——trap 帧以 trap 前状态收集）。trap 文案
         // 在回滚前抓取（回滚后 error 随快照清空）。
@@ -457,12 +499,14 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
     }
     if step >= self.max_steps {
       // U2#7：早退不得丢帧——已执行步的帧先入窗再报错
+      vm.set_host_step_observer(None)
       self.frames.push_batch(payloads)
       return Err(
         "执行步数超过限制（\{self.max_steps} 步），可能存在无限循环。",
       )
     }
   }
+  vm.set_host_step_observer(None)
   self.frames.push_batch(payloads)
   Ok({
     payloads,
@@ -617,7 +661,17 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
       // 第 3 步：正向重放至目标步（含 target——重放区间排他会把
       // 目标步本身留在窗口外，随后 frame_at(target) 落空，S3 A15
       // 实测形态）
-      for step in cp..<=target {
+      // #477（2026-11-05）：驱动改 vm.step_count 真值（原计数 for 假设
+      // 「一条指令推进一步」——CallHost qsort/bsearch 单条指令内部
+      // 推进 N 步，计数循环与真步号脱钩：target 落回调段时循环会
+      // 继续执行回调之后的指令、VM 状态越过 target；挂观察者后
+      // 回调帧随重放采集，终止条件必须以真实步号为准）。快道→密采
+      // 切换点同步放宽为「首个密采实际步」对齐——CallHost 跳过
+      // dense_from 时原恰等判定永不触发，blank 缺口占位会把快道
+      // 距离放大成 O(距离) 空帧（原注释警告的形态换入口复现）。
+      let mut dense_aligned = false
+      while vm.step_count <= target {
+        let step = vm.step_count
         if self.is_cancelled {
           return {
             success: false,
@@ -631,7 +685,9 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
         // 避免覆盖恢复源）。**快道段降频 25×**（#87）：间隔 20 步的
         // save 在几十万步重放下是主要成本（每 5 次 save 一次 Full =
         // 1MB 内存整拷），且绝大多数会被几何化淘汰白造——降频只
-        // 影响锚点尾部密度（保留数 K=50 主导覆盖率，实测覆盖无损）
+        // 影响锚点尾部密度（保留数 K=50 主导覆盖率，实测覆盖无损）。
+        // #477 注：CallHost 跳步形态下 interval 步号可能被整段跳过
+        //（该锚不补——锚密度微降非正确性面）
         if step > cp && step % self.checkpoints.get_interval() == 0 {
           if !fast ||
             step % (self.checkpoints.get_interval() * FAST_SAVE_STRIDE) == 0 {
@@ -648,16 +704,39 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
             ),
           }
         }
-        if !fast && step == dense_from && dense_from > cp {
+        if !fast && !dense_aligned && dense_from > cp && step >= dense_from {
           // 快道→密采切换：窗口起点对齐密采首步（快道零推帧；不对齐
           // 会让 push_or_replace_at 的缺口占位把整段快道距离放大成
           // O(距离) 空帧分配——blank_payload 缺口防御分支）
           self.frames.reset_to(step)
+          dense_aligned = true
         }
-        let pre_step = vm.step_count
         // 审阅 P2-4（2026-10-07）：seek 重放帧同源化（循环顶步进前
         // 行——#34 修复的补遗；与 run_batch 的 label/code_line 同源）
         let seek_line = vm.get_current_line()
+        // #477：宿主回调段帧随重放采集（密采判定跟**宿主指令步号**
+        // step——整条 CallHost 指令的帧要么全采要么全跳：用回调内
+        // 步号 s 判定会让跨 fast/dense 边界的 CallHost 前段跳后段采，
+        // 未对齐的窗口被密采回调帧触发 O(距离) blank 填充）
+        vm.set_host_step_observer(
+          Some(fn(v : @vm.VitroVM, s : Int32) {
+            ignore(s)
+            if !(fast_ok && step < dense_from) {
+              let l2 = v.get_current_line()
+              self.frames.push_or_replace_at(
+                s,
+                collect(
+                  v,
+                  src,
+                  v.heatmap_count_at(l2),
+                  s,
+                  self.algo,
+                  code_line=Some(l2),
+                ),
+              )
+            }
+          }),
+        )
         // #430：断点随会话配置保留后重放区间可命中断点（StepEvent
         // 置 paused 返 Paused）——重放非交互步进，只标记不拦；命中
         // 即时解除（否则重放尾 vm.paused=true，后续 run_batch 每个
@@ -681,12 +760,12 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
             } else {
               let l2 = vm.get_current_line()
               self.frames.push_or_replace_at(
-                pre_step,
+                step,
                 collect(
                   vm,
                   src,
                   vm.heatmap_count_at(l2),
-                  pre_step,
+                  step,
                   self.algo,
                   code_line=Some(seek_line),
                 ),
@@ -695,6 +774,9 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
               // push 后立即 trim 的修复形态结构化）
             }
           WaitingInput | Finished => {
+            // 卸观察者（终态 return——防残留；回调内不产生终态，
+            // 防御性收口）
+            vm.set_host_step_observer(None)
             // 协议 §4.2 第 4 步：以该步为终点返回 success
             //（code_line 同源化——审阅 P2-4）
             if fast {
@@ -702,18 +784,18 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
               // 一个窗口以上）——快道段无帧可补，以本步为窗首收集
               // 终帧；finish_replay 的 want_start 钳位随后照旧裁窗
               //（输出面与密采版一致，锚 N 固化；reset_to 防 blank 填充）
-              self.frames.reset_to(pre_step)
+              self.frames.reset_to(step)
             }
             let l2 = vm.get_current_line()
             let payload = collect(
               vm,
               src,
               vm.heatmap_count_at(l2),
-              pre_step,
+              step,
               self.algo,
               code_line=Some(seek_line),
             )
-            self.frames.push_or_replace_at(pre_step, payload)
+            self.frames.push_or_replace_at(step, payload)
             self.frames.finish_replay(target)
             // #430（M31 A-2 证据三）：重放到达终态（Finished）时终态
             // 标志须置位——旧形态漏置（头部复位后无人置回），后续
@@ -728,6 +810,9 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
             return { success: true, payload: Some(payload), error: None, }
           }
           Trap => {
+            // 卸观察者（终态 return——防残留；回调内 trap 被吞不达
+            // 此臂，防御性收口）
+            vm.set_host_step_observer(None)
             // 协议 §4.2 第 4 步：重放遇 trap → 失败。终态连坐（issue
             // #29）：seek 失败也须记 trap 粘性——否则后续 step.next
             // 在 trap 态 VM 上重执行
@@ -741,6 +826,7 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
             }
           }
         }
+        vm.set_host_step_observer(None)
       }
       // 第 5 步：窗口重置——只保留目标步及其之前 window_size-1 帧
       self.frames.finish_replay(target)

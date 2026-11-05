@@ -104,6 +104,20 @@ test("compile-error 单行形态：skip 不变量面", () => {
   assert.equal(r.terminal, "compile-error");
 });
 
+test("SWEEP1 #444：compile 失败帧 type:diag 包装归位 compile-error（旧裸帧语义同源）", () => {
+  // step --json 的 compile 失败/run 协议错帧自 SWEEP1 #444 起为
+  // {"type":"diag","frame":{id,ok,result}} 包装——识别面不更新则 ST2（缺 id/ok）
+  // + ST7（缺 summary——terminal 停留 none）双红（CI 首轮 16 RED 实锤，全落
+  // llm_multifile compile-error 语料）；识别后 terminal=compile-error，summary
+  // 检查走豁免（与旧裸帧等价）
+  const lines = [
+    JSON.stringify({ type: "diag", frame: { id: 3, ok: true, result: { ok: false, diagnostics: [{ code: "E2003" }] } } }),
+  ];
+  const r = checkStepStream(lines, "bad.c");
+  assert.deepEqual(r.violations, []);
+  assert.equal(r.terminal, "compile-error");
+});
+
 // ── J9 证红：逐不变量篡改一例 ──
 
 test("INV1a 证红：变量 addr 落 NULL 陷阱区", () => {

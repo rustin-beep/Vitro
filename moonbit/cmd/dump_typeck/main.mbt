@@ -74,12 +74,16 @@ fn main raise {
         files.push("\{target}/\{name}")
       }
     }
-    files.sort()
+    sort_files_lex(files)
   } else {
     files.push(target)
   }
   for path in files {
-    let src = @fs.read_file_to_string(path)
+    // #445 C1（SWEEP1 批，2026-11-05）：输入不可读 fail loud——一行原因 +
+    // rc=4（与用法错同档；#230 治理收尾：旧走未捕获 raise 的 PanicError 栈
+    // + rc=127，对脚本与 IDE 都是噪声）。目录模式此面不可达（文件名来自
+    // read_dir 快照、collect_files 侧已 catch），单文件模式 typo 路径直达
+    let src = read_source_or_exit(path)
     let stem = basename_keep_ext(path)
     let lexed = if target_is_dir {
       // BUG-C 修复（2026-10-05，S9 修复批批一后继）：补 base_dir——头注
@@ -252,6 +256,56 @@ fn dir_of(path : String) -> String {
     "."
   } else {
     path[0:last].to_owned()
+  }
+}
+
+///|
+/// IOError 的一行文本（#445 C1：输入不可读原因行——suberror IOError(String)
+/// 单字段形态）。四 dump 同形复制件——cmd 层互不可 import。
+fn io_error_text(e : @fs.IOError) -> String {
+  let IOError(msg) = e
+  msg
+}
+
+///|
+/// 输入不可读的退出决策文案（#445 C1，纯函数——wbtest 锚打此面）：一行
+/// 原因 + rc=4 与用法错同档；#230 治理收尾（旧走未捕获 raise 的
+/// PanicError 栈 + rc=127，对脚本与 IDE 都是噪声——native 侧子进程锚在
+/// scripts/vitro_cli_smoke D 组）。目录模式此面不可达（文件名来自
+/// read_dir 快照、collect_files 侧已 catch），单文件模式 typo 路径直达。
+fn unreadable_reason(path : String, e : @fs.IOError) -> String {
+  "输入不可读：\{path}（\{io_error_text(e)}）"
+}
+
+///|
+/// 主循环输入源读取（#445 C1 fail loud 收口）。
+fn read_source_or_exit(path : String) -> String {
+  @fs.read_file_to_string(path) catch {
+    e => {
+      println(unreadable_reason(path, e))
+      c_exit(4)
+      ""
+    }
+  }
+}
+
+///|
+/// 字典序排序（内置 String sort 是**长度优先序**——陷阱 #29；SWEEP1
+/// #445 B2 探针实锤：ASCII 域亦分叉〔corpus 1176 文件名内置序 vs 字典序
+/// 逐位全异，定向样本 `b.c < aa.c`——长度优先铁证〕，非「非 ASCII 域才
+/// 需裁定」）。与 codegen_diff 的 Go sort.Strings 对齐（报告序稳定）；
+/// 四 dump 同形复制件——cmd 层互不可 import。
+fn sort_files_lex(files : Array[String]) -> Unit {
+  let mut i = 1
+  while i < files.length() {
+    let k = files[i]
+    let mut j = i - 1
+    while j >= 0 && @util.str_cmp(files[j], k) > 0 {
+      files[j + 1] = files[j]
+      j -= 1
+    }
+    files[j + 1] = k
+    i += 1
   }
 }
 

@@ -16,7 +16,7 @@
 | `vitro/engine/arith` | L0 | 共享算术核（#426 B3' 批 0，2026-11-02）：IntDomain 域描述 + integer_promote/common_domain 域判定 + eval_int_binary/eval_int_unary 一表驱动求值（Result[值, ArithFault]——故障由消费方翻译：VM→教学 trap，折叠器→E3075 族）+ normalize/f2i 饱和族；编译期折叠器与 VM 执行器的 C 算术语义**单源**；proof-enabled（PROVE-arith 批 2026-11-04——域判定两函数携契约，无契约函数被 prove 静默跳过，命令见构建区） | ✅ |
 | `vitro/engine/proofs/arith_mirror` | L0 | **arith 镜像证明包**（PROVE-arith 批 2026-11-04）：eval_int_binary/eval_int_unary 语义表算术化重写（移位/位运算/reinterpret 被 prove frontend 拒→wrap32u/wrap32s 数学模型 + two_pow/floor_div 引理；Result 构造器 .mlw unbound→自定义 Outcome）+ 域完备/溢出回绕分口径/拒绝路径契约（46 goal 全 valid）；**镜像自持**（证明函数禁引 @arith），信任桥 = parity_test.mbt 黑盒对拍（wrap↔normalize 函数级等价等 5 test）；不证面诚实登记（I64/U64 回绕族、U64 无符号序、位运算域封闭——包头注与陷阱 #45）；pub 面仅引理五件（对拍可达性，surface 白名单登记） | ✅（证明资产） |
 | `vitro/engine/fs` | L0 | native-only 文件系统件（**vendored 自 moonbitlang/x@0.5.5**——模块零外部依赖）：四文件搬迁，C 符号前缀 `vitro_engine_fs_*`；pub 面 7 函数+IOError（消费面 = cmd×5）；上游漂移由 `scripts/moonbit/vendor_drift` 监控（内容哈希主口径）；Apache-2.0 合规 = 文件头保留+来源标注+`THIRD_PARTY.md` | ✅ |
-| `vitro/engine/diag` | L1 | ErrorCode 120 臂（gen_diag 生成）+ catalog 116 + E4 出口 | ✅ 已发布 |
+| `vitro/engine/diag` | L1 | ErrorCode 121 臂（gen_diag 生成——SWEEP1 #443：+E3091 step-limit）+ catalog 117 + E4 出口 | ✅ 已发布 |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 全族 + depth + E1 emitter + 谓词/compute_type_size | ✅ 已发布 |
 | `vitro/engine/lexer` | L4 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） | ✅ 已发布 0.3.0 |
 | `vitro/engine/parser` | L4 | token → AST：表达式瀑布/声明符螺旋/语句族/声明族/C++ 分支；depth 参数化防护；声明符自顶向下累加器（F3-v2）；Rollback 七字段全量快照；stall_count 活性观测 + 零推进熔断 | ✅ 已发布 |
@@ -122,7 +122,7 @@ node scripts/clang_direct/main.mts [--sample N | --corpus dir | --cases f1.c,...
 26. **wbtest 不携带 `for "test"` import**（黑盒专用配置）——白盒测试要跨包输入就手工构造（如 token 数组），或把用例放黑盒。
 27. **JSON 字符串输出必须转义 < 0x20 控制字符**（`\u00XX`，serde_json 口径）——C 转义序列（`\x4`）解析出的真字节原样写出即非法 JSON（S3 由 baseline 的 string_escape_octal_hex.c 差分抓出）。
 28. **wasm 测试运行时的栈预算比 moonrun 更紧**（S3 实测：`interpret_declarator_node` **递归解释**形态 900 层过 / 1200 层溢出——目标 wasm；同函数迭代化后 1250 层全存活；`node_cross_count` 的纯计数递归在 wasm-gc/native 三后端 1250 层存活（S3 审阅实测）——旧区间只适用于"递归解释"形态，勿外推到计数函数）——深结构处理一律迭代化（显式栈/下钻折叠），不能依赖"Rust 侧能过的深递归这里也能过"。
-29. **`String` 的 `compare` 与 `<`/`>` 均非字典序**（S5 bytecode 白盒实测：`"delta" > "charlie"` 为 **false**、`"delta".compare("charlie")` 返回 **-1**——疑似长度优先序）——排序/对拍类逻辑**禁用内置 String 比较**，按码元逐位自写字典序（见 bytecode/emitter.mbt `str_cmp`）；Go canonicalize 的 sort.Strings 是字节字典序，ASCII 域两者等价，非 ASCII 键域需显式裁定。
+29. **`String` 的 `compare` 与 `<`/`>` 均非字典序——是长度优先序**（S5 bytecode 白盒实测：`"delta" > "charlie"` 为 **false**、`"delta".compare("charlie")` 返回 **-1**；SWEEP1 #445 B2 探针实锤长度优先：`["b.c","aa.c","ab.c","a.c"]` 内置 sort 得 `a.c < b.c < aa.c < ab.c`，corpus 1176 文件名内置序 vs str_cmp 字典序**逐位全异**——旧论断「ASCII 域两者等价，非 ASCII 键域才需裁定」**错误**，ASCII 域同样分叉）——排序/对拍类逻辑**禁用内置 String 比较**，按码元逐位自写字典序（见 bytecode/emitter.mbt `str_cmp`；四 dump 目录模式 sort_files_lex 同源，SWEEP1 批三家连坐迁齐）；Go canonicalize 的 sort.Strings 是字节字典序。
 
 ## MoonBit 语义实证补充（S6 建包批，2026-09-23 探针实测）
 

@@ -285,3 +285,36 @@ test "counters_and_clear" {
   assert_eq(log.dropped_bytes(), 0)
   assert_eq(log.join_all().length(), 0)
 }
+
+///|
+/// #449 ① 锚（SWEEP1 批，2026-11-05）：join_text 三形态——ASCII 原样 /
+/// UTF-8 中文原样 / 非法序列折 U+FFFD（单源 @util.utf8_text_partial，
+/// 下游 DX 出口：一个方法消灭一族 bytes→String 自写；字节精确场景仍走
+/// join 的 Bytes 出口）。
+test "join_text_三形态_utf8优先解码" {
+  // ① ASCII：原样
+  let log1 = OutputLog::new()
+  log1.push_stdout(b"hello\n")
+  assert_eq(log1.join_text(OutputKind::Stdout), "hello\n")
+  // ② UTF-8 中文：原样（合法序列不折）
+  let log2 = OutputLog::new()
+  log2.push_stdout(@utf8.encode("你好\n"))
+  assert_eq(log2.join_text(OutputKind::Stdout), "你好\n")
+  // ③ 非法序列：折 U+FFFD——孤立延续字节（0x80..0xBF 无 lead 上下文）走
+  // 替换臂；中段非法 lead（0xFF 越界）替换后重同步。注意尾部不完整 lead
+  //（如孤 0xC8）是「截断止」而非替换（utf8_text_partial 流式前缀契约——
+  // serve_io 增量切片块界不切半个字符的保证），勿误锚
+  let log3 = OutputLog::new()
+  log3.push_stdout(b"\x80")
+  assert_eq(log3.join_text(OutputKind::Stdout), "\u{FFFD}")
+  let log3b = OutputLog::new()
+  log3b.push_stdout(b"a\xFFb")
+  assert_eq(log3b.join_text(OutputKind::Stdout), "a\u{FFFD}b")
+  // ④ 通道分域：join_text(Stdout) 不混 stderr/note（与 join 同口径）
+  let log4 = OutputLog::new()
+  log4.push_stdout(b"out")
+  log4.push_stderr(b"err")
+  log4.push_note_str("note")
+  assert_eq(log4.join_text(OutputKind::Stdout), "out")
+  assert_eq(log4.join_text(OutputKind::Stderr), "err")
+}

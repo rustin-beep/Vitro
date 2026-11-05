@@ -33,10 +33,10 @@ import { pathToFileURL } from "node:url";
 import { projectRoot } from "../../internal/capi.mts";
 import { emitWithMoonFmt, makeFail, parseFlags } from "../../internal/genio.mts";
 
-/** T2 基线：137→…→152（#214 W3084/W3085——缺 return 路径/隐式函数声明两教学点）→153（#212 W1023——#pragma/#line 忽略类指令降警告）→156（#261 运行期 trap 立码 E3086/E3087/E3088）→119（#223/#233 批：+E3089 已声明未定义；−38 条 4xxx C++ 死臂全数摘除——C only 裁定后零生产点，E4 号段腾空）→120（#426 B3' 批 1：+W3090 常量表达式整数溢出警告——折叠器 i32 溢出 W 级照折对齐 clang -Winteger-overflow） */
-const EXPECTED_ARMS = 120;
-/** T2 基线：…→106（#178 E3083）→108（#214 W3084/W3085）→109（PR #284 审阅 P3：W1023 卡）→114（#256/#261 闭合批：+E0/E1012/E3074–E3082/E3086–E3088，退役 E1022/E2001/E3026/W3056/E4100–E4104）→115（#223：+E3089 卡）→116（#426 批 1：+W3090 常量表达式溢出警告卡——catalog_closure 闭合义务） */
-const EXPECTED_CATALOG = 116;
+/** T2 基线：137→…→152（#214 W3084/W3085——缺 return 路径/隐式函数声明两教学点）→153（#212 W1023——#pragma/#line 忽略类指令降警告）→156（#261 运行期 trap 立码 E3086/E3087/E3088）→119（#223/#233 批：+E3089 已声明未定义；−38 条 4xxx C++ 死臂全数摘除——C only 裁定后零生产点，E4 号段腾空）→120（#426 B3' 批 1：+W3090 常量表达式整数溢出警告——折叠器 i32 溢出 W 级照折对齐 clang -Winteger-overflow）→121（SWEEP1 #443 C4：+E3091 step-limit 预算墙——vm 超限 trap 立码，cli rc=3 判定改码位） */
+const EXPECTED_ARMS = 121;
+/** T2 基线：…→106（#178 E3083）→108（#214 W3084/W3085）→109（PR #284 审阅 P3：W1023 卡）→114（#256/#261 闭合批：+E0/E1012/E3074–E3082/E3086–E3088，退役 E1022/E2001/E3026/W3056/E4100–E4104）→115（#223：+E3089 卡）→116（#426 批 1：+W3090 常量表达式溢出警告卡——catalog_closure 闭合义务）→117（SWEEP1 #443 C4：+E3091 step-limit 卡——码表立码的双向闭合义务） */
+const EXPECTED_CATALOG = 117;
 
 interface Arm {
   name: string;

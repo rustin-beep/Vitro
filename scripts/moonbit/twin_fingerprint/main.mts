@@ -291,15 +291,24 @@ export function selftestRun(rd: RulesDoc, fpsBySet: Record<string, Fingerprint[]
     process.stdout.write(`  注入① ${first.name} 单边追加假指纹项 → ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
     if (!red) fails++;
   }
-  // 注入②：删掉一条已登记 divergence（→ 分叉未登记）
+  // 注入②：删掉一条已登记 divergence（→ 分叉未登记）；F9 销案（SWEEP1 #445 B2）
+  // 后首集 divergences 已空——「删登记」无从删，翻新为「空表 push 假登记」
+  // （登记与实际指纹不符即红，语义同源；与 main.test.mts 的 J9 探针同步翻新）
   {
     const rd2 = JSON.parse(JSON.stringify(rd)) as RulesDoc;
     const set2 = rd2.twin_sets[0];
-    if (set2 === undefined || set2.divergences.length === 0) return 2;
-    const victim = set2.divergences[0]!;
-    set2.divergences = set2.divergences.filter((x) => x !== victim);
-    const red = !quiet(() => verdict(rd2, fpsBySet));
-    process.stdout.write(`  注入② 删 divergence 登记条目 → ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
+    if (set2 === undefined) return 2;
+    let red: boolean;
+    if (set2.divergences.length === 0) {
+      set2.divergences.push({ item: "zz", only_in: "zz", reason: "僵尸探针" });
+      red = !quiet(() => verdict(rd2, fpsBySet));
+      process.stdout.write(`  注入② 空表 push 假登记（F9 销案形态） → ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
+    } else {
+      const victim = set2.divergences[0]!;
+      set2.divergences = set2.divergences.filter((x) => x !== victim);
+      red = !quiet(() => verdict(rd2, fpsBySet));
+      process.stdout.write(`  注入② 删 divergence 登记条目 → ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
+    }
     if (!red) fails++;
   }
   // 注入③：加一条僵尸登记（实际指纹不含）

@@ -64,3 +64,33 @@ vitro/engine/vm load_libc_artifact
 #   本仓内无跨包 MoonBit 消费（scripts/wasm_gateway/host.mts 的版本失联锚走
 #   运行时导出比对非 import），保留 pub。同批 append_leak_report 收 priv（纯同包消费）。
 vitro/engine/gateway ENGINE_VERSION
+
+# REHOST 批 1a（2026-11-05）：wasmenc L0 编码库件与装载协议入口——批 1b/1c 组合模板与
+# 折叠装载器接线时的消费面（当下无跨包消费方，pub 面保留=骨架 API 定形）
+vitro/engine/wasmenc WT_F32
+vitro/engine/wasmenc WT_F64
+vitro/engine/wasmenc WT_I64
+vitro/engine/wasmenc WT_VOID
+vitro/engine/wasmenc fold_instrs
+vitro/engine/wasmenc sleb_decode
+vitro/engine/wasmenc sleb_encode
+vitro/engine/wasmenc uleb_decode
+vitro/engine/wasmenc uleb_encode
+vitro/engine/wasmenc winstr_decode
+vitro/engine/wasmenc winstr_decode_all
+vitro/engine/wasmenc winstr_encode_all
+# REHOST 批 1b（2026-11-05）：装载约定槽常量六全局（G_PC/G_FB/G_STEPS/
+# G_SPT/G_RET/G_RV）+ 六局部（L_V/L_A/L_N/L_T64/L_TF/L_TF32）——模块段
+# 结构契约（批 1c codegen 接线与 wabt 证人的组装依据，当下无跨包消费方）
+vitro/engine/wasmenc G_FB
+vitro/engine/wasmenc G_PC
+vitro/engine/wasmenc G_RET
+vitro/engine/wasmenc G_RV
+vitro/engine/wasmenc G_SPT
+vitro/engine/wasmenc G_STEPS
+vitro/engine/wasmenc L_A
+vitro/engine/wasmenc L_N
+vitro/engine/wasmenc L_T64
+vitro/engine/wasmenc L_TF
+vitro/engine/wasmenc L_TF32
+vitro/engine/wasmenc L_V

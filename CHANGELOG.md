@@ -1,5 +1,43 @@
 ## [Unreleased]
 
+### feat(wasmenc): REHOST 批 1b——B/C 类 63 条模板接线（组合展开+侧车裁决），153 条载体等价性全量收口（2026-11-05）
+
+- **B 类 50 条组合模板入表**（`templates.mbt` 唯一真源）：局部/全局族（fb+off 编址 /
+  GLOBAL_START+off 编译期地址）、访存族 9 条（NULL 区 <0x1000 显式检查块）、
+  SplitD/Q 位拆、StackAlloc 三重检查、Memcpy/Memset（memory.copy/fill——memmove
+  语义等价 O3 对账）、溢出检查算术（i64 中间值法）、移位域检查、常量池索引
+  （池反查还原）、StepEvent（$steps 组前计步）/TrapBounds（(u)idx<size 一比较双
+  分支）、TruncUByte 规范化（i32.const 0xFF; i32.and）。
+- **C 类 13 条侧车裁决路径**：`verify_fold_with_table`（组表引导裁决——按组表声
+  明 op/边界逐组匹配模板）为歧义组唯一裁决路径；歧义对实证锚扩全（BitNot×2 /
+  PushArgc/PushArgv 与 PushConst 同字节双组表双裁决、TruncUByte vs
+  [PushConst(255);BitAnd] 贪心规范化、JumpIf 正反 taken 槽位镜像可分）。
+- **模板形态合法化实锤（wasm 块出口栈约束）**：「块外压值块内消费」形态经 wabt
+  最小用例判非法（出口栈必须回卷入口深）——22 条检查类模板整改为探针先例形态
+  （**值先 set 进槽、块内只 get、块外复取**），mini 栈机与参照自动适配全绿。
+- **装载约定定形**：全局槽表 6 件（$pc/$fb/$steps/$sp/$ret/$rv）+ 局部槽表 6 件
+  （3×i32/i64/f64/f32）——模块段结构契约（批 1c codegen 接线与 wabt 证人组装依据）。
+- **fold 三改**：贪心最长真扩面（B 序列内多模板重叠区规范化）+ NoTemplate 位置
+  口径改**字节偏移** + 盲折叠表形状唯一性（TableShapeConflict 运行期红 + 静态
+  前置锚——同形双模板 = 永久歧义装载即红）。
+- **soft-stack 三方对拍扩全 B 类 50 条**（`softstack_wbtest` 状态域断言器：终栈
+  逐位 + globals + 内存关键字节 + host 调用序 + 栈效应净差；检查类模板 trap 面
+  全部双 trap 断言）；mini 栈机扩面（block/br_if/end/unreachable + local/global
+  槽 + 访存 + copy/fill + call host 桩）。
+- **J9 三形态**：①发射折叠不同步（错字节→TemplateMismatch）②侧车错配（operand
+  错→GroupMismatch）③栈序错位（StoreMem 取数序反转——wasm 验证器不拦类，语义
+  闸 + 裁决闸双红）。
+- **wabt 外部证人扩面**：63 条 B/C 模板（**仓内发射字节 dump 零孪生**——
+  `witness_dump_wbtest` 打印发射字节，探针工程 .mjs 拼最小模块过 wasm-validate）
+  逐条 + 全量拼接 = 64/64 PASS（批 1c wabt CI 闸雏形）。
+- **153 全量闸收口**：A 83 直映往返 / B 50 组合往返 / C 13 侧车裁决 / D 7 拒载
+  =「133 结构等价 + 13 侧车裁决 + 7 零发射」全交代。测试 +15 裸域（1250）/
+  +14 native（1305）；WInstr 扩面（访存族/i64 移位/reinterpret/bulk-memory/call）
+  + 码位锚；EmitCtx 扩（argc/argv/fallthrough/符号尺寸）；surface 边 12 + 白名单
+  12 连坐。flag 仍默认关零行为：纯增量叶包零现役消费方，digest/golden 零触碰。
+
+
+### test(vm+scripts): #482/#483 M08 复核缺口清账——折叠↔运行期一致性闸双上下文直拍锚 + facts 前置缺失 fail loud（2026-11-05）
 ### fix(engine+util): #429 审阅 v2 批 B6——json_parse 孤代理入口拒绝 + C 字节串「码元=字节」承载治本（2026-11-03）
 
 - **json_parse `\uXXXX` 孤立代理拒绝**（M38 A2 / M06 A1，serde_json / RFC 8259 §8.2

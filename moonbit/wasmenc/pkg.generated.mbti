@@ -1,0 +1,385 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/wasmenc"
+
+import {
+  "moonbitlang/core/debug",
+  "vitro/engine/opcode",
+  "vitro/engine/source",
+}
+
+// Values
+pub const G_FB : Int32 = 1
+
+pub const G_PC : Int32 = 0
+
+pub const G_RET : Int32 = 4
+
+pub const G_RV : Int32 = 5
+
+pub const G_SPT : Int32 = 3
+
+pub const G_STEPS : Int32 = 2
+
+pub const L_A : Int32 = 1
+
+pub const L_N : Int32 = 2
+
+pub const L_T64 : Int32 = 3
+
+pub const L_TF : Int32 = 4
+
+pub const L_TF32 : Int32 = 5
+
+pub const L_V : Int32 = 0
+
+pub const WT_F32 : Byte = 0x7D
+
+pub const WT_F64 : Byte = 0x7C
+
+pub const WT_I32 : Byte = 0x7F
+
+pub const WT_I64 : Byte = 0x7E
+
+pub const WT_VOID : Byte = 0x40
+
+pub fn build_group_table(Array[(@opcode.OpCode, Int32, @source.SourceLoc)], EmitCtx) -> Result[(GroupTable, Array[Byte]), EmitError]
+
+pub fn emit_group(@opcode.OpCode, Int32, EmitCtx) -> Result[Array[WInstr], EmitError]
+
+pub fn emit_group_bytes(@opcode.OpCode, Int32, EmitCtx) -> Result[Array[Byte], EmitError]
+
+pub fn emit_groups(Array[(@opcode.OpCode, Int32)], EmitCtx) -> Result[Array[Byte], EmitError]
+
+pub fn fold_bytes(Array[Byte], EmitCtx) -> Result[Array[FoldedGroup], FoldError]
+
+pub fn fold_instrs(Array[WInstr], EmitCtx) -> Result[Array[FoldedGroup], FoldError]
+
+pub fn parse_first_code_body(Array[Byte]) -> Result[Array[WInstr], ModuleParseError]
+
+pub fn sleb_decode(Array[Byte], Int32) -> Result[(Int64, Int32), LebError]
+
+pub fn sleb_encode(Int64) -> Array[Byte]
+
+pub fn template_spec(@opcode.OpCode) -> TemplateSpec
+
+pub fn uleb_decode(Array[Byte], Int32) -> Result[(UInt64, Int32), LebError]
+
+pub fn uleb_encode(UInt64) -> Array[Byte]
+
+pub fn verify_fold_with_table(GroupTable, Array[Byte], EmitCtx) -> Result[Array[FoldedGroup], VerifyError]
+
+pub fn verify_group_table(GroupTable, Array[Byte], EmitCtx) -> Result[Unit, VerifyError]
+
+pub fn winstr_decode(Array[Byte], Int32) -> Result[(WInstr, Int32), DecodeError]
+
+pub fn winstr_decode_all(Array[Byte]) -> Result[Array[WInstr], DecodeError]
+
+pub fn winstr_encode(WInstr) -> Array[Byte]
+
+pub fn winstr_encode_all(Array[WInstr]) -> Array[Byte]
+
+// Errors
+
+// Types and methods
+pub(all) enum CtxSlot {
+  Argc
+  ArgvAddr
+  FallthroughPc
+  HostArgvPtr
+} derive(Eq, @debug.Debug)
+pub fn CtxSlot::equal(Self, Self) -> Bool
+pub fn CtxSlot::not_equal(Self, Self) -> Bool
+pub fn CtxSlot::to_repr(Self) -> @debug.Repr
+
+pub(all) enum DecodeError {
+  UnknownOpcode(Byte)
+  BadOperand(LebError)
+  Eof
+}
+
+pub(all) struct EmitCtx {
+  f64_constants : Array[Double]
+  i64_constants : Array[Int64]
+  argc : Int32
+  argv_addr : Int32
+  fallthrough_pc : Int32
+  host_argv_ptr : Int32
+  symbol_sizes : Array[Int32]
+} derive(Eq, @debug.Debug)
+pub fn EmitCtx::empty() -> Self
+pub fn EmitCtx::equal(Self, Self) -> Bool
+pub fn EmitCtx::not_equal(Self, Self) -> Bool
+pub fn EmitCtx::to_repr(Self) -> @debug.Repr
+
+pub(all) enum EmitError {
+  NotImplemented(String)
+  BadOperand(String)
+}
+
+pub(all) enum ExactPat {
+  Instr(WInstr)
+  I32Slot
+  F32Slot
+  Seq(Array[SeqItem])
+} derive(Eq, @debug.Debug)
+pub fn ExactPat::equal(Self, Self) -> Bool
+pub fn ExactPat::not_equal(Self, Self) -> Bool
+pub fn ExactPat::to_repr(Self) -> @debug.Repr
+
+pub(all) enum FoldError {
+  Decode(Int32, DecodeError)
+  NoTemplate(Int32)
+  TableShapeConflict(Int32, @opcode.OpCode, @opcode.OpCode)
+}
+
+pub(all) enum FoldState {
+  Exact
+  Composed
+  Ambiguous
+  Reserved
+} derive(Compare, Eq, @debug.Debug)
+pub fn FoldState::compare(Self, Self) -> Int32
+pub fn FoldState::equal(Self, Self) -> Bool
+pub fn FoldState::not_equal(Self, Self) -> Bool
+pub fn FoldState::op_ge(Self, Self) -> Bool
+pub fn FoldState::op_gt(Self, Self) -> Bool
+pub fn FoldState::op_le(Self, Self) -> Bool
+pub fn FoldState::op_lt(Self, Self) -> Bool
+pub fn FoldState::to_repr(Self) -> @debug.Repr
+
+pub(all) struct FoldedGroup {
+  op : @opcode.OpCode
+  operand : Int32
+} derive(Eq, @debug.Debug)
+pub fn FoldedGroup::equal(Self, Self) -> Bool
+pub fn FoldedGroup::not_equal(Self, Self) -> Bool
+pub fn FoldedGroup::to_repr(Self) -> @debug.Repr
+
+pub(all) struct FuncBody {
+  locals : Array[(Int32, Byte)]
+  body : Array[WInstr]
+} derive(Eq, @debug.Debug)
+pub fn FuncBody::equal(Self, Self) -> Bool
+pub fn FuncBody::not_equal(Self, Self) -> Bool
+pub fn FuncBody::to_repr(Self) -> @debug.Repr
+
+pub(all) struct GroupEntry {
+  gip : Int32
+  op : @opcode.OpCode
+  operand : Int32
+  instr_offset : Int32
+  instr_len : Int32
+  loc_line : Int32
+  loc_column : Int32
+  loc_file_id : Int32
+} derive(Eq, @debug.Debug)
+pub fn GroupEntry::equal(Self, Self) -> Bool
+pub fn GroupEntry::not_equal(Self, Self) -> Bool
+pub fn GroupEntry::to_repr(Self) -> @debug.Repr
+
+pub(all) struct GroupTable {
+  groups : Array[GroupEntry]
+} derive(Eq, @debug.Debug)
+pub fn GroupTable::equal(Self, Self) -> Bool
+pub fn GroupTable::new() -> Self
+pub fn GroupTable::not_equal(Self, Self) -> Bool
+pub fn GroupTable::to_repr(Self) -> @debug.Repr
+
+pub(all) enum LebError {
+  Truncated
+  TooLong
+}
+
+pub(all) struct ModuleBuilder {
+  types : Array[(Array[Byte], Array[Byte])]
+  funcs : Array[Int32]
+  memories : Array[(Int32, Int32?)]
+  globals : Array[(Byte, Bool, WInstr)]
+  exports : Array[(String, Int32, Int32)]
+  codes : Array[FuncBody]
+  datas : Array[(Int32, Array[Byte])]
+} derive(@debug.Debug)
+pub fn ModuleBuilder::add_data(Self, Int32, Array[Byte]) -> Int32
+pub fn ModuleBuilder::add_export(Self, String, Int32, Int32) -> Unit
+pub fn ModuleBuilder::add_func(Self, Int32, FuncBody) -> Int32
+pub fn ModuleBuilder::add_global(Self, Byte, Bool, WInstr) -> Int32
+pub fn ModuleBuilder::add_memory(Self, Int32, Int32?) -> Int32
+pub fn ModuleBuilder::add_type(Self, Array[Byte], Array[Byte]) -> Int32
+pub fn ModuleBuilder::build(Self) -> Array[Byte]
+pub fn ModuleBuilder::new() -> Self
+pub fn ModuleBuilder::to_repr(Self) -> @debug.Repr
+
+pub(all) enum ModuleParseError {
+  BadMagic
+  BadVersion
+  SectionOverrun(Int32)
+  Malformed(Int32)
+  UnexpectedSection(Int32)
+}
+
+pub(all) enum SeqItem {
+  Fixed(WInstr)
+  OpI32
+  OpBase(Int32)
+  F64Of
+  I64Of
+  CtxI32(CtxSlot)
+  SymSize
+  BrAny
+} derive(Eq, @debug.Debug)
+pub fn SeqItem::equal(Self, Self) -> Bool
+pub fn SeqItem::not_equal(Self, Self) -> Bool
+pub fn SeqItem::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TemplateSpec {
+  state : FoldState
+  pops : Int32
+  pushes : Int32
+  pat : ExactPat?
+  hint : String
+} derive(Eq, @debug.Debug)
+pub fn TemplateSpec::equal(Self, Self) -> Bool
+pub fn TemplateSpec::not_equal(Self, Self) -> Bool
+pub fn TemplateSpec::to_repr(Self) -> @debug.Repr
+
+pub(all) enum VerifyError {
+  GroupCountMismatch(Int32, Int32)
+  GroupMismatch(Int32, @opcode.OpCode, @opcode.OpCode, Int32, Int32)
+  FoldFailed(FoldError)
+  TemplateMismatch(Int32, @opcode.OpCode, Int32)
+  BoundaryMismatch(Int32, @opcode.OpCode, Int32, Int32)
+  TrailingInstrs(Int32, Int32)
+  ReservedGroup(Int32, @opcode.OpCode)
+}
+
+pub(all) enum WInstr {
+  WUnreachable
+  WNop
+  WBlock
+  WLoop
+  WEnd
+  WBr(Int32)
+  WBrIf(Int32)
+  WDrop
+  WCall(Int32)
+  WLocalGet(Int32)
+  WLocalSet(Int32)
+  WLocalTee(Int32)
+  WGlobalGet(Int32)
+  WGlobalSet(Int32)
+  WI32Load
+  WI64Load
+  WF32Load
+  WF64Load
+  WI32Load8S
+  WI32Load8U
+  WI32Store
+  WI64Store
+  WF32Store
+  WF64Store
+  WI32Store8
+  WI32Const(Int32)
+  WI64Const(Int64)
+  WF32Const(Float)
+  WF64Const(Double)
+  WI32Eqz
+  WI32Eq
+  WI32Ne
+  WI32LtS
+  WI32LtU
+  WI32GtS
+  WI32GtU
+  WI32LeS
+  WI32LeU
+  WI32GeS
+  WI32GeU
+  WI32Add
+  WI32Sub
+  WI32Mul
+  WI32DivS
+  WI32DivU
+  WI32RemS
+  WI32RemU
+  WI32And
+  WI32Or
+  WI32Xor
+  WI32Extend8S
+  WI32Shl
+  WI32ShrS
+  WI32ShrU
+  WI64Shl
+  WI64ShrS
+  WI64ShrU
+  WI64Eq
+  WI64Ne
+  WI64LtS
+  WI64LtU
+  WI64GtS
+  WI64GtU
+  WI64LeS
+  WI64LeU
+  WI64GeS
+  WI64GeU
+  WI64Add
+  WI64Sub
+  WI64Mul
+  WI64DivS
+  WI64DivU
+  WI64RemS
+  WI64RemU
+  WI64And
+  WI64Or
+  WI64Xor
+  WF32Eq
+  WF32Ne
+  WF32Lt
+  WF32Gt
+  WF32Le
+  WF32Ge
+  WF32Add
+  WF32Sub
+  WF32Mul
+  WF32Div
+  WF32Neg
+  WF64Eq
+  WF64Ne
+  WF64Lt
+  WF64Gt
+  WF64Le
+  WF64Ge
+  WF64Add
+  WF64Sub
+  WF64Mul
+  WF64Div
+  WF64Neg
+  WI32WrapI64
+  WI64ExtendI32S
+  WI64ExtendI32U
+  WF32ConvertI32S
+  WF32ConvertI32U
+  WF32ConvertI64U
+  WF64ConvertI32S
+  WF64ConvertI32U
+  WF64ConvertI64S
+  WF64ConvertI64U
+  WF32DemoteF64
+  WF64PromoteF32
+  WI32TruncSatF32S
+  WI32TruncSatF64S
+  WI64TruncSatF64S
+  WI64ReinterpretF64
+  WMemoryCopy
+  WMemoryFill
+} derive(Compare, Eq, @debug.Debug)
+pub fn WInstr::compare(Self, Self) -> Int32
+pub fn WInstr::equal(Self, Self) -> Bool
+pub fn WInstr::not_equal(Self, Self) -> Bool
+pub fn WInstr::op_ge(Self, Self) -> Bool
+pub fn WInstr::op_gt(Self, Self) -> Bool
+pub fn WInstr::op_le(Self, Self) -> Bool
+pub fn WInstr::op_lt(Self, Self) -> Bool
+pub fn WInstr::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

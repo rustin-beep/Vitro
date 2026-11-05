@@ -48,7 +48,6 @@
 4. **P1-2①/P3-8/P3-9 钩子三修**：证明门分桶（prover detect 失败/why3 harness 不可用 = 基础设施红，stderr 明示**非阻断**——修「装了 z3 反而更难推、没装完全不检查」的倒挂）；sed 改写后 grep 命中校验（未命中明示「conf 改写失败」防 60s 档假红）；`prove_pkgs` 从 `moon.pkg` 扫 `proof-enabled` 动态派生（新增证明包自动入闸，对齐 AGENTS §8.5 存在即接入精神）。
 5. **P3-6/P3-7 引用与警告处置**：arith/moon.pkg 与镜像包 moon.pkg 的失真注释修正（包名/文件名/仓外引用）；parity_test 裸调改包名前缀消 `test_unqualified_package` ×5；镜像臂入 wbtest 后 `unused_value` ×41 自然消退。
 6. **登记待办**（PR #480 审阅回复详列）：CHANGELOG 版本标题对账机判闸（P1-1 处方②）、prove 的 CI continue-on-error 留档 job（P2-4 处方①，观察期后随硬门一起议）、`proof-enabled` 字段对旧 moon 下游消费者的兼容验证（P3-10，下个发版批前置项）。
-
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 包下游 `moon add` 后 build 必红；版本号口径见 [0.9.1.md](../docs/current/08-发布档案/0.9.1.md)）
 
 ### 破坏面与下游可见行为变更（0.9.0 → 0.9.1）
@@ -58,6 +57,7 @@
 4. **行为修复（下游可感知）**：#366 帧出口管道截断（长输出后半截）治本；#363 invalid UTF-8 三臂统一 U+FFFD；#207/#319 run 文本模式 stdout 尾换行四口径统一（原样零修饰）；#66 `\xHH` 字面量 NUL 终止尺寸治本（`char g[]="\xff"` 族越界读根除）；#356 绝对路径主文件 quote-include 候选键 POSIX 锚。
 5. **诊断/夹具域**：#324 E-08 渲染金标准夹具整体换引擎实产（同形性机判闸）；#213 语法错不再遮蔽语义错（照跑 typeck）。
 6. **opcode 契约**：154..155 u64→fp 无符号对偶（CastUQ2D/CastUQ2F，#345 审阅 P1）——总数 151→153。
+24. **新增 `vitro/engine/wasmenc` 包（REHOST 批 1a，2026-11-05——153 码表 wasm 子集实体化的表驱动发射/折叠骨架，纯增量叶包零行为）**：L0 编码库（LEB128 u/s 编解码 + `WInstr` 指令集字节编解码 + wasm 段结构 ModuleBuilder/解析器，探针 166 行 JS 的 MoonBit 直译）+ L1 语义表（`template_spec` 153 臂穷尽：四态标注 + 栈效应 + 发射模板单源——A 类完全一致 83 / B 类组合可逆 50 / C 类歧义需侧车 13 / D 类不可映射 7，计数闭合 153；对账修正：AddQ/SubQ/MulQ 系回绕不 trap 归 A〔exec_float.mbt:216 亲读〕、And/Or 短路占位零发射归 D〔binary.mbt:380-382〕、PushArgc/PushArgv 字节同形移 C、TruncUByte 因 wasm 无 extend8_u〔wabt 编译实证〕移 B）。A 类 83 条全量「发射→折叠→比对」往返 + 混编模块级闭环 + fail loud 拒载 + 组表侧车核对协议（篡改检出）+ soft-stack 双实现对拍（mini wasm 栈机 vs Vitro 位模式参照逐位一致）+ spec 码位锚（开发期 wabt 外部验证 86/86——实证抓出 6 处记忆码位错）+ J9 两路检出。B/C/D 态臂表内标注、发射/折叠 NotImplemented 拒载（批 1b/1c 接线）。测试 +16（裸/native 双口径）；pkg_deps L0 + surface 边 30/白名单 12 连坐；设计单同批出勘误版（探针实证修正三处 + 对账勘误 + §6 V8 全托管叙事）。
 
 ## [0.9.0] - 2026-10-25（S9 收官版；已发布——实录见 08-发布档案/0.9.0.md）
 

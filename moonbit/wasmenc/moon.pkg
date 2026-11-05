@@ -1,0 +1,21 @@
+// L0 叶包·核载体编码库（REHOST 批 1a，2026-11-05）：153 码表 wasm 子集
+// 实体化的表驱动发射/折叠骨架——设计单《核载体迁移设计单——153码表wasm子集
+// 实体化》§3.1。内部分层（照 arith 先例单包内分档，不拆子包）：
+//   L0 编码库（leb128.mbt / wasmcode.mbt / module.mbt）——零语义机械件，
+//        不 import opcode，探针 D:/tmp/rehost-probe/src/wasmcode.mjs（166 行）
+//        的 MoonBit 直译 + 批 1a 所需指令面；
+//   L1 语义表（templates.mbt / emit.mbt / fold.mbt / grouptable.mbt）——
+//        153 臂穷尽四态表唯一真源（发射器/折叠器共享同表驱动，探针报告 §5
+//        实证：表驱动是把批 1 工程量控制在估算内的必要形态，手写双实现膨胀
+//        ~1.7×）。
+// 批 1a 范围：骨架 + A 类（完全一致直映 84 条，对账账目见
+// tmp/batch_REHOST_1a_REPORT.md）全量往返；B/C/D 态臂表内标注到位、
+// 发射/折叠 fail loud 显式拒载（模板批 1b/1c 接线）。
+// 零行为自证：本包不被任何现役路径 import（纯增量叶包），flag 接线在批 1c。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L0，总计划 §4——
+// 依赖 opcode 同层合法）。
+import {
+  "vitro/engine/opcode",
+  "vitro/engine/source",
+  "vitro/engine/util",
+}

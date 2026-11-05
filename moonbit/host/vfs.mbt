@@ -598,6 +598,7 @@ pub fn VirtualFileSystem::fgets(
     Err(_) => return 0U
   }
   let mut read_count = 0
+  let mut stopped_at_newline = false
   let tmp : Array[Byte] = []
   if desc.is_text_mode {
     // 文本模式：\r\n 压缩为 \n（逻辑字节域）
@@ -607,6 +608,7 @@ pub fn VirtualFileSystem::fgets(
       desc.cursor = pair.1
       read_count = read_count + 1
       if pair.0 == b'\n' {
+        stopped_at_newline = true
         break
       }
     }
@@ -620,6 +622,7 @@ pub fn VirtualFileSystem::fgets(
       desc.cursor = desc.cursor + 1
       read_count = read_count + 1
       if b == b'\n' {
+        stopped_at_newline = true
         break
       }
     }
@@ -635,6 +638,15 @@ pub fn VirtualFileSystem::fgets(
   match mem.write_bytes(map, buf, Bytes::from_array(tmp)) {
     Ok(_) => ()
     Err(_) => return 0U
+  }
+  // PR #486 审阅 P2-1：fgets 停因三分立——①因 \n 停（行完整，未尝试
+  // 过读；即便 \n 恰在文件尾字节也不置——UCRT "ab\n" fgets 后 feof=0）
+  // ②因限额满 n-1 停（未尝试过读）③因碰文件尾停（还想读、cursor<size
+  // 不满足退出）= 尝试读过尾 → 置位（UCRT 文件 "abc" 无换行 fgets(buf,64)
+  // 后 feof=1）。B10 首版删恰满置位时把三形态并为「全不置」丢掉③（回归，
+  // 本批回补）；判据 = 非 \n 停 + 未满限额 + 游标在尾。
+  if !stopped_at_newline && read_count < n - 1 && desc.cursor >= meta.size {
+    desc.eof = true
   }
   buf
 }
@@ -917,9 +929,45 @@ pub fn VirtualFileSystem::fseek(
 
 ///|
 /// `ftell(stream)` → 物理游标（Windows CRT 口径）或 -1。
-pub fn VirtualFileSystem::ftell(self : VirtualFileSystem, fd : UInt32) -> Int32 {
+
+///|
+/// `ftell(stream)` → 逻辑游标或 -1。PR #486 审阅 P3：文本模式改物理→
+/// 逻辑换算（fseek↔ftell round-trip 自洽——UCRT 实测 fseek(20,SET) 后
+/// ftell=20；修前恒返物理位，含 CRLF 文件 fseek(20)→ftell=26 不自洽）；
+/// 二进制臂恒物理位（无换算语义）；过尾段按 1:1 对称展开（fseek(30)
+/// → ftell=30）。SEEK_END 后的 ftell 与 UCRT（文本模式返 44 的特殊
+/// 形态）分叉——UB 域登记不追（vitro 恒逻辑一致口径）。
+pub fn VirtualFileSystem::ftell(
+  self : VirtualFileSystem,
+  mem : @memory.Memory,
+  map : @memory.MemoryMap,
+  fd : UInt32,
+) -> Int32 {
   match self.descriptors.get(fd) {
-    Some(d) => d.cursor
+    Some(d) => {
+      if !d.is_text_mode {
+        return d.cursor
+      }
+      let meta = match self.files.get(d.file_name) {
+        Some(m) => m
+        None => return d.cursor
+      }
+      if d.cursor <= meta.size {
+        let data = match read_span(mem, map, meta.heap_addr, meta.size) {
+          Ok(x) => x
+          Err(_) => return d.cursor
+        }
+        physical_to_logical(data, d.cursor)
+      } else {
+        // 过尾：逻辑末 + 物理超出段 1:1（与 logical_to_physical 过尾展开对称）
+        let data = match read_span(mem, map, meta.heap_addr, meta.size) {
+          Ok(x) => x
+          Err(_) => return d.cursor
+        }
+        let logical_end = physical_to_logical(data, meta.size)
+        logical_end + (d.cursor - meta.size)
+      }
+    }
     None => -1
   }
 }

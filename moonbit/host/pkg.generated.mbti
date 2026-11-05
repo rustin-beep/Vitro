@@ -441,7 +441,7 @@ pub fn VirtualFileSystem::fputc(Self, @memory.Memory, @memory.MemoryMap, UInt32,
 pub fn VirtualFileSystem::fputs(Self, @memory.Memory, @memory.MemoryMap, UInt32, UInt32) -> Int32
 pub fn VirtualFileSystem::fread(Self, @memory.Memory, @memory.MemoryMap, UInt32, UInt32, Int32, Int32) -> Int32
 pub fn VirtualFileSystem::fseek(Self, @memory.Memory, @memory.MemoryMap, UInt32, Int32, Int32) -> Int32
-pub fn VirtualFileSystem::ftell(Self, UInt32) -> Int32
+pub fn VirtualFileSystem::ftell(Self, @memory.Memory, @memory.MemoryMap, UInt32) -> Int32
 pub fn VirtualFileSystem::fwrite(Self, @memory.Memory, @memory.MemoryMap, UInt32, UInt32, Int32, Int32) -> Int32
 pub fn VirtualFileSystem::get_file_name(Self, UInt32) -> String?
 pub fn VirtualFileSystem::inject_preset_file(Self, @memory.MemoryMap, @memory.Memory, String, Bytes) -> Bool

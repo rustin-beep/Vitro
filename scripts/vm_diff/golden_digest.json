@@ -147,10 +147,10 @@
       "memory_sha": "9f88d7baf03b04d9"
     },
     "baseline/b10_fgets_n1_fseek_text_past_eof.c": {
-      "src_sha": "1994b9ca",
+      "src_sha": "6c91d4cc",
       "exit_code": 0,
-      "stdout_sha": "dc204570e652eb39",
-      "memory_sha": "74dfad5c1928d71e"
+      "stdout_sha": "5e38798fdf1d7cd0",
+      "memory_sha": "9abc0db314e1b38e"
     },
     "baseline/b10_strerror_table_no_leak.c": {
       "src_sha": "82df13fc",
@@ -159,10 +159,10 @@
       "memory_sha": "e00671380473a6e9"
     },
     "baseline/b10_strtol_strtod_scanner.c": {
-      "src_sha": "8900b186",
+      "src_sha": "c98c2879",
       "exit_code": 0,
-      "stdout_sha": "670ef7e8d848fcea",
-      "memory_sha": "ee97fd1d53533cbc"
+      "stdout_sha": "71e77f8aa4ce486c",
+      "memory_sha": "515e747d05504af5"
     },
     "baseline/bfs_graph.c": {
       "src_sha": "753681a3",
@@ -3275,7 +3275,7 @@
     "baseline/vfs_io_extensions.c": {
       "src_sha": "4e4c0144",
       "exit_code": 0,
-      "stdout_sha": "531ab3d4e6d25c14",
+      "stdout_sha": "621c857df4f4afd9",
       "memory_sha": "0518339736873233"
     },
     "baseline/vla_2d.c": {

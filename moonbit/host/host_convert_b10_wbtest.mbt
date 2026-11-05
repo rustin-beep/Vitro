@@ -414,3 +414,66 @@ test "strtod_hex_range_errno_b10" {
   assert_eq(r2.value, Some(0UL))
   assert_eq(mem.load_u32(map, errn), Ok(34U))
 }
+
+///|
+/// PR #486 审阅 P2-2 补锚：strtod 零值形态不设 ERANGE——`token_has_nz_digit`
+/// 修前扫整个 token（含指数段），"0e-400" 的 '4' 被判尾数非零；修后只扫
+/// mantissa（遇 e/E/p/P 停）。真值 = UCRT `tmp/review_20261105/p10_underflow_zero.c`。
+test "strtod_zero_mantissa_no_range_b10r" {
+  let (map, mem) = fresh()
+  let errn = 0x7100U
+  let zeros : Array[String] = [
+    "0e-400", "0.0e5", "00e-400", "0e400", "0x0.0p-9999", "0",
+  ]
+  let addrs : Array[UInt32] = [
+    0x6000U, 0x6100U, 0x6200U, 0x6300U, 0x6400U, 0x6500U,
+  ]
+  for i = 0; i < zeros.length(); i = i + 1 {
+    ignore(mem.store_u32(map, errn, 0U))
+    put_cstr(mem, map, addrs[i], zeros[i])
+    let _ = host_strtod(mem, map, addrs[i], 0U, Some(errn))
+    assert_eq(
+      mem.load_u32(map, errn),
+      Ok(0U),
+      msg="零尾数 \{zeros[i]} 不设 ERANGE（修前 34——审阅 P2-2）",
+    )
+  }
+  // 非零尾数下溢仍设（防误翻）
+  ignore(mem.store_u32(map, errn, 0U))
+  put_cstr(mem, map, 0x6600U, "1e-400")
+  let _ = host_strtod(mem, map, 0x6600U, 0U, Some(errn))
+  assert_eq(mem.load_u32(map, errn), Ok(34U), msg="1e-400 下溢仍 ERANGE")
+  // hex 非零尾数下溢仍设
+  ignore(mem.store_u32(map, errn, 0U))
+  put_cstr(mem, map, 0x6700U, "0x1p-1075")
+  let _ = host_strtod(mem, map, 0x6700U, 0U, Some(errn))
+  assert_eq(mem.load_u32(map, errn), Ok(34U), msg="0x1p-1075 下溢仍 ERANGE")
+}
+
+///|
+/// PR #486 审阅 P3 补锚：strtod("0x0p9999") 零尾数上溢 → 0.0（修前
+/// mant=0 × pow(2,9999)=inf → 0*inf=NaN；真值 clang=0）。零尾数短路：
+/// 0 × 任何 2^p = 0，上溢也不设 ERANGE（数值恒 0 无舍入损失）。
+test "strtod_hex_zero_mantissa_overflow_b10r" {
+  let (map, mem) = fresh()
+  let errn = 0x7100U
+  ignore(mem.store_u32(map, errn, 0U))
+  put_cstr(mem, map, 0x6000U, "0x0p9999")
+  let r = host_strtod(mem, map, 0x6000U, 0U, Some(errn))
+  assert_eq(
+    r.value,
+    Some(0UL),
+    msg="零尾数上溢 = 0.0（修前 NaN——审阅 P3）",
+  )
+  assert_eq(
+    mem.load_u32(map, errn),
+    Ok(0U),
+    msg="恒 0 无舍入损失不设 ERANGE",
+  )
+  // 对照：非零尾数上溢仍 inf+ERANGE
+  ignore(mem.store_u32(map, errn, 0U))
+  put_cstr(mem, map, 0x6100U, "0x1p9999")
+  let r2 = host_strtod(mem, map, 0x6100U, 0U, Some(errn))
+  assert_eq(r2.value, Some(9218868437227405312UL))
+  assert_eq(mem.load_u32(map, errn), Ok(34U))
+}

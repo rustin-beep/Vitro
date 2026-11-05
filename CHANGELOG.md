@@ -1,5 +1,49 @@
 ## [Unreleased]
 
+### test(vm+scripts): #482/#483 M08 复核缺口清账——折叠↔运行期一致性闸双上下文直拍锚 + facts 前置缺失 fail loud（2026-11-05）
+
+- **#482 方案 A 补锚**：`vm/m08_consistency_wbtest.mbt` 新增 10 条双上下文锚——每条表达式族
+  「VM 真跑值（直驱 codegen 发射形态 opcode，vm_exec_wbtest 同款最轻形态零 spawn）vs 折叠求值核
+  直调值（typeck/const_eval 接核后的同一求值入口 @arith.eval_int_binary）」直接同值断言，第三重对
+  clang 四端真值字面量（防两侧同漂移盲区）。覆盖 g1-g4（LL/uint 混除、uchar 提升除、LL 算术右移、
+  ULL 比较域）+ 1e300 饱和 + LLONG_MAX+1 回绕 + 移位边界 62/64（值面与故障面）+ DivQ 三格
+  （合法/LLONG_MIN÷-1/除零）+ UDivQ 位模式域 + **INT_MAX+1 i32 溢出分划契约锚**（VM trap vs 核
+  Err(AddOverflow) vs 折叠照折回绕——设计单 §五·2 分划不翻案的锚形态，静默统一即撞锚）。
+  补洞实证（J9 杀阵实录）：改坏 DivQ 臂 I64→U64 → g1/divq_fault 两新锚红（连带既有
+  exec_longlong 锚 trap 面红）；改坏 ShrQ 臂 I64→U64 → **仅 m08c_g3 独红**（既有 vm 锚无 ShrQ
+  值锚——#482「锚密度缺口」的直接实证；还原后包测试全绿，master 基底三组突变
+  注入红面经 PR 审阅阶段 4 重演复现〔ShrQ 独红 / DivQ 三红 / 核阈值红〕）。
+- **#483 fail loud**：`facts.mts` 采集器（replay/serve_smoke 两键）在「未解析到汇总行/未自报断言
+  总数」分支前置 `artifactMissingNote` 检测——命中 ensureFresh die 形态（「不存在——先跑」）时
+  note/stderr 双面透传显式文案「前置缺失：先跑 cd moonbit && moon build --target native
+  cmd/serve（见 issue #483）」+ 子脚本原行，环境前置缺失与真防线红在文案上分开；未命中保持原
+  形态（防反向遮蔽）。测试锚 `facts/prelude_fail.test.mts` 三路（命中/多行拼接/真防线红不误报）
+  J9 先红（export 缺失 SyntaxError 实录）后绿；端到端实录（serve.exe 移名态）：修前 note=「未解析
+  到汇总行（exit=1）」→ 修后 note 含前置缺失文案。
+- **测试数**：裸口径 1327→1341 / native 全量 1376→1390（+10 vm 双上下文锚 + 审阅 P3-5 补 4 条 codegen parity 锚——基底为 rebase 后 master 现值 14cffe3a）。
+- **连坐**：8 处测试数文档消费点同步（含 moonbit/README 双口径批注尾追加）；
+  surface_edges vm→arith 新四边登记（f2i_saturate_i32/AddOverflow/DivOverflow/
+  ShiftOutOfRange——wbtest 直接构造故障值是新引用面）；scripts/package.json 两清单
+  登记新测试文件（master 侧 mcp_smoke/step_invariant 新条目并列合并）。carrier 线
+  8775f5a0 设计单 143 行源码行号 95-100 被回放断言数规则误绑的豁免条目不随本 PR
+  携带——master 基底无该文件，条目悬空即 fail loud（豁免机制防僵尸设计如实生效）。
+- **验证**：moon check 0 error；moon test 1341/1341；clang-cl native 1390/1390；
+  vm_diff SAME=840 DIFF=0（master 基线 14cffe3a 零漂移）；testcount/facts --run --strict check/
+  surface/pkg_deps/mbti_sync/source_hygiene/facts 面 tsc+oxlint+node:test 全绿。
+- **PR #487 审阅处置（P3×5，2026-11-05）**：①CHANGELOG 同条目旧基线数字清理
+  （SAME=810 旧句删、杀阵口径句改为 master 基底重演佐证）；②artifactMissingNote
+  修复命令改从 die 行动态提取（wasm 臂 gateway/wasm 命令不再被硬编码 native
+  cmd/serve 遮蔽）；③freshness 导出 ENSURE_FRESH_FAIL_MARKS 三 die 标记单源
+  （die 文案以常量引用拼装，检测器/测试只引此处——手写字面量脱钩的 fail-open
+  封死；测试另以子进程真调 ensureFresh 捕获真实 die 行锚定真源）；④三种 die
+  （产物缺失/构建失败/构建成功仍缺失）全覆盖归前置缺失；⑤codegen parity 锚
+  补 4 条（ULtQ/ShlQ/AddQ/CastD2I——m08_consistency 手写序列所涉 opcode 的
+  发射面，杀阵实录：unsigned_q 右判据致盲 → parity_cmp_ll_ull_emits_ultq 独
+  红〔既有 32 位锚不兜 Q 族右操作数面〕）。
+  vm_diff SAME=840 DIFF=0（master 基线 14cffe3a 零漂移）；testcount/facts --run --strict check/
+  surface/pkg_deps/mbti_sync/source_hygiene/facts 面 tsc+oxlint+node:test 全绿。
+
+
 ### fix(engine+util): #429 审阅 v2 批 B6——json_parse 孤代理入口拒绝 + C 字节串「码元=字节」承载治本（2026-11-03）
 
 - **json_parse `\uXXXX` 孤立代理拒绝**（M38 A2 / M06 A1，serde_json / RFC 8259 §8.2

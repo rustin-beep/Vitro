@@ -5,45 +5,10 @@
     "判据：集内成员结构指纹的差集逐条必须在 divergences 带 reason（合法分叉 or known 缺口）；",
     "条目在差集消失（双份同步消除）= 僵尸红——修好后忘删即抓。",
     "cast 链指纹 = 归一化条件（变量名/德摩根形态归一）=> 每臂 OpCode 发射序列；dump 参数段指纹 = 门禁谓词集合。",
-    "新增孪生集（发现新复制件时）：往 twin_sets 加集 + 跑 --discover 登记现状差。"
+    "新增孪生集（发现新复制件时）：往 twin_sets 加集 + 跑 --discover 登记现状差。",
+    "cast_mbt 集注销（#471，2026-11-05）：gen_cast_expr / gen_expr_with_cast 两份同构链合一为 emit_conversion 单源（B1 类冗余消除）——孪生本体消亡，差集登记随之销账；后续若 cast 转换再出复制件，重新 --discover 立集。"
   ],
   "twin_sets": [
-    {
-      "name": "cast_mbt",
-      "extractor": "cast_chain",
-      "note": "R1a-M1 点名高险集①：#345 在这对孪生间做对了连坐（两处同加 inner_u 双路），但新缺口同样两处同漏（F1）——单边改一份即本集红",
-      "members": [
-        {
-          "name": "gen_cast_expr",
-          "file": "moonbit/codegen/cast.mbt",
-          "anchor_start": "fn BytecodeGen::gen_cast_expr(",
-          "note": "显式 cast 表达式分派"
-        },
-        {
-          "name": "gen_expr_with_cast",
-          "file": "moonbit/codegen/cast.mbt",
-          "anchor_start": "fn BytecodeGen::gen_expr_with_cast(",
-          "note": "赋值/传参隐式转换收口（孪生）"
-        }
-      ],
-      "divergences": [
-        {
-          "item": "T is TK_Void => Pop [!(S is TK_Void)]",
-          "only_in": "gen_cast_expr",
-          "reason": "合法分叉：显式 (void)expr 丢弃（#238 弹栈）只存在于显式 cast 路径——隐式赋值无 void 目标（C 语法不存在 void 赋值），不是漏连坐"
-        },
-        {
-          "item": "T is TK_LongLong && S is TK_Double => CastD2Q",
-          "only_in": "gen_cast_expr",
-          "reason": "合法分叉：隐式 `long long x = d;` 的 fp→LL 转换由 typeck 插入显式 Cast 节点走本臂承接，gen_expr_with_cast 该组合实际不可达（探针实证 2026-11-02 /d/tmp/a7_probe/p1.c B 行：double d=2.5; long long b=d 双臂输出 2 == clang）"
-        },
-        {
-          "item": "T is TK_LongLong && !(S is TK_LongLong) && !(S is TK_Float) => CastU2Q,CastI2Q [SRC_U]",
-          "only_in": "gen_cast_expr",
-          "reason": "合法分叉：隐式整型加宽（int/char→LL）零发射行为正确——i64 槽符号扩展假设实证（同探针 A 行：int i=-1; long long a=i 双臂 -1 == clang），隐式链无需发射（与上条同由 typeck 显式节点机制承接的镜像面）"
-        }
-      ]
-    },
     {
       "name": "dump_four",
       "extractor": "dump_arg_guards",

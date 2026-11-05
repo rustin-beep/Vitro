@@ -77,15 +77,16 @@ test("extractCastInstrs / instrPair", () => {
   assert.equal(instrPair("TruncByte"), undefined);
 });
 
-test("真实仓库：两链抽取非空、零发射全部在册、对偶无未登记缺口（verdict 绿）", () => {
+test("真实仓库：单源链抽取非空、零发射全部在册、对偶无未登记缺口（verdict 绿）", () => {
   const rd = loadRules();
   const chains = rd.chain_sources.map((s) => mustChain(s));
   for (const c of chains) assert.ok(c.preds.length >= 10, `${c.name} 臂数 ${c.preds.length}`);
-  // F1 锚：两条链的 LongLong|Float|s 都必须零发射且在 known_gaps 表
+  // F1 已修锚（#471 2026-11-05）：LongLong|Float|s 经 CastF2D+CastD2Q/D2UQ 双跳发射，
+  // 不再零发射；known_gaps 条目随清账删除
   for (const c of chains) {
     const zs = zeroEmitOf(c, rd.kinds).map((z) => z.key);
-    assert.ok(zs.includes("LongLong|Float|s"), `${c.name} 应含 F1 零发射组合`);
-    assert.ok(rd.zero_emit_known_gaps[`${c.name}::LongLong|Float|s`] !== undefined);
+    assert.ok(!zs.includes("LongLong|Float|s"), `${c.name} F1 已修——LongLong|Float|s 应发射双跳`);
+    assert.ok(rd.zero_emit_known_gaps[`${c.name}::LongLong|Float|s`] === undefined);
   }
   assert.equal(verdict(rd, chains), true);
 });
@@ -93,17 +94,17 @@ test("真实仓库：两链抽取非空、零发射全部在册、对偶无未�
 test("J9 红：链删臂产生新零发射 / 白名单僵尸 / 对偶表删除（内存注入）", () => {
   const rd = loadRules();
   const chains = rd.chain_sources.map((s) => mustChain(s));
-  // 删 LL←other 臂 → gen_cast_expr 的 (LL,Int/Char/Pointer,s/u) 零发射未登记
+  // 删 LL←D/LL←F/LL←other 三臂 → emit_conversion 的 (LL,Int/Char/Pointer/D/F,s/u) 零发射未登记
   {
     const c2 = chains.map((c) => ({ ...c, preds: [...c.preds] }));
     const idx = c2[0]!.condTexts.findIndex((t) => t.includes("T is TK_LongLong"));
-    c2[0]!.preds.splice(idx, 2); // LL←D 与 LL←other 两臂同删（D 臂删后被 other 兜住，两臂同删才零发射）
+    c2[0]!.preds.splice(idx, 3); // LL 三臂同删（D/F/other——单源链 #471 起三分支）
     assert.equal(verdict(rd, c2), false);
   }
   // 白名单加实际已发射组合（僵尸）
   {
     const rd2 = JSON.parse(JSON.stringify(rd)) as typeof rd;
-    rd2.zero_emit_allowed["gen_cast_expr::Double|LongLong|s"] = { reason: "僵尸探针" };
+    rd2.zero_emit_allowed["emit_conversion::Double|LongLong|s"] = { reason: "僵尸探针" };
     assert.equal(verdict(rd2, chains), false);
   }
 });

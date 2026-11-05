@@ -77,18 +77,18 @@ test("diffOf 缺项向（审阅 P1 回归锚）：四成员 2 有 2 无 → 缺�
   );
 });
 
-test("真实仓库：cast 两链指纹含 F1 相关臂；dump 四家现存差 2 条（F5 已随 PR #450 销案，余 F9 排序两面）", () => {
+test("真实仓库：cast_mbt 孪生集已注销（#471 单源化）；dump 四家现存差 2 条（F5 已随 PR #450 销案，余 F9 排序两面）", () => {
   const rd = loadRules();
   const fps = allFingerprints(rd);
-  const cast = fps["cast_mbt"] ?? [];
-  assert.equal(cast.length, 2);
-  // 两份共有臂（孪生本体）：D←F 臂两侧都在
-  for (const f of cast) assert.ok(f.items.some((it) => it.includes("T is TK_Double && S is TK_Float")), f.member);
+  // #471（2026-11-05）：gen_cast_expr / gen_expr_with_cast 两链合一为 emit_conversion
+  // 单源——孪生本体消亡，cast_mbt 集注销（防复活锚：集不得回归）
+  assert.equal(rd.twin_sets.some((s) => s.name === "cast_mbt"), false);
+  assert.equal(fps["cast_mbt"], undefined);
   // dump：F5 两门禁差异已随 PR #450（M36b 四家连坐 + P2-3 归一比较）销案——现存仅
   // F9 排序分叉的两面（三家 builtin sort 独有 sort:builtin 项 / compile 独有 sort:lexical 项）
   const dumpFps = fps["dump_four"] ?? [];
   assert.equal(dumpFps.length, 4);
-  const diffs = diffOf(rd.twin_sets[1]!, dumpFps);
+  const diffs = diffOf(rd.twin_sets[0]!, dumpFps);
   assert.equal(diffs.length, 2);
   assert.deepEqual(
     diffs.map((x) => x.item).sort(),
@@ -98,17 +98,17 @@ test("真实仓库：cast 两链指纹含 F1 相关臂；dump 四家现存差 2 
   assert.equal(verdict(rd, fps), true);
 });
 
-test("J9 红：单边加指纹项 / 删登记 / 加僵尸（内存注入）", () => {
+test("J9 红：单边加指纹项 / 删登记 / 加僵尸（内存注入，dump_four 集）", () => {
   const rd = loadRules();
   const fps = allFingerprints(rd);
   {
-    const f2 = { ...fps, cast_mbt: fps["cast_mbt"]!.map((f) => ({ ...f, items: [...f.items] })) };
-    f2["cast_mbt"]![1]!.items.push("T is TK_Zombie => CastZ9Z9");
+    const f2 = { ...fps, dump_four: fps["dump_four"]!.map((f) => ({ ...f, items: [...f.items] })) };
+    f2["dump_four"]![1]!.items.push("guard:zombie_probe");
     assert.equal(verdict(rd, f2), false);
   }
   {
     const rd2 = JSON.parse(JSON.stringify(rd)) as typeof rd;
-    rd2.twin_sets[1]!.divergences.pop();
+    rd2.twin_sets[0]!.divergences.pop();
     assert.equal(verdict(rd2, fps), false);
   }
   {
@@ -137,7 +137,7 @@ test("子进程：-check rc=0 / --selftest rc=0 / --discover rc=0 / 未知参数
 test("dumpGuardsFingerprint 谓词面：文件名长度检查不误命中 upper_bound；注释提及不命中 sort:lexical", () => {
   // 回归锚①：谓词曾误把 `name.length() > 2`（.c 后缀判断）当参数上界门禁
   const rd = loadRules();
-  const ast = dumpGuardsFingerprint(rd.twin_sets[1]!.members[1]!);
+  const ast = dumpGuardsFingerprint(rd.twin_sets[0]!.members[1]!);
   // PR #450（B3/M36b）后 dump_ast 已有参数上界门禁（args.length() > 3）——F5 销案翻转锚；
   // 仍须防文件名长度检查（name.length() > 2）误命中：谓词限 positional/args 前缀
   assert.ok(ast.items.includes("guard:upper_bound"), "dump_ast 有参数上界门禁（F5 已销案翻转）");
@@ -146,7 +146,7 @@ test("dumpGuardsFingerprint 谓词面：文件名长度检查不误命中 upper_
   // （行为仍 files.sort()）——谓词须剥注释后匹配，否则假红
   const tokensSrc = fs.readFileSync(path.join(projectRoot(), "moonbit/cmd/dump_tokens/main.mbt"), "utf8");
   if (/\/\/.*sort_files_lex/.test(tokensSrc)) {
-    const tokens = dumpGuardsFingerprint(rd.twin_sets[1]!.members[2]!);
+    const tokens = dumpGuardsFingerprint(rd.twin_sets[0]!.members[2]!);
     assert.ok(!tokens.items.includes("sort:lexical"), "dump_tokens 注释提及 sort_files_lex 不得算字典序谓词命中");
     assert.ok(tokens.items.includes("sort:builtin"));
   }

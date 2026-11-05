@@ -1613,8 +1613,8 @@
     "baseline/ll_float_casts_domain.c": {
       "src_sha": "6ceb46dd",
       "exit_code": 0,
-      "stdout_sha": "1d2779022767ef7e",
-      "memory_sha": "63eebcb6682deaf1"
+      "stdout_sha": "12f4821ed0aae371",
+      "memory_sha": "81878f1af8faba5f"
     },
     "baseline/llm_corpus_rejects.c": {
       "src_sha": "e6988440",

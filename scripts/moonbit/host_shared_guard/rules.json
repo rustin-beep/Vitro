@@ -97,6 +97,7 @@
         "cmd/lib/cli/cli_compile.mbt",
         "cmd/lib/cli/cli_frame.mbt",
         "cmd/lib/cli/cli_run.mbt",
+        "cmd/lib/cli/cli_script.mbt",
         "cmd/lib/cli/cli_step.mbt",
         "cmd/lib/cli/cli_wbtest.mbt",
         "gateway/serve_io.mbt",

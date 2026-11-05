@@ -139,6 +139,7 @@ vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli print_usage
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli run
+vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli script
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli step
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli usage_err
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/engine_direct direct_channel
@@ -147,6 +148,7 @@ vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli print_usage
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli run
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli script
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli step
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli usage_err
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/engine_direct direct_channel
@@ -156,6 +158,7 @@ vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli print_usage
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli run
+vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli script
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli step
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli usage_err
 vitro/engine/cmd/vitro_wasm vitro/engine/fs read_file_to_string

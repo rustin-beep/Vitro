@@ -665,6 +665,111 @@ export function runMain(argv: readonly string[]): number {
   }
   process.stdout.write("ok  B[rc=4 stdout 空] 8 路径 × 三臂（用法错全走 stderr）\n");
 
+  // B 组附 10：script 子命令三臂断言集（WASI 期 0，2026-11-05——设计单
+  // 《WASI拓展面——能力授权制与C脚本裁判形态》期 0 行 + O5：cli 扩子命令
+  // 三臂单源）。四形态：exit code 透传（& 0xFF，python sys.exit 实测锚）/
+  // argv 收口（文件位后零解析全透传）/ shebang 剥行（run 态不剥——分叉
+  // 锚；剥后行号零偏移——python err.py 报 line 2 实测锚）/ 管道组合
+  //（script - 源码走 stdin）。rc=4 用法错路径已随附 4 清单连坐（script
+  // 前置旗标 → 未知命令面之外的独立路径，下方 ④ 专项锚）。
+  {
+    const exit42C = path.join(tmpDir, "script_exit42.c");
+    fs.writeFileSync(exit42C, "int main(){ return 42; }\n");
+    const exit256C = path.join(tmpDir, "script_exit256.c");
+    fs.writeFileSync(exit256C, "int main(){ return 256; }\n");
+    const argvC = path.join(tmpDir, "script_argv.c");
+    fs.writeFileSync(
+      argvC,
+      '#include <stdio.h>\nint main(int argc, char** argv){ printf("argc=%d\\n", argc); for(int i=0;i<argc;i++) printf("argv[%d]=%s\\n", i, argv[i]); return 0; }\n',
+    );
+    const shebangC = path.join(tmpDir, "script_shebang.c");
+    fs.writeFileSync(
+      shebangC,
+      '#!/usr/bin/env vitro script\n#include <stdio.h>\nint main(){ printf("hello-from-script\\n"); return 0; }\n',
+    );
+    const shebangErrC = path.join(tmpDir, "script_shebang_err.c");
+    fs.writeFileSync(shebangErrC, '#!/usr/bin/env vitro script\nint main(){ int x = ; return 0; }\n');
+    const arms = [
+      { label: "wasm", exe: nodeBin, pre: [shell] },
+      { label: "native", exe: nativeExe, pre: [] as string[] },
+      { label: "js", exe: nodeBin, pre: [jsEntry] },
+    ];
+    const armRun = (a: { label: string; exe: string; pre: string[] }, argv: readonly string[], stdin?: string): RunSplit => {
+      const r = spawnSync(a.exe, [...a.pre, ...argv], {
+        cwd: repoRoot,
+        maxBuffer: 64 * 1024 * 1024,
+        input: stdin,
+      });
+      if (r.error !== undefined) fatalf(`B[script] ${a.label} 启动异常: ${r.error.message}`);
+      return { out: bufStr(r.stdout), err: bufStr(r.stderr), rc: r.status ?? -1 };
+    };
+    const rel = (p: string): string => toSlash(path.relative(repoRoot, p));
+    // ① exit code 透传：42 → rc=42（run 态对照恒 0——分叉锚）；256 → 0（& 0xFF）
+    for (const a of arms) {
+      const r42 = armRun(a, ["script", rel(exit42C)]);
+      if (r42.rc !== 42) fatalf(`B[script] ${a.label} exit42: rc=${r42.rc} ≠ 42（透传断——EXIT 标记行在 stderr: ${JSON.stringify(headBytes(r42.err, 80))}）`);
+      const r256 = armRun(a, ["script", rel(exit256C)]);
+      if (r256.rc !== 0) fatalf(`B[script] ${a.label} exit256: rc=${r256.rc} ≠ 0（& 0xFF 折叠断——python sys.exit(256) 实测锚）`);
+      if (!r42.err.includes("// EXIT 42")) fatalf(`B[script] ${a.label} exit42: stderr 缺 // EXIT 42 观测行: ${JSON.stringify(headBytes(r42.err, 120))}`);
+    }
+    const rn = armRun(arms[1] ?? { label: "native", exe: nativeExe, pre: [] }, ["run", rel(exit42C)]);
+    if (rn.rc !== 0) fatalf(`B[script] run 态对照: rc=${rn.rc} ≠ 0（run 不透传——exit_passthrough 缺省 false 被扰动）`);
+    process.stdout.write("ok  B[script] exit 透传 42/256→0 + run 态对照恒 0（三臂）\n");
+    // ② argv 收口：文件位后零解析全透传（--json/-i/-- 字面量全进 argv）
+    {
+      const outs: string[] = [];
+      for (const a of arms) {
+        const r = armRun(a, ["script", rel(argvC), "a1", "--json", "-i", "--", "b2", "-c"]);
+        if (r.rc !== 0) fatalf(`B[script argv] ${a.label}: rc=${r.rc}\n${r.out}\n${r.err}`);
+        outs.push(r.out);
+      }
+      const [w, n, j] = outs;
+      if (w === undefined || n === undefined || j === undefined) {
+        // 上方已 fatalf
+      } else if (w !== n || w !== j) {
+        fatalf(`B[script argv] 三臂不同形\n--- wasm ---\n${w}\n--- native ---\n${n}\n--- js ---\n${j}`);
+      } else if (!w.includes("argc=7") || !w.includes("argv[2]=--json") || !w.includes("argv[4]=--") || !w.includes("argv[6]=-c")) {
+        fatalf(`B[script argv] argv 内容锚缺失（argc/旗标形/-- 字面量须全透传）:\n${w}`);
+      } else {
+        process.stdout.write("ok  B[script argv] 文件位后零解析全透传（argc=7 含 --json/-i/-- 字面量，三臂同形）\n");
+      }
+    }
+    // ③ shebang：script 显式剥行正常跑（rc=0，等长空格——诊断坐标零受染）；
+    //    剥后行号零偏移（第 2 行错报 2:N——python err.py 实测对拍锚）。
+    //    run 态现状登记（2026-11-05 实测推翻设计单 §3.1 推断档）：预处理器
+    //    对 `#!` 行**宽容静默通过**（rc=0 无告警）——非「撞 E 诊断」；run
+    //    态锚此现状（宽容路径是隐式行为，script 态剥行 = 显式确定性，两
+    //    态行为一致但机制不同——run 若未来收紧，此锚红示连坐面）
+    {
+      for (const a of arms) {
+        const r = armRun(a, ["script", rel(shebangC)]);
+        if (r.rc !== 0 || !r.out.includes("hello-from-script")) {
+          fatalf(`B[script shebang] ${a.label}: rc=${r.rc} 输出 ${JSON.stringify(r.out)}（剥行断或运行失败）`);
+        }
+        const re = armRun(a, ["script", rel(shebangErrC)]);
+        if (re.rc !== 1) fatalf(`B[script shebang] ${a.label}: 语法错用例 rc=${re.rc} ≠ 1`);
+        if (!re.err.includes(" 2:")) {
+          fatalf(`B[script shebang] ${a.label}: 诊断行号未保持原始行号（期望 2:N——python 惯例不减一）: ${JSON.stringify(headBytes(re.err, 160))}`);
+        }
+      }
+      const rr = armRun(arms[1] ?? { label: "native", exe: nativeExe, pre: [] }, ["run", rel(shebangC)]);
+      if (rr.rc !== 0) {
+        fatalf(`B[script shebang] run 态现状锚: rc=${rr.rc} ≠ 0（run 对 #! 的预处理宽容路径为 2026-11-05 实测现状——行为变化须连坐本锚与设计单登记）`);
+      }
+      process.stdout.write("ok  B[script shebang] script 剥行 rc=0 + 行号零偏移（2:N）+ run 态 #! 宽容现状登记（三臂）\n");
+    }
+    // ④ 管道组合：源码走 stdin（script -，python `-` 同品类）+ rc 透传；
+    //    前置旗标 fail loud rc=4（python --bogus 报错同形）
+    for (const a of arms) {
+      const r = armRun(a, ["script", "-"], "int main(){ printf(\"piped\\n\"); return 3; }\n");
+      if (r.rc !== 3) fatalf(`B[script 管道] ${a.label}: stdin 源 rc=${r.rc} ≠ 3（透传断）`);
+      if (!r.out.includes("piped")) fatalf(`B[script 管道] ${a.label}: stdout 缺程序输出: ${JSON.stringify(r.out)}`);
+      const r4 = armRun(a, ["script", "--json", "x.c"]);
+      if (r4.rc !== 4 || r4.out !== "") fatalf(`B[script 管道] ${a.label}: 前置旗标 rc=${r4.rc} stdout=${JSON.stringify(r4.out)}（须 rc=4 且 stdout 恒空——附 4 不变式连坐）`);
+    }
+    process.stdout.write("ok  B[script 管道] script - 源码走 stdin + rc 透传 + 前置旗标 rc=4（三臂）\n");
+  }
+
   // B 组附 5：--realtime 生效面探针（PR #280 审阅 P2-1）——js/native 臂断 time()
   // 非 0（真墙钟），wasm 臂断恒 0（F5 无熵源分臂口径）。
   {

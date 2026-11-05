@@ -203,11 +203,132 @@ fn[P : @token.SourceProvider] Pp::walk_cycle(
 }
 
 ///|
+/// 环检测/守卫检测共用的轻量行预处理（#432 A2/A3，2026-11-04；PR #481
+/// 审阅 P1/P2 2026-11-05 组栈化重写）：物理行拆分 → `\` 续行拼接 →
+/// 注释剥离（直接复用主管线 strip_comments_stateful——字符串感知、
+/// 跨行块注释态）→ 轻量条件组栈。真值（Win/WSL gcc+clang -E 一致）：
+/// 注释内与非激活分支内的 `#include` 不是依赖边——旧 custom_includes_of /
+/// has_include_guard 对原始文本逐行扫描，注释与假分支内的 include 被当
+/// 真边（E1015 依赖环误报拒编译）。
+/// 条件求值口径（教学子集轻量版——只求值数字字面量，拿不到宏表）：
+/// ①`#if 0`（归一后参数恰为 "0"）开假组；`#if <非零数字>` 开真组；
+/// ②`#ifdef`/`#ifndef`/其余 `#if` 表达式无法求值——**保守按真**（出边）：
+/// 漏报环 = 接受 clang 明确拒绝的程序（fail-open），比误报更坏（PR #481
+/// 审阅 P1 拍板——旧版「#elif 维持跳过」即此症：`#if 0 … #elif 1` 分支
+/// 内的自环 include 被整段丢弃，环检测失效）；
+/// ③`#elif <arg>`：组内未 taken——arg=="0" 维持假，非零数字或不可求值
+/// → 激活并 taken；已 taken → 本分支假（`#if 0/#elif 1/#else` 的 else
+/// 假分支行不出流——两态跳过/不跳治不了，须组栈）；
+/// ④`#else`：组内未 taken → 激活；已 taken → 假；
+/// ⑤父组假时嵌套组整体不可达（压哨恒假组）；未闭合组行假到尾
+/// （病态头文件由主管线 E1013 fail loud，此处只求保守）。
+/// 指令行归一：`#` 与指令名间允许空白（C 标准；PR #481 审阅 P2——
+/// `#  if 0` 形态曾因未归一漏检）。
+fn preprocessed_lines(text : String) -> Array[String] {
+  let physical = split_physical_lines(text, 0)
+  let logical = splice_continuations(physical)
+  let stripped = strip_comments_stateful(logical)
+  let lines : Array[String] = []
+  for l in stripped.lines {
+    lines.push(l.text)
+  }
+  let out : Array[String] = []
+  // (active, taken) 组栈：active=当前分支行出流；taken=组内已有分支激活过
+  let stack : Array[(Bool, Bool)] = []
+  for line in lines {
+    let t = leading_trim(line)
+    if t.length() > 0 && t[0].to_int() == '#' {
+      let norm = "#" + leading_trim(t[1:].to_owned())
+      let name = directive_name_of(norm)
+      let arg = trailing_trim(leading_trim(norm[name.length() + 1:].to_owned()))
+      let mut parent_off = false
+      for s in stack {
+        if !s.0 {
+          parent_off = true
+          break
+        }
+      }
+      match name {
+        "if" | "ifdef" | "ifndef" =>
+          if parent_off {
+            stack.push((false, true)) // 父组假：嵌套组不可达（taken=true 防后续激活）
+          } else if name == "if" && arg == "0" {
+            stack.push((false, false))
+          } else {
+            // #if 非零数字 / ifdef·ifndef·复杂表达式不可求值 → 保守按真
+            stack.push((true, true))
+          }
+        "elif" =>
+          if stack.length() > 0 {
+            let top = stack[stack.length() - 1]
+            if top.1 {
+              stack[stack.length() - 1] = (false, top.1) // 已 taken：本分支假
+            } else if arg == "0" {
+              () // 维持 (false, false)
+            } else {
+              // 非零数字或不可求值 → 激活（fail-closed 方向，PR #481 审阅 P1）
+              stack[stack.length() - 1] = (true, true)
+            }
+          }
+        "else" =>
+          if stack.length() > 0 {
+            let top = stack[stack.length() - 1]
+            if !top.1 {
+              stack[stack.length() - 1] = (true, true)
+            } else {
+              stack[stack.length() - 1] = (false, top.1)
+            }
+          }
+        "endif" => if stack.length() > 0 { ignore(stack.pop()) }
+        _ => ()
+      }
+    }
+    // 普通行与条件指令行统一组态过滤：任一组当前假 → 跳过（条件指令行
+    // 同此规则——激活组内的 `#ifndef X` 行保留出流，守卫检测
+    // has_include_guard 依赖它识别「#ifndef X + 同名 #define」守卫对；
+    // 假组内的指令行随组吞掉，死代码里的守卫对不计）
+    let mut off = false
+    for s in stack {
+      if !s.0 {
+        off = true
+        break
+      }
+    }
+    if off {
+      continue
+    }
+    out.push(line)
+  }
+  out
+}
+
+///|
+/// 指令名提取（`#`-开头行 → 不含 `#` 的指令名）。**先归一**：`#` 与
+/// 指令名间的空白剥除后扫描字母/下划线段（与 handle_directive 消费
+/// leading_trim 后 rest 的首段扫描同形——PR #481 审阅 P2：初版直接从
+/// `t[1]` 扫，`#  if 0` 形态漏检）。
+fn directive_name_of(t : String) -> String {
+  let s = leading_trim(t[1:].to_owned())
+  let mut n = 0
+  while n < s.length() {
+    let c = s[n].to_int()
+    if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' {
+      n += 1
+    } else {
+      break
+    }
+  }
+  s[0:n].to_owned()
+}
+
+///|
 /// 提取头文件文本中的自定义 `#include "..."` 依赖（`<...>` 存根不算依赖边）。
+/// #432 A2/A3：消费轻量预处理产物（注释剥离 + `#if 0` 条件态）——
+/// 旧逐行文本扫描把注释内/`#if 0` 块内的 include 当真边（E1015 误报）。
 fn custom_includes_of(text : String) -> Array[String] {
   let out : Array[String] = []
-  for line_raw in text.split("\n") {
-    let t = leading_trim(line_raw.to_owned())
+  for line_raw in preprocessed_lines(text) {
+    let t = leading_trim(line_raw)
     if t.length() == 0 || t[0].to_int() != '#' {
       continue
     }
@@ -244,8 +365,10 @@ fn rest_starts_with_include(rest : String) -> Bool {
 /// `#ifndef X` 与同名 `#define X` 恰好成对散布，语料域无此形态。
 fn has_include_guard(text : String) -> Bool {
   let mut pending : String? = None
-  for line_raw in text.split("\n") {
-    let t = leading_trim(line_raw.to_owned())
+  // #432 A2/A3：与 custom_includes_of 共用轻量预处理——注释/`#if 0`
+  // 块内的 #ifndef/#define 对不得误判守卫（同根因误检面）
+  for line_raw in preprocessed_lines(text) {
+    let t = leading_trim(line_raw)
     match pending {
       None =>
         if t.length() > 8 && t[0:8] == "#ifndef " {

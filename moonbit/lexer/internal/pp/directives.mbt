@@ -261,6 +261,23 @@ fn[P] Pp::handle_elifdef(
     return
   }
   let ident = read_ident(after)
+  // #432 A1（2026-11-04）：缺宏名显式诊断且分支不激活（真值 Win/WSL
+  // gcc+clang 四编译器 -E 一致：error + 假分支不进输出流）。旧
+  // read_ident("") 返回空串 → contains("") 恒假——`#elifndef` 取非
+  // **激活假分支**（M01 a2：缺名分支放 $$$$$$$ 报 E1001×7 = 分支激活
+  // 铁证）、`#elifdef` 零诊断静默吞块。病 73（2026-10-13）修了
+  // ifdef/ifndef/undef 的缺名面，elif 族漏网。active 置 false、taken
+  // 不动（此路径 taken 必为 false——taken 组早退），与 #ifdef 缺名
+  // 「按未定义处理」同构。
+  if ident == "" {
+    self.err(
+      "#elifndef/#elifdef 缺少宏名",
+      line,
+      code=E1006_UnsupportedFeature,
+    )
+    self.cond_stack[n - 1].active = false
+    return
+  }
   let mut active = self.macros.contains(ident)
   if negated {
     active = !active

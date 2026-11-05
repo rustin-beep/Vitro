@@ -345,21 +345,14 @@ fn expand_inner(
             code: E1016_TokenPasteInvalid,
           })
         }
-        // H01 行为契约：宏体为大括号块且调用后紧跟分号 → 包装 do{...}while(0)
-        let substituted = sub.tokens
-        let body_is_brace_block = body.length() > 0 &&
-          body[0].ty is LBrace &&
-          body[body.length() - 1].ty is RBrace
-        let followed_by_semicolon = j + 1 < tokens.length() &&
-          tokens[j + 1].ty is Semicolon
-        if body_is_brace_block && followed_by_semicolon {
-          substituted.insert(0, synth_token(Do, "do").pin(tok))
-          substituted.push(synth_token(While, "while").pin(tok))
-          substituted.push(synth_token(LParen, "(").pin(tok))
-          substituted.push(synth_token(Number, "0").pin(tok))
-          substituted.push(synth_token(RParen, ")").pin(tok))
-        }
-        let expanded = expand_inner(ctx, substituted, depth + 1, expanding)
+        // #432 A4（2026-11-04）：不再自动包装 do{...}while(0)——`{…}` 复合
+        // 语句本就是合法单语句，宏体内 break/continue 须绑定外层循环（真值
+        // Win/WSL gcc+clang 编译运行一致：`#define CHK(x) {if(x) break;}` 在
+        // while 内调用的 break 跳出 while〔exit=1〕；旧包装〔H01 契约：
+        // body 为大括号块且调用后紧跟分号〕把 break/continue 劫持到包装层
+        // 〔exit=3〕，零诊断行为反转——显式 do{}while(0) 宏体不受影响，
+        // body 首 token 是 Do 不匹配大括号块判定）
+        let expanded = expand_inner(ctx, sub.tokens, depth + 1, expanding)
         record_trace_ctx(ctx, tok.text, Some(args), expanded, depth)
         ignore(expanding.pop())
         for mt in expanded {
@@ -386,18 +379,6 @@ fn pin_to_call_site(mt : @token.Token, tok : @token.Token) -> @token.Token {
   {
     ty: mt.ty,
     text: mt.text,
-    loc: tok.loc,
-    byte_off: tok.byte_off,
-    real_line: tok.real_line,
-  }
-}
-
-///|
-/// 合成 token 钉调用点。
-fn @token.Token::pin(self : @token.Token, tok : @token.Token) -> @token.Token {
-  {
-    ty: self.ty,
-    text: self.text,
     loc: tok.loc,
     byte_off: tok.byte_off,
     real_line: tok.real_line,

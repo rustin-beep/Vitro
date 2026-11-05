@@ -141,10 +141,20 @@
         "e1_string_concat.c": "adbf84c9",
         "e1_va_copy.c": "c7a0cf58",
         "e2_angle_local_header.c": "49471035",
+        "e2_blank_if0_include_not_edge.c": "0b19843c",
+        "e2_cmt_include_not_edge.c": "75c9ad36",
         "e2_cond_if_elif.c": "4f5f4c1c",
+        "e2_elif_true_cycle.c": "c3a735dc",
+        "e2_elifdef_missing_name.c": "04ad834c",
+        "e2_elifndef_missing_name.c": "c7a69975",
+        "e2_fn_macro_brace_break.c": "71f001a8",
+        "e2_fn_macro_brace_continue.c": "267a3da4",
+        "e2_fn_macro_swap_ifelse.c": "91dfaf48",
         "e2_guarded_mutual.c": "d64f3e2d",
         "e2_guarded_self_include.c": "f82dc00f",
         "e2_has_include_chain.c": "37bff223",
+        "e2_if0_else_cycle.c": "08174a9c",
+        "e2_if0_include_not_edge.c": "2fa562e4",
         "e2_include_cycle.c": "edf98db3",
         "e2_include_guarded.c": "4cbb28b5",
         "e2_include_not_found_angle.c": "d40ce468",
@@ -968,8 +978,36 @@
           "fail": true,
           "fail_stage": "lex"
         },
+        "e2_blank_if0_include_not_edge.c": {
+          "result_sha": "fcade38529ab40ef"
+        },
+        "e2_cmt_include_not_edge.c": {
+          "result_sha": "3c6854c93df99507"
+        },
         "e2_cond_if_elif.c": {
           "result_sha": "925aa6a39e5f5bf6"
+        },
+        "e2_elif_true_cycle.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "e2_elifdef_missing_name.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "e2_elifndef_missing_name.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "e2_fn_macro_brace_break.c": {
+          "result_sha": "cb6ef035555d0b76"
+        },
+        "e2_fn_macro_brace_continue.c": {
+          "result_sha": "d5a68380eb337cf8"
+        },
+        "e2_fn_macro_swap_ifelse.c": {
+          "fail": true,
+          "fail_stage": "parse"
         },
         "e2_guarded_mutual.c": {
           "result_sha": "7ca1fbbe851f09a7"
@@ -979,6 +1017,13 @@
         },
         "e2_has_include_chain.c": {
           "result_sha": "9c651a970479233e"
+        },
+        "e2_if0_else_cycle.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "e2_if0_include_not_edge.c": {
+          "result_sha": "87fbecf6fc1ef550"
         },
         "e2_include_cycle.c": {
           "fail": true,
@@ -2741,7 +2786,7 @@
           "result_sha": "29703a20045eb4df"
         },
         "kr_4_14.c": {
-          "result_sha": "7814332c8929bf84"
+          "result_sha": "9e3b06b053c17b37"
         },
         "kr_4_2.c": {
           "result_sha": "a904ddbe2c5078c5"

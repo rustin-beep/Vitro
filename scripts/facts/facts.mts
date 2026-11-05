@@ -15,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { byteSort, goJSONMarshalIndent, goTrimSpace } from "../internal/text.mts";
+import { ENSURE_FRESH_FAIL_MARKS } from "../internal/freshness.mts";
 
 // ─── 数据结构 ────────────────────────────────────────────────────────────────
 
@@ -376,7 +377,32 @@ function tailLines(out: string): string {
   return lines.slice(-3).join(" | ").slice(0, 200);
 }
 
-function collectReplay(root: string, facts: Record<string, Fact>): void {
+// artifactMissingNote（#483，2026-11-05；PR #487 审阅 P3-2/P3-3/P3-4 处置）：
+// replay/serve_smoke 共用的 ensureFresh（scripts/internal/freshness.mts）三种
+// 「环境前置未就绪」die（产物缺失/构建失败/构建成功仍缺失）检测——命中时
+// 采集失败的 note 透传显式前置文案，把环境前置缺失与真防线红在文案上分开
+// （修前形态：note 只有「未解析到汇总行（exit=1）」，前置因埋在子脚本
+// 输出里不透传，--strict 判红后易误诊为防线红，issue #483 实录）。
+// 判别标记单源 = ENSURE_FRESH_FAIL_MARKS（freshness 导出，die 文案以常量
+// 引用拼装——文案改动编译期跟动，防手写字面量脱钩 fail-open）。
+// 修复命令从 die 行「——先跑 …」段动态提取（P3-2：wasm 臂同一
+// ensureFresh 的命令是 gateway/wasm 构建，不硬编码 native cmd/serve）；
+// 无命令段的形态（构建失败/仍缺失）用通用前置文案。未命中返回 null
+// （真防线红形态，不得误标为环境问题——反向遮蔽比原病更糟）。
+export function artifactMissingNote(out: string): string | null {
+  const line = out.split("\n").find((l) =>
+    ENSURE_FRESH_FAIL_MARKS.some((m) => l.includes(m))
+  );
+  if (line === undefined) return null;
+  const trimmed = line.trim();
+  const run = /——先跑 (cd moonbit && moon .+?)(?:（|\s*\||$)/.exec(trimmed);
+  const head = run !== null
+    ? "前置缺失：先跑 " + run[1]!.trim() + "（见 issue #483）"
+    : "前置缺失：构建产物前置未就绪（见 issue #483）";
+  return head + "｜子脚本输出：" + trimmed;
+}
+
+export function collectReplay(root: string, facts: Record<string, Fact>): void {
   const how = "node scripts/replay/replay_s1_s5.mts -moonbit --anchor <short-hash>";
   // 2026-10-25 #307 P2-2 连坐：Go 版裸调（无臂实参）在 rust 臂退役后恒 exit 2
   // （用法错）——现役须显式 -moonbit（native cmd/serve 臂，需先构建产物）。
@@ -395,9 +421,17 @@ function collectReplay(root: string, facts: Record<string, Fact>): void {
     f.note = `exit=${r.code}`;
     facts["replay_assertions"] = f;
   } else {
-    console.error(`[facts] replay_assertions 采集失败：未解析到汇总行（exit=${r.code}）——输出尾：${tailLines(r.out)}`);
-    facts["replay_assertions"] = unavail("条", "scripts/replay/replay_s1_s5.mts", how,
-      `未解析到汇总行（exit=${r.code}）`);
+    // #483：产物前置缺失（ensureFresh die 形态）透传为显式文案——与真防线红
+    // 在 note/stderr 双面分开；未命中保持原「未解析到汇总行」形态。
+    const missing = artifactMissingNote(r.out);
+    if (missing !== null) {
+      console.error(`[facts] replay_assertions 采集失败（非防线红）：${missing}`);
+      facts["replay_assertions"] = unavail("条", "scripts/replay/replay_s1_s5.mts", how, missing);
+    } else {
+      console.error(`[facts] replay_assertions 采集失败：未解析到汇总行（exit=${r.code}）——输出尾：${tailLines(r.out)}`);
+      facts["replay_assertions"] = unavail("条", "scripts/replay/replay_s1_s5.mts", how,
+        `未解析到汇总行（exit=${r.code}）`);
+    }
   }
 }
 
@@ -421,8 +455,15 @@ function collectServeSmoke(root: string, facts: Record<string, Fact>): void {
     f.note = `exit=${r.code}`;
     facts["serve_smoke_assertions"] = f;
   } else {
-    console.error(`[facts] serve_smoke_assertions 采集失败：脚本未自报断言总数（exit=${r.code}）——输出尾：${tailLines(r.out)}`);
-    facts["serve_smoke_assertions"] = unavail("项", rel, how, "脚本未自报断言总数");
+    // #483：同 replay——前置缺失透传（两子脚本共用 ensureFresh die 形态）。
+    const missing = artifactMissingNote(r.out);
+    if (missing !== null) {
+      console.error(`[facts] serve_smoke_assertions 采集失败（非防线红）：${missing}`);
+      facts["serve_smoke_assertions"] = unavail("项", rel, how, missing);
+    } else {
+      console.error(`[facts] serve_smoke_assertions 采集失败：脚本未自报断言总数（exit=${r.code}）——输出尾：${tailLines(r.out)}`);
+      facts["serve_smoke_assertions"] = unavail("项", rel, how, "脚本未自报断言总数");
+    }
   }
 }
 

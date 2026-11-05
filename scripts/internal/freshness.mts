@@ -15,22 +15,30 @@ function die(msg: string): never {
   process.exit(1);
 }
 
+export const ENSURE_FRESH_FAIL_MARKS = [
+  "不存在——先跑",
+  "构建失败——修好构建前不给判定",
+  "仍缺失",
+] as const;
+
+// #483/PR #487 审阅 P3-3·P3-4：三种「环境前置未就绪」die 的判别标记单源——
+// die 文案以常量引用拼装，下游检测器与测试只引此处（防手写字面量脱钩 fail-open）。
 export function ensureFresh(prefix: string, artifact: string, buildArgs: string[]): void {
   try {
     fs.statSync(artifact);
   } catch {
-    die(`${prefix}: ${artifact} 不存在——先跑 cd moonbit && moon ${buildArgs.join(" ")}`);
+    die(`${prefix}: ${artifact} ${ENSURE_FRESH_FAIL_MARKS[0]} cd moonbit && moon ${buildArgs.join(" ")}`);
   }
   const stale = findStaleSource(artifact);
   if (stale !== "") {
     process.stderr.write(`${prefix}: ${artifact} 旧于源 ${stale}——跑构建复核（moon 内容 hash 增量）...\n`);
     if (!rebuild(buildArgs)) {
-      die(`${prefix}: 构建失败——修好构建前不给判定（陈旧产物假红/假绿由此封死）`);
+      die(`${prefix}: ${ENSURE_FRESH_FAIL_MARKS[1]}（陈旧产物假红/假绿由此封死）`);
     }
     try {
       fs.statSync(artifact);
     } catch {
-      die(`${prefix}: 构建成功但 ${artifact} 仍缺失（moon 缓存与磁盘不一致）——删对应 _build 目标目录后重建`);
+      die(`${prefix}: 构建成功但 ${artifact} ${ENSURE_FRESH_FAIL_MARKS[2]}（moon 缓存与磁盘不一致）——删对应 _build 目标目录后重建`);
     }
   }
 }

@@ -38,6 +38,10 @@ int main(){
   printf("F7 d=%.1f errno=%d off=%d\n", d, errno, (int)(e - (char*)"0x1p1025"));
   errno = 0; d = strtod("0x1p-1075", &e);
   printf("F8 d=%.1f errno=%d off=%d\n", d, errno, (int)(e - (char*)"0x1p-1075"));
+  errno = 0; d = strtod("0e-400", NULL); printf("F9 d=%.1f errno=%d\n", d, errno);
+  errno = 0; d = strtod("0.0e5", NULL); printf("F10 d=%.1f errno=%d\n", d, errno);
+  errno = 0; d = strtod("0x0.0p-9999", NULL); printf("F11 d=%.1f errno=%d\n", d, errno);
+  errno = 0; d = strtod("0x0p9999", NULL); printf("F12 d=%.1f errno=%d\n", d, errno);
   printf("G atol=%ld\n", atol("3000000000"));
   int v2 = atoi("2147483648");
   printf("H a=%d\n", v2);

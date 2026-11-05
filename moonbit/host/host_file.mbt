@@ -543,7 +543,7 @@ pub fn host_ftell(
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
-  value_only(vfs.ftell(fd).to_int64().reinterpret_as_uint64())
+  value_only(vfs.ftell(mem, map, fd).to_int64().reinterpret_as_uint64())
 }
 
 ///|

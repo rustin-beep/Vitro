@@ -456,7 +456,11 @@ fn parse_float_token(token : Array[Byte]) -> Double? {
         ev = ev * 10 + (token[i].to_int() - 48)
         i = i + 1
       }
-      val = mant * @math.pow(2.0, (esign * ev).to_double())
+      // PR #486 审阅 P3：零尾数短路——0 × 2^p 恒 0（修前 mant=0 ×
+      // pow(2,9999)=inf → 0*inf=NaN，"0x0p9999" 出 NaN 而 clang=0）。
+      if mant != 0.0 {
+        val = mant * @math.pow(2.0, (esign * ev).to_double())
+      }
     }
     Some(sign * val)
   } else {
@@ -467,22 +471,6 @@ fn parse_float_token(token : Array[Byte]) -> Double? {
     }
     Some(v)
   }
-}
-
-///|
-/// Array[Byte] 切片（parse_float_token INF/NAN 分支辅助，B10）。
-fn slice_bytes_from(
-  token : Array[Byte],
-  from : Int32,
-  upto : Int32,
-) -> Array[Byte] {
-  let out : Array[Byte] = []
-  let mut i = from
-  while i < upto {
-    out.push(token[i])
-    i = i + 1
-  }
-  out
 }
 
 ///|
@@ -506,15 +494,27 @@ fn is_inf_nan_token(token : Array[Byte]) -> Bool {
 
 ///|
 fn token_has_nz_digit(token : Array[Byte]) -> Bool {
-  for i = 0; i < token.length(); i = i + 1 {
+  // PR #486 审阅 P2-2：只扫 **mantissa**（遇 e/E/p/P 指数界停）——修前
+  // 扫整 token，"0e-400" 指数段的 '4' 被判尾数非零、零值形态误设
+  // ERANGE（UCRT 真值 errno=0）。符号前缀跳过。
+  let mut i = 0
+  let n = token.length()
+  if n > 0 && (token[0] == b'+' || token[0] == b'-') {
+    i = 1
+  }
+  while i < n {
+    let c = token[i]
+    if c == b'e' || c == b'E' || c == b'p' || c == b'P' {
+      break
+    }
     // 字节域判定：十进制 1-9 + hex a-f/A-F（'0' 排除；勿用 digit_value>0
     // ——它对任意字母返正值，infinity 的 i/n/f 会被误判非零形态）
-    let c = token[i]
     if (c >= b'1' && c <= b'9') ||
       (c >= b'a' && c <= b'f') ||
       (c >= b'A' && c <= b'F') {
       return true
     }
+    i = i + 1
   }
   false
 }
@@ -687,9 +687,12 @@ pub fn host_strtod(
 /// regions 无条目 ⇒ 泄漏报告天然不见（修前每次调用一条 region，学生
 /// 遵守 C 语义不 free 反被报「N 处未释放」）；free 该地址走无效 free
 /// 诊断（release 找不到条目——教学上 free 静态串被拦，比真机 UB 安全）。
-/// 已知取舍（登记）：块不进 free_list/quarantine，堆单调推进——消息
-/// 最长 ~28B 对齐块，教学场景调用次数有限；`alloc_line` 参数保留签名
-/// 兼容（不再有登记用途）。
+/// 已知取舍（登记，PR #486 审阅 P3 补后果）：块不进 free_list/quarantine，
+/// 堆单调推进——消息最长 ~28B 对齐块，教学场景调用次数有限；**极端形态**
+///（循环 ~20 万次调用）堆耗尽 → allocate None → 返 NULL → 学生侧
+/// `printf("%s", NULL)` 触发 null-deref trap（真机 strerror 无此面）——
+/// 静态池/同 errnum 复用需 host 层跨调用状态存储点，另立批不追；
+/// `alloc_line` 参数保留签名兼容（不再有登记用途）。
 /// **消息字节数含内嵌 NUL**（oracle 字面量 `\0` 计入 size/写入——勘察
 /// §3.2-9 的"易错点"在此显式保留）。
 pub fn host_strerror(

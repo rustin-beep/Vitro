@@ -28,9 +28,9 @@
         "atoi_negative.c": "02336071",
         "b10_atoi_whitespace_prefix.c": "5cd0d797",
         "b10_feof_sticky_overread.c": "196288e3",
-        "b10_fgets_n1_fseek_text_past_eof.c": "1994b9ca",
+        "b10_fgets_n1_fseek_text_past_eof.c": "6c91d4cc",
         "b10_strerror_table_no_leak.c": "82df13fc",
-        "b10_strtol_strtod_scanner.c": "8900b186",
+        "b10_strtol_strtod_scanner.c": "c98c2879",
         "bfs_graph.c": "753681a3",
         "bit_not_zero.c": "01df9ebd",
         "bit_xor.c": "905d87d5",
@@ -634,13 +634,13 @@
           "result_sha": "0e41df27c9391228"
         },
         "b10_fgets_n1_fseek_text_past_eof.c": {
-          "result_sha": "45581a06bd6d2295"
+          "result_sha": "5ade5fc6e3452b8a"
         },
         "b10_strerror_table_no_leak.c": {
           "result_sha": "0bf3a63fc64712d1"
         },
         "b10_strtol_strtod_scanner.c": {
-          "result_sha": "098b611158b0ebe4"
+          "result_sha": "34d8b668b7153b0c"
         },
         "bfs_graph.c": {
           "result_sha": "c15a8891f4f6a644"

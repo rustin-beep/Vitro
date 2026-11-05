@@ -34,6 +34,10 @@ int main(){
   printf("F5 d=%.1f off=%d\n", d, (int)(e - (char*)"NAN(123)"));
   errno = 0; d = strtod("0x1.", &e);
   printf("F6 d=%.1f off=%d\n", d, (int)(e - (char*)"0x1."));
+  errno = 0; d = strtod("0x1p1025", &e);
+  printf("F7 d=%.1f errno=%d off=%d\n", d, errno, (int)(e - (char*)"0x1p1025"));
+  errno = 0; d = strtod("0x1p-1075", &e);
+  printf("F8 d=%.1f errno=%d off=%d\n", d, errno, (int)(e - (char*)"0x1p-1075"));
   printf("G atol=%ld\n", atol("3000000000"));
   int v2 = atoi("2147483648");
   printf("H a=%d\n", v2);

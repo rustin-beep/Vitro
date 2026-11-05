@@ -362,3 +362,55 @@ test "strerror_static_block_no_leak_entry_b10" {
     msg="修前 3（每次调用一条 region 进泄漏报告）",
   )
 }
+
+///|
+/// strerror 扩表锚（B10 遗留①，#434 PR 批补）：0-43 全值域 UCRT 文案
+///（真值 = `tmp/b10probe/p6_strerror_full.c` 全表采证；UCRT 自身出
+/// "Unknown error" 的号 15/26/35/37/43 与域外走 default）。修前 3-8 号
+/// 等域外值全 "Unknown error"。
+test "strerror_ucrt_full_table_b10" {
+  let (map, mem) = fresh()
+  // 抽验修前缺的号（首/中/尾 + Unknown error 号）
+  let cases : Array[(Int32, Bytes)] = [
+    (3, b"No such process\x00"),
+    (9, b"Bad file descriptor\x00"),
+    (17, b"File exists\x00"),
+    (28, b"No space left on device\x00"),
+    (42, b"Illegal byte sequence\x00"),
+    (15, b"Unknown error\x00"),
+    (99, b"Unknown error\x00"),
+  ]
+  for pair in cases {
+    let r = host_strerror(map, mem, pair.0, 9)
+    let a = r.value.unwrap().to_uint()
+    assert_eq(
+      peek(mem, map, a, pair.1.length()),
+      pair.1,
+      msg="strerror(\{pair.0}) UCRT 全表",
+    )
+  }
+}
+
+///|
+/// strtod hex 上溢/下溢 ERANGE 锚（B10 遗留②，#434 PR 批补；真值 =
+/// UCRT `tmp/b10probe/p7_hex_range.c`）：hex 上溢走 Some(inf) 自算路径
+/// （不经 parse 拒）——修前 is_inf 无分支漏设 errno（up errno=0 vs
+/// 真值 34）；下溢 0x1p-1075 → 0.0+34（与十进制下溢同判据）。
+/// hex 次正规（0x1.8p-1075 真值非零 errno=0）属精度取舍登记面（见
+/// parse_float_token 头注），不入锚。
+test "strtod_hex_range_errno_b10" {
+  let (map, mem) = fresh()
+  let errn = 0x7100U
+  // hex 上溢：inf + ERANGE（修前 errno=0）
+  ignore(mem.store_u32(map, errn, 0U))
+  put_cstr(mem, map, 0x6000U, "0x1p1025")
+  let r = host_strtod(mem, map, 0x6000U, 0U, Some(errn))
+  assert_eq(r.value, Some(9218868437227405312UL), msg="hex 上溢 inf")
+  assert_eq(mem.load_u32(map, errn), Ok(34U), msg="修前 0（is_inf 漏设）")
+  // hex 下溢：0.0 + ERANGE（与 UCRT down 同）
+  ignore(mem.store_u32(map, errn, 0U))
+  put_cstr(mem, map, 0x6100U, "0x1p-1075")
+  let r2 = host_strtod(mem, map, 0x6100U, 0U, Some(errn))
+  assert_eq(r2.value, Some(0UL))
+  assert_eq(mem.load_u32(map, errn), Ok(34U))
+}

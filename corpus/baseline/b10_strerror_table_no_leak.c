@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 int main(){
-  int errs[] = {0, 1, 2, 13, 22, 33, 34, 99};
-  for (int i = 0; i < 8; i++) printf("%d=%s\n", errs[i], strerror(errs[i]));
+  for (int i = 0; i <= 43; i++) printf("%d=%s\n", i, strerror(i));
+  printf("99=%s\n", strerror(99));
   return 0;
 }

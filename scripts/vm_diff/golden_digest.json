@@ -153,16 +153,16 @@
       "memory_sha": "74dfad5c1928d71e"
     },
     "baseline/b10_strerror_table_no_leak.c": {
-      "src_sha": "48df5a67",
+      "src_sha": "82df13fc",
       "exit_code": 0,
-      "stdout_sha": "cc7a8897fcf6785a",
-      "memory_sha": "7ccefd8f0f16f322"
+      "stdout_sha": "941ac000d4f3043f",
+      "memory_sha": "e00671380473a6e9"
     },
     "baseline/b10_strtol_strtod_scanner.c": {
-      "src_sha": "6dcfe616",
+      "src_sha": "8900b186",
       "exit_code": 0,
-      "stdout_sha": "94af6499d639a915",
-      "memory_sha": "8990caf2d34eda22"
+      "stdout_sha": "670ef7e8d848fcea",
+      "memory_sha": "ee97fd1d53533cbc"
     },
     "baseline/bfs_graph.c": {
       "src_sha": "753681a3",

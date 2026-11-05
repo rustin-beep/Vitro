@@ -11,8 +11,8 @@
 - **atol/atoi 饱和单源**（M22 A-11/A-2 + M17b A1）：新抽 `strtol_core`（LLP64 long=32 位饱和域）三路共用——atol("3000000000")=2147483647（修前 i64 回绕 -1294967296）；atoi ≡ (int)strtol（UCRT 实测 4294967296→2147483647）。
 - **atoi 改判 Host**（route.mbt `is_host_rerouted` 第 7 名；SHADOWED 16→15）：Bytecode 预编译段（ip 297-300）空白前缀只认空格（`	\r\n\v\f\r` 前缀全返 0）+ 超 i32 域**整程序 trap**「整数加法溢出…第 69 行」两病灶随之根除——Host 版 strtol_core 饱和单源成为唯一真源（双源不同义消除）；atoi 段死代码化（同 strcmp 段形态）；codegen 预注册 82→81 连坐。
 - **strerror 静态串语义**（M22 A-7）：改「无主静态块」——保留 allocate+写入（可 printf），不 register_alloc（regions 零登记 → 泄漏报告天然不见，学生遵守 C 语义不 free 不再被报「N 处未释放」；free 该地址走无效 free 诊断比真机 UB 安全）；34 文案补 UCRT 口径 "Result too large"（M22 D-2 顺带，病 47 批漏面）。
-- **write_direct 裸换行规范写**（M23 B1 顺带）：源内嵌裸 LF 字节改 `b'
-'` 转义（零行为变更，审计噪声修）。
+- **write_direct 裸换行规范写**（M23 B1 顺带）：源内嵌裸 LF 字节改 `b'\n'` 转义（零行为变更，审计噪声修）
+- **B10 PR 批补（遗留收尾，同日）**：① strerror 扩表 0-43 全值域 UCRT 文案（31 号新增——修前域外值全 "Unknown error"；真值 = `tmp/b10probe/p6_strerror_full.c` 全表采证，UCRT 自身 Unknown 的 15/26/35/37/43 走 default）；② strtod **hex 上溢 ERANGE**（`0x1p1025` → inf + errno=34——hex 自算路径走 Some(inf) 不经 parse 拒，修前 is_inf 无分支漏设；下溢 `0x1p-1075`→0.0+34 与十进制同判据）；③ rerouted 死段显式登记锚（M17b-B2 处方——7 名「表内但不可达」事实化 + 交集 22=15+7 对账）；④ hex 次正规域（`0x1.8p-1075` 真值次正规非零/errno=0）登记为精度取舍面（与 %.17g 次正规 A6/A7 同族，不追）。测试 +3（裸 1341 / native 1390）。。
 - 语料 `b10_*` 五份入 baseline（三方对拍 js==native==clang 逐行一致）；golden_digest 受控重冻（漂移仅 3 例 memory_sha——atoi_function/atoi_negative/lc_150 全归因 atoi 改判，stdout 零漂移）；测试 +14（裸 1311→1325 / native 1360→1374）。
 
 ### fix(engine+util): #429 审阅 v2 批 B6——json_parse 孤代理入口拒绝 + C 字节串「码元=字节」承载治本（2026-11-03）

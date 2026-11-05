@@ -1,5 +1,6 @@
 ## [Unreleased]
 
+6. **libc 行为面修复（审阅 v2 批 B10，#434，2026-11-05；Win clang UCRT + WSL glibc 三方对拍）**：① vfs EOF 粘滞位改「仅尝试读过尾置位」（C11 §7.21.10.2）——fread/fgets/fgetc 恰满不再置 feof、`while(!feof)` 循环次数与真机一致（修前提前一圈退出）；② `fgets(buf,1,f)` 返 buf 并写 NUL（修前返 NULL 且误置 feof）；n<=0 零副作用返 NULL；③ 文本流 `fseek(SEEK_SET, 过尾)` 不再钳到文件末尾（过尾写留 0 洞，与二进制流同形）；④ `rename` 覆盖已存在目标时旧文件堆块即时释放（长会话堆耗尽面；返回值/内容等可观测面不变）；⑤ `strtol`：域外饱和 ±LONG_MAX/LONG_MIN+ERANGE（修前 i64 回绕静默错值）、无转换时 endptr=nptr 且不写 errno（修前指向跳过空白后+虚构 EINVAL）、base 非 0 且 ∉[2,36] 报 EINVAL 返 0；⑥ `strtod`：无数字前缀 endptr=nptr、指数后小数点终止（"1e5.3"→100000）、上溢返 ±inf+ERANGE（修前 0.0）、下溢 ERANGE、接受 INF/INFINITY/NAN(N) 族大小写混排、hex 尾点消费（"0x1."）；⑦ `atol`/`atoi` 改 strtol 同源饱和（LLP64 long 域，修前回绕）；⑧ `atoi` 运行路径从 Bytecode 预编译段改判 Host——空白前缀全集（	\r\n\v\f\r）生效（修前只认空格，其余返 0）、超 int 域**不再整程序 trap**（修前「整数加法溢出」中止且归因无关行号）；⑨ `strerror` 返回指针不再计入泄漏报告（C 语义静态串；修前每次调用一条「未释放」——遵守 C 语义不 free 的正确写法被惩罚）；⑩ `strerror(34)` 文案 "Numerical result out of range" → "Result too large"（UCRT 口径）。
 ### 破坏面与下游可见行为变更
 
 

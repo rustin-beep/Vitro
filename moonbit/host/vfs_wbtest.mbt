@@ -49,24 +49,24 @@ test "vfs_preset_inject_fread_binary_roundtrip" {
 }
 
 ///|
-/// EOF 粘滞位「恰满即置」族双形态锚（审阅 v2 批 A2 / M23 A1；真值 =
-/// A2 探针 `D:/tmp/a2probe/feof.c` Win clang 22.1.4-UCRT，与 M23b 四端
-/// 表〔WSL gcc 15.2 / clang 21.1.8 glibc〕逐位一致）。
+/// EOF 粘滞位「仅过读置位」族双形态锚（审阅 v2 批 A2 立 KNOWN_DIVERGENCE，
+/// B10 批 #434 修复翻面；真值 = A2 探针 `D:/tmp/a2probe/feof.c` Win clang
+/// 22.1.4-UCRT + B10 复测 `tmp/b10probe/p1b_feof_shapes.c` 同值，与 M23b
+/// 四端表〔WSL gcc 15.2 / clang 21.1.8 glibc〕逐位一致）。
 ///
 /// C11 7.21.10.2：EOF 指示器仅在**尝试读过文件尾**后置位，恰满不置。
-/// vitro `vfs.mbt` fread/fgets/fgetc 尾部 `cursor >= size ⇒ eof=true` 把
+/// 修前 `vfs.mbt` fread/fgets/fgetc 尾部 `cursor >= size ⇒ eof=true` 把
 /// 三形态都提前一圈置位（教学经典 `while(!feof)` 反模式少跑一圈——M23b
-/// a1_loop 实锤 loops 3 vs 真机 4）。本锚锁当前行为（三处 1），B 批修复
-/// 后三处翻面为 0；过读形态（n=0 / fgetc=-1 后）双侧一致为 1 不翻。
-test "vfs_feof_exact_fill_known_divergence" {
+/// a1_loop 实锤 loops 3 vs 真机 4；A2 锁修前三处值 1）。过读形态
+/// （n=0 / fgetc=-1 后）双侧一致为 1。
+test "vfs_feof_only_on_overread" {
   let (map, mem, vfs) = vfs_fresh()
   ignore(vfs.inject_preset_file(map, mem, "e6.bin", b"ABCDEF"))
   let fd = vfs.fopen(map, "e6.bin", "rb")
   let buf = 0x8000U
-  // 恰满：请求 6 得 6
+  // 恰满：请求 6 得 6——C11 §7.21.10.2 恰满不置（B10 修前 1）
   assert_eq(vfs.fread(mem, map, fd, buf, 1, 6), 6)
-  // KNOWN_DIVERGENCE：clang fread 恰满 feof=0；vitro 1
-  assert_eq(vfs.feof(fd), 1, msg="恰满即置 EOF（当前 vitro；clang 0）")
+  assert_eq(vfs.feof(fd), 0, msg="恰满不置 EOF（仅过读置位）")
   // 过读：n=0 且 feof=1（双侧一致）
   assert_eq(vfs.fread(mem, map, fd, buf, 1, 6), 0)
   assert_eq(vfs.feof(fd), 1, msg="过读置 EOF（C 同形）")
@@ -75,24 +75,130 @@ test "vfs_feof_exact_fill_known_divergence" {
   let fd2 = vfs.fopen(map, "e2.bin", "rb")
   assert_eq(vfs.fgetc(mem, map, fd2), 120)
   assert_eq(vfs.fgetc(mem, map, fd2), 121)
-  // KNOWN_DIVERGENCE：clang 读完末字节 feof=0；vitro 1
-  assert_eq(
-    vfs.feof(fd2),
-    1,
-    msg="末字节后即置 EOF（当前 vitro；clang 0）",
-  )
+  // B10 修前 1：读完末字节（恰满）不置
+  assert_eq(vfs.feof(fd2), 0, msg="末字节后不置 EOF（恰满非过读）")
   assert_eq(vfs.fgetc(mem, map, fd2), -1)
   assert_eq(vfs.feof(fd2), 1, msg="fgetc 返 EOF 后置位（C 同形）")
   // fgets 停于 \n 且恰到文件尾
   ignore(vfs.inject_preset_file(map, mem, "e3.txt", b"ab\n"))
   let fd3 = vfs.fopen(map, "e3.txt", "r")
   assert_eq(vfs.fgets(mem, map, fd3, buf, 100), buf)
-  // KNOWN_DIVERGENCE：clang fgets 停于 \n 恰到尾 feof=0；vitro 1
+  // B10 修前 1：停于 \n 恰到尾（未尝试过读）不置
+  assert_eq(vfs.feof(fd3), 0, msg="fgets 恰到尾不置 EOF（未过读）")
+}
+
+///|
+/// `fgets(buf, n, f)` n 边界族（B10 #434 / M23 A2；真值 = Win clang
+/// 22.1.4-UCRT `tmp/b10probe/p1b_feof_shapes.c` S6 段，glibc 同形——
+/// M23b 四端表）。
+///
+/// C11 §7.21.7.2：fgets 最多读 n-1 字符 + NUL；n=1 → 读 0 字符、写 NUL、
+/// 返回 buf（**不置 eof、游标不动**）。修前 n=1 返 NULL 且误置 eof。
+/// n<=0（UB 域）：按 glibc 口径零副作用返 NULL（不动 buf/游标/不置 eof）。
+test "vfs_fgets_n1_returns_buf_writes_nul" {
+  let (map, mem, vfs) = vfs_fresh()
+  ignore(vfs.inject_preset_file(map, mem, "hi.txt", b"hi"))
+  let fd = vfs.fopen(map, "hi.txt", "r")
+  let buf = 0x8000U
+  ignore(mem.write_bytes(map, buf, b"Z"))
+  // n=1：返 buf、写 NUL、不置 eof
+  assert_eq(vfs.fgets(mem, map, fd, buf, 1), buf, msg="n=1 返回 buf 非 NULL")
+  assert_eq(peek(mem, map, buf, 1), b"\x00", msg="n=1 写入 NUL")
+  assert_eq(vfs.feof(fd), 0, msg="n=1 不置 EOF（修前误置 1）")
+  assert_eq(vfs.ftell(mem, map, fd), 0, msg="n=1 游标不动（未消耗）")
+  // 后续 fgets 未被吞
+  assert_eq(vfs.fgets(mem, map, fd, buf, 8), buf)
   assert_eq(
-    vfs.feof(fd3),
-    1,
-    msg="fgets 恰到尾即置 EOF（当前 vitro；clang 0）",
+    peek(mem, map, buf, 3),
+    b"hi\x00",
+    msg="后续读得 hi（未消耗）",
   )
+  // n=0：返 NULL（双侧一致）
+  assert_eq(vfs.fgets(mem, map, fd, buf, 0), 0U)
+  // 负 n（UB 域）：glibc 口径零副作用返 NULL。eof 断言形态（PR #486
+  // 审阅 P2-1 连坐）：前一次 fgets(buf,8) 读 "hi" 已因尾停置 eof=1
+  //（cursor=size 且 read_count=2<7）——「零副作用」断**前后不变**，
+  // 不假定初始为 0（旧断言受前置读尾状态污染，审阅预言形态）
+  let eof_before = vfs.feof(fd)
+  ignore(mem.write_bytes(map, buf, b"Q"))
+  assert_eq(vfs.fgets(mem, map, fd, buf, -1), 0U)
+  assert_eq(peek(mem, map, buf, 1), b"Q", msg="负 n 不动 buf")
+  assert_eq(
+    vfs.feof(fd),
+    eof_before,
+    msg="负 n 不改 EOF 位（零副作用）",
+  )
+}
+
+///|
+/// 文本臂 `fseek(SEEK_SET, 过尾)` 不钳位（B10 #434 / M23 A3；真值 = Win
+/// clang 22.1.4-UCRT `tmp/b10probe/p1b_feof_shapes.c` F6 段：sk=0 tl=10
+/// size=12 洞 00 XY@10——二进制臂修前即同形，此处锁文本臂对齐）。
+///
+/// 修前 `logical_to_physical` 对超长逻辑位截断到物理末尾（ftell=6、写
+/// XY 落 @6、size=8）；C 语义过尾 fseek 合法、过尾写留 0 洞。
+test "vfs_fseek_text_past_eof_unclamped" {
+  let (map, mem, vfs) = vfs_fresh()
+  ignore(vfs.inject_preset_file(map, mem, "s6.bin", b"ABCDEF"))
+  let fd = vfs.fopen(map, "s6.bin", "r+")
+  let buf = 0x8000U
+  assert_eq(vfs.fseek(mem, map, fd, 10, 0), 0, msg="fseek 过尾成功")
+  assert_eq(vfs.ftell(mem, map, fd), 10, msg="修前钳到 6")
+  put_str(mem, map, 0x6000U, "XY")
+  assert_eq(vfs.fputs(mem, map, fd, 0x6000U), 0)
+  ignore(vfs.fclose(fd))
+  let fdr = vfs.fopen(map, "s6.bin", "rb")
+  assert_eq(vfs.fread(mem, map, fdr, buf, 1, 12), 12, msg="修前 size=8")
+  assert_eq(peek(mem, map, buf, 6), b"ABCDEF", msg="原 6 字节不动")
+  assert_eq(
+    peek(mem, map, buf + 6U, 6),
+    b"\x00\x00\x00\x00XY",
+    msg="过尾洞为 0 + XY 落 @10（修前 XY 落 @6 size=8）",
+  )
+  ignore(vfs.fclose(fdr))
+}
+
+///|
+/// rename 覆盖已存在目标：旧目标堆块释放（B10 #434 / M23 B3 白盒面；
+/// 可观测面 glibc 同形无罪——UCRT 才是失败口径，M23b 四端定责在案）。
+///
+/// 修前覆盖分支 `Map.set` 直接换键，旧目标 `heap_addr` 块不
+/// `vfs_free_raw`——白盒堆泄漏（教学长会话可耗尽堆）。观测 =
+/// regions 表中被释放条目计数（修复前 rename 覆盖后恒 0）。
+test "vfs_rename_overwrite_frees_old_block" {
+  let (map, mem, vfs) = vfs_fresh()
+  ignore(vfs.inject_preset_file(map, mem, "old.txt", b"OLD"))
+  ignore(vfs.inject_preset_file(map, mem, "new.txt", b"NEW"))
+  let freed_before = count_freed_regions(map)
+  assert_eq(freed_before, 0, msg="初始无释放块")
+  // B10 修复连坐：rename 加 map 参数（覆盖分支释放旧目标块）
+  assert_eq(vfs.rename(map, "old.txt", "new.txt"), 0)
+  // B10 修前 0（旧目标块泄漏在表）；修后 1（覆盖分支先 vfs_free_raw）
+  assert_eq(
+    count_freed_regions(map),
+    1,
+    msg="覆盖分支释放旧目标块（修前泄漏恒 0）",
+  )
+  // 新路径内容 = OLD（glibc 口径替换，可观测面不变）
+  let fd = vfs.fopen(map, "new.txt", "r")
+  let buf = 0x8000U
+  assert_eq(vfs.fread(mem, map, fd, buf, 1, 3), 3)
+  assert_eq(peek(mem, map, buf, 3), b"OLD")
+  ignore(vfs.fclose(fd))
+  // 旧路径已不存在
+  assert_eq(vfs.fopen(map, "old.txt", "r"), 0U)
+}
+
+///|
+/// regions 表已释放条目计数（rename 覆盖释放锚的观测辅助）。
+fn count_freed_regions(map : @memory.MemoryMap) -> Int32 {
+  let mut n = 0
+  for pair in map.regions_to_array() {
+    if pair.1.is_freed {
+      n = n + 1
+    }
+  }
+  n
 }
 
 ///|
@@ -237,32 +343,42 @@ test "vfs_fseek_ftell_negative_and_text_logical" {
   let fd = vfs.fopen(map, "t.bin", "rb")
   // SEEK_SET / CUR / END
   assert_eq(vfs.fseek(mem, map, fd, 2, 0), 0)
-  assert_eq(vfs.ftell(fd), 2)
+  assert_eq(vfs.ftell(mem, map, fd), 2)
   assert_eq(vfs.fseek(mem, map, fd, 1, 1), 0)
-  assert_eq(vfs.ftell(fd), 3)
+  assert_eq(vfs.ftell(mem, map, fd), 3)
   assert_eq(vfs.fseek(mem, map, fd, -1, 2), 0)
-  assert_eq(vfs.ftell(fd), 5)
+  assert_eq(vfs.ftell(mem, map, fd), 5)
   // 负目标：-1 且游标不动（U2#13）
   assert_eq(vfs.fseek(mem, map, fd, -100, 0), -1)
-  assert_eq(vfs.ftell(fd), 5, msg="失败不动游标")
+  assert_eq(vfs.ftell(mem, map, fd), 5, msg="失败不动游标")
   // 未知 whence
   assert_eq(vfs.fseek(mem, map, fd, 0, 9), -1)
   // rewind 清 EOF
   vfs.rewind(fd)
-  assert_eq(vfs.ftell(fd), 0)
+  assert_eq(vfs.ftell(mem, map, fd), 0)
   assert_eq(vfs.feof(fd), 0)
-  // 文本模式：物理 "a\r\nb"，逻辑 SET(1) → 物理 1；SET(2) → 物理 3
+  // 文本模式：物理 "a\r\nb"，逻辑 SET(1) → 物理 1；SET(2) → 物理 3。
+  // ftell 文本口径翻面（PR #486 审阅 P3）：物理游标 → 逻辑游标
+  //（fseek↔ftell round-trip 自洽——fseek(2) 后 ftell=2；修前返物理 3）
   ignore(vfs.inject_preset_file(map, mem, "t2.txt", b"a\r\nb"))
   let fdt = vfs.fopen(map, "t2.txt", "r")
   assert_eq(vfs.fseek(mem, map, fdt, 1, 0), 0)
-  assert_eq(vfs.ftell(fdt), 1, msg="ftell 返回物理游标")
+  assert_eq(
+    vfs.ftell(mem, map, fdt),
+    1,
+    msg="ftell 返回逻辑游标（物理=逻辑）",
+  )
   assert_eq(
     vfs.fgetc(mem, map, fdt),
     10,
     msg="物理 1 起读 \\r\\n → 逻辑 \\n",
   )
   assert_eq(vfs.fseek(mem, map, fdt, 2, 0), 0)
-  assert_eq(vfs.ftell(fdt), 3)
+  assert_eq(
+    vfs.ftell(mem, map, fdt),
+    2,
+    msg="round-trip：fseek(2)→ftell=2（修前物理 3）",
+  )
   assert_eq(vfs.fgetc(mem, map, fdt), 98, msg="逻辑 2 = 物理 3 = 'b'")
 }
 
@@ -293,7 +409,7 @@ test "vfs_remove_and_rename" {
   let fd = vfs.fopen(map, "a.txt", "r")
   assert_true(fd != 0U)
   // rename：描述符跟随
-  assert_eq(vfs.rename("a.txt", "b.txt"), 0)
+  assert_eq(vfs.rename(map, "a.txt", "b.txt"), 0)
   assert_eq(vfs.get_file_name(fd), Some("b.txt"))
   let fdr = vfs.fopen(map, "b.txt", "r")
   assert_true(fdr != 0U, msg="新名可开")
@@ -306,7 +422,7 @@ test "vfs_remove_and_rename" {
   )
   assert_eq(vfs.fopen(map, "b.txt", "r"), 0U)
   assert_eq(vfs.remove(map, "b.txt"), -1)
-  assert_eq(vfs.rename("no.txt", "z.txt"), -1)
+  assert_eq(vfs.rename(map, "no.txt", "z.txt"), -1)
 }
 
 // ── FILE* 协议与 handler 面 ─────────────────────────────────────────────
@@ -672,4 +788,66 @@ test "vfs_list_files_insertion_order_and_sizes" {
   assert_eq(listed2.length(), 2)
   assert_eq(listed2[0].0, "numbers.txt", msg="remove 不扰余下文件序")
   assert_eq(listed2[1].0, "out.txt")
+}
+
+///|
+/// PR #486 审阅 P2-1 补锚：fgets「读到文件尾但未填满 n-1」须置 EOF
+/// （fgets 语义内含尝试读过尾）与「恰满 n-1」不置——两形态真值不同，
+/// 修前版本把两者合并（删恰满置位时连「尾停」也丢了，回归）。
+/// 真值 = UCRT `tmp/review_20261105/p1_eof.c` 用例 A：文件 "abc" 无换行
+/// fgets(buf,64) → r=1 feof=1。
+test "vfs_fgets_tail_stop_vs_exact_fill_b10r" {
+  let (map, mem, vfs) = vfs_fresh()
+  let buf = 0x8000U
+  // 尾停：无换行文件，读到尾停（read_count=3 < n-1）→ 置 EOF
+  ignore(vfs.inject_preset_file(map, mem, "tail.txt", b"abc"))
+  let fd = vfs.fopen(map, "tail.txt", "r")
+  assert_eq(vfs.fgets(mem, map, fd, buf, 64), buf)
+  assert_eq(
+    vfs.feof(fd),
+    1,
+    msg="尾停（尝试过读碰 EOF）置位——审阅 P2-1 回归修复",
+  )
+  // 恰满 n-1：文件 "ab"，fgets(buf,3) 读 2=n-1 停（未尝试过读）→ 不置
+  ignore(vfs.inject_preset_file(map, mem, "fill.txt", b"ab"))
+  let fd2 = vfs.fopen(map, "fill.txt", "r")
+  assert_eq(vfs.fgets(mem, map, fd2, buf, 3), buf)
+  assert_eq(
+    vfs.feof(fd2),
+    0,
+    msg="恰满 n-1（未过读）不置——防误翻",
+  )
+  assert_eq(peek(mem, map, buf, 3), b"ab\x00")
+}
+
+///|
+/// PR #486 审阅 P3 补锚：文本模式 ftell 的 fseek↔ftell round-trip 自洽
+///（修前 ftell 恒返物理位——含 CRLF 文件 fseek(20)→ftell=26 不自洽；
+/// UCRT 实测 tl20=20/tl30=30 自洽，`tmp/review_20261105/pr1.c`）。
+test "vfs_ftell_text_roundtrip_b10r" {
+  let (map, mem, vfs) = vfs_fresh()
+  // "ab\r\n" ×6 = 物理 24 / 逻辑 18
+  let data : Array[Byte] = []
+  for i = 0; i < 6; i = i + 1 {
+    data.push(b'a')
+    data.push(b'b')
+    data.push(b'\r')
+    data.push(b'\n')
+  }
+  ignore(vfs.inject_preset_file(map, mem, "crlf.txt", Bytes::from_array(data)))
+  let fd = vfs.fopen(map, "crlf.txt", "r")
+  assert_eq(vfs.ftell(mem, map, fd), 0)
+  ignore(vfs.fseek(mem, map, fd, 15, 0))
+  assert_eq(
+    vfs.ftell(mem, map, fd),
+    15,
+    msg="逻辑位 round-trip（修前物理位 20）",
+  )
+  // 过尾：fseek(30) 逻辑 → ftell 回 30（过尾段 1:1 逻辑展开对称）
+  ignore(vfs.fseek(mem, map, fd, 30, 0))
+  assert_eq(
+    vfs.ftell(mem, map, fd),
+    30,
+    msg="过尾 round-trip（修前不自洽）",
+  )
 }

@@ -1001,7 +1001,17 @@ fn scanf_float_value(token : Array[Byte]) -> Double {
     }
     return @double.not_a_number
   }
-  parse_float_token(token)
+  // B10 连坐：parse_float_token 返回 Double?（超域 None——上溢 → ±inf，
+  // 与 strtod 单源口径；scanf %f 读 1e400 同 inf）
+  match parse_float_token(token) {
+    Some(v) => v
+    None =>
+      if token.length() > 0 && token[0] == b'-' {
+        -@double.infinity
+      } else {
+        @double.infinity
+      }
+  }
 }
 
 ///|

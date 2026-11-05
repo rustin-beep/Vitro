@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+### fix(host+bytecode): #434 审阅 v2 批 B10——IO/运行时散件族（EOF 粘滞/strtol·strtod 扫描器/atoi 整程序 trap/strerror 泄漏误报）（2026-11-05）
+
+- **vfs EOF 粘滞位仅过读置位**（M23 A1 / V1#40，C11 §7.21.10.2）：fread/fgets/fgetc「恰满即置」三形态全部翻面（A2 锚 D2 三处 1→0）——置位判据改「请求量>实得量」（短读/过读=尝试读过尾才置；恰满不置）。教学经典 `while(!feof)` 反模式差一圈坐实修复（`loops=4 got=3`，语料 `b10_feof_sticky_overread.c` 端到端）。
+- **fgets(buf,1) 边界族**（M23 A2 / V1#41，文件臂+stdin 臂）：n=1 返 buf+写 NUL+不置 eof+游标不动（修前返 NULL 且误置 eof）；n<=0（UB 域）按 glibc 口径零副作用返 NULL（修前负 n 误置 eof）。
+- **fseek 文本臂过尾不钳位**（M23 A3）：`logical_to_physical` 过尾逻辑位 1:1 展开为物理偏移（修前钳到物理末尾 ftell=6/size=8；修后 ftell=10/size=12/洞 00/XY@10，与二进制臂同形）；`vfs_append_bytes` 过尾写显式补 0 洞（free_list 复用块脏读面闭合）。
+- **rename 覆盖分支堆块释放**（M23 B3 白盒面）：覆盖已存在目标先 `vfs_free_raw` 旧块（修前泄漏在 regions 表；可观测面本就与 glibc 同形不动）——`rename` 签名加 map 参数（下游 `vfs.rename` 调用连坐）。
+- **strtol 五形态**（M22 A-3/A-4/A-9/A-10）：①饱和预判 `val > (limit-digit)/eff`（修前 i64 回绕绕过 ±2^31 判定——2^63/2^64/17F 静默错值；溢出后仍消费数字，endptr 指数字串尾）；②无转换 endptr=nptr（C11 §7.22.1.4p7——`if (end==str)` 惯用法修复）+ **不写 errno**（修前虚构 EINVAL=22）；③base 非 0 且 ∉[2,36] → EINVAL+0+endptr=nptr（glibc 判据；修前按该进制解析静默错值）。
+- **strtod 扫描器族**（M22 A-4/A-5/A-6/A-8/A-12）：mantissa 无数字回退 nptr（"e5"/".e5"/"-"/"+"/"."）；指数段后不并点（"1e5.3"→"1e5"=100000，修前整 token 解析失败返 0.0）；上溢 ±inf+ERANGE（修前归 0.0）与下溢 0+ERANGE；INF/INFINITY/NAN 族（大小写混排/符号/`NAN(n-char)` 括号闭合才消费/`infin` 取 `inf` 最长合法前缀）；hex 尾点消费（"0x1."→off=4 与十进制 "1." 口径对齐）。
+- **atol/atoi 饱和单源**（M22 A-11/A-2 + M17b A1）：新抽 `strtol_core`（LLP64 long=32 位饱和域）三路共用——atol("3000000000")=2147483647（修前 i64 回绕 -1294967296）；atoi ≡ (int)strtol（UCRT 实测 4294967296→2147483647）。
+- **atoi 改判 Host**（route.mbt `is_host_rerouted` 第 7 名；SHADOWED 16→15）：Bytecode 预编译段（ip 297-300）空白前缀只认空格（`	\r\n\v\f\r` 前缀全返 0）+ 超 i32 域**整程序 trap**「整数加法溢出…第 69 行」两病灶随之根除——Host 版 strtol_core 饱和单源成为唯一真源（双源不同义消除）；atoi 段死代码化（同 strcmp 段形态）；codegen 预注册 82→81 连坐。
+- **strerror 静态串语义**（M22 A-7）：改「无主静态块」——保留 allocate+写入（可 printf），不 register_alloc（regions 零登记 → 泄漏报告天然不见，学生遵守 C 语义不 free 不再被报「N 处未释放」；free 该地址走无效 free 诊断比真机 UB 安全）；34 文案补 UCRT 口径 "Result too large"（M22 D-2 顺带，病 47 批漏面）。
+- **write_direct 裸换行规范写**（M23 B1 顺带）：源内嵌裸 LF 字节改 `b'\n'` 转义（零行为变更，审计噪声修）
+- **B10 PR 批补（遗留收尾，同日）**：① strerror 扩表 0-43 全值域 UCRT 文案（31 号新增——修前域外值全 "Unknown error"；真值 = `tmp/b10probe/p6_strerror_full.c` 全表采证，UCRT 自身 Unknown 的 15/26/35/37/43 走 default）；② strtod **hex 上溢 ERANGE**（`0x1p1025` → inf + errno=34——hex 自算路径走 Some(inf) 不经 parse 拒，修前 is_inf 无分支漏设；下溢 `0x1p-1075`→0.0+34 与十进制同判据）；③ rerouted 死段显式登记锚（M17b-B2 处方——7 名「表内但不可达」事实化 + 交集 22=15+7 对账）；④ hex 次正规域（`0x1.8p-1075` 真值次正规非零/errno=0）登记为精度取舍面（与 %.17g 次正规 A6/A7 同族，不追）。测试 +3（基线口径：#473 合入后 1338/1387 → 本批补 1341/1390；与首版「+14（1311→1325）」不相接——中间隔 #473 的 +13）。。
+- **PR #486 审阅处置（同日，P2×2 + P3 摘要）**：① fgets 尾停回归修复——停因三分立（\n 停 / 限额满 n-1 停 / 碰尾停），碰尾且未满限额才置 EOF（B10 首版把「因遇文件尾而停」与「恰满 n-1」合并丢失前者——审阅 P2-1；UCRT `abc 无换行 fgets(64)` 后 feof=1；`ab\n` 因换行停 feof=0）；② strtod 零值形态不设 ERANGE——`token_has_nz_digit` 改只扫 mantissa（遇 e/E/p/P 停；修前 `0e-400` 指数段 4 被判尾数非零误设 34，审阅 P2-2）；③ `0x0p9999` 零尾数上溢 → 0.0（mant==0 短路；修前 0×inf=NaN，审阅 P3）；④ ftell 文本模式改物理→逻辑换算（fseek↔ftell round-trip 自洽——UCRT fseek(20)→ftell=20；修前恒物理位，含 CRLF 文件 fseek(20)→ftell=26 不自洽；SEEK_END 后 UCRT 特殊形态 44 分叉 UB 域登记）；⑤ 删死代码 slice_bytes_from；strerror 堆耗尽极端形态（~20 万次调用 → 返 NULL → 学生侧 null-deref trap）后果补注（既有取舍面）。语料两份扩充形态（fgets 三停因/ftell round-trip/零尾数族）三方一致；测试 +4（裸 1345 / native 1394）。
+- 语料 `b10_*` 五份入 baseline（三方对拍 js==native==clang 逐行一致）；golden_digest 受控重冻（漂移仅 3 例 memory_sha——atoi_function/atoi_negative/lc_150 全归因 atoi 改判，stdout 零漂移）；测试 +14（裸 1311→1325 / native 1360→1374）。
+
 ### fix(engine+util): #429 审阅 v2 批 B6——json_parse 孤代理入口拒绝 + C 字节串「码元=字节」承载治本（2026-11-03）
 
 - **json_parse `\uXXXX` 孤立代理拒绝**（M38 A2 / M06 A1，serde_json / RFC 8259 §8.2

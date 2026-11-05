@@ -146,10 +146,20 @@
         "e1_string_concat.c": "adbf84c9",
         "e1_va_copy.c": "c7a0cf58",
         "e2_angle_local_header.c": "49471035",
+        "e2_blank_if0_include_not_edge.c": "0b19843c",
+        "e2_cmt_include_not_edge.c": "75c9ad36",
         "e2_cond_if_elif.c": "4f5f4c1c",
+        "e2_elif_true_cycle.c": "c3a735dc",
+        "e2_elifdef_missing_name.c": "04ad834c",
+        "e2_elifndef_missing_name.c": "c7a69975",
+        "e2_fn_macro_brace_break.c": "71f001a8",
+        "e2_fn_macro_brace_continue.c": "267a3da4",
+        "e2_fn_macro_swap_ifelse.c": "91dfaf48",
         "e2_guarded_mutual.c": "d64f3e2d",
         "e2_guarded_self_include.c": "f82dc00f",
         "e2_has_include_chain.c": "37bff223",
+        "e2_if0_else_cycle.c": "08174a9c",
+        "e2_if0_include_not_edge.c": "2fa562e4",
         "e2_include_cycle.c": "edf98db3",
         "e2_include_guarded.c": "4cbb28b5",
         "e2_include_not_found_angle.c": "d40ce468",
@@ -199,6 +209,7 @@
         "for_no_init.c": "0bf8b34a",
         "forward_decl.c": "b9d6fc57",
         "forward_decl_usage.c": "34b5bf79",
+        "fp_to_unsigned_domain.c": "1184f3cb",
         "fprintf_basic.c": "853d5fe4",
         "fprintf_persist.c": "631bd070",
         "func_declared_not_defined.c": "52ad6535",
@@ -266,6 +277,7 @@
         "linked_list_tail.c": "f7662dcc",
         "linked_queue.c": "560447ef",
         "linked_stack.c": "a0e038b1",
+        "ll_float_casts_domain.c": "d5192322",
         "llm_corpus_rejects.c": "e6988440",
         "llm_fnptr_callback.c": "9f4d30b6",
         "llm_fnptr_dispatch.c": "ba320198",
@@ -815,7 +827,7 @@
           "result_sha": "90599771d855e3f6"
         },
         "compound_assign_fp_rhs.c": {
-          "result_sha": "bbd99b92dc8689e3"
+          "result_sha": "3cb3bb6b4e40f385"
         },
         "compound_assign_struct.c": {
           "result_sha": "f7ef9a08b1457865"
@@ -989,8 +1001,36 @@
           "fail": true,
           "fail_stage": "lex"
         },
+        "e2_blank_if0_include_not_edge.c": {
+          "result_sha": "a5971c6b6048170b"
+        },
+        "e2_cmt_include_not_edge.c": {
+          "result_sha": "a35df169b9adb00b"
+        },
         "e2_cond_if_elif.c": {
           "result_sha": "adf9995a77ace36d"
+        },
+        "e2_elif_true_cycle.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "e2_elifdef_missing_name.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "e2_elifndef_missing_name.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "e2_fn_macro_brace_break.c": {
+          "result_sha": "c44a138f29c01e9a"
+        },
+        "e2_fn_macro_brace_continue.c": {
+          "result_sha": "266a9c832da5afcf"
+        },
+        "e2_fn_macro_swap_ifelse.c": {
+          "fail": true,
+          "fail_stage": "parse"
         },
         "e2_guarded_mutual.c": {
           "result_sha": "2f468ba67db71285"
@@ -1000,6 +1040,13 @@
         },
         "e2_has_include_chain.c": {
           "result_sha": "ed6c5724cf632ade"
+        },
+        "e2_if0_else_cycle.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "e2_if0_include_not_edge.c": {
+          "result_sha": "4e4985238fa008bb"
         },
         "e2_include_cycle.c": {
           "fail": true,
@@ -1152,6 +1199,9 @@
         },
         "forward_decl_usage.c": {
           "result_sha": "11f45afb0db41c3a"
+        },
+        "fp_to_unsigned_domain.c": {
+          "result_sha": "db9115ed62bf99ad"
         },
         "fprintf_basic.c": {
           "result_sha": "91945ac19d05d79c"
@@ -1364,6 +1414,9 @@
         },
         "linked_stack.c": {
           "result_sha": "5d9bc4f2021811b0"
+        },
+        "ll_float_casts_domain.c": {
+          "result_sha": "cc8fafad5cf762e4"
         },
         "llm_corpus_rejects.c": {
           "result_sha": "721768d60d10d368"
@@ -2340,7 +2393,7 @@
           "result_sha": "f0d6acfbc1da5966"
         },
         "float_conv_matrix.c": {
-          "result_sha": "c54051a0fded6829"
+          "result_sha": "4ee130c02b1e5d44"
         },
         "function_call_basic.c": {
           "result_sha": "a8249de02f4bf380"
@@ -2765,7 +2818,7 @@
           "result_sha": "b3bd7d0533d8cca3"
         },
         "kr_4_14.c": {
-          "result_sha": "9433bbbb661de58f"
+          "result_sha": "a23d54096a2f768a"
         },
         "kr_4_2.c": {
           "result_sha": "28a4402e2e6419d2"

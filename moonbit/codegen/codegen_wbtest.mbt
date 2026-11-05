@@ -1533,3 +1533,245 @@ test "skeleton: ptr-to-array deref passes address through (#330)" {
     msg="(*q)[0] 恰一次 LoadMem（下标取值）；两次即缺陷版复发（Deref 多读一层）",
   )
 }
+
+///|
+/// #471（2026-11-05）：浮点→无符号整型域内转换（C11 6.3.1.4 定义
+/// 行为）四路径发射锚——修前 uint/ULL 目标一律走饱和 CastD2I/CastD2Q
+///（域内 3e9→2147483647、1.8e19→INT64_MAX 被截），修后 unsigned 目标
+/// 走 CastD2UQ（f64→u64 饱和：域内 [0,2^64) 无损含 [2^63,2^64) 段；
+/// uint 目标再 CastQ2I 低 32 位——位模式对 signed/unsigned 通用）。
+/// 四路径：复合赋值 uint/ULL（emit_compound_narrow）+ 显式 cast
+/// uint/ULL（gen_cast_expr——赋值/二元路径经 typeck insert_implicit_cast
+/// 同链）。
+test "skeleton: #471 fp to unsigned emits CastD2UQ on all four paths" {
+  let uint = @ast.Type::unsigned_int()
+  let ull = @ast.Type::LongLong(true, false)
+  let dty = @ast.Type::double()
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        ..Default::default(),
+        loc: loc(1),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              // 复合赋值 uint：x += 3e9
+              @ast.Stmt::VarDecl(
+                uint,
+                "x",
+                Some(@ast.Expr::Literal(0, loc(2), uint)),
+                [],
+                false,
+                false,
+                loc(2),
+              ),
+              @ast.Stmt::Expr(
+                @ast.Expr::Assign(
+                  AddAssign,
+                  @ast.Expr::Identifier("x", loc(3), uint),
+                  @ast.Expr::FloatLiteral(3000000000.0, loc(3), dty),
+                  loc(3),
+                  uint,
+                ),
+                loc(3),
+              ),
+              // 复合赋值 ULL：q += 1.8e19
+              @ast.Stmt::VarDecl(
+                ull,
+                "q",
+                Some(@ast.Expr::Literal(0, loc(4), ull)),
+                [],
+                false,
+                false,
+                loc(4),
+              ),
+              @ast.Stmt::Expr(
+                @ast.Expr::Assign(
+                  AddAssign,
+                  @ast.Expr::Identifier("q", loc(5), ull),
+                  @ast.Expr::FloatLiteral(18000000000000000000.0, loc(5), dty),
+                  loc(5),
+                  ull,
+                ),
+                loc(5),
+              ),
+              // 显式 cast uint：(unsigned)3e9
+              @ast.Stmt::VarDecl(
+                uint,
+                "y",
+                Some(
+                  @ast.Expr::Cast(
+                    @ast.Expr::FloatLiteral(3000000000.0, loc(6), dty),
+                    uint,
+                    loc(6),
+                    uint,
+                  ),
+                ),
+                [],
+                false,
+                false,
+                loc(6),
+              ),
+              // 显式 cast ULL：(unsigned long long)1.8e19
+              @ast.Stmt::VarDecl(
+                ull,
+                "r",
+                Some(
+                  @ast.Expr::Cast(
+                    @ast.Expr::FloatLiteral(18000000000000000000.0, loc(7), dty),
+                    ull,
+                    loc(7),
+                    ull,
+                  ),
+                ),
+                [],
+                false,
+                false,
+                loc(7),
+              ),
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc(8), @ast.Type::int())),
+                loc(8),
+              ),
+            ],
+            loc(1),
+          ),
+        ),
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let mut d2uq = 0
+  let mut d2uq_q2i = 0
+  for i in 0..<o.code.length() {
+    if o.code[i].op is @opcode.OpCode::CastD2UQ {
+      d2uq += 1
+      if i + 1 < o.code.length() && o.code[i + 1].op is @opcode.OpCode::CastQ2I {
+        d2uq_q2i += 1
+      }
+    }
+  }
+  assert_eq(
+    d2uq,
+    4,
+    msg="四路径各发一条 CastD2UQ（修前 0 = 饱和截断病灶）",
+  )
+  assert_eq(d2uq_q2i, 2, msg="uint 两路径 D2UQ 后随 Q2I 低 32 位截断")
+}
+
+///|
+/// #471 B 轮连坐（速查表 C1/C2/C10/C11——LL↔float 域内 A 面）：
+/// ① signed LL→float 走 CastQ2D+CastD2F 双跳（旧 CastI2F 喂 i64 栈低
+/// 32 位——(float)5000000000LL 产 705032704 位模式值）；② float→signed
+/// LL 走 CastF2D+CastD2Q（旧零发射——f32 位模式直塞 i64 槽）。
+test "skeleton: #471 ll float roundtrip casts avoid low32 feed" {
+  let ll = @ast.Type::long_long()
+  let fty = @ast.Type::float()
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        ..Default::default(),
+        loc: loc(1),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              // (float)5000000000LL —— LL→F
+              @ast.Stmt::Expr(
+                @ast.Expr::Cast(
+                  @ast.Expr::LongLiteral(5000000000L, loc(2), ll),
+                  fty,
+                  loc(2),
+                  fty,
+                ),
+                loc(2),
+              ),
+              // (long long)(-2.5f) —— F→LL
+              @ast.Stmt::Expr(
+                @ast.Expr::Cast(
+                  @ast.Expr::FloatLiteral(-2.5, loc(3), fty),
+                  ll,
+                  loc(3),
+                  ll,
+                ),
+                loc(3),
+              ),
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc(4), @ast.Type::int())),
+                loc(4),
+              ),
+            ],
+            loc(1),
+          ),
+        ),
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let seq : Array[String] = []
+  for i in 0..<o.code.length() {
+    let op = o.code[i].op
+    if op is @opcode.OpCode::PushConstQ ||
+      op is @opcode.OpCode::PushConstF ||
+      op is @opcode.OpCode::CastQ2D ||
+      op is @opcode.OpCode::CastD2F ||
+      op is @opcode.OpCode::CastI2F ||
+      op is @opcode.OpCode::CastF2D ||
+      op is @opcode.OpCode::CastD2Q ||
+      op is @opcode.OpCode::Pop {
+      seq.push(@opcode.OpCode::name(op))
+    }
+  }
+  fn findIdx(arr : Array[String], name : String) -> Int32 {
+    for i, v in arr {
+      if v == name {
+        return i
+      }
+    }
+    -1
+  }
+  let iq = findIdx(seq, "PushConstQ")
+  let iq2d = findIdx(seq, "CastQ2D")
+  let id2f = findIdx(seq, "CastD2F")
+  let ii2f = findIdx(seq, "CastI2F")
+  let if_ = findIdx(seq, "PushConstF")
+  let if2d = findIdx(seq, "CastF2D")
+  let id2q = findIdx(seq, "CastD2Q")
+  // LL→F 双跳：PushConstQ 后 CastQ2D→CastD2F（禁 CastI2F 直喂）
+  assert_true(
+    iq >= 0 && iq2d > iq && id2f > iq2d,
+    msg="LL→F 走 Q2D+D2F 双跳（修前 CastI2F 喂低 32 位）",
+  )
+  assert_true(
+    ii2f < 0,
+    msg="signed LL→F 禁 CastI2F（i64 栈低 32 位喂给 i32 源指令）",
+  )
+  // F→LL 双跳：PushConstF 后 CastF2D→CastD2Q（修前零发射）
+  assert_true(
+    if_ >= 0 && if2d > if_ && id2q > if2d,
+    msg="F→LL 走 F2D+D2Q 双跳（修前零发射位模式直塞）",
+  )
+}

@@ -29,6 +29,9 @@ test "type_mangle_suffix_all_variants" {
   // const 不参与（顶层 const 不影响重载决议）
   assert_eq(type_mangle_suffix(Int(false, true)), "i")
   assert_eq(type_mangle_suffix(Pointer(Int(false, false), false)), "Pi")
+  // #446：下面两行黄金值 = **已知撞码形态**（& 与 && 同码 "R"）——
+  // 照搬 Rust 现状有意为之，C 域零实害；S9 C++ 批翻案对象（RValueRef
+  // → "O"，见 type_suffix.mbt 头注沿革风险登记）。
   assert_eq(type_mangle_suffix(Reference(Int(false, false), false)), "Ri")
   assert_eq(type_mangle_suffix(RValueRef(Int(false, false))), "Ri")
   assert_eq(

@@ -502,6 +502,10 @@ fn BytecodeGen::emit_promote_to_compound_domain(
 /// #425 B2：运算域结果窄化回左类型（emit_compound 之后、store 之前）。
 /// char 目标的字节窄化不由本函数做（store 段 #198 Trunc 幂等接力——
 /// 本函数只负责域级回 int）。
+/// #471（2026-11-05）：fp 域 → **无符号**整型左值（uint/ULL——uchar
+/// 域 [0,256) ⊆ CastD2I 饱和域内段不走此分）改走 CastD2UQ 链（域内
+/// [0,2^64) 无损；旧 CastD2Q/D2I 饱和把 3e9 截 2147483647、1.8e19 截
+/// INT64_MAX——C11 6.3.1.4 域内定义行为被破坏，四路径同错之复合臂）。
 fn BytecodeGen::emit_compound_narrow(
   self : BytecodeGen,
   left_ty : @ast.Type,
@@ -511,22 +515,45 @@ fn BytecodeGen::emit_compound_narrow(
   loc : @source.SourceLoc,
 ) -> Unit {
   let lk = left_ty.kind()
+  // #471：无符号左值判据（char 排除——域小零饱和损耗）
+  let lu_int = left_ty.is_unsigned() && lk is TK_Int
+  let lu_ll = left_ty.is_unsigned() && lk is TK_LongLong
   if is_double {
     if lk is TK_LongLong {
-      self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+      if lu_ll {
+        self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+      }
     } else if lk is TK_Float {
       self.emit(@opcode.OpCode::CastD2F, 0, loc)
     } else if lk is TK_Int || lk is TK_Char {
-      self.emit(@opcode.OpCode::CastD2I, 0, loc)
+      if lu_int {
+        self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+        self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::CastD2I, 0, loc)
+      }
     } else {
       ()
     }
   } else if is_float {
     if lk is TK_LongLong {
-      self.emit(@opcode.OpCode::CastF2D, 0, loc)
-      self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+      if lu_ll {
+        self.emit(@opcode.OpCode::CastF2D, 0, loc)
+        self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::CastF2D, 0, loc)
+        self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+      }
     } else if lk is TK_Int || lk is TK_Char {
-      self.emit(@opcode.OpCode::CastF2I, 0, loc)
+      if lu_int {
+        self.emit(@opcode.OpCode::CastF2D, 0, loc)
+        self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+        self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::CastF2I, 0, loc)
+      }
     } else {
       ()
     }

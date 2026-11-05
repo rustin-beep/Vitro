@@ -34,12 +34,22 @@
 //   P2-5 起，替换计数与 WHATWG 最大子部分规则逐例对齐）。与 util 包
 //   utf8_text_partial（流式前缀解码——尾部截断止保留、中段非法同样
 //   U+FFFD）语义分立，两侧头注互指。
+//   ⑤ #448（2026-11-05）：to_utf8_bytes 代理项收口——④ 的编码方向
+//   配对（孤立前导/尾代理各折一个 U+FFFD，WHATWG 方向；修前孤立前导
+//   三臂三结局崩、孤立尾代理静默产非法 UTF-8）。本地逻辑修复，登记
+//   THIRD_PARTY.md「本地逻辑修复」表；上游修复日按 vendor_drift 基线
+//   漂移评估合流。
 
 ///|
 /// Encode a string into UTF-8 bytes.
 ///
-/// The trailing portion of a truncated surrogate pair at the end of the
-/// string is ignored.
+/// #448（2026-11-05）：孤立代理项（前导无尾伴 = 串尾越界 / 后随非尾
+/// 代理；以及孤立尾代理）各折一个 U+FFFD，后随字节下一轮重判——
+/// WHATWG UTF-16 孤立代理方向，与 #363 解码侧口径配对。修前：前导
+/// 无尾伴走 `code_unit_at(i+1)` 越界 / `unwrap` None panic（js 可捕获
+/// 异常 / wasm 裸 unreachable / native 0xC0000409 进程崩，三臂三结局）；
+/// 孤立尾代理静默产 ED A0 80 非法 UTF-8。正常域 String 恒合法（唯
+/// `Int32::unsafe_to_char` 构造的脏串可达本分支）。
 fn to_utf8_bytes(s : String) -> Bytes {
   let res : Array[Byte] = []
   let len = s.length()
@@ -47,9 +57,16 @@ fn to_utf8_bytes(s : String) -> Bytes {
   while i < len {
     let mut c = s.code_unit_at(i).to_int()
     if c.is_leading_surrogate() {
-      i = i + 1
-      let l = s.code_unit_at(i).to_int()
-      c = utf16_pair_to_char(c, l).unwrap().to_int()
+      if i + 1 < len && s.code_unit_at(i + 1).to_int().is_trailing_surrogate() {
+        c = utf16_pair_to_char(c, s.code_unit_at(i + 1).to_int())
+          .unwrap()
+          .to_int()
+        i = i + 1 // 消费尾伴
+      } else {
+        c = 0xFFFD // 孤立前导代理 → U+FFFD（尾伴位非尾代理时该字节重判）
+      }
+    } else if c.is_trailing_surrogate() {
+      c = 0xFFFD // 孤立尾代理 → U+FFFD
     }
 
     if c < 0x80 {

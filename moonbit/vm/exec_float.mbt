@@ -350,6 +350,15 @@ fn VitroVM::execute_longlong(
       // f64→i64 饱和（Rust as i64 同款语义；MoonBit to_int64 为饱和实现）
       self.push(a.to_int64().reinterpret_as_uint64())
     }
+    CastD2UQ => {
+      let a = self.pop().reinterpret_as_double()
+      // #471（2026-11-05）：f64→u64 饱和无符号——域内 [0,2^64) 无损
+      //（含 [2^63,2^64) 段，CastD2Q 在此段饱和 INT64_MAX 即旧病灶）；
+      // 负值→0、≥2^64→UINT64_MAX（MoonBit to_uint64 饱和实现，
+      // js/native 双臂实证一致——#471 探针）。C11 6.3.1.4 域内定义
+      // 行为；域外 UB 不追值（饱和即安全降级）。
+      self.push(a.to_uint64())
+    }
     EqQ | NeQ | LtQ | LeQ | GtQ | GeQ => {
       // #426 批 3：接核 I64 域比较
       let b = self.pop_i64()

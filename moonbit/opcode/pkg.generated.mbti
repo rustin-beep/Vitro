@@ -175,6 +175,7 @@ pub(all) enum OpCode {
   LoadGlobalUByte
   CastUQ2D
   CastUQ2F
+  CastD2UQ
 } derive(Compare, Eq, Hash, @debug.Debug)
 pub fn OpCode::code(Self) -> Int32
 pub fn OpCode::compare(Self, Self) -> Int32

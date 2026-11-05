@@ -585,6 +585,44 @@ fn BytecodeGen::emit_scalar_cast_store(
     // int 窄化（病 33 同族）：int x = someLL 低 32 位截断
     self.emit(@opcode.OpCode::CastQ2I, 0, loc)
   }
+  // #471（2026-11-05）：Int/LL 目标 × fp 源的防御收口（typeck
+  // insert_implicit_cast 前置插节点使常规路径不可达——防御层补齐与
+  // emit_conversion 单源同口径）：unsigned 目标走 CastD2UQ 链（域内
+  // [0,2^64) 无损——旧饱和指令截 3e9→2147483647；uint 再 Q2I 低
+  // 32 位），signed 目标走饱和 CastD2I/CastD2Q（Rust as 语义）。
+  if vty.kind() is TK_LongLong && ik is TK_Double {
+    if vty.is_unsigned() {
+      self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+    }
+  }
+  if vty.kind() is TK_LongLong && ik is TK_Float {
+    if vty.is_unsigned() {
+      self.emit(@opcode.OpCode::CastF2D, 0, loc)
+      self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastF2D, 0, loc)
+      self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+    }
+  }
+  if vty.kind() is TK_Int && ik is TK_Double {
+    if vty.is_unsigned() {
+      self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastD2I, 0, loc)
+    }
+  }
+  if vty.kind() is TK_Int && ik is TK_Float {
+    if vty.is_unsigned() {
+      self.emit(@opcode.OpCode::CastF2D, 0, loc)
+      self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastF2I, 0, loc)
+    }
+  }
   if vty.kind() is TK_Double {
     self.emit(@opcode.OpCode::StoreLocalD, local_offset, loc)
   } else if vty.kind() is TK_LongLong {

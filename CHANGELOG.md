@@ -1,6 +1,65 @@
 ## [Unreleased]
 
-### fix(engine+util): #429 审阅 v2 批 B6——json_parse 孤代理入口拒绝 + C 字节串「码元=字节」承载治本（2026-11-03）
+### fix(engine): #446/#447/#448/#471/#465 收口扫除批二——引擎散件五单（2026-11-05）
+
+- **#471 浮点→无符号整型域内转换四路径单源治本**（C11 6.3.1.4 定义行为被饱和
+  截断）：新增 opcode 156 **CastD2UQ**（f64→u64 饱和无符号——`Double::to_uint64`
+  语义，域内 [0,2^64) 无损含 [2^63,2^64) 段；负值→0、≥2^64→UINT64_MAX 为 UB 域
+  安全降级，js/native 双臂探针实证）；codegen 侧 cast 双链合一为
+  `emit_conversion` 单源（gen_cast_expr 与 gen_expr_with_cast 原两份同构 if-else
+  链 B1 类冗余，后者还缺 LL←D/LL←int 防御臂——typeck insert_implicit_cast
+  前置插节点使其不可达，单源化自然补齐），四处路径共用（cast 双链 + var_decl
+  防御收口 + emit_compound_narrow 复合臂）：uint 目标 D2UQ+Q2I 低 32 位、ULL 目标
+  D2UQ、float 源先 F2D 归一。域内真值四方一致（Win clang / MinGW gcc / WSL gcc /
+  vitro js+native+wasm 三臂）：3e9→3000000000、1.8e19→18000000000000000000（修前
+  全饱和 2147483647 / 9223372036854775807）。
+- **#471 B 轮连坐（速查表 C1/C2/C10/C11——LL↔float 域内 A 面）**：signed LL→F
+  旧 CastI2F 直喂 i64 栈低 32 位（(float)5000000000LL 产 705032704 位模式值）改
+  CastQ2D+CastD2F 双跳；F→LL 旧**零发射**（f32 位模式直塞 i64 槽，-2.5f 产
+  -1071644672）补 CastF2D+CastD2Q 双跳——速查表 C 族域内 A 类全销（C1/C2/C8/
+  C9/C10/C11/C12），C3 经 #465 WSL 复核改判 D 类（截断值 -2 不可被 ULL 表示，
+  UB 域不追值；B 轮锚面改用真域内五格）。语料两份：`fp_to_unsigned_domain.c` /
+  `ll_float_casts_domain.c`（clang_direct 逐位一致 + 四家 digest 冻结入账）。
+- **#447 E1001 报错列指向非法字符本体**（裁定 = lexer 违约，B 案）：《列号口径
+  冻结》§2.4 规范语气「应指向本体」+ 契约先于实现（S1 → S2 词法器 765b4c09）+
+  族内其余码（E1002/E1003/E1006/E1010）均指向本体/断点——独 E1001 两发射点
+  （scanner 兜底臂 + 行内 stray `#` 臂）照搬 Rust "advance 后报错" +1 违约；修 =
+  err 前置到 advance 之前：`中` 报 2:7（修前 2:10，非 ASCII 形状放大 +3）、`@`
+  报 2:15（修前 2:16）、`#` 报 4:13（修前 4:14）；红锚「scan_raw E1001 column
+  points at offending char body」修前红/修后绿；重冻面核实为零（corpus 语料/
+  gold_signatures 仅计数/教学数据均不锁 E1001 列值）；文档连坐（列号口径冻结
+  §4 落实补记 + source_loc §4 注释）。
+- **#448 fs utf8_compat to_utf8_bytes 孤立代理项收口**（#363 解码方向的编码
+  配对）：孤立前导（串尾越界 / 后随非尾伴 unwrap None）修前三臂三结局崩（js
+  可捕获异常 / wasm 裸 unreachable / native 0xC0000409 进程崩）、孤立尾代理静默
+  产 ED A0 80 非法 UTF-8——统一各折一个 U+FFFD（WHATWG 孤立代理方向，正常域
+  String 恒合法唯 `unsafe_to_char` 脏串可达）；红锚
+  `utf8_encode_replaces_lone_surrogates_with_ufffd`（四形态：串尾孤立前导/前导
+  +ASCII/孤立尾代理/合法对回归）修前红；三臂（js/wasm/native）13/13 全绿；
+  THIRD_PARTY.md 本地逻辑修复表 +1 行 + 文件头改动编号 ⑤；`vendor_drift` 不触
+  （比上游 main 不比本仓文件）。
+- **#446 names type_mangle_suffix 撞码形态沿革登记**（S9 C++ 批前置）：头注补
+  沿革风险登记（对齐 `has_overloads` 形态）——Reference/RValueRef 同码 `R`（&
+  vs && 合法重载对撞名 → 静默错派发，D1 事故漏网维度）、Array 丢 dims、
+  Struct/Union/Class 同前缀、TemplateId 无定界，四条翻案清单落注；wbtest 同码
+  锚加注释「黄金值 = 已知撞码形态，C++ 批翻案对象」（锚值不改、C 域行为冻结）。
+- **#465 chibicc 对表差异候选台账消费**（逐条裁定落档速查表 §七.5，30+ 条三
+  分）：**真差异 9 族待后续批认领**（_Bool 归一化三路同根 / fp→_Bool 判零 /
+  char 返回窄化 / `sizeof(0L)` L 后缀域 / case unsigned 域 / 先定义后暂定 /
+  _Alignof 符号性 / 静态复合字面量取址链 / struct 赋值链 E0）；**已知族销条 4**
+  （D7/E 族/M17/Z11×D7）；**台账过期销条 10**（!浮点判零、union 重解释、
+  `(int){1}`、LShr 移位量、函数体内 #define 函数宏、designated 混排/成员链、
+  宏重定义、`sizeof(*a)`、`\e` 已改 E1001 显式拒收——2026-11-03 预检后各批已
+  承接）；**gap 留观 8 项**（位域/__FUNCTION__/GNU 混型/逆下标/多级解引用/
+  typeof(int) 类型参数/多声明数组维/空实参族——主控拍板收录面，本批不动）。
+  连坐：速查表 C3 行改标 D + C 族九行翻面更新。
+- **digest 受控重冻逐条归因**：codegen `compound_assign_fp_rhs.c`（REFRESH——
+  uint 复合臂指令序列 CastD2I→CastD2UQ+CastQ2I，值不变）+ 新语料两份 ADD；
+  vm_diff 新增 2 例重算 548 全 SAME（行为零漂移）；parser/typeck 仅 ADD（E1001
+  列变对语料零扰动）；facts 双口径：`moonbit_test_passed` 1329（裸）/ 
+  `moonbit_test_passed_native` 1378。
+
+### fix(engine+util): #429 审阅 v2 批 B6——json_parse 孤立代理入口拒绝 + C 字节串「码元=字节」承载治本（2026-11-03）
 
 - **json_parse `\uXXXX` 孤立代理拒绝**（M38 A2 / M06 A1，serde_json / RFC 8259 §8.2
   口径）：高代理 D800-DBFF 后必须紧跟 `\uDC00-DFFF` 转义（否则 JsonParseError）、

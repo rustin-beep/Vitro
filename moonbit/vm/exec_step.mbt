@@ -260,6 +260,7 @@ fn VitroVM::dispatch_single(
     | CastQ2I
     | CastQ2D
     | CastD2Q
+    | CastD2UQ
     | EqQ
     | NeQ
     | LtQ

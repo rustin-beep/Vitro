@@ -56,7 +56,7 @@
 | S5 | `ungetc(EOF,stdin)` 后 getchar（流中 `xy`） | 120（`x`；ungetc(EOF) 是无操作） | **已修一致**（#428 B5 批：ch==-1 早退不动缓存，返 EOF） | M20 A-11 → #428 |
 | S1b | `scanf("%5c",buf)` 输入 `ab`（宽度中途流尽） | **r=-1**（EOF——首个转换完成前的输入失败，C11 §7.21.6.2 p16；buf 已写 "ab" 部分保留）；`sscanf("ab","%5c")` 同 r=-1（glibc/UCRT 双派一致） | **已修一致**（#474 审阅处置：matched==0 且流尽中止 → EOF；「仅空白 + %d」存量边角同批顺治；不匹配仍返 0 不变） | PR #474 审阅 P2 → #428 |
 | S4b | `sscanf("nan(","%lf")` / 读 `-nan` | nan( 未闭合：**glibc r=0（匹配失败）/ UCRT r=-1（输入失败）——真值间自分歧**；`-nan`：signbit=1 双派一致 | nan( → r=0（择 glibc 边，UCRT 输入失败边**登记分叉**）；`-nan` → 0xFFF8000000000000 符号位 NaN（#474 审阅处置） | PR #474 审阅 P3 / t9 探针 |
-| S6 | `fgets(buf,1,f)`（文件含 `hi`） | 返 buf、buf[0]=0(NUL)、feof=0、后续读 `hi` | 返 NULL、buf[0]=90(未动)、feof=1（误置）、后续读 `hi` | M23 A2 / V1#41 |
+| S6 | `fgets(buf,1,f)`（文件含 `hi`） | 返 buf、buf[0]=0(NUL)、feof=0、后续读 `hi` | ✐ **已修一致**（B10 批 #434，2026-11-05：n=1 写 NUL 返 buf 不置 eof；stdin 臂同修；负 n 零副作用返 NULL——glibc 口径） | M23 A2 / V1#41 → #434 |
 | S7 | vprintf 族 `%s` 字符串实参 len≥4 | 正常输出（glibc） | 第 4 字节起 VM 栈下溢 trap（边界=4 字节；宽度/精度无关；js/native/wasm 三臂一致） | M21 A2 / V1#36（根因在 vm/codegen 变参压栈层，M21 §五点名另立） |
 
 ## 四、转义计长族（M22 p04 / M09 D1 / A2 锚 A9/A10）——**B6 批（#429，2026-11-03）全族销案**
@@ -78,13 +78,33 @@
 
 | # | 形态 | clang 真值（三方一致；C11 7.21.10.2 仅过读置位） | vitro 当前值 | 出处 |
 |---|---|---|---|---|
-| F1 | 3B 文件 `fread(buf,1,3)` **恰满** → feof | **0** | **1**（恰读满即置位） | M23 A1 / V1#40 / A2 锚 D2（`vfs_feof_exact_fill_known_divergence`） |
-| F2 | 2B 文件 `fgetc` 读末字节后 → feof | 0 | 1 | M23 A1 / 同上 |
-| F3 | fgets `"ab\n"` 停于 \n 恰满 → feof | 0 | 1 | M23 A1 / 同上 |
+| F1 | 3B 文件 `fread(buf,1,3)` **恰满** → feof | **0** | ✐ **已修一致 0**（B10 批 #434：置位判据改「请求>实得」——恰满不置、短读/过读置；锚 `vfs_feof_only_on_overread`，A2 锚 D2 随翻） | M23 A1 / V1#40 → #434 |
+| F2 | 2B 文件 `fgetc` 读末字节后 → feof | 0 | ✐ **已修一致 0**（同上） | M23 A1 → #434 |
+| F3 | fgets `"ab\n"` 停于 \n 恰满 → feof | 0 | ✐ **已修一致 0**（同上） | M23 A1 → #434 |
 | F4 | 各形态**再过读一次** → feof | 1 | 1（一致） | M23 A1（防误翻注：过读侧双侧一致） |
-| F5 | `while(!feof(f))` 3B 文件按 1B fread 循环 | loops=4 got=3 | loops=3 got=3（**差一圈**，教学经典反模式提前退出） | M23 A1 / V1#40 |
-| F6 | 6B 文件 `r+` `fseek(fp,10,SEEK_SET)` 后 ftell / fwrite("XY") / 终态 | ftell=10、size=12、XY@10、洞[6,10)=00 | ftell=**6**、size=**8**、XY@6（文本臂钳到物理末尾） | M23 A3（**仅文本臂**；`rb+` 二进制臂 ftell=10 size=12 洞 00 XY@10 完全同形） |
-| F7 | `fread(…,1,100)` 于 6B 文件（**短读**） | feof=1（尝试读过尾） | 1（一致——**非病**；A2 批推翻 M23 报告「vfs:38 病锚」结论） | A2 §〇R1（防误翻注：短读≠恰满，勿翻） |
+| F5 | `while(!feof(f))` 3B 文件按 1B fread 循环 | loops=4 got=3 | ✐ **已修一致 loops=4 got=3**（B10 批 #434：语料 `b10_feof_sticky_overread.c` 双臂+clang 三方一致） | M23 A1 / V1#40 → #434 |
+| F6 | 6B 文件 `r+` `fseek(fp,10,SEEK_SET)` 后 ftell / fwrite("XY") / 终态 | ftell=10、size=12、XY@10、洞[6,10)=00 | ✐ **已修一致**（B10 批 #434：`logical_to_physical` 过尾 1:1 展开 + `vfs_append_bytes` 过尾写补 0 洞；锚 `vfs_fseek_text_past_eof_unclamped`） | M23 A3 → #434 |
+| F7 | `fread(…,1,100)` 于 6B 文件（**短读**） | feof=1（尝试读过尾） | 1（一致——**非病**；A2 批推翻 M23 报告「vfs:38 病锚」结论；B10 修复后由「请求>实得」判据天然覆盖：100>6 即置） | A2 §〇R1 / #434 复证（防误翻注：短读≠恰满，勿翻） |
+
+## 五b、convert 扫描器族（M22 A-3..A-12 / M17b-A1——B10 批 #434，2026-11-05 全族销案）
+
+> 真值 = Win clang 22.1.4-UCRT 本机采证（`tmp/b10probe` + 语料 `b10_strtol_strtod_scanner.c` 三方 js==native==clang 逐行一致）；非法 base 域 UCRT 杀进程（rc=127）采不到值，判据取 glibc（EINVAL）由白盒锚 `strtol_invalid_base_einval_b10` 锁。
+
+| # | 形态 | clang 真值 | vitro 现值（B10 起） | 出处 |
+|---|---|---|---|---|
+| N1 | `strtol("18446744073709551616",&e,10)`（2^64） | `2147483647`/errno=34/off=20 | ✐ **已修一致**（`strtol_core` 饱和预判；修前 0/0——i64 回绕绕过判定） | M22 A-3 → #434 |
+| N2 | `strtol("  -abc"/"-"/"   ",&e,10)`（无转换） | `0`/errno=0/off=0 | ✐ **已修一致**（endptr=nptr §7.22.1.4p7 + 不写 errno；修前 off=1~3+虚构 EINVAL=22） | M22 A-4/A-10 → #434 |
+| N3 | `strtol("z9",NULL,40)`（base∉[2,36]） | glibc `0`/EINVAL=22；UCRT 杀进程 | ✐ **已修一致**（glibc 判据；修前按 40 进制解析出 1409） | M22 A-9 → #434 |
+| N4 | `strtod("1e5.3",&e)`（指数并点） | `100000.0`/off=3 | ✐ **已修一致**（指数段后 '.' 终止；修前整 token 解析失败 0.0/off=5） | M22 A-5 → #434 |
+| N5 | `strtod("1e400")` / `("1e-400")` | `inf`/errno=34；`0.0`/errno=34 | ✐ **已修一致**（上溢 ±inf+ERANGE、下溢 0+ERANGE；修前 0.0/0 与 0.0/0） | M22 A-6 → #434 |
+| N6 | `strtod("inf"/"infinity"/"-INF"/"nan"/"NAN(123)")` | inf/nan 各形态 off=3/8/4/3/8 | ✐ **已修一致**（INF/NAN 族；`nan(` 不闭合 off=3；修前全 0.0） | M22 A-8 → #434 |
+| N7 | `strtod("e5"/".e5"/"-")`（mantissa 空） | `0.0`/off=0 | ✐ **已修一致**（has_digit 回退 nptr；修前 token="e5" off=2 等） | M22 A-4 → #434 |
+| N8 | `strtod("0x1.")`（hex 尾点） | `1.0`/off=4 | ✐ **已修一致**（点后 hex 数字可选；修前 off=3） | M22 A-12 → #434 |
+| N9 | `atol("3000000000"/"9223372036854775807")` | `2147483647`（UCRT LLP64 饱和；WSL LP64 值不同） | ✐ **已修一致**（strtol_core 单源；修前 i64 回绕 -1294967296/全宽） | M22 A-11 → #434 |
+| N10 | `atoi("2147483648"/"4294967296"/"-2147483649")` | `2147483647`/`2147483647`/`-2147483648`（UCRT；glibc LP64 截断回绕——平台差登记） | ✐ **已修一致**（(int)strtol 饱和传导 + **改判 Host**；修前整程序 trap「整数加法溢出…第 69 行」或回绕） | M22 A-2 / M17b-A1 → #434 |
+| N11 | `atoi("\t42"/"\n42"/"\r\n+7"/"\v-9"/"\f13")` | `42 42 7 -9 13`（三方一致） | ✐ **已修一致**（Host 版 is_ascii_ws_byte 全集生效；修前 Bytecode 段只认空格——`42 0 0 0 0 0`） | M17b-A1 / V1#31 → #434 |
+| N12 | `strerror(0..34)` 循环调用不 free | 静态串、无泄漏报告 | ✐ **已修一致**（无主静态块：regions 零登记；修前每次调用一条「未释放」——9 次调用报 9 处）；`strerror(34)` 文案 "Result too large"（UCRT） | M22 A-7/D-2 → #434 |
+| N13 | rename 覆盖已存在目标（白盒面） | glibc 替换成功；旧描述符读 OLD | 可观测面**本就同形**（glibc 口径；UCRT 才是失败保留——M23b 四端定责）；B10 修白盒堆块释放（覆盖分支先 `vfs_free_raw`） | M23 B3 → #434 |
 
 ## 六、cast 族（M12 p05_matrix.c 8×8=64 格；源值 sc=-100 uc=200 i=-2000000000 u=3000000000u ll=-5000000000LL ull=18000000000000000000ULL f=-2.5f d=1e10）
 

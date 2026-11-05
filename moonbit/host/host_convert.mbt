@@ -384,7 +384,10 @@ fn slice_bytes(s : Bytes, from : Int32, upto : Int32) -> Array[Byte] {
 /// 归 0.0）；hex float 形态（`0x` mantissa + 可选 `p` 二进制指数）自算
 /// ——mantissa hex 逐位累加（≤2^53 域内 Double 精确）、小数段 16^-k
 /// 缩放累加、指数 2^p（`@math.pow` 整数幂精确）。正确舍入（C 的
-/// correctly-rounded）不做——教学域精度取舍，登记。
+/// correctly-rounded）不做——教学域精度取舍，登记；**hex 次正规域**
+///（0x1.8p-1075 真值 = DBL_TRUE_MIN×1.5 次正规非零、errno=0——B10
+/// p7 实测）vitro 值归 0.0 随设 ERANGE，属 @math.pow/mant 缩放的次正规
+/// 精度损失面（与十进制 %.17g 次正规 A6/A7 域同族），登记不追。
 fn parse_float_token(token : Array[Byte]) -> Double? {
   let len = token.length()
   if len == 0 {
@@ -656,11 +659,15 @@ pub fn host_strtod(
       (str_addr + pos.reinterpret_as_uint()).to_uint64(),
     )
   }
-  // ERANGE：上溢（parse 拒）或下溢（值 0 且 token 数值形态非零）；
-  // INF/NAN 字面形态排除（'f' 是 hex 数字但 infinity 非数值形态——
-  // 真值 errno=0）；hex 超域（0x1p1025 → inf）含数字照设
+  // ERANGE：上溢（parse 拒 = 十进制超域；或值 inf = hex 超域——hex 自算
+  // 路径 0x1p1025 走 Some(inf) 不经 None，B10 遗留②补 is_inf 分支，UCRT
+  // 实测 p7：up errno=34）或下溢（值 0 且 token 数值形态非零）；INF/NAN
+  // 字面形态排除（'f' 是 hex 数字但 infinity 非数值形态——真值 errno=0）。
+  // hex 次正规（0x1.8p-1075 真值 DBL_TRUE_MIN 非零、errno=0）归
+  // parse_float_token「正确舍入不做」精度取舍族（见其头注）。
   let numeric_form = !is_inf_nan_token(token)
-  if numeric_form && (overflow || (val == 0.0 && token_has_nz_digit(token))) {
+  if numeric_form &&
+    (overflow || val.is_inf() || (val == 0.0 && token_has_nz_digit(token))) {
     match errno_addr {
       Some(a) =>
         match mem.store_u32(map, a, 34U) {
@@ -697,14 +704,49 @@ pub fn host_strerror(
   // 连坐面，errnum 与文案错位：strerror(1) 出 EINVAL 文案）。
   // B10 连坐（M22 D-2）：34 文案补 UCRT 口径（病 47 批漏面——34 曾留
   // glibc 式文案）。
+  // B10 遗留①（#434 PR 批补）：扩表 0-43 全值域（真值 = Win clang
+  // 22.1.4-UCRT `tmp/b10probe/p6_strerror_full.c` 全表采证；UCRT 自身
+  // 出 "Unknown error" 的号 15/26/35/37/43 走 default 臂）。
   let msg : Bytes = match errnum {
     0 => b"No error\x00"
     1 => b"Operation not permitted\x00"
     2 => b"No such file or directory\x00"
+    3 => b"No such process\x00"
+    4 => b"Interrupted function call\x00"
+    5 => b"Input/output error\x00"
+    6 => b"No such device or address\x00"
+    7 => b"Arg list too long\x00"
+    8 => b"Exec format error\x00"
+    9 => b"Bad file descriptor\x00"
+    10 => b"No child processes\x00"
+    11 => b"Resource temporarily unavailable\x00"
+    12 => b"Not enough space\x00"
     13 => b"Permission denied\x00"
+    14 => b"Bad address\x00"
+    16 => b"Resource device\x00"
+    17 => b"File exists\x00"
+    18 => b"Improper link\x00"
+    19 => b"No such device\x00"
+    20 => b"Not a directory\x00"
+    21 => b"Is a directory\x00"
     22 => b"Invalid argument\x00"
+    23 => b"Too many open files in system\x00"
+    24 => b"Too many open files\x00"
+    25 => b"Inappropriate I/O control operation\x00"
+    27 => b"File too large\x00"
+    28 => b"No space left on device\x00"
+    29 => b"Invalid seek\x00"
+    30 => b"Read-only file system\x00"
+    31 => b"Too many links\x00"
+    32 => b"Broken pipe\x00"
     33 => b"Domain error\x00"
     34 => b"Result too large\x00"
+    36 => b"Resource deadlock avoided\x00"
+    38 => b"Filename too long\x00"
+    39 => b"No locks available\x00"
+    40 => b"Function not implemented\x00"
+    41 => b"Directory not empty\x00"
+    42 => b"Illegal byte sequence\x00"
     _ => b"Unknown error\x00"
   }
   let size = msg.length()

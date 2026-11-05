@@ -61,6 +61,9 @@ fn main {
     "step" => @cli.step(rest, js_read_stdin, js_write_stdout, channel~)
     "api" =>
       @cli.api(rest, js_read_stdin, write_stdout=js_write_stdout, channel~)
+    "script" =>
+      // WASI 期 0（2026-11-05）：与 cmd/vitro_js 分派表整表同构连坐
+      @cli.script(rest, wasm_clock, js_read_stdin, js_write_stdout, channel~)
     "serve" => {
       // NDJSON 流式会话：main 返回后 node 事件循环由 readline 持续
       //（shutdown 判停后自然退——此臂不调 js_exit）

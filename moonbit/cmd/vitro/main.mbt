@@ -53,6 +53,16 @@ fn main {
         write_stdout=write_stdout_stub,
         channel=@engine_direct.direct_channel(),
       )
+    "script" =>
+      // WASI 期 0（2026-11-05）：C 脚本直跑——run 态包装 + argv 收口/
+      // shebang 剥行/exit 透传三件（cmd/lib/cli/cli_script.mbt 单源）
+      @cli.script(
+        rest,
+        make_clock(),
+        make_stdin(),
+        write_stdout_stub,
+        channel=@engine_direct.direct_channel(),
+      )
     "serve" | "dump-tokens" | "dump-ast" | "dump-typeck" | "dump-compile" => {
       // #215：rc=4 用法错语境的指引走 stderr（stdout 恒空不变式）
       @cli.usage_err(

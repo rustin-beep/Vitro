@@ -539,6 +539,232 @@ test "m35_a2_step_rc3_step_limit_文案匹配" {
 }
 
 ///|
+/// WASI 期 0（2026-11-05，设计单 §3.1/§5.2 期 0 行）：script 子命令
+/// 断言集——argv 收口（文件位后零解析全透传，python/node 惯例）/
+/// shebang 剥行（行号零偏移，python 对拍实测 2026-11-05：`#!` 行忽略
+/// 但行号照常计数——err.py 报 line 2 / err3.py 报 line 3）/ exit code
+/// 透传（C 返回值 & 0xFF——python sys.exit(256)→0 实测锚）。J9：锚先于
+/// 实现存在（script 函数族入库前本节编译红——新面无「修前行为」可跑，
+/// 编译红即红锚留痕形态）。
+test "script_parse_args_文件位后零解析全透传" {
+  // python 惯例（实测 argv.py）：文件名后全部参数原样进 argv——含
+  // `-i`/`--json` 旗标形与 `--` 字面量（透传域零解析、`--` 无特殊语义）
+  let sa = parse_script_args(["x.c", "a", "--json", "-i", "--", "b", "-c"])
+  inspect(sa.file, content="x.c")
+  inspect(sa.argv.length(), content="6")
+  inspect(sa.argv[0], content="a")
+  inspect(sa.argv[3], content="--")
+  inspect(sa.argv[5], content="-c")
+  inspect(sa.unknown_flag is None, content="true")
+  // 与 run 的分叉锚：同参数下 run 解析 --json/-i（`-i` 吞 `--` 作值）且
+  // 尾部旗标形 `-c` 落未知旗标（fail loud）——script 收口语义 = 文件位后
+  // 透传域无死角（`-c` 是脚本的 argv 不是 vitro 的旗标）
+  let ra = parse_run_args(["x.c", "a", "--json", "-i", "--", "b", "-c"])
+  inspect(ra.json_mode, content="true")
+  inspect(ra.stdin_file, content="--")
+  inspect(ra.argv_passthrough.length(), content="2") // [a, b]——旗标被解析消化
+  inspect(ra.unknown_flag is Some("-c"), content="true")
+}
+
+///|
+test "script_parse_args_前置旗标_fail_loud" {
+  // python 惯例（实测 --bogus）：解释器选项位（文件位之前）的未知旗标
+  // 报错不静默——script 零解释器选项，文件位前任何 `-` 前缀参数（非
+  // `-` stdin 占位）= 用法错 rc=4（病 87 族防线：零信号最危险）
+  let sa = parse_script_args(["--json", "x.c"])
+  inspect(sa.unknown_flag is Some("--json"), content="true")
+  inspect(sa.file, content="")
+  // `-` 单独 = stdin 源占位（run 同品类；python `-` 同形）
+  let sb = parse_script_args(["-", "a"])
+  inspect(sb.file, content="-")
+  inspect(sb.argv[0], content="a")
+  inspect(sb.unknown_flag is None, content="true")
+  // 空参 = 缺文件位（主体 rc=4）
+  let sc = parse_script_args([])
+  inspect(sc.file, content="")
+}
+
+///|
+test "script_strip_shebang_等长空行_行号零偏移" {
+  // python 对拍锚（2026-11-05 实测）：`#!` 首行被忽略但**行号不减一**
+  // ——实现形态 = 首行替换等长空格（换行符保留，行数与列偏移零变化）
+  let s1 = strip_shebang("#!/usr/bin/env vitro\nint main(){return 0;}\n")
+  inspect(s1.length(), content="43") // 总长不变（20+1+21+1——首行→20 空格）
+  inspect(s1.split("\n").to_array().length(), content="3") // 行数不变（2 换行）
+  inspect(s1.has_prefix("  "), content="true") // 首行非 #! 已替换
+  inspect(s1.contains("#!"), content="false")
+  // `#` 开头但非 `#!`（预处理合法域）不剥——教学诊断面零扰动
+  let s2 = strip_shebang("#include <stdio.h>\nint main(){return 0;}\n")
+  inspect(s2, content="#include <stdio.h>\nint main(){return 0;}\n")
+  // 单行无换行形态：整串替换（等长）
+  let s3 = strip_shebang("#!/bin/vitro")
+  inspect(s3.length(), content="12")
+  inspect(s3.contains("#"), content="false")
+  // CRLF 形态：\r 一并入首行替换、\n 保留（Windows 源常见形态）
+  let s4 = strip_shebang("#!/x\r\nint main(){return 0;}\n")
+  inspect(s4.split("\n").to_array().length(), content="3")
+  inspect(s4.contains("\r"), content="false")
+  // 无 shebang 原样返回（含空串）
+  let s5 = strip_shebang("int main(){return 0;}")
+  inspect(s5, content="int main(){return 0;}")
+  inspect(strip_shebang(""), content="")
+}
+
+///|
+/// script 主体 rc 语义桩：return_value 参数化（透传域锚用）。invoke_parsed
+/// 必须 method-aware（compile/run/delta 各回各帧——恒回 compile 帧会让
+/// run 帧解析出空 return_value，透传锚全 0 假红）。
+fn script_retval_channel(retval : Int32) -> EngineChannel {
+  let frame_of = fn(line : String) -> String {
+    if line.contains("\"method\":\"compile\"") {
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[],\"preprocessor_trace\":[]}}"
+    } else if line.contains("\"method\":\"run\"") {
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":\{retval},\"trap\":\"\",\"waiting_input\":false,\"steps_executed\":1}}"
+    } else {
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}"
+    }
+  }
+  {
+    invoke: fn(line : String) -> String { frame_of(line) },
+    invoke_parsed: fn(line : String) -> Json? {
+      Some(@util.json_parse(frame_of(line)) catch { _ => Json::number(0) })
+    },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(file : String, _src : String) -> String {
+      "{\"source\":\"\",\"filename\":\"\{file}\"}"
+    },
+  }
+}
+
+///|
+test "script_exit_code_透传与0xFF折叠" {
+  // ① return_value=7 → 进程 rc=7（run 态对照 = 恒 0——frame_pipeline
+  // 缺省 exit_passthrough=false）
+  let rc7 = script(
+    ["-", "a"],
+    fn() { 0UL },
+    () => b"int main(){return 7;}",
+    noop_write,
+    channel=script_retval_channel(7),
+  )
+  inspect(rc7, content="7")
+  // ② & 0xFF（POSIX 惯例；python sys.exit(256)→0 / 42→42 实测锚）
+  let rc256 = script(
+    ["-"],
+    fn() { 0UL },
+    () => b"int main(){return 256;}",
+    noop_write,
+    channel=script_retval_channel(256),
+  )
+  inspect(rc256, content="0")
+  let rc300 = script(
+    ["-"],
+    fn() { 0UL },
+    () => b"int main(){return 300;}",
+    noop_write,
+    channel=script_retval_channel(300),
+  )
+  inspect(rc300, content="44")
+  let rcneg = script(
+    ["-"],
+    fn() { 0UL },
+    () => b"int main(){return -1;}",
+    noop_write,
+    channel=script_retval_channel(-1),
+  )
+  inspect(rcneg, content="255")
+  // ③ return 0 → rc=0
+  let rc0 = script(
+    ["-"],
+    fn() { 0UL },
+    () => b"int main(){return 0;}",
+    noop_write,
+    channel=script_retval_channel(0),
+  )
+  inspect(rc0, content="0")
+}
+
+///|
+test "script_框架错路径不透传" {
+  // 编译错 rc=1 / 用法错 rc=4 不受 exit 透传影响（框架码位语义同 run）
+  let rc1 = script(
+    ["-"],
+    fn() { 0UL },
+    () => b"int main(){ return = ; }",
+    noop_write,
+    channel=compile_fail_channel(),
+  )
+  inspect(rc1, content="1")
+  let rc4 = script(
+    ["--bogus", "x.c"],
+    fn() { 0UL },
+    () => b"",
+    noop_write,
+    channel=script_retval_channel(0),
+  )
+  inspect(rc4, content="4")
+  let rc4b = script(
+    [],
+    fn() { 0UL },
+    () => b"",
+    noop_write,
+    channel=script_retval_channel(0),
+  )
+  inspect(rc4b, content="4")
+}
+
+///|
+test "script_shebang_剥行后送管线" {
+  // shebang 剥行发生在「送编译之前」——compile_params 桩捕获 src 断言
+  // 首行为空格行（非 #!）；run 态同源码不剥（cli_run 直调对照锚）
+  let captured : Array[String] = []
+  let chan : EngineChannel = {
+    invoke: fn(line : String) -> String {
+      if line.contains("\"method\":\"compile\"") {
+        "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[],\"preprocessor_trace\":[]}}"
+      } else if line.contains("\"method\":\"run\"") {
+        "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"waiting_input\":false,\"steps_executed\":1}}"
+      } else {
+        "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}"
+      }
+    },
+    invoke_parsed: fn(_line : String) -> Json? {
+      Some(
+        @util.json_parse(
+          "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[],\"preprocessor_trace\":[]}}",
+        ) catch {
+          _ => Json::number(0)
+        },
+      )
+    },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(_file : String, src : String) -> String {
+      captured.push(src)
+      "{\"source\":\"\",\"filename\":\"-\"}"
+    },
+  }
+  ignore(
+    script(
+      ["-"],
+      fn() { 0UL },
+      () => b"#!/usr/bin/env vitro script\nint main(){return 0;}",
+      noop_write,
+      channel=chan,
+    ),
+  )
+  inspect(captured.length(), content="1")
+  let src = captured[0]
+  let lines = src.split("\n").to_array()
+  inspect(lines.length(), content="2") // 行数不变（行号零偏移前提）
+  inspect(lines[0].contains("#"), content="false") // 首行已剥
+  inspect(lines[1], content="int main(){return 0;}") // 第二行起原样
+}
+
+///|
 /// B3 批 M35 A1 红→绿锚（2026-11-02）：api 子命令旗标 fail loud——修前解析
 /// 循环无未知旗标分支：前置形态 `api --xyz ping` 旗标静默吞、正常执行 rc=0
 ///（病 87 形态——用户以为旗标生效，零信号最危险）；尾随形态 `api ping --bogus`

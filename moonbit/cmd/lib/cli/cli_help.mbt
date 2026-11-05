@@ -23,6 +23,9 @@ pub fn usage_text() -> String {
     "  api <method> [params-json] | api --batch < frames.ndjson  万能单帧 + 批式多帧（状态跨帧保留——seek/breakpoints/input.feed 序列可脚本化；响应 NDJSON 直出；任一帧 ok:false → rc=1；api help <method> 看参数详情）\n",
   )
   b.write_string(
+    "  script <file.c | -> [argv...]                             C 脚本直跑（WASI 期 0 骨架）：文件名后参数全透传 C argv（python 惯例）；`#!` 首行剥离（行号零偏移）；退出码 = C 返回值 & 0xFF（框架错 1/2/3/4 同 run，区分走标记行）\n",
+  )
+  b.write_string(
     "  help                                                      本帮助",
   )
   b.to_string()

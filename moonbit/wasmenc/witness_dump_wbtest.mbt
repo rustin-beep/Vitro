@@ -1,0 +1,124 @@
+///|
+/// **批 1b wabt 证人 dump**（批 1c wabt CI 闸的消费口——stdout 行前缀
+/// DUMP1B 由 D:/tmp/rehost-probe/src/wasmenc_spec_verify_1b.mjs 消费；零孪生：
+/// 证「仓内发射字节 = 合法 wasm」的模块字节全部来自本包单源发射器。产物供
+/// rehost-probe 的 wasmenc_spec_verify_1b.mjs 消费）：打印 63 条 B/C
+/// 模板的发射字节 hex + 垫栈/终态类型（.mjs 据此拼最小模块过
+/// wasm-validate——「仓内发射字节 = 合法 wasm」的外部证人，零孪生）。
+test "witness_dump_templates_b1b" {
+  let ctx : EmitCtx = {
+    f64_constants: [1.5, -0.25],
+    i64_constants: [42L, -1L],
+    argc: 3,
+    argv_addr: 0x4000,
+    fallthrough_pc: 77,
+    host_argv_ptr: 0x5000,
+    symbol_sizes: [4, 10],
+  }
+  // (op, operand, push 垫栈型序（底→顶）, 终态残留深（drop 数）)
+  let rows : Array[(@opcode.OpCode, Int32, String, Int32)] = [
+    // B 类 50
+    (LoadLocal, 8, "", 1),
+    (StoreLocal, 8, "i", 0),
+    (LoadLocalD, 8, "", 1),
+    (StoreLocalD, 8, "d", 0),
+    (LoadLocalQ, 8, "", 1),
+    (StoreLocalQ, 8, "I", 0),
+    (LoadGlobal, 8, "", 1),
+    (StoreGlobal, 8, "i", 0),
+    (LoadGlobalD, 0, "", 1),
+    (StoreGlobalD, 0, "d", 0),
+    (LoadGlobalQ, 16, "", 1),
+    (StoreGlobalQ, 16, "I", 0),
+    (StoreGlobalByte, 0, "i", 0),
+    (LoadGlobalByte, 0, "", 1),
+    (LoadGlobalUByte, 0, "", 1),
+    (GetFrameBase, 0, "", 1),
+    (Dup, 0, "i", 2),
+    (Swap, 0, "ii", 2),
+    (LoadMem, 0, "i", 1),
+    (StoreMem, 0, "ii", 0),
+    (LoadMemByte, 0, "i", 1),
+    (StoreMemByte, 0, "ii", 0),
+    (LoadMemUByte, 0, "i", 1),
+    (LoadMemD, 0, "i", 1),
+    (StoreMemD, 0, "id", 0),
+    (LoadMemQ, 0, "i", 1),
+    (StoreMemQ, 0, "iI", 0),
+    (SplitD, 0, "d", 2),
+    (SplitQ, 0, "I", 2),
+    (StackAlloc, 0, "i", 1),
+    (Memcpy, 0, "iii", 1),
+    (Memset, 0, "iIi", 1),
+    (Add, 0, "ii", 1),
+    (Sub, 0, "ii", 1),
+    (Mul, 0, "ii", 1),
+    (Neg, 0, "i", 1),
+    (NegQ, 0, "I", 1),
+    (UNeg, 0, "i", 1),
+    (UNegQ, 0, "I", 1),
+    (Shl, 0, "ii", 1),
+    (Shr, 0, "ii", 1),
+    (LShr, 0, "ii", 1),
+    (ShlQ, 0, "II", 1),
+    (ShrQ, 0, "II", 1),
+    (LShrQ, 0, "II", 1),
+    (PushConstD, 0, "", 1),
+    (PushConstQ, 1, "", 1),
+    (StepEvent, 0, "", 0),
+    (TrapBounds, 0, "i", 1),
+    (TruncUByte, 0, "i", 1),
+    // C 类 13
+    (Jump, 99, "", 0),
+    (JumpIfZero, 42, "i", 0),
+    (JumpIfNotZero, 42, "i", 0),
+    (Call, 5, "", 0),
+    (CallPtr, 5, "i", 0),
+    (CallVar, 5, "i", 0),
+    (CallHost, 1007, "", 1),
+    (Ret, 0, "I", 0),
+    (RetVoid, 0, "", 0),
+    (BitNot, 0, "i", 1),
+    (BitNotQ, 0, "I", 1),
+    (PushArgc, 0, "", 1),
+    (PushArgv, 0, "", 1),
+  ]
+  for row in rows {
+    let (op, operand, pushes, drops) = row
+    match emit_group_bytes(op, operand, ctx) {
+      Ok(bytes) => {
+        let hex = bytes_to_hex(bytes)
+        println("DUMP1B \{op.name()} \{operand} \{pushes} \{drops} \{hex}")
+      }
+      Err(_) => println("DUMP1B \{op.name()} EMIT_FAIL")
+    }
+  }
+}
+
+///|
+/// 字节数组 → 两位十六进制串（dump 证人消费）。
+fn bytes_to_hex(bytes : Array[Byte]) -> String {
+  fn digit(x : UInt32) -> String {
+    if x < 10U {
+      x.to_string()
+    } else if x == 10U {
+      "a"
+    } else if x == 11U {
+      "b"
+    } else if x == 12U {
+      "c"
+    } else if x == 13U {
+      "d"
+    } else if x == 14U {
+      "e"
+    } else {
+      "f"
+    }
+  }
+  let mut hex = ""
+  for b in bytes {
+    let v = b.to_uint() & 0xFFU
+    hex = hex + digit(v / 16U) + digit(v % 16U)
+  }
+  hex
+}

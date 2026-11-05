@@ -128,6 +128,28 @@ test "wasm_opcode_spec_anchor" {
     (WI32TruncSatF32S, [0xFC, 0x00]),
     (WI32TruncSatF64S, [0xFC, 0x02]),
     (WI64TruncSatF64S, [0xFC, 0x06]),
+    // ── 批 1b 扩面：访存族（opcode + 自然对齐 uleb + 静态 offset=0）──
+    (WI32Load, [0x28, 0x02, 0x00]),
+    (WI64Load, [0x29, 0x03, 0x00]),
+    (WF32Load, [0x2A, 0x02, 0x00]),
+    (WF64Load, [0x2B, 0x03, 0x00]),
+    (WI32Load8S, [0x2C, 0x00, 0x00]),
+    (WI32Load8U, [0x2D, 0x00, 0x00]),
+    (WI32Store, [0x36, 0x02, 0x00]),
+    (WI64Store, [0x37, 0x03, 0x00]),
+    (WF32Store, [0x38, 0x02, 0x00]),
+    (WF64Store, [0x39, 0x03, 0x00]),
+    (WI32Store8, [0x3A, 0x00, 0x00]),
+    // i64 移位（0x86-0x88）+ reinterpret（0xBD）
+    (WI64Shl, [0x86]),
+    (WI64ShrS, [0x87]),
+    (WI64ShrU, [0x88]),
+    (WI64ReinterpretF64, [0xBD]),
+    // bulk-memory（0xFC + 子码 0x0A/0x0B + 两 memidx 0x00）
+    (WMemoryCopy, [0xFC, 0x0A, 0x00, 0x00]),
+    (WMemoryFill, [0xFC, 0x0B, 0x00, 0x00]),
+    // call（0x10 + uleb——import 0 = env.vitro_host_call 约定）
+    (WCall(0), [0x10, 0x00]),
   ]
   for pair in cases {
     let got = winstr_encode(pair.0)
@@ -156,8 +178,9 @@ test "wasm_opcode_spec_anchor" {
 }
 
 ///|
-/// 表不变量：四态计数 = 84/49/13/7（对账账目机检锚——漂移即红）+
-/// `state is Exact ⇔ pat is Some`（发射/折叠共享表的完备性）+ 153 闭合。
+/// 表不变量：四态计数 = 83/50/13/7（对账账目机检锚——漂移即红）+
+/// `state ≠ Reserved ⇔ pat is Some`（批 1b 版：A/B/C 全带模板——发射/
+/// 折叠共享表的完备性；Reserved 零模板）+ 153 闭合。
 test "template_table_invariants" {
   let mut exact_n = 0
   let mut composed_n = 0
@@ -180,17 +203,35 @@ test "template_table_invariants" {
                 )
             }
           }
-          Composed => composed_n = composed_n + 1
-          Ambiguous => ambiguous_n = ambiguous_n + 1
-          Reserved => reserved_n = reserved_n + 1
-        }
-        if s.state is Composed || s.state is Ambiguous || s.state is Reserved {
-          match s.pat {
-            Some(_) =>
-              fail(
-                "\{op.name()} 非 Exact 态却带 pat——批 1a 面外模板泄漏",
-              )
-            None => ()
+          Composed => {
+            composed_n = composed_n + 1
+            match s.pat {
+              Some(_) => ()
+              None =>
+                fail(
+                  "\{op.name()} 标 Composed 但 pat=None——批 1b 起组合模板必须入表",
+                )
+            }
+          }
+          Ambiguous => {
+            ambiguous_n = ambiguous_n + 1
+            match s.pat {
+              Some(_) => () // C 类模板仅供组表引导裁决（盲折叠表不含）
+              None =>
+                fail(
+                  "\{op.name()} 标 Ambiguous 但 pat=None——侧车裁决路径无模板可裁",
+                )
+            }
+          }
+          Reserved => {
+            reserved_n = reserved_n + 1
+            match s.pat {
+              Some(_) =>
+                fail(
+                  "\{op.name()} Reserved 却带 pat——零发射保留破约",
+                )
+              None => ()
+            }
           }
         }
       }
@@ -221,12 +262,119 @@ test "template_table_invariants" {
 }
 
 ///|
-/// **J9（改坏模板必红）**：两路检出实证——1a 表单源形态下改坏表必然同时
+/// **盲折叠表形状唯一性**（批 1b 新增）：Exact+Composed 匹配表内不允
+/// 许两个模板在任意位置同时最长匹配（同形双模板 = 永久歧义 = 表设计
+/// 缺陷——运行期 TableShapeConflict 的静态前置防线）。构造法：对每对
+/// 模板，用「形状并集」样本流逐一验证无同长双匹配（发射互射样本 + 交
+/// 错拼接）。
+test "blind_table_shape_uniqueness" {
+  let ctx : EmitCtx = {
+    f64_constants: [1.5, -0.25],
+    i64_constants: [42L, -1L],
+    argc: 3,
+    argv_addr: 0x4000,
+    fallthrough_pc: 77,
+    host_argv_ptr: 0x5000,
+    symbol_sizes: [4, 10],
+  }
+  // 收集 Exact+Composed 全部条目并发射样本字节（operand 样本覆盖还原槽
+  // 值域 0/8/255/-1——贪心最长在真实样本流上验证零冲突）
+  let samples : Array[Array[Byte]] = []
+  let sample_names : Array[String] = []
+  for code = 0; code <= 255; code = code + 1 {
+    match @opcode.OpCode::from_u8(code) {
+      Some(op) => {
+        let s = template_spec(op)
+        if s.state is Exact || s.state is Composed {
+          let operands : Array[Int32] = if op is TrapBounds {
+            [0, -3]
+          } else {
+            [0, 8, 255, -1]
+          }
+          for operand in operands {
+            match emit_group_bytes(op, operand, ctx) {
+              Ok(bytes) => {
+                samples.push(bytes)
+                sample_names.push("\{op.name()}(\{operand})")
+              }
+              // 池/表越界 operand 合法拒载（样本域内不该发生——除池索引
+              // 255 越界：PushConstD/Q 的 255 池外 → BadOperand 合法）
+              Err(NotImplemented(_)) =>
+                fail("\{op.name()} 模板态不应 NotImplemented")
+              Err(BadOperand(_)) => ()
+            }
+          }
+        }
+      }
+      None => ()
+    }
+  }
+  // 单模板折叠：每样本自折叠零冲突（往返性黑盒已全量锁——此处静态
+  // 防线的自样本面）
+  for i = 0; i < samples.length(); i = i + 1 {
+    match fold_bytes(samples[i], ctx) {
+      Ok(_) => ()
+      Err(TableShapeConflict(_, a, b)) =>
+        fail(
+          "形状冲突（自样本 \{sample_names[i]}）：\{a.name()} vs \{b.name()}",
+        )
+      Err(e) => fail("\{sample_names[i]} 自折叠失败")
+    }
+  }
+  // 拼接双样本面（跨边界贪心最长不产生同长双匹配）：Composed 全量
+  //（operand=0 样本）× {Composed 全量 + A 类代表}——O(50×58) 受控
+  let pair_samples : Array[Array[Byte]] = []
+  let pair_names : Array[String] = []
+  for code = 0; code <= 255; code = code + 1 {
+    match @opcode.OpCode::from_u8(code) {
+      Some(op) => {
+        let s = template_spec(op)
+        let is_rep = match op {
+          PushConst | PushConstF | UAdd | BitXor => s.state is Exact
+          _ => false
+        }
+        if s.state is Composed || is_rep {
+          match emit_group_bytes(op, 0, ctx) {
+            Ok(bytes) => {
+              pair_samples.push(bytes)
+              pair_names.push("\{op.name()}")
+            }
+            Err(_) => ()
+          }
+        }
+      }
+      None => ()
+    }
+  }
+  for i = 0; i < pair_samples.length(); i = i + 1 {
+    for j = 0; j < pair_samples.length(); j = j + 1 {
+      let joined : Array[Byte] = []
+      for b in pair_samples[i] {
+        joined.push(b)
+      }
+      for b in pair_samples[j] {
+        joined.push(b)
+      }
+      match fold_bytes(joined, ctx) {
+        Ok(_) => () // 贪心确定性解释成功（组数可能 ≠2——跨组重叠规范化）
+        Err(TableShapeConflict(_, a, b)) =>
+          fail(
+            "形状冲突（\{pair_names[i]} + \{pair_names[j]}）：\{a.name()} vs \{b.name()}——盲折叠表存在同形模板",
+          )
+        Err(_) => () // 拼接边界不可解释（贪心切分失配）——非表缺陷形态
+      }
+    }
+  }
+}
+
+///|
+/// **J9（改坏模板必红）**：两路检出实证——表单源形态下改坏表必然同时
 /// 影响发射与折叠（往返自洽），故防线落在①组表核对（发射产物被折叠出
 /// 不同 op → GroupMismatch 红）与②soft-stack 语义对拍（发射字节执行 ≠
 /// Vitro 参照语义 → 位不一致红）。本用例以「注入错字节」模拟发射侧模板
 /// 被改坏的效果（等价攻击面=产物字节），断言两道闸都红。
 test "j9_tampered_template_detected" {
+  let ctx = EmitCtx::empty()
   // ① 组表核对闸：组表声明 UAdd（模板应发 i32.add 0x6A），注入错字节
   // i32.sub（0x6B——「发射模板被改坏」的效果形态）→ 折叠得 USub ≠ 组表
   let table = GroupTable::new()
@@ -241,7 +389,7 @@ test "j9_tampered_template_detected" {
     loc_file_id: 0,
   })
   let tampered : Array[Byte] = [(0x6B).to_byte()] // i32.sub 冒充 UAdd 产物
-  match verify_group_table(table, tampered) {
+  match verify_group_table(table, tampered, ctx) {
     Ok(_) => fail("J9 失守：错字节未检出——组表核对闸无效")
     Err(GroupMismatch(0, want_op, got_op, _, _)) => {
       // 预期红形态：组 0 处 UAdd（组表）vs USub（折叠产物）
@@ -273,6 +421,87 @@ test "j9_tampered_template_detected" {
         )
       }
     Err(_) => fail("样本不应 trap")
+  }
+}
+
+///|
+/// **J9③ 栈序错位（批 1b 新形态——wasm 验证器不拦类）**：StoreMem 的
+/// 取数序反转（[addr,value] 错发 [value,addr]）——验证器同型不查、字节
+/// 往返自洽；**soft-stack 执行语义闸独检**（错序写错格）+ 引导裁决模板
+/// 匹配层双检。
+test "j9_stack_order_kill" {
+  let ctx = EmitCtx::empty()
+  let good = match emit_group(StoreMem, 0, ctx) {
+    Ok(i) => i
+    Err(_) => fail("StoreMem 发射失败")
+  }
+  let n = good.length()
+  // 模板形状锚：正确取数序 [.., local.get $addr, local.get $val, i32.store]
+  assert_eq(
+    good[n - 3],
+    WLocalGet(L_A),
+    msg="倒数第三=取地址（addr 在下）",
+  )
+  assert_eq(
+    good[n - 2],
+    WLocalGet(L_V),
+    msg="倒数第二=取值（value 在顶）",
+  )
+  // 构造错序模板（两 get 参数互换——「发射器栈序被改坏」的攻击形态）
+  let swapped : Array[WInstr] = []
+  for i = 0; i < n; i = i + 1 {
+    if i == n - 3 {
+      swapped.push(good[n - 2])
+    } else if i == n - 2 {
+      swapped.push(good[n - 3])
+    } else {
+      swapped.push(good[i])
+    }
+  }
+  // 语义闸：同一初栈 [addr=0x3000, val=9(顶)]——正确序写 9 到 0x3000；
+  // 错序换位写往地址 9（mem[0x3000] 保持 7——值变即红的检出形态）
+  let run_case = fn(instrs : Array[WInstr]) -> Int32 raise {
+    let mem : Array[Byte] = Array::make(64 * 1024, (0x00).to_byte())
+    mem[0x3000] = 7
+    mem[0x3004] = 9
+    let m = mach_init([], mem, 0L)
+    match wasm_exec(instrs, [VI32(0x3000), VI32(9)], m) {
+      Ok(_) => m.mem[0x3000].to_int()
+      Err(_) => fail("样本不应 trap")
+    }
+  }
+  let good_val = run_case(good)
+  let bad_val = run_case(swapped)
+  if good_val == bad_val {
+    fail("J9③ 样本失效：错序模板执行值与正确序一致")
+  }
+  if good_val != 9 {
+    fail(
+      "正确序应写值 9 到 0x3000（得 \{good_val}）——模板栈序自检失败",
+    )
+  }
+  // 裁决闸：错序字节过不了组表引导裁决（模板匹配层检出）
+  let table = GroupTable::new()
+  table.groups.push({
+    gip: 0,
+    op: StoreMem,
+    operand: 0,
+    instr_offset: 0,
+    instr_len: n,
+    loc_line: 1,
+    loc_column: 1,
+    loc_file_id: 0,
+  })
+  let swapped_bytes = winstr_encode_all(swapped)
+  match verify_fold_with_table(table, swapped_bytes, ctx) {
+    Ok(_) => fail("J9③ 失守：错序字节通过引导裁决")
+    Err(TemplateMismatch(0, _, _)) => () // 红 ✓
+    Err(_) => fail("J9③ 裁决形态分叉")
+  }
+  // 对照组：正确序字节裁决绿
+  match verify_fold_with_table(table, winstr_encode_all(good), ctx) {
+    Ok(_) => ()
+    Err(e) => fail("正确序裁决应绿")
   }
 }
 

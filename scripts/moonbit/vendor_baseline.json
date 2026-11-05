@@ -1,25 +1,30 @@
 {
-  "_generated_by": "go run ./scripts/moonbit/vendor_drift --update-baseline",
-  "as_of": "2026-10-14",
+  "_generated_by": "手工基线刷新 2026-11-05（raw 域名本机不可达，经 GitHub contents API base64 逐字节还原，blackbox_test.mbt 锚校准与 raw 通道逐位一致；同款产物=--update-baseline）",
+  "as_of": "2026-11-05",
   "repo": "moonbitlang/x",
   "ref": "main",
-  "upstream_version": "0.5.5",
+  "upstream_version": "0.5.7",
   "version_note": "辅助口径仅报告不判红：2026-09-27 实证上游内容漂移而 version 未 bump（fs_native.mbt 的 unicode→core/utf8 迁移）——内容哈希是唯一主口径",
   "files": [
     {
       "path": "fs/fs.mbt",
-      "sha256": "0d0db364fad1cec2ddc23612662d752655468d9c6066b9aadaff54449b7c75c3",
+      "sha256": "ff1846215e7e70eb9f1abf38c82c1b6df03c60d80a81bbca9fc2bb7be0de5d0c",
       "vendored": "moonbit/fs/fs.mbt"
     },
     {
       "path": "fs/fs_native.mbt",
-      "sha256": "8569c5a7b2177b172ba2a8b64e21a941073bf59e3496523f1767dd1408269457",
+      "sha256": "b8b62d1656f57549cb17d7d068f4077133e6d085cbfc5a4e1c185fb909de9b73",
       "vendored": "moonbit/fs/fs_native.mbt"
     },
     {
       "path": "fs/fs_native.c",
-      "sha256": "f10144a5cbd2a4fa36fa4f058b1461b6788ec43b9e4fd9bb0be3015e3aa272b0",
-      "vendored": "moonbit/fs/fs_native.c"
+      "sha256": "a8be29840bf51e09c0cb8ab84d06f73e52bcbc63c5e843e2f745bfa2da16e1aa",
+      "vendored": "moonbit/fs/fs_native.c（上游 0.5.7+ 后仅剩 is_null/get_error_message——native IO 实现迁 file_native.c）"
+    },
+    {
+      "path": "fs/file_native.c",
+      "sha256": "317cc65089c3d1dd9d270ed32e764ca7694c8aba0280ef5756fa2a0ac592ab75",
+      "vendored": "（未同步——上游 0.5.7+ 新载体：native IO 实现自 fs_native.c 迁此；vitRO 暂留 0.5.5 形态，跟进批待排）"
     },
     {
       "path": "fs/blackbox_test.mbt",

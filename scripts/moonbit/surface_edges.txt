@@ -855,7 +855,6 @@ vitro/engine/wasmenc vitro/engine/opcode PushConstF
 vitro/engine/wasmenc vitro/engine/opcode PushConstQ
 vitro/engine/wasmenc vitro/engine/opcode Ret
 vitro/engine/wasmenc vitro/engine/opcode RetVoid
-vitro/engine/wasmenc vitro/engine/opcode Shl
 vitro/engine/wasmenc vitro/engine/opcode TruncByte
 vitro/engine/wasmenc vitro/engine/opcode UAdd
 vitro/engine/wasmenc vitro/engine/opcode UDiv
@@ -863,3 +862,15 @@ vitro/engine/wasmenc vitro/engine/opcode USub
 vitro/engine/wasmenc vitro/engine/source SourceLoc
 vitro/engine/wasmenc vitro/engine/util i64_to_i32_bits
 vitro/engine/wasmenc vitro/engine/util utf8_bytes
+vitro/engine/wasmenc vitro/engine/opcode BitAnd
+vitro/engine/wasmenc vitro/engine/opcode BitXorQ
+vitro/engine/wasmenc vitro/engine/opcode LoadLocal
+vitro/engine/wasmenc vitro/engine/opcode Or
+vitro/engine/wasmenc vitro/engine/opcode PushConstD
+vitro/engine/wasmenc vitro/engine/opcode StepEvent
+vitro/engine/wasmenc vitro/engine/opcode Strlen
+vitro/engine/wasmenc vitro/engine/opcode Throw
+vitro/engine/wasmenc vitro/engine/opcode TrapBoundsVla
+vitro/engine/wasmenc vitro/engine/opcode TruncUByte
+vitro/engine/wasmenc vitro/engine/opcode TryBegin
+vitro/engine/wasmenc vitro/engine/opcode TryEnd

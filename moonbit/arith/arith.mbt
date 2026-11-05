@@ -118,7 +118,19 @@ pub(all) enum IntUnOp {
 ///|
 /// C11 §6.3.1.1 整型提升：char 系 → I32（**unsigned 位消失**——int 装得下
 /// 其全值域，M08 A7.1/A7.3 的修复锚点）；int/long long 不动（保符号位）。
-pub fn integer_promote(kind : IntKind, is_unsigned : Bool) -> IntDomain {
+pub fn integer_promote(
+  kind : IntKind,
+  is_unsigned : Bool,
+) -> IntDomain where {
+  proof_ensure: result => promote_spec(kind, is_unsigned, result),
+  proof_ensure: result => {
+    match kind {
+      KChar => dom_is_i32(result) // A7 锚：char 系两性一律 I32
+      KInt => dom_w32(result) // 档位不升：int 系留 32 档
+      KLongLong => dom_w64(result)
+    }
+  },
+} {
   match kind {
     KChar => I32
     KInt => if is_unsigned { U32 } else { I32 }
@@ -132,7 +144,19 @@ pub fn integer_promote(kind : IntKind, is_unsigned : Bool) -> IntDomain {
 /// 同 rank 任一 unsigned 即无符号域；跨 rank 取高 rank 域
 ///（I64 全值域 ⊇ U32 → signed I64 胜出——M08 A1 的修复锚点；
 /// U64 ⊄ I64 → U64）。
-pub fn common_domain(l : IntDomain, r : IntDomain) -> IntDomain {
+pub fn common_domain(
+  l : IntDomain,
+  r : IntDomain,
+) -> IntDomain where {
+  proof_ensure: result => common_spec(l, r, result),
+  // 幂等：同域公共域即自身
+  proof_ensure: result => dom_same(l, r) → dom_same(result, l),
+  // U64 吸收：U64 ⊄ I64——任一侧 U64 则公共域必 U64
+  proof_ensure: result => dom_is_u64(l) || dom_is_u64(r) → dom_is_u64(result),
+  // A1 锚：i64 高档吞 32 档任一域，保 signed（-1LL/2u 公共类型真值锚）
+  proof_ensure: result => dom_is_i64(l) && dom_w32(r) → dom_is_i64(result),
+  proof_ensure: result => dom_is_i64(r) && dom_w32(l) → dom_is_i64(result),
+} {
   match (l, r) {
     // 同 rank（I32 档）
     (I32, I32) => I32

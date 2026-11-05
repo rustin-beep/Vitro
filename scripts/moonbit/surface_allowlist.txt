@@ -64,3 +64,10 @@ vitro/engine/vm load_libc_artifact
 #   本仓内无跨包 MoonBit 消费（scripts/wasm_gateway/host.mts 的版本失联锚走
 #   运行时导出比对非 import），保留 pub。同批 append_leak_report 收 priv（纯同包消费）。
 vitro/engine/gateway ENGINE_VERSION
+
+# PROVE-arith 批（2026-11-04，处置批 2026-11-05 收窄）：镜像证明包的 floor_div_pos
+#   引理——包内（m_shr_i32/u32/i64 消费）但无跨包消费者，保留 pub 供逐臂矩阵对拍
+#   与后续证明面复用；其余四件（wrap32u/wrap32s/two_pow/m_shift_guard）已由
+#   mirror_wbtest.mbt/parity_test.mbt 测试消费，白名单条目随批清理。包外引擎代码
+#   零消费，MoonBit 语义面不扩张（.mbti 无消费方）。
+vitro/engine/proofs/arith_mirror floor_div_pos

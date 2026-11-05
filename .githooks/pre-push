@@ -15,4 +15,79 @@ elif ! (cd moonbit && moon check >/dev/null 2>&1); then
   echo "moon check 红——本地 cd moonbit && moon check 看明细（--no-verify 可跳过）" >&2
   exit 1
 fi
-exit 0
+
+# PROVE-arith 证明门（2026-11-04 批；PR #480 审阅处置批 2026-11-05 三修）。
+# 两段式：默认档（深扫 2s）全绿即过（实测 ~1.8s）；红时自备 60s conf 甄别
+# 复跑（「慢而可证」vs「真红」）。conf 从 moon prove 刚生成的 _build/verif/
+# why3.conf 现场复制改 strategy 深扫行（单源=本钩子；绝对路径每次重新
+# detect，换机/换 z3 无 stale 面）。
+# 审阅三修：①分桶——「基础设施红」（prover detect 失败 / why3 harness
+#   不可用）非阻断明示（否则「装了 z3 却 detect 不上」反而比「没装 z3」
+#   更难推——PR #480 审阅 P1-2 实锤形态）；②sed 改写后 grep 命中校验
+#   （上游改 strategy 行格式时明示「conf 改写失败」而非 60s 档假红——
+#   P3-8）；③prove_pkgs 从 moon.pkg 扫 proof_enabled 动态派生（新增证明
+#   包自动入闸，对齐 AGENTS §8.5 存在即接入精神——P3-9）。
+# z3 缺失 = fail-open 明示跳过（证明门是本地防线，CI 硬门等一个月观察期
+# 后再议——moon_prove 报告 §6.3）。
+if ! command -v z3 >/dev/null 2>&1; then
+  echo "skip moon prove（z3 不可用——证明面未检查）" >&2
+  exit 0
+fi
+# P3-9：动态派生——moonbit 下所有 proof_enabled 包（排除 _build 构建镜像——
+# moon fmt 会把 moon.pkg 复制进 _build/wasm-gc/release/format；Windows
+# grep 输出反斜杠路径须归一为正斜杠）。空清单（尚无证明包）自然跳过。
+prove_pkgs=()
+while IFS= read -r pkgfile; do
+  [ -n "$pkgfile" ] || continue
+  pkgfile="${pkgfile//\\//}"           # 反斜杠 → 正斜杠
+  pkgfile="${pkgfile#moonbit/}"        # 去 moonbit/ 前缀
+  pkgfile="${pkgfile%/moon.pkg}"       # 去 /moon.pkg 尾
+  [ -n "$pkgfile" ] && prove_pkgs+=("$pkgfile")
+done < <(grep -rl --exclude-dir=_build --include=moon.pkg 'proof_enabled' moonbit/ 2>/dev/null)
+if [ "${#prove_pkgs[@]}" -eq 0 ]; then
+  echo "skip moon prove（无 proof_enabled 包）" >&2
+  exit 0
+fi
+
+# 基础设施红判据：moon prove 输出含 prover 不可用/harness 异常形态
+# （why3 detect 失败等——PR #480 审阅 P1-2 的「no configured provers」族）
+prove_infra_red=0
+prove_goal_red=0
+for p in "${prove_pkgs[@]}"; do
+  pout="$(cd moonbit && moon prove "$p" 2>&1)" || {
+    if printf '%s' "$pout" | grep -qiE 'no configured provers|no prover available|provers are available'; then
+      echo "moon prove $p 基础设施红（why3 prover detect 失败——非 goal 红，不阻断；排查 z3 版本可被 why3 detect / PATH 形态）" >&2
+      prove_infra_red=1
+    else
+      prove_goal_red=1
+    fi
+  }
+done
+if [ "$prove_goal_red" -eq 0 ] && [ "$prove_infra_red" -eq 0 ]; then
+  exit 0 # 默认档全绿
+fi
+if [ "$prove_goal_red" -ne 0 ]; then
+  echo "moon prove 默认档（2s）有 goal 红——60s 档甄别复跑…" >&2
+  if ! (cd moonbit && sed 's/^c Z3,\([^ ]*\) 2 4000$/c Z3,\1 60 4000/' \
+    _build/verif/why3.conf > _build/verif/why3-60s.conf) 2>/dev/null \
+    || ! grep -q ' 60 4000' moonbit/_build/verif/why3-60s.conf 2>/dev/null; then
+    # P3-8：sed 无命中 = conf 改写失败（上游 strategy 行格式漂移）——明示
+    # 并按基础设施红处理（非 goal 假红），不冒充 60s 档复跑结论。
+    echo "why3-60s.conf 改写失败（strategy 深扫行形态漂移？）——60s 甄别不可用，默认档 goal 红未经甄别，本钩子不据此阻断（--no-verify 语义同）" >&2
+    exit 0
+  fi
+  prove_goal_red=0
+  for p in "${prove_pkgs[@]}"; do
+    pout="$(cd moonbit && moon prove "$p" --why3-config _build/verif/why3-60s.conf 2>&1)" || {
+      if printf '%s' "$pout" | grep -qiE 'no configured provers|no prover available|provers are available'; then
+        echo "moon prove $p 基础设施红（60s 档 prover detect 失败——非 goal 红，不阻断）" >&2
+        prove_infra_red=1
+      else
+        echo "moon prove $p 红（60s 档复跑仍红）——本地 cd moonbit && moon prove $p 看明细（--no-verify 可跳过）" >&2
+        prove_goal_red=1
+      fi
+    }
+  done
+  [ "$prove_goal_red" -eq 0 ] && echo "moon prove 60s 档全绿（默认档红系慢 goal，非缺陷）" >&2
+fi
+exit "$prove_goal_red"

@@ -10,6 +10,14 @@
 /// 产物名 `<name>.l1.tsv` / `<name>.l2.tsv`（stem **去扩展名**——两段式
 /// basename_no_ext，裸名与带目录同果；与 ast/typeck/compile 三家「stem 含
 /// .c」的 F11 口径不同，系本工具既定契约，B3 批 basename 正名面不含此处）。
+///
+/// **api 面单源验证缺口（#445 C5，SWEEP1 批 2026-11-05 登记，裁定不做
+/// gateway 方法）**：`api dump-tokens` / `tokens.dump` / `lex.dump` 均未知
+/// 方法——L1/L2 TSV 仓内无第二通道可对拍（单源验证只剩 @lexer 包内测试）。
+/// 裁定不补 gateway 方法（「四 dump 都有 api 对拍面」不对齐）：tokens TSV
+/// 是差分驱动内部格式（Go 消费、列序随驱动契约走），非下游面——进 gateway
+/// 方法表反而把内部格式升格成协议承诺面（api_help 再生 + 方法数五处连坐
+/// 的维护成本无收益背书）。
 extern "C" fn c_exit(code : Int32) -> Unit = "exit"
 
 ///|
@@ -59,14 +67,20 @@ fn main raise {
         files.push("\{target}/\{name}")
       }
     }
-    // 确定性顺序。注：内置 String sort 非字典序（陷阱 #29），与 dump_compile
-    // 的 sort_files_lex 口径不一——行为债登记 R1b W1-3 待修（本批只改注释）
-    files.sort()
+    // 字典序排序（#445 B2，SWEEP1 批 2026-11-05：R1b W1-3 行为债清偿——
+    // 三家连坐迁 dump_compile 的 sort_files_lex 口径；内置 String sort 是
+    // 长度优先序〔陷阱 #29，ASCII 域亦分叉——探针 corpus 1176 文件名逐位
+    // 全异〕，旧注释「与 Rust 侧 sort 对齐」失实已删）
+    sort_files_lex(files)
   } else {
     files.push(target)
   }
   for path in files {
-    let src = @fs.read_file_to_string(path)
+    // #445 C1（SWEEP1 批，2026-11-05）：输入不可读 fail loud——一行原因 +
+    // rc=4（与用法错同档；#230 治理收尾：旧走未捕获 raise 的 PanicError 栈
+    // + rc=127，对脚本与 IDE 都是噪声）。目录模式此面不可达（文件名来自
+    // read_dir 快照、collect_files 侧已 catch），单文件模式 typo 路径直达
+    let src = read_source_or_exit(path)
     let stem = basename_no_ext(path)
     if want_raw {
       let r = @lexer.tokenize_raw(src)
@@ -184,6 +198,56 @@ fn basename_no_ext(path : String) -> String {
   match dot {
     Some(d) if d > 0 => name[0:d].to_owned()
     _ => name
+  }
+}
+
+///|
+/// IOError 的一行文本（#445 C1：输入不可读原因行——suberror IOError(String)
+/// 单字段形态）。四 dump 同形复制件——cmd 层互不可 import。
+fn io_error_text(e : @fs.IOError) -> String {
+  let IOError(msg) = e
+  msg
+}
+
+///|
+/// 输入不可读的退出决策文案（#445 C1，纯函数——wbtest 锚打此面）：一行
+/// 原因 + rc=4 与用法错同档；#230 治理收尾（旧走未捕获 raise 的
+/// PanicError 栈 + rc=127，对脚本与 IDE 都是噪声——native 侧子进程锚在
+/// scripts/vitro_cli_smoke D 组）。目录模式此面不可达（文件名来自
+/// read_dir 快照、collect_files 侧已 catch），单文件模式 typo 路径直达。
+fn unreadable_reason(path : String, e : @fs.IOError) -> String {
+  "输入不可读：\{path}（\{io_error_text(e)}）"
+}
+
+///|
+/// 主循环输入源读取（#445 C1 fail loud 收口）。
+fn read_source_or_exit(path : String) -> String {
+  @fs.read_file_to_string(path) catch {
+    e => {
+      println(unreadable_reason(path, e))
+      c_exit(4)
+      ""
+    }
+  }
+}
+
+///|
+/// 字典序排序（内置 String sort 是**长度优先序**——陷阱 #29；SWEEP1
+/// #445 B2 探针实锤：ASCII 域亦分叉〔corpus 1176 文件名内置序 vs 字典序
+/// 逐位全异，定向样本 `b.c < aa.c`——长度优先铁证〕，非「非 ASCII 域才
+/// 需裁定」）。与 codegen_diff 的 Go sort.Strings 对齐（报告序稳定）；
+/// 四 dump 同形复制件——cmd 层互不可 import。
+fn sort_files_lex(files : Array[String]) -> Unit {
+  let mut i = 1
+  while i < files.length() {
+    let k = files[i]
+    let mut j = i - 1
+    while j >= 0 && @util.str_cmp(files[j], k) > 0 {
+      files[j + 1] = files[j]
+      j -= 1
+    }
+    files[j + 1] = k
+    i += 1
   }
 }
 

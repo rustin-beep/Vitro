@@ -48,11 +48,13 @@ vitro/engine/cmd/dump_ast moonbitlang/core/env args
 vitro/engine/cmd/dump_ast vitro/engine/ast ast_dump_json
 vitro/engine/cmd/dump_ast vitro/engine/ast json_escape_string
 vitro/engine/cmd/dump_ast vitro/engine/fs create_dir
+vitro/engine/cmd/dump_ast vitro/engine/fs IOError
 vitro/engine/cmd/dump_ast vitro/engine/fs is_dir
 vitro/engine/cmd/dump_ast vitro/engine/fs path_exists
 vitro/engine/cmd/dump_ast vitro/engine/fs read_dir
 vitro/engine/cmd/dump_ast vitro/engine/fs read_file_to_string
 vitro/engine/cmd/dump_ast vitro/engine/fs write_string_to_file
+vitro/engine/cmd/dump_ast vitro/engine/util str_cmp
 vitro/engine/cmd/dump_ast vitro/engine/lexer LexResult
 vitro/engine/cmd/dump_ast vitro/engine/lexer tokenize_with_vfs
 vitro/engine/cmd/dump_ast vitro/engine/parser parse
@@ -65,6 +67,7 @@ vitro/engine/cmd/dump_compile vitro/engine/codegen SLOT_STRATEGY_VERSION
 vitro/engine/cmd/dump_compile vitro/engine/codegen compile
 vitro/engine/cmd/dump_compile vitro/engine/codegen compile_library
 vitro/engine/cmd/dump_compile vitro/engine/fs create_dir
+vitro/engine/cmd/dump_compile vitro/engine/fs IOError
 vitro/engine/cmd/dump_compile vitro/engine/fs is_dir
 vitro/engine/cmd/dump_compile vitro/engine/fs path_exists
 vitro/engine/cmd/dump_compile vitro/engine/fs read_dir
@@ -78,11 +81,13 @@ vitro/engine/cmd/dump_compile vitro/engine/typeck TypeChecker
 vitro/engine/cmd/dump_compile vitro/engine/util str_cmp
 vitro/engine/cmd/dump_tokens moonbitlang/core/env args
 vitro/engine/cmd/dump_tokens vitro/engine/fs create_dir
+vitro/engine/cmd/dump_tokens vitro/engine/fs IOError
 vitro/engine/cmd/dump_tokens vitro/engine/fs is_dir
 vitro/engine/cmd/dump_tokens vitro/engine/fs path_exists
 vitro/engine/cmd/dump_tokens vitro/engine/fs read_dir
 vitro/engine/cmd/dump_tokens vitro/engine/fs read_file_to_string
 vitro/engine/cmd/dump_tokens vitro/engine/fs write_string_to_file
+vitro/engine/cmd/dump_tokens vitro/engine/util str_cmp
 vitro/engine/cmd/dump_tokens vitro/engine/lexer dump_lex_tsv
 vitro/engine/cmd/dump_tokens vitro/engine/lexer dump_raw_tsv
 vitro/engine/cmd/dump_tokens vitro/engine/lexer tokenize_raw
@@ -91,11 +96,13 @@ vitro/engine/cmd/dump_typeck moonbitlang/core/env args
 vitro/engine/cmd/dump_typeck vitro/engine/ast ast_dump_json
 vitro/engine/cmd/dump_typeck vitro/engine/ast json_escape_string
 vitro/engine/cmd/dump_typeck vitro/engine/fs create_dir
+vitro/engine/cmd/dump_typeck vitro/engine/fs IOError
 vitro/engine/cmd/dump_typeck vitro/engine/fs is_dir
 vitro/engine/cmd/dump_typeck vitro/engine/fs path_exists
 vitro/engine/cmd/dump_typeck vitro/engine/fs read_dir
 vitro/engine/cmd/dump_typeck vitro/engine/fs read_file_to_string
 vitro/engine/cmd/dump_typeck vitro/engine/fs write_string_to_file
+vitro/engine/cmd/dump_typeck vitro/engine/util str_cmp
 vitro/engine/cmd/dump_typeck vitro/engine/lexer LexResult
 vitro/engine/cmd/dump_typeck vitro/engine/lexer tokenize_with_vfs
 vitro/engine/cmd/dump_typeck vitro/engine/parser parse
@@ -339,6 +346,7 @@ vitro/engine/host vitro/engine/teaching/assets trap_messages
 vitro/engine/host vitro/engine/util i64_to_i32_bits
 vitro/engine/host vitro/engine/util render_template
 vitro/engine/host vitro/engine/util utf8_len
+vitro/engine/host vitro/engine/util utf8_text_partial
 vitro/engine/lexer moonbitlang/core/encoding/utf8 encode
 vitro/engine/lexer vitro/engine/diag ErrorCode
 vitro/engine/lexer vitro/engine/lexer/internal/host StubsProvider

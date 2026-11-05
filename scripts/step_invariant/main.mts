@@ -197,6 +197,17 @@ export class StreamChecker {
       this.push(lineNo, "ST1", `非对象行：${typeof row}`);
       return;
     }
+    // type:diag 包装帧（SWEEP1 #444，2026-11-05）：step --json 的 compile 失败 /
+    // run 协议错路径改 {"type":"diag","frame":{id,ok,result}} 包装（三子命令事件流
+    // 对称）——frame 即旧裸帧，terminal 语义同源（result.ok:false → compile-error，
+    // 后续 summary 检查走 compile-error 豁免——与旧裸帧行为等价）
+    if (row["type"] === "diag") {
+      const frame = row["frame"];
+      if (isObj(frame) && isObj(frame["result"]) && frame["result"]["ok"] === false) {
+        this.terminal = "compile-error";
+      }
+      return;
+    }
     // stdout / summary 收口行
     if (row["type"] === "stdout") {
       const frame = row["frame"];

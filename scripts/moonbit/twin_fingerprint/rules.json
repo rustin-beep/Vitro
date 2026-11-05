@@ -71,18 +71,7 @@
           "anchor_start": "fn main raise {"
         }
       ],
-      "divergences": [
-        {
-          "item": "sort:lexical",
-          "only_in": "dump_compile",
-          "reason": "known 缺口（R1a-F9）：三家用内置 files.sort()（陷阱 #29 非字典序；dump_tokens:47 注释写「与 Rust 侧 sort 对齐」与实现矛盾）。ASCII 文件名域等价、非 ASCII 才分叉，低危——统一 sort_files_lex 后删"
-        },
-        {
-          "item": "sort:builtin",
-          "only_in": "dump_compile",
-          "reason": "F9 镜像面（审阅 P1 缺项向新暴露，2026-11-02）：缺项视角下 dump_compile 是不一致方——三家内置 files.sort() 而它用字典序 sort_files_lex（后者才是陷阱 #29 正确口径）。与上条 sort:lexical 独有是同一分叉的两面；三家统一 sort_files_lex 后两条同删"
-        }
-      ]
+      "divergences": []
     }
   ]
 }

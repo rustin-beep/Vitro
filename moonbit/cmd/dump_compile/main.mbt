@@ -91,7 +91,11 @@ fn main raise {
     files.push(target)
   }
   for path in files {
-    let src = @fs.read_file_to_string(path)
+    // #445 C1（SWEEP1 批，2026-11-05）：输入不可读 fail loud——一行原因 +
+    // rc=4（与用法错同档；#230 治理收尾：旧走未捕获 raise 的 PanicError 栈
+    // + rc=127，对脚本与 IDE 都是噪声）。目录模式此面不可达（文件名来自
+    // read_dir 快照、collect_files 侧已 catch），单文件模式 typo 路径直达
+    let src = read_source_or_exit(path)
     let stem = basename_keep_ext(path)
     // BUG-C 修复（2026-10-05，S9 修复批批一后继）：目录模式补 base_dir——
     // VFS 键带目录前缀而解析走裸名，quote-include 恒 miss → include 族
@@ -257,6 +261,36 @@ fn dir_of(path : String) -> String {
     "."
   } else {
     path[0:last].to_owned()
+  }
+}
+
+///|
+/// IOError 的一行文本（#445 C1：输入不可读原因行——suberror IOError(String)
+/// 单字段形态）。四 dump 同形复制件——cmd 层互不可 import。
+fn io_error_text(e : @fs.IOError) -> String {
+  let IOError(msg) = e
+  msg
+}
+
+///|
+/// 输入不可读的退出决策文案（#445 C1，纯函数——wbtest 锚打此面）：一行
+/// 原因 + rc=4 与用法错同档；#230 治理收尾（旧走未捕获 raise 的
+/// PanicError 栈 + rc=127，对脚本与 IDE 都是噪声——native 侧子进程锚在
+/// scripts/vitro_cli_smoke D 组）。目录模式此面不可达（文件名来自
+/// read_dir 快照、collect_files 侧已 catch），单文件模式 typo 路径直达。
+fn unreadable_reason(path : String, e : @fs.IOError) -> String {
+  "输入不可读：\{path}（\{io_error_text(e)}）"
+}
+
+///|
+/// 主循环输入源读取（#445 C1 fail loud 收口）。
+fn read_source_or_exit(path : String) -> String {
+  @fs.read_file_to_string(path) catch {
+    e => {
+      println(unreadable_reason(path, e))
+      c_exit(4)
+      ""
+    }
   }
 }
 

@@ -26,6 +26,24 @@ fn jfield(v : Json, key : String) -> Json {
 }
 
 ///|
+/// step-limit trap 的结构化码位（SWEEP1 #443 C4，2026-11-05）——rc=3 判定
+/// 单源。发射点单源 = vm/exec_step.mbt 超限臂（code="E3091"，随 #443 立
+/// 码进 diag 码表 error_codes.json）；diag 码表名 E3091_StepLimit。修前
+/// 判定 = `steps_executed==ms_cap` 数值巧合（cap 达成即 step-limit 的引擎
+/// 预算语义遮蔽 + json 模式 contains 子串前缀误配面）——rc 锚
+/// sweep1_443_c4_run文本/json 两模式（含 divide-zero 撞 cap 步不误报）。
+const STEP_LIMIT_TRAP_CODE = "E3091"
+
+///|
+/// @util.json_parse 的 raise→Option 包装（SWEEP1 #443：后置 catch 值形态
+/// 要求分支与主体同型，混合 Option 走本包装——gateway invoke_parsed 的
+/// `catch { _ => return None }` 提前返回形态同源）。
+fn json_parse_opt(s : String) -> Json? {
+  let v = @util.json_parse(s) catch { _ => return None }
+  Some(v)
+}
+
+///|
 fn jstr(v : Json) -> String {
   match v {
     String(s) => s
@@ -253,18 +271,43 @@ fn frame_pipeline(
     out_line(write_stdout, "{\"type\":\"stderr\",\"frame\":\{err}}")
     let note = inv_raw("output.delta", "{\"cursor\":0,\"stream\":\"note\"}")
     out_line(write_stdout, "{\"type\":\"note\",\"frame\":\{note}}")
-    if run.contains("\"status\":\"trap\"") {
-      if run.contains("\"steps_executed\":\{ms_cap}") {
-        return 3
+    // SWEEP1 #443 C4：trap 判定走结构化 trap_code（一处字段比对替两处
+    // contains 子串/数值巧合）——帧文本已在上方直出，判定源与文本模式
+    // 同一常量；解析失败回 0（帧已透传，下游自判）
+    let run_tree : Json? = json_parse_opt(run)
+    match run_tree {
+      Some(f) => {
+        // PR #488 审阅 P3-1（SWEEP1 处置批）：run 帧外层 ok:false（协议错帧）
+        // 不再静默 rc=0——帧已在上方透传 stdout，fail loud 行走 stderr
+        //（#129 通道分立），rc=1 与 step 子命令同族（#443 D2）
+        if jfield(f, "ok") is False {
+          say("vitro run: run 帧协议错（详见上方 type:run 帧）")
+          return 1
+        }
+        let result = jfield(f, "result")
+        if jstr(jfield(result, "status")) == "trap" {
+          if jstr(jfield(result, "trap_code")) == STEP_LIMIT_TRAP_CODE {
+            return 3
+          }
+          return 2
+        }
+        return 0
       }
-      return 2
+      None => return 0
     }
-    return 0
   }
   // 文本模式：结构化消费
   let run_frame = inv_tree("run", run_req)
   let run_result = match run_frame {
-    Some(f) => jfield(f, "result")
+    Some(f) => {
+      // PR #488 审阅 P3-1（SWEEP1 处置批）：外层 ok:false fail loud（修前
+      // result 缺失 → status 空串 → 走 EXIT 0 静默吞）
+      if jfield(f, "ok") is False {
+        say("vitro run: run 帧协议错（协议破损形态）")
+        return 1
+      }
+      jfield(f, "result")
+    }
     None => {
       say(
         "// COMPILE-ERROR codegen run 帧解析失败（协议破损形态）",
@@ -338,10 +381,13 @@ fn frame_pipeline(
       None => ()
     }
   }
-  // trap / EXIT 行 + 退出码（与拆除前 vm 事实同源——帧字段等价投影）
+  // trap / EXIT 行 + 退出码（与拆除前 vm 事实同源——帧字段等价投影）。
+  // SWEEP1 #443 C4：rc=3 判定改 trap_code 码位（STEP_LIMIT_TRAP_CODE
+  // 单源常量）——修前 `steps_executed==ms_cap` 数值巧合被引擎预算语义
+  // 遮蔽（cap 达成即 step-limit），divide-zero 恰在 cap 步发生即误报
   if jstr(jfield(run_result, "status")) == "trap" {
     say("// TRAP \{jstr(jfield(run_result, "trap"))}")
-    if jint(jfield(run_result, "steps_executed")) == ms_cap {
+    if jstr(jfield(run_result, "trap_code")) == STEP_LIMIT_TRAP_CODE {
       return 3
     }
     return 2

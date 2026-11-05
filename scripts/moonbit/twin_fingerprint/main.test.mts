@@ -77,24 +77,25 @@ test("diffOf 缺项向（审阅 P1 回归锚）：四成员 2 有 2 无 → 缺�
   );
 });
 
-test("真实仓库：cast 两链指纹含 F1 相关臂；dump 四家现存差 2 条（F5 已随 PR #450 销案，余 F9 排序两面）", () => {
+test("真实仓库：cast 两链指纹含 F1 相关臂；dump 四家 diff 0（F5 随 PR #450、F9 随 SWEEP1 #445 B2 先后销案）", () => {
   const rd = loadRules();
   const fps = allFingerprints(rd);
   const cast = fps["cast_mbt"] ?? [];
   assert.equal(cast.length, 2);
   // 两份共有臂（孪生本体）：D←F 臂两侧都在
   for (const f of cast) assert.ok(f.items.some((it) => it.includes("T is TK_Double && S is TK_Float")), f.member);
-  // dump：F5 两门禁差异已随 PR #450（M36b 四家连坐 + P2-3 归一比较）销案——现存仅
-  // F9 排序分叉的两面（三家 builtin sort 独有 sort:builtin 项 / compile 独有 sort:lexical 项）
+  // dump：F5 两门禁差异随 PR #450（M36b 四家连坐 + P2-3 归一比较）销案；F9 排序
+  // 分叉随 SWEEP1 #445 B2 销案（探针实锤内置 sort 长度优先序 ASCII 域亦分叉——
+  // corpus 1176 文件名逐位全异，ast/typeck/tokens 三家连坐迁 sort_files_lex）——
+  // 四家指纹全一致、divergences 登记清空（登记残留即 verdict 红）
   const dumpFps = fps["dump_four"] ?? [];
   assert.equal(dumpFps.length, 4);
   const diffs = diffOf(rd.twin_sets[1]!, dumpFps);
-  assert.equal(diffs.length, 2);
-  assert.deepEqual(
-    diffs.map((x) => x.item).sort(),
-    ["sort:builtin", "sort:lexical"],
-  );
-  assert.ok(diffs.every((x) => x.only_in === "dump_compile"), "两条不一致方均为 dump_compile（F9 排序分叉——统一 sort_files_lex 后销案）");
+  assert.equal(diffs.length, 0, `dump 四家须零分叉（实测 ${JSON.stringify(diffs)}）`);
+  for (const f of dumpFps) {
+    assert.ok(f.items.includes("sort:lexical"), `${f.member} 四家均持 sort:lexical（F9 销案面）`);
+    assert.ok(!f.items.includes("sort:builtin"), `${f.member} 内置 sort 谓词须绝迹`);
+  }
   assert.equal(verdict(rd, fps), true);
 });
 
@@ -107,8 +108,10 @@ test("J9 红：单边加指纹项 / 删登记 / 加僵尸（内存注入）", ()
     assert.equal(verdict(rd, f2), false);
   }
   {
+    // SWEEP1 #445 B2 连坐：F9 销案后 dump_four 的 divergences 已空——「删登记」
+    // 注入无从删，翻新为「空表 push 假登记」（登记与实际指纹不符即红，语义同源）
     const rd2 = JSON.parse(JSON.stringify(rd)) as typeof rd;
-    rd2.twin_sets[1]!.divergences.pop();
+    rd2.twin_sets[1]!.divergences.push({ item: "zz", only_in: "dump_compile", reason: "僵尸探针" });
     assert.equal(verdict(rd2, fps), false);
   }
   {
@@ -134,7 +137,7 @@ test("子进程：-check rc=0 / --selftest rc=0 / --discover rc=0 / 未知参数
   assert.equal(run(["--wat"]), 2);
 });
 
-test("dumpGuardsFingerprint 谓词面：文件名长度检查不误命中 upper_bound；注释提及不命中 sort:lexical", () => {
+test("dumpGuardsFingerprint 谓词面：文件名长度检查不误命中 upper_bound；注释提及不误命中排序谓词", () => {
   // 回归锚①：谓词曾误把 `name.length() > 2`（.c 后缀判断）当参数上界门禁
   const rd = loadRules();
   const ast = dumpGuardsFingerprint(rd.twin_sets[1]!.members[1]!);
@@ -142,12 +145,15 @@ test("dumpGuardsFingerprint 谓词面：文件名长度检查不误命中 upper_
   // 仍须防文件名长度检查（name.length() > 2）误命中：谓词限 positional/args 前缀
   assert.ok(ast.items.includes("guard:upper_bound"), "dump_ast 有参数上界门禁（F5 已销案翻转）");
   assert.ok(ast.items.includes("guard:lower_bound") && ast.items.includes("rc:usage_4"));
-  // 回归锚②（2026-11-03 rebase 实锤）：A7' 批把 dump_tokens 注释改成提及 sort_files_lex
-  // （行为仍 files.sort()）——谓词须剥注释后匹配，否则假红
+  // 回归锚②（SWEEP1 #445 B2 翻新）：原场景「注释提及 sort_files_lex 而行为
+  // files.sort()」（A7' 批 2026-11-03 rebase 实锤）随 F9 销案消失——四家行为
+  // 本体现在就是 sort_files_lex。剥注释语义（2026-11-03 防假红）由谓词实现
+  // 「剥行注释后的函数体上匹配」承担；此处锁行为面：注释含 sort_files_lex
+  // 字样（新注释提及先例口径）而谓词命中来自行为本体（builtin 绝迹）
   const tokensSrc = fs.readFileSync(path.join(projectRoot(), "moonbit/cmd/dump_tokens/main.mbt"), "utf8");
   if (/\/\/.*sort_files_lex/.test(tokensSrc)) {
     const tokens = dumpGuardsFingerprint(rd.twin_sets[1]!.members[2]!);
-    assert.ok(!tokens.items.includes("sort:lexical"), "dump_tokens 注释提及 sort_files_lex 不得算字典序谓词命中");
-    assert.ok(tokens.items.includes("sort:builtin"));
+    assert.ok(tokens.items.includes("sort:lexical"), "dump_tokens 行为本体 sort_files_lex（F9 销案后注释与行为一致）");
+    assert.ok(!tokens.items.includes("sort:builtin"), "内置 sort 谓词须绝迹（F9 销案）");
   }
 });

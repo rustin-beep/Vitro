@@ -37,7 +37,11 @@ pub fn VitroVM::step(self : VitroVM) -> StepResult {
   // 刷了也不会被消费；非倍数形态比较基线不变（仍是最近一次刷新）。
   if self.step_count >= self.max_steps {
     let msg = self.format_infinite_loop_error()
-    self.trap(msg, 0, 0)
+    // SWEEP1 #443 C4（2026-11-05）：step-limit 立结构化码位 E3091（随
+    // #443 进 diag 码表 error_codes.json——名 E3091_StepLimit；3090 已
+    // 被 W3090_ConstIntOverflow 占用）——下游（cli run 的 rc=3 判定）改按
+    // trap_code 码位判定，替「cap 达成即 step-limit」的数值巧合遮蔽面
+    self.trap(msg, 0, 0, code="E3091")
     return Trap
   }
   // 每 SNAPSHOT_INTERVAL 步刷新变量快照（无限循环诊断的对比基线——

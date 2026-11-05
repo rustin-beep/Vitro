@@ -234,10 +234,17 @@ fn dispatch(
     }
     "session.create" => {
       // Rust create = Session::default()（runtime 域全清）——与 reset 的
-      // 「保留」语义分界：argv/输入模式在 create/destroy 时回默认
+      // 「保留」语义分界：argv/输入模式在 create/destroy 时回默认。
+      // #451（SWEEP1 批，2026-11-05）：stdin 残余（InputState 的
+      // lines/游标/eof）同属 runtime 域——vm.reset 纪律性不碰宿主注入
+      // 物（跨 run 存活语义），会话边界须在此显式清；修前同会话 feed
+      // 过一次（叠加 step.begin 的 InputState::new(lines) 游标回卷）后，
+      // 新会话 scanf 静默重读旧文本不再 waiting（教学面真缺陷，锚
+      // sweep1_451_session_create；reset 分界锚锁「保留」不扩面）
       reset_session_preserving_config(s)
       s.runtime_argv = []
       s.runtime_batch = false
+      s.vm.set_input(@host.InputState::new([], s.runtime_batch))
       let m : Map[String, Json] = Map([])
       m.set("created", Json::boolean(true))
       m.set("session", serve_session_semantics())
@@ -245,6 +252,8 @@ fn dispatch(
       (serve_ok(id, Json::object(m)).stringify(), false)
     }
     "session.reset" => {
+      // #451 分界：reset 保留 stdin 残余（耗尽游标 + step.begin 回卷可
+      // 重读）——锚 sweep1_451_session_reset 锁行为
       reset_session_preserving_config(s)
       let m : Map[String, Json] = Map([])
       m.set("reset", Json::boolean(true))
@@ -254,9 +263,11 @@ fn dispatch(
     }
     "session.destroy" => {
       // 同 create：Rust destroy = Session::default()——runtime 域全清
+      //（#451 连坐：stdin 残余同域同清）
       reset_session_preserving_config(s)
       s.runtime_argv = []
       s.runtime_batch = false
+      s.vm.set_input(@host.InputState::new([], s.runtime_batch))
       let m : Map[String, Json] = Map([])
       m.set("destroyed", Json::boolean(true))
       m.set("session", serve_session_semantics())

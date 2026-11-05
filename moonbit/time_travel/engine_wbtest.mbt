@@ -683,3 +683,172 @@ test "engine_seek_anchor_hit_window_full" {
   )
   assert_true(e.frames.length() >= 99, msg="窗口近满（≥99 帧）")
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// #430 锚族（B7 批，2026-11-04）：seek 族四形态——断点/暂停 = 会话配置非
+// 执行状态（M26 A1 P1）、越窗 seek 负数毁帧窗（M26 A3）、终态 seek 幽灵
+// 终帧（M31 A-2 证据一/三：直返臂复位 + 重放臂漏置 is_finished 两路）。
+// 修前全红（红→绿链可溯：M26 探针 P20/P15、M31 批 C/P2 端到端重建形态）。
+// ─────────────────────────────────────────────────────────────────────
+
+///|
+/// 锚 #430-A（M26 A1 P1）：越窗 seek 回退不得清空现役断点——断点是会话
+/// 配置非执行状态，restore 检查点快照只回执行状态；重放区间命中断点只
+/// 标记不拦（Paused 即时解除——不留假暂停），续跑后断点再命中。
+test "engine_seek_overwindow_breakpoint_survives_b7" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(40))
+  let e = UnifiedEngine::with_limits(100_000, 8, 0.5)
+  let src = fake_src()
+  ignore(e.run_batch(vm, src, 30))
+  assert_true(
+    e.frames.start_step() > 0,
+    msg="窗口已滑走（越窗前提）",
+  )
+  // 现役断点：行 2（nop_program 行号循环 1/2/3，重放区间 [0..=2] 含命中）
+  vm.add_breakpoint(2)
+  // 越窗 seek(2)：重放臂（restore cp + 正向重放）
+  let sk = e.seek_to(2, vm, src)
+  assert_true(sk.success)
+  // 断言 1：断点保留（旧形态被快照覆写清空——续跑永不命中）
+  assert_true(
+    vm.breakpoints_sorted().contains(2),
+    msg="#430：断点=会话配置，restore 不得覆写",
+  )
+  // 断言 2：重放命中不留 paused（旧形态快照覆写后恒 false 掩盖；修复后
+  // 断点保留 ⇒ 重放命中置位 ⇒ 须即时解除，否则非断点行 StepEvent 也
+  // 返 Paused——假暂停）
+  assert_false(vm.paused, msg="#430：重放命中断点不留假暂停")
+  // 断言 3：续跑断点再命中（run_batch Paused → r.paused）
+  let mut hit = false
+  for i = 0; i < 8; i = i + 1 {
+    guard e.run_batch(vm, src, 5) is Ok(r) else {
+      fail("续跑批 \{i} 应 Ok")
+    }
+    if r.paused {
+      hit = true
+      break
+    }
+    if r.finished {
+      break
+    }
+  }
+  assert_true(
+    hit,
+    msg="#430：越窗 seek 后断点须再命中（旧形态永不命中）",
+  )
+}
+
+///|
+/// 锚 #430-B（M31 A-2 证据一/三，重放臂侧）：越窗 seek 重放到达终态
+///（WaitingInput|Finished 臂）时终态标志须置位——旧形态漏置致后续
+/// run_batch 在已终结 VM 上空转 collect 幽灵帧（step_index 与终帧同号
+/// 重复入窗，违反「每真实步恰投递一次」——engine.mbt 坑 ⑥-6 自声明）。
+test "engine_seek_replay_reach_finished_sets_terminal_b7" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(10))
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  ignore(e.run_batch(vm, src, 20))
+  assert_true(e.is_finished, msg="前置：程序已终结")
+  // 模拟窗口滑走（越窗路径强制前置同款通道——锚 F 先例）
+  e.frames.reset_to(99)
+  // 越窗 seek(100)：重放途中遇 Finished → 以终步为终点 success（§4.2
+  // 第 4 步）
+  let sk = e.seek_to(100, vm, src)
+  assert_true(sk.success)
+  // 终态到达 ⇒ is_finished 置位（旧形态：seek 头部复位后无人置回）
+  assert_true(
+    e.is_finished,
+    msg="#430：重放到达终态须置位（旧形态后续产幽灵帧）",
+  )
+  // 续跑：空批 + finished（终帧已投递，不得重发）
+  guard e.run_batch(vm, src, 5) is Ok(r) else { fail("终态批应 Ok") }
+  assert_eq(r.payloads.length(), 0, msg="#430：终态批不得产幽灵帧")
+  assert_true(r.finished)
+}
+
+///|
+/// 锚 #430-C（M26 A3）：seek 负数目标 engine 层早退兜底（serve 层
+/// param_err 为第一道）——不得落入越窗分支（旧形态 reset_to(0)+restore
+/// 副作用把已收集帧窗全毁 + VM 静默回滚，seek(-1) 一次手滑丢全部进度）。
+test "engine_seek_negative_target_early_exit_b7" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(40))
+  let e = UnifiedEngine::with_limits(100_000, 8, 0.5)
+  let src = fake_src()
+  ignore(e.run_batch(vm, src, 12))
+  let start0 = e.frames.start_step()
+  let len0 = e.frames.length()
+  let steps0 = vm.step_count
+  let sk = e.seek_to(-1, vm, src)
+  assert_false(sk.success)
+  guard sk.error is Some(msg) else { fail("错误文案必在") }
+  assert_true(
+    msg.contains("负"),
+    msg="#430：负数目标是参数错误（旧形态误导文案「无法获取目标步的 payload」）",
+  )
+  // 帧窗与 VM 无损（零副作用早退）
+  assert_eq(e.frames.start_step(), start0, msg="#430：帧窗不得被毁")
+  assert_eq(e.frames.length(), len0, msg="#430：帧长不得被毁")
+  assert_eq(vm.step_count, steps0, msg="#430：VM 不得静默回滚")
+}
+
+///|
+/// 锚 #430-D（M31 A-2 证据一，直返臂侧）：窗口内直返 seek 只移动视口
+/// 不动 VM（时间轴未回退）——终态粘性保持（is_finished 不因视口移动
+/// 复位）；旧形态复位后 step.next 在终结 VM 上空转产幽灵终帧。
+test "engine_seek_inwindow_finished_keeps_terminal_b7" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(4))
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  ignore(e.run_batch(vm, src, 10))
+  assert_true(e.is_finished, msg="前置：程序已终结")
+  // 帧 2 在窗口内 → 直返（VM 不动）
+  let sk = e.seek_to(2, vm, src)
+  assert_true(sk.success)
+  guard sk.payload is Some(p) else { fail("直返帧必在") }
+  assert_eq(p.step_index, 2)
+  // 终态保持（旧形态被 seek 头部复位——无时间旅行却宣告未终结）
+  assert_true(
+    e.is_finished,
+    msg="#430：直返臂不动 VM，终态粘性保持",
+  )
+  // 续跑：空批 + finished（M31 批 C 形态：旧形态此处回 step_index=5
+  // 幽灵帧——程序 5 步已终结，5 之上无真实步）
+  guard e.run_batch(vm, src, 5) is Ok(r) else { fail("终态批应 Ok") }
+  assert_eq(r.payloads.length(), 0, msg="#430：不得重发终帧")
+  assert_true(r.finished)
+}
+
+///|
+/// 锚 #430-B7b（M31 A-2 证据二，白盒）：视口回看脱节自动对齐——窗口内
+/// seek（直返）只移动视口不动 VM，run_batch 续跑前检测 VM 在窗口尾帧的
+/// 未来（step_count > max+1）即重放对齐到尾帧，帧流从视口后继连续推进
+///（旧形态 VM 在原位置续跑——帧流「瞬移」跳变）。
+test "engine_viewport_desync_run_alignment_b7b" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(40))
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  ignore(e.run_batch(vm, src, 20))
+  assert_eq(vm.step_count, 20, msg="前置：VM 在 20")
+  // 窗口内 seek(5)：直返臂（VM 不动——视口回看）
+  let sk = e.seek_to(5, vm, src)
+  assert_true(sk.success)
+  assert_eq(vm.step_count, 20, msg="直返不动 VM")
+  // 续跑 4 帧：脱节对齐 → 帧从视口后继 6 连续（旧形态从 20 瞬移）
+  guard e.run_batch(vm, src, 4) is Ok(r) else { fail("续跑应 Ok") }
+  assert_eq(
+    r.payloads[0].step_index,
+    6,
+    msg="#430-B7b：首帧须为视口后继 6（旧形态 VM 原位置 20 瞬移）",
+  )
+  // 对齐 + 续跑 4 步：VM = 5+1（对齐）+4（续跑）= 10
+  assert_eq(vm.step_count, 10)
+  // 帧流连续性：6..9
+  for k = 0; k < 4; k = k + 1 {
+    assert_eq(r.payloads[k].step_index, 6 + k)
+  }
+}

@@ -76,6 +76,33 @@ export function requestTable(): Req[] {
     // #95（2026-10-31）：VFS 列举口——step.begin 后预置两件在列（确定性
     // 帧：name/size 均常量，无地址类字段，零 mask 需求）
     { id: 49, method: "vfs.list", params: `` },
+    // #430（B7 批，2026-11-04）：seek 组合帧锚（R1e 红黄清单项——此前
+    // seek 仅孤立单帧〔id 20〕零组合覆盖）。序列覆盖：长程序滑窗越窗
+    // seek（重放臂）× 断点随会话配置存活（seek 后命中 paused 帧）× 空
+    // 清单两层恢复 × seek(-1) param_err 帧 × 发布缓冲随 seek 重建（首调
+    // 空帧形态）。批推进用 every 采样（frames=2600 批推单响应 2600 帧
+    // 不适合基线全文冻结；every=600 语义事件帧恒采）。
+    { id: 50, method: "session.reset", params: `` },
+    { id: 51, method: "compile", params: `{"source":"int main() {\\n  int a = 0;\\n  while (a < 500) {\\n    a = a + 1;\\n  }\\n  return a;\\n}"}` },
+    { id: 52, method: "step.begin", params: `` },
+    ...Array.from({ length: 5 }, (_, i) => ({ id: 53 + i, method: "step.next", params: `{"every":600}` })),
+    { id: 58, method: "breakpoints.set", params: `{"lines":[4]}` },
+    { id: 59, method: "seek", params: `{"step":100}` },
+    // 批=1 逐帧推到断点行 4 命中（重放后 step 101 起，行 4 每迭代 ~7 步
+    // 内必经）：含「seek 清缓冲首调空帧」「断点跨 seek 存活命中
+    //（paused:true）」「两层恢复后续跑」三形态的帧级冻结
+    ...Array.from({ length: 8 }, (_, i) => ({ id: 60 + i, method: "step.next", params: `` })),
+    { id: 68, method: "breakpoints.set", params: `{"lines":[]}` },
+    { id: 69, method: "step.next", params: `` },
+    { id: 70, method: "seek", params: `{"step":-1}` },
+    { id: 71, method: "payload.get", params: `{"start":100,"end":104}` },
+    // #430-B7b：视口回看对齐帧锚——批推滑窗后窗口内 seek（直返——只动
+    // 视口不动 VM）+ 续跑：step.next 自动重放对齐到视口（发布流从视口
+    // 后继续号；无对齐则从 VM 原位置瞬移——帧 step_index 即判别面）
+    { id: 72, method: "step.next", params: `{"every":600}` },
+    { id: 73, method: "seek", params: `{"step":600}` },
+    { id: 74, method: "step.next", params: `` },
+    { id: 75, method: "step.next", params: `` },
   ];
 }
 

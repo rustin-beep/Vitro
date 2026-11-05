@@ -206,7 +206,21 @@ pub fn VitroVM::snapshot(self : VitroVM) -> VMSnapshot {
 ///
 /// 瞬时观测 `last_accessed_vars` 不随快照（每步重置，无历史语义）——
 /// restore 后清空。编译期产物（code/func_table/…）与会话配置不动。
+///
+/// **会话配置不随快照回退（#430，2026-11-04）**：`breakpoints`/`paused`
+/// 是会话层配置（用户意图）而非程序执行状态——restore **保留现役值**，
+/// 不再被快照覆写。旧形态按快照覆写：时间旅行越窗 seek 回退到检查点后
+/// 用户断点被静默清空、续跑永不命中（M26 A1 P1）；若快照采于
+/// paused=true 还会反向引入假暂停（同一缺陷另一面）。快照侧两字段仍
+/// 记录（诊断价值），仅 restore 不消费——有意偏离 Rust oracle 照搬渊源
+/// （#430 拍板会话配置归会话层单源；oracle 侧缺陷形态已随删区不可追修）。
 pub fn VitroVM::restore(self : VitroVM, snap : VMSnapshot) -> Unit {
+  // #430：现役会话配置快照暂存（restore 尾回填）
+  let keep_paused = self.paused
+  let keep_bps : Array[Int32] = Array(capacity=self.breakpoints.length())
+  for bp in self.breakpoints {
+    keep_bps.push(bp)
+  }
   match snap.memory {
     Full(bytes) => self.memory.restore_raw(clone_byte_array(bytes))
     Delta(_, _) =>
@@ -251,7 +265,7 @@ pub fn VitroVM::restore(self : VitroVM, snap : VMSnapshot) -> Unit {
   self.exit_code = snap.exit_code
   self.error = snap.error
   self.trap_code = snap.trap_code
-  self.paused = snap.paused
+  // paused 不覆写（#430：会话配置——尾部回填现役值）
   self.cancelled = snap.cancelled
   self.step_event_hit = snap.step_event_hit
   self.waiting_input = snap.waiting_input
@@ -269,10 +283,8 @@ pub fn VitroVM::restore(self : VitroVM, snap : VMSnapshot) -> Unit {
       context: e.context,
     })
   }
-  self.breakpoints.clear()
-  for bp in snap.breakpoints {
-    self.breakpoints.add(bp)
-  }
+  // breakpoints 不覆写（#430：会话配置——尾部回填现役集）
+  ignore(snap.breakpoints)
   // P0b-1：深拷贝回放——restore 后的自增不得回写 snap（检查点复用面，
   // 锚 p0b_heat_snapshot_deep_copy_no_alias）
   let heat_restore : FixedArray[UInt64] = FixedArray::make(
@@ -308,6 +320,12 @@ pub fn VitroVM::restore(self : VitroVM, snap : VMSnapshot) -> Unit {
     })
   }
   self.last_accessed_vars.clear()
+  // #430 尾部回填：现役会话配置（断点/暂停）在执行状态恢复后原样保留
+  self.paused = keep_paused
+  self.breakpoints.clear()
+  for bp in keep_bps {
+    self.breakpoints.add(bp)
+  }
 }
 
 ///|

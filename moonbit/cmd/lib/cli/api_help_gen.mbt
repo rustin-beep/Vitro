@@ -28,7 +28,7 @@ pub fn api_help_detail(m : String) -> String? {
       )
     "breakpoints.set" =>
       Some(
-        "breakpoints.set——下发断点集合（行号数组；传 [] 清空断点即恢复执行——命中暂停后无专用 resume 方法，恢复走清空断点或 seek 跳转，#101）\n  params: 无必填（缺省 {}）\n  例: vitro api breakpoints.set '{\"lines\":[5,10]}'",
+        "breakpoints.set——下发断点集合（行号数组；传 [] 清空断点即恢复执行——命中暂停后无专用 resume 方法，恢复走清空断点或 seek 跳转，#101）\n  params: lines:int[]\n  例: vitro api breakpoints.set '{\"lines\":[5,10]}'",
       )
     "capabilities" =>
       Some(
@@ -96,7 +96,7 @@ pub fn api_help_detail(m : String) -> String? {
       )
     "seek" =>
       Some(
-        "seek——跳至目标步（会话须已 step.begin）\n  params: step:int\n  例: vitro api seek '{\"step\":3}'",
+        "seek——跳至目标步（会话须已 step.begin）\n  params: step:int>=0\n  例: vitro api seek '{\"step\":3}'",
       )
     "semantic_labels" =>
       Some(

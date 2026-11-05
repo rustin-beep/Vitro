@@ -76,6 +76,11 @@ test "snapshot_restore_roundtrip_all_state" {
   vm.unwind_target = None
   vm.handler_stack.clear()
   vm.waiting_input = false
+  // #430（2026-11-04）：断点 = 会话配置非执行状态——churn 从「清空」改
+  // 「重设现役 {9}」（旧锚 clear 后 restore 回填快照集 {2,5} 恰固化了
+  // 「restore 覆写断点」的病行为——越窗 seek 回退把用户断点静默清空）
+  vm.breakpoints.clear()
+  vm.breakpoints.add(9)
   ignore(vm.mem_map.release(0x5000U, 8, 1)) // 任意释放改堆状态
   // 恢复
   vm.restore(snap)
@@ -109,9 +114,13 @@ test "snapshot_restore_roundtrip_all_state" {
   assert_true(vm.unwind_target is Some(_))
   assert_eq(vm.handler_stack.length(), 1)
   assert_eq(vm.handler_stack[0].catch_ip, 77)
-  // 断点重建（Set↔排序数组往返）
-  assert_true(vm.breakpoints.contains(2))
-  assert_true(vm.breakpoints.contains(5))
+  // 断点保留现役（#430：会话配置不随 restore 回退——快照字段仅诊断记录）
+  assert_true(vm.breakpoints.contains(9), msg="现役断点保留")
+  assert_false(
+    vm.breakpoints.contains(2),
+    msg="#430：快照侧断点不得覆写现役（旧病形态）",
+  )
+  assert_false(vm.breakpoints.contains(5), msg="同上")
   // 输出通道往返（putchar 落 'A' 一字节）
   assert_eq(vm.output.total_bytes(), 1)
   // 1MB 载体逐字节等价（全零态抽样——堆区/全局区各一点；NULL 陷阱区
@@ -141,6 +150,31 @@ test "trap_code_snapshot_roundtrip_and_reset" {
   vm.reset()
   assert_eq(vm.trap_code, "", msg="reset 须清空 trap_code")
   assert_eq(vm.error, "", msg="reset 须清空 error")
+}
+
+///|
+/// #430 锚（B7 批，2026-11-04）：restore 保留现役会话配置——断点集与
+/// paused 是会话配置非执行状态，快照回退不得覆写（病形态：时间旅行
+/// seek 越窗 restore 检查点后用户断点静默清空、续跑永不命中——M26 A1
+/// P1；快照采于 paused=true 时还会反向引入假暂停）。
+test "restore_preserves_session_breakpoints_and_paused_b7" {
+  let vm = VitroVM::new()
+  vm.breakpoints.add(2)
+  vm.breakpoints.add(5)
+  let snap = vm.snapshot()
+  // churn：现役配置改变（重设断点 + 置暂停）
+  vm.breakpoints.clear()
+  vm.breakpoints.add(9)
+  vm.paused = true
+  vm.restore(snap)
+  // 现役保留：断点 = {9}（非快照 {2,5}）、paused = true（非快照 false）
+  let bps = vm.breakpoints_sorted()
+  assert_eq(bps.length(), 1, msg="#430：现役断点集原样保留")
+  assert_eq(bps[0], 9)
+  assert_true(
+    vm.paused,
+    msg="#430：现役暂停位保留（不被快照 false 覆写）",
+  )
 }
 
 ///|

@@ -40,6 +40,16 @@ pub struct UnifiedEngine {
   mut is_trapped : Bool
   /// trap 死因留存（终态批照报——消费方任意批次可见死因）。
   mut last_trap_message : String?
+  /// #430-B7b：曾 trap 粘性（reset 才清——与 is_trapped〔seek 可复位〕
+  /// 不同生命周期）：视口回看对齐的触发面排除 trap 史会话（trap 回退位
+  /// 的重放会重现 trap 且重投 [cp..vp] 段旧帧——trap 态保持
+  /// rollback_before_trap 直接续跑的既有语义）。
+  mut saw_trap : Bool
+  /// #430-B7b（M31 A-2 证据二）：视口位（窗口内 seek 直返臂置 Some(
+  /// target)——直返只移动视口不动 VM；run_batch 续跑前发现 VM 在视口
+  /// 未来即重放对齐，帧流从视口后继连续推进）。重放臂/reset/对齐消费
+  /// 后置 None。
+  mut viewport_step : Int32?
   /// 算法步骤推断上下文（批四号接线——matches 编排层 compile 时注入，
   /// 三状态随帧演化；跨包只读，写经 set_algorithm_matches）。
   algo : AlgoInferCtx
@@ -67,6 +77,8 @@ pub fn UnifiedEngine::with_max_steps(max_steps : Int32) -> UnifiedEngine {
     is_finished: false,
     is_trapped: false,
     last_trap_message: None,
+    saw_trap: false,
+    viewport_step: None,
     algo: AlgoInferCtx::new(),
   }
 }
@@ -147,6 +159,8 @@ pub fn UnifiedEngine::reset(self : UnifiedEngine) -> Unit {
   self.is_finished = false
   self.is_trapped = false
   self.last_trap_message = None
+  self.saw_trap = false
+  self.viewport_step = None
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -217,6 +231,57 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
       trap_message: self.last_trap_message,
       cache_start_step: self.frames.start_step(),
     })
+  }
+  // #430-B7b：等待输入态零投递守卫——等待帧已在首个 waiting 批一次投递
+  //（等待步 ip/步数双回退语义：续调 step() 重执行同一 scanf 再返
+  // Waiting——旧形态每批重新 collect 同号帧发布，同一帧反复投递，违反
+  // 「每真实步恰投递一次」）。空批 + waiting 照报（消费方据此 input.feed
+  // 清位续跑——清位后本守卫不拦，闭环见锚 serve_step_next_waiting_no_
+  // redelivery_b7b）。
+  if vm.waiting_input {
+    return Ok({
+      payloads: [],
+      finished: false,
+      trapped: false,
+      waiting_input: true,
+      paused: self.is_paused,
+      current_line: vm.get_current_line(),
+      trap_message: None,
+      cache_start_step: self.frames.start_step(),
+    })
+  }
+  // #430-B7b（M31 A-2 证据二）：视口回看脱节自动对齐——窗口内 seek
+  //（直返臂）只移动视口不动 VM（viewport_step 记视口位）；续跑前 VM
+  // 在视口的未来（step_count > vp+1）即重放对齐到视口，帧流从视口后继
+  // 连续推进（教学播放器语义：seek=拖进度条、下一步=视口下一帧；旧
+  // 形态 VM 在原位置续跑——帧流「瞬移」跳变）。触发面收窄：① **trap
+  // 史会话不对齐**（saw_trap 粘性——trap 回退位的重放会重现 trap 且
+  // 重投 [cp..vp] 段旧帧，trap 态保持 rollback_before_trap 直接续跑的
+  // 既有语义）；② every 采样批 step_count>max 的常态脱节不涉
+  //（viewport_step 只由直返 seek 置位）；③ waiting/终态由前置守卫短路。
+  // 对齐成功即清 viewport_step（一次性）；对齐失败（干净会话重放不遇
+  // trap——结构性不可达）fail loud Err；对齐到达终态（视口恰在终帧）
+  // 转空批 finished。
+  if self.viewport_step is Some(vp) && !self.saw_trap && vm.step_count > vp + 1 {
+    let aligned = self.replay_to(vp, vm, src)
+    self.viewport_step = None
+    if !aligned.success {
+      return Err(
+        "视口对齐失败：" + aligned.error.unwrap_or("未知错误"),
+      )
+    }
+    if self.is_finished {
+      return Ok({
+        payloads: [],
+        finished: true,
+        trapped: false,
+        waiting_input: false,
+        paused: self.is_paused,
+        current_line: vm.get_current_line(),
+        trap_message: None,
+        cache_start_step: self.frames.start_step(),
+      })
+    }
   }
   let payloads : Array[@protocol.StepPayload] = []
   let mut finished = false
@@ -385,6 +450,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
         trapped = true
         trap_message = Some(msg)
         self.is_trapped = true
+        self.saw_trap = true // #430-B7b：trap 史粘性（视口对齐触发面排除）
         self.last_trap_message = Some(msg)
         break
       }
@@ -422,13 +488,20 @@ fn UnifiedEngine::rollback_before_trap(
 ) -> Bool {
   guard self.checkpoints.nearest(step) is Some((_, snap)) else { return false }
   vm.restore(snap)
-  // 重放屏蔽副作用：Paused 同 Ok 续走（断点在重放态不拦——seek_to 同款
-  // Ok|Paused 合并）；WaitingInput 结构不可达（首跑未等待 ⇒ 区间同样
-  // 不等待）；Trap/Finished 不可达（区间止于 trap/终结指令之前）。任一
-  // 出现即环境漂移，返回 false 走防御分支。
+  // 重放屏蔽副作用：Paused 同 Ok 续走（断点在重放态不拦——#430 修复后
+  // 断点随会话配置保留，重放区间命中即置 paused；**命中即时解除**——
+  // 不解除则重放尾 vm.paused=true，后续 run_batch 的每个 StepEvent 都
+  // 返 Paused〔exec_debug `if self.paused` 先于断点行判定〕——非断点行
+  // 假暂停）；WaitingInput 结构不可达（首跑未等待 ⇒ 区间同样不等待）；
+  // Trap/Finished 不可达（区间止于 trap/终结指令之前）。任一出现即环境
+  // 漂移，返回 false 走防御分支。
   while vm.step_count < step {
     match vm.step() {
-      Ok | Paused => continue
+      Ok => continue
+      Paused => {
+        vm.unpause()
+        continue
+      }
       WaitingInput | Finished | Trap => return false
     }
   }
@@ -451,174 +524,236 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
   vm : @vm.VitroVM,
   src : P,
 ) -> @protocol.SeekResult {
-  // 坑 ⑥-6：seek = 回到过去——终结标志复位（重放路径若真到终结态会
-  // 再次置位），否则 seek 回中段后 step.next 静默返回 finished 空帧。
-  // trap 终态同款（issue #29）：seek 回 trap 前即离开终态可续跑
-  self.is_finished = false
-  self.is_trapped = false
-  self.last_trap_message = None
+  // #430（M26 A3）：负数目标参数层早退（serve 层 param_err 为第一道，
+  // 此处 engine 兜底——防越窗分支副作用：旧形态 seek(-1) 落入
+  // frame_at(-1)=None → reset_to(0)+restore 把已收集帧窗全毁 + VM 静默
+  // 回滚，报「无法获取目标步的 payload」误导文案）。spec §7 语义演进
+  // （L465）：「任何 >=0 的 seek 都可成功」——定义域非负。
+  if target < 0 {
+    return {
+      success: false,
+      payload: None,
+      error: Some("seek 目标步不能为负数：\{target}（step:int>=0）"),
+    }
+  }
   // 前置：目标已在当前窗口 → 直返（协议 §4.2 之前的快路径）
   match self.frames.frame_at(target) {
-    Some(p) => return { success: true, payload: Some(p), error: None, }
+    Some(p) => {
+      // #430（M31 A-2 证据一/三，2026-11-04）：直返臂只移动视口不动 VM
+      // ——**无时间旅行**，终态粘性保持（is_finished 不复位；旧形态无差别
+      // 复位后 step.next 在终结 VM 上空转 collect 幽灵终帧——step_index
+      // 与终帧同号重复入窗/越终步 +1，违反「每真实步恰投递一次」的坑
+      // ⑥-6 自声明）。trap 终态复位**保留**（issue #29）：trap 态有
+      // rollback_before_trap 真·回退机制接续（step.next 回滚重放至 trap
+      // 前一步再续跑），终态复位于此有机制支撑——两态不对称有意。
+      self.is_trapped = false
+      self.last_trap_message = None
+      // #430-B7b：直返 = 纯视口移动——记视口位（run_batch 续跑时若 VM 在
+      // 视口未来即自动对齐，M31 A-2 证据二「下一步瞬移」治本）
+      self.viewport_step = Some(target)
+      return { success: true, payload: Some(p), error: None, }
+    }
+    None => {
+      // 重放臂自对齐（VM 落 target+1）——视口位无残留
+      self.viewport_step = None
+      self.replay_to(target, vm, src)
+    }
+  }
+}
+
+///|
+/// 越窗重放臂（原 seek_to 第 1-5 步——#430-B7b 提取为独立原语：seek_to
+/// 越窗分支与 run_batch 的视口对齐共用；语义不变，仅物理搬家）。
+fn[P : SourceLineProvider] UnifiedEngine::replay_to(
+  self : UnifiedEngine,
+  target : Int32,
+  vm : @vm.VitroVM,
+  src : P,
+) -> @protocol.SeekResult {
+  // 第 1 步：取最近检查点（增量快照在此重建为全量）；无 → 失败。
+  // P2-1（PR #342 审阅处置）：带回看窗口下限取锚——恰命中锚点时
+  // 窗口塌缩（重放区间 = [cp..target]，cp==target ⇒ 1 帧）；下探
+  // 更早锚保证窗口恒满（代价 ≤ window−1 步快道重放）
+  match
+    self.checkpoints.nearest_for_window(target, self.frames.window_limit()) {
     None =>
-      // 第 1 步：取最近检查点（增量快照在此重建为全量）；无 → 失败。
-      // P2-1（PR #342 审阅处置）：带回看窗口下限取锚——恰命中锚点时
-      // 窗口塌缩（重放区间 = [cp..target]，cp==target ⇒ 1 帧）；下探
-      // 更早锚保证窗口恒满（代价 ≤ window−1 步快道重放）
-      match
-        self.checkpoints.nearest_for_window(target, self.frames.window_limit()) {
-        None =>
+      return {
+        success: false,
+        payload: None,
+        error: Some("没有可用的检查点"),
+      }
+    Some((cp, snap)) => {
+      // 坑 ⑥-6（#430 起仅重放臂）：seek = 回到过去——重放真重建时间
+      // 轴，终结标志复位（重放若真到终结态会再次置位——见下方
+      // WaitingInput|Finished 臂）；trap 终态同款（issue #29）。直返
+      // 臂不复位（见上——无时间旅行终态保持，M31 A-2）。
+      self.is_finished = false
+      self.is_trapped = false
+      self.last_trap_message = None
+      // #87 重放快道（2026-10-27）：窗口边距之外的中间步跳过
+      // collect/推帧——这些帧终将被 finish_replay 裁出窗口（纯白干），
+      // 跳过后重放每步成本降为裸 vm.step()。生效门：algo.matches 为
+      // 空——collect 的 AlgoInferCtx 三字段演化只被 algorithm_step
+      // 推断消费（matches 空 ⇒ 演化是死状态，跳过零可观测差）；非空
+      // 时密采照旧（教学程序规模小，密采可承受）。
+      // 语义等价面：跳步仅排水 vis_events（collect 本取走即清——中间
+      // 帧丢弃与密采落窗外丢弃同效）；last_accessed_vars 每步重置无
+      // 跨步积累（observe.mbt 口径）。**越终结边界形态**（target 超
+      // 程序终步一个窗口以上）：重放早遇 Finished/WaitingInput 于
+      // 密采段之前 ⇒ finish_replay 的 want_start 钳位把终步帧一并
+      // 裁出窗口——与旧密采版输出面一致（success + 终帧 payload +
+      // 空窗），差异仅在旧版白造 [cp..终步] 中间帧；target < window
+      // 的既有形态（锚 H 类）dense_from 钳 0 ⇒ 快道自然关闭行为
+      // 不变。锚 N 固化本边界。
+      let fast_ok = self.algo.matches.is_empty()
+      let dense_from = target - self.frames.window_limit() + 1
+      let dense_from = if dense_from < 0 { 0 } else { dense_from }
+      // 第 2 步：恢复 VM 到该检查点
+      vm.restore(snap)
+      // 第 3 步前置：越窗重放前重置帧窗口到检查点步（否则 target <
+      // 旧窗口起点时 push_or_replace_at 的防御分支吞帧——坑 2 的
+      // 63.6GB 形态）
+      self.frames.reset_to(cp)
+      // 第 3 步：正向重放至目标步（含 target——重放区间排他会把
+      // 目标步本身留在窗口外，随后 frame_at(target) 落空，S3 A15
+      // 实测形态）
+      for step in cp..<=target {
+        if self.is_cancelled {
           return {
             success: false,
             payload: None,
-            error: Some("没有可用的检查点"),
+            error: Some("执行已取消"),
           }
-        Some((cp, snap)) => {
-          // #87 重放快道（2026-10-27）：窗口边距之外的中间步跳过
-          // collect/推帧——这些帧终将被 finish_replay 裁出窗口（纯白干），
-          // 跳过后重放每步成本降为裸 vm.step()。生效门：algo.matches 为
-          // 空——collect 的 AlgoInferCtx 三字段演化只被 algorithm_step
-          // 推断消费（matches 空 ⇒ 演化是死状态，跳过零可观测差）；非空
-          // 时密采照旧（教学程序规模小，密采可承受）。
-          // 语义等价面：跳步仅排水 vis_events（collect 本取走即清——中间
-          // 帧丢弃与密采落窗外丢弃同效）；last_accessed_vars 每步重置无
-          // 跨步积累（observe.mbt 口径）。**越终结边界形态**（target 超
-          // 程序终步一个窗口以上）：重放早遇 Finished/WaitingInput 于
-          // 密采段之前 ⇒ finish_replay 的 want_start 钳位把终步帧一并
-          // 裁出窗口——与旧密采版输出面一致（success + 终帧 payload +
-          // 空窗），差异仅在旧版白造 [cp..终步] 中间帧；target < window
-          // 的既有形态（锚 H 类）dense_from 钳 0 ⇒ 快道自然关闭行为
-          // 不变。锚 N 固化本边界。
-          let fast_ok = self.algo.matches.is_empty()
-          let dense_from = target - self.frames.window_limit() + 1
-          let dense_from = if dense_from < 0 { 0 } else { dense_from }
-          // 第 2 步：恢复 VM 到该检查点
-          vm.restore(snap)
-          // 第 3 步前置：越窗重放前重置帧窗口到检查点步（否则 target <
-          // 旧窗口起点时 push_or_replace_at 的防御分支吞帧——坑 2 的
-          // 63.6GB 形态）
-          self.frames.reset_to(cp)
-          // 第 3 步：正向重放至目标步（含 target——重放区间排他会把
-          // 目标步本身留在窗口外，随后 frame_at(target) 落空，S3 A15
-          // 实测形态）
-          for step in cp..<=target {
-            if self.is_cancelled {
-              return {
-                success: false,
-                payload: None,
-                error: Some("执行已取消"),
-              }
-            }
-            // #87 快道判定：本步是否落在窗口边距之外（快道段）
-            let fast = fast_ok && step < dense_from
-            // 重放途中动态保存检查点（加速后续 seek；step > cp 判定
-            // 避免覆盖恢复源）。**快道段降频 25×**（#87）：间隔 20 步的
-            // save 在几十万步重放下是主要成本（每 5 次 save 一次 Full =
-            // 1MB 内存整拷），且绝大多数会被几何化淘汰白造——降频只
-            // 影响锚点尾部密度（保留数 K=50 主导覆盖率，实测覆盖无损）
-            if step > cp && step % self.checkpoints.get_interval() == 0 {
-              if !fast ||
-                step % (self.checkpoints.get_interval() * FAST_SAVE_STRIDE) == 0 {
-                self.checkpoints.save(step, vm)
-              }
-            }
-            // U2#11 前半：重放步数同受引擎预算约束
-            if vm.step_count >= self.max_steps {
-              return {
-                success: false,
-                payload: None,
-                error: Some(
-                  "重放步数超过限制（\{self.max_steps} 步），可能存在无限循环。",
-                ),
-              }
-            }
-            if !fast && step == dense_from && dense_from > cp {
-              // 快道→密采切换：窗口起点对齐密采首步（快道零推帧；不对齐
-              // 会让 push_or_replace_at 的缺口占位把整段快道距离放大成
-              // O(距离) 空帧分配——blank_payload 缺口防御分支）
-              self.frames.reset_to(step)
-            }
-            let pre_step = vm.step_count
-            // 审阅 P2-4（2026-10-07）：seek 重放帧同源化（循环顶步进前
-            // 行——#34 修复的补遗；与 run_batch 的 label/code_line 同源）
-            let seek_line = vm.get_current_line()
-            match vm.step() {
-              Ok | Paused =>
-                if fast {
-                  // 快道零操作（P3-1 审阅处置，2026-10-28）：vis 排水是
-                  // 死代码——vis 事件行只在 algorithm_matches 非空时随
-                  // setup 注入（project_vis_lines 单源），而 fast_ok 门
-                  // = matches 为空 ⇒ 快道段队列必然为空（审阅突变删除
-                  // 全绿 + 端到端 34,767 帧逐位一致实证）。**若未来快道
-                  // 门放宽到 matches 非空，须恢复 take_vis_events 排水**
-                  //（不排会跨步累积爆进密采首帧）。
-                  ignore(vm.step_count)
-                } else {
-                  let l2 = vm.get_current_line()
-                  self.frames.push_or_replace_at(
-                    pre_step,
-                    collect(
-                      vm,
-                      src,
-                      vm.heatmap_count_at(l2),
-                      pre_step,
-                      self.algo,
-                      code_line=Some(seek_line),
-                    ),
-                  )
-                  // U2#1：push 自带 trim（FrameWindow 类型保证——Rust 侧
-                  // push 后立即 trim 的修复形态结构化）
-                }
-              WaitingInput | Finished => {
-                // 协议 §4.2 第 4 步：以该步为终点返回 success
-                //（code_line 同源化——审阅 P2-4）
-                if fast {
-                  // #87 快道早终结：终步在密采段之前（target 超程序末尾
-                  // 一个窗口以上）——快道段无帧可补，以本步为窗首收集
-                  // 终帧；finish_replay 的 want_start 钳位随后照旧裁窗
-                  //（输出面与密采版一致，锚 N 固化；reset_to 防 blank 填充）
-                  self.frames.reset_to(pre_step)
-                }
-                let l2 = vm.get_current_line()
-                let payload = collect(
+        }
+        // #87 快道判定：本步是否落在窗口边距之外（快道段）
+        let fast = fast_ok && step < dense_from
+        // 重放途中动态保存检查点（加速后续 seek；step > cp 判定
+        // 避免覆盖恢复源）。**快道段降频 25×**（#87）：间隔 20 步的
+        // save 在几十万步重放下是主要成本（每 5 次 save 一次 Full =
+        // 1MB 内存整拷），且绝大多数会被几何化淘汰白造——降频只
+        // 影响锚点尾部密度（保留数 K=50 主导覆盖率，实测覆盖无损）
+        if step > cp && step % self.checkpoints.get_interval() == 0 {
+          if !fast ||
+            step % (self.checkpoints.get_interval() * FAST_SAVE_STRIDE) == 0 {
+            self.checkpoints.save(step, vm)
+          }
+        }
+        // U2#11 前半：重放步数同受引擎预算约束
+        if vm.step_count >= self.max_steps {
+          return {
+            success: false,
+            payload: None,
+            error: Some(
+              "重放步数超过限制（\{self.max_steps} 步），可能存在无限循环。",
+            ),
+          }
+        }
+        if !fast && step == dense_from && dense_from > cp {
+          // 快道→密采切换：窗口起点对齐密采首步（快道零推帧；不对齐
+          // 会让 push_or_replace_at 的缺口占位把整段快道距离放大成
+          // O(距离) 空帧分配——blank_payload 缺口防御分支）
+          self.frames.reset_to(step)
+        }
+        let pre_step = vm.step_count
+        // 审阅 P2-4（2026-10-07）：seek 重放帧同源化（循环顶步进前
+        // 行——#34 修复的补遗；与 run_batch 的 label/code_line 同源）
+        let seek_line = vm.get_current_line()
+        // #430：断点随会话配置保留后重放区间可命中断点（StepEvent
+        // 置 paused 返 Paused）——重放非交互步进，只标记不拦；命中
+        // 即时解除（否则重放尾 vm.paused=true，后续 run_batch 每个
+        // StepEvent 都返 Paused——非断点行假暂停）。Ok|Paused 合并
+        // 照旧（命中帧仍正常收集入窗）。
+        let outcome = vm.step()
+        if vm.paused {
+          vm.unpause()
+        }
+        match outcome {
+          Ok | Paused =>
+            if fast {
+              // 快道零操作（P3-1 审阅处置，2026-10-28）：vis 排水是
+              // 死代码——vis 事件行只在 algorithm_matches 非空时随
+              // setup 注入（project_vis_lines 单源），而 fast_ok 门
+              // = matches 为空 ⇒ 快道段队列必然为空（审阅突变删除
+              // 全绿 + 端到端 34,767 帧逐位一致实证）。**若未来快道
+              // 门放宽到 matches 非空，须恢复 take_vis_events 排水**
+              //（不排会跨步累积爆进密采首帧）。
+              ignore(vm.step_count)
+            } else {
+              let l2 = vm.get_current_line()
+              self.frames.push_or_replace_at(
+                pre_step,
+                collect(
                   vm,
                   src,
                   vm.heatmap_count_at(l2),
                   pre_step,
                   self.algo,
                   code_line=Some(seek_line),
-                )
-                self.frames.push_or_replace_at(pre_step, payload)
-                self.frames.finish_replay(target)
-                return { success: true, payload: Some(payload), error: None, }
-              }
-              Trap => {
-                // 协议 §4.2 第 4 步：重放遇 trap → 失败。终态连坐（issue
-                // #29）：seek 失败也须记 trap 粘性——否则后续 step.next
-                // 在 trap 态 VM 上重执行
-                self.is_trapped = true
-                self.last_trap_message = Some(vm.error)
-                return {
-                  success: false,
-                  payload: None,
-                  error: Some("运行时错误：\{vm.error}"),
-                }
-              }
+                ),
+              )
+              // U2#1：push 自带 trim（FrameWindow 类型保证——Rust 侧
+              // push 后立即 trim 的修复形态结构化）
             }
+          WaitingInput | Finished => {
+            // 协议 §4.2 第 4 步：以该步为终点返回 success
+            //（code_line 同源化——审阅 P2-4）
+            if fast {
+              // #87 快道早终结：终步在密采段之前（target 超程序末尾
+              // 一个窗口以上）——快道段无帧可补，以本步为窗首收集
+              // 终帧；finish_replay 的 want_start 钳位随后照旧裁窗
+              //（输出面与密采版一致，锚 N 固化；reset_to 防 blank 填充）
+              self.frames.reset_to(pre_step)
+            }
+            let l2 = vm.get_current_line()
+            let payload = collect(
+              vm,
+              src,
+              vm.heatmap_count_at(l2),
+              pre_step,
+              self.algo,
+              code_line=Some(seek_line),
+            )
+            self.frames.push_or_replace_at(pre_step, payload)
+            self.frames.finish_replay(target)
+            // #430（M31 A-2 证据三）：重放到达终态（Finished）时终态
+            // 标志须置位——旧形态漏置（头部复位后无人置回），后续
+            // step.next 在已终结 VM 上空转 collect 幽灵帧（step_index
+            // 与刚投递的终帧同号——重复入窗）。判据与 step() 入口的
+            // Finished 判定同构（finished 位〔main Ret 置〕或 ip 越界
+            // 〔指令耗尽——不置 finished 位〕两形态）；WaitingInput
+            // 不触发（等待输入非终态，供输入后续跑）。
+            if vm.finished || vm.ip >= vm.code.length() {
+              self.is_finished = true
+            }
+            return { success: true, payload: Some(payload), error: None, }
           }
-          // 第 5 步：窗口重置——只保留目标步及其之前 window_size-1 帧
-          self.frames.finish_replay(target)
-          match self.frames.frame_at(target) {
-            Some(p) => return { success: true, payload: Some(p), error: None, }
-            None =>
-              return {
-                success: false,
-                payload: None,
-                error: Some("无法获取目标步的 payload"),
-              }
+          Trap => {
+            // 协议 §4.2 第 4 步：重放遇 trap → 失败。终态连坐（issue
+            // #29）：seek 失败也须记 trap 粘性——否则后续 step.next
+            // 在 trap 态 VM 上重执行
+            self.is_trapped = true
+            self.saw_trap = true // #430-B7b：与 run_batch Trap 分支同款粘性
+            self.last_trap_message = Some(vm.error)
+            return {
+              success: false,
+              payload: None,
+              error: Some("运行时错误：\{vm.error}"),
+            }
           }
         }
       }
+      // 第 5 步：窗口重置——只保留目标步及其之前 window_size-1 帧
+      self.frames.finish_replay(target)
+      match self.frames.frame_at(target) {
+        Some(p) => return { success: true, payload: Some(p), error: None, }
+        None =>
+          return {
+            success: false,
+            payload: None,
+            error: Some("无法获取目标步的 payload"),
+          }
+      }
+    }
   }
 }
 

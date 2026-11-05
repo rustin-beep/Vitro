@@ -1611,10 +1611,10 @@
       "memory_sha": "8b674dfc1d0f7632"
     },
     "baseline/ll_float_casts_domain.c": {
-      "src_sha": "6ceb46dd",
+      "src_sha": "d5192322",
       "exit_code": 0,
-      "stdout_sha": "12f4821ed0aae371",
-      "memory_sha": "81878f1af8faba5f"
+      "stdout_sha": "e6e09845bb7b0639",
+      "memory_sha": "8b02a7c489eafc83"
     },
     "baseline/llm_corpus_rejects.c": {
       "src_sha": "e6988440",

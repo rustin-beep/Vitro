@@ -1775,3 +1775,102 @@ test "skeleton: #471 ll float roundtrip casts avoid low32 feed" {
     msg="F→LL 走 F2D+D2Q 双跳（修前零发射位模式直塞）",
   )
 }
+
+///|
+/// PR #485 审阅 P2-1：wbtest 内数组名查找 helper（core Array 无 indexOf）。
+fn indexOf1(arr : Array[String], name : String) -> Int32 {
+  for i, v in arr {
+    if v == name {
+      return i
+    }
+  }
+  -1
+}
+
+///|
+/// PR #485 审阅 P2-1 直驱锚：var_decl 防御收口层（emit_scalar_cast_store
+/// 直调 emit_conversion 单源）的白盒可达面——常规管线 typeck 恒插 Cast
+/// 使其不可达，此处绕过 typeck 直构 VarDecl（init 不带 Cast 节点）锁
+/// 防御层行为：① uint←DoubleLiteral 发 D2UQ+Q2I（#471 链）；②
+/// float←signed LL 发 Q2D+D2F 双跳（原手抄链零发射分叉格——归一后
+/// 与 cast 双链同口径，白盒直驱下位模式直塞是错值）。
+test "skeleton: vardecl defensive cast store drives emit_conversion" {
+  let uint = @ast.Type::unsigned_int()
+  let fty = @ast.Type::float()
+  let ll = @ast.Type::long_long()
+  let dty = @ast.Type::double()
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        ..Default::default(),
+        loc: loc(1),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              // uint ← DoubleLiteral（无 Cast 节点——防御层直驱）
+              @ast.Stmt::VarDecl(
+                uint,
+                "u",
+                Some(@ast.Expr::FloatLiteral(3000000000.0, loc(2), dty)),
+                [],
+                false,
+                false,
+                loc(2),
+              ),
+              // float ← signed LongLiteral（分叉归一格：原零发射）
+              @ast.Stmt::VarDecl(
+                fty,
+                "f",
+                Some(@ast.Expr::LongLiteral(-5000000000L, loc(3), ll)),
+                [],
+                false,
+                false,
+                loc(3),
+              ),
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc(4), @ast.Type::int())),
+                loc(4),
+              ),
+            ],
+            loc(1),
+          ),
+        ),
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let seq : Array[String] = []
+  for i in 0..<o.code.length() {
+    let op = o.code[i].op
+    if op is @opcode.OpCode::CastD2UQ ||
+      op is @opcode.OpCode::CastQ2I ||
+      op is @opcode.OpCode::CastQ2D ||
+      op is @opcode.OpCode::CastD2F {
+      seq.push(@opcode.OpCode::name(op))
+    }
+  }
+  // ① uint←double：D2UQ 后随 Q2I（低 32 位）
+  assert_true(
+    indexOf1(seq, "CastD2UQ") >= 0 &&
+    indexOf1(seq, "CastQ2I") > indexOf1(seq, "CastD2UQ"),
+    msg="防御层 uint←double 发 D2UQ+Q2I（归一前手抄链已含 #471 臂）",
+  )
+  // ② float←signed LL：Q2D→D2F 双跳（原手抄链零发射分叉格——归一）
+  assert_true(
+    indexOf1(seq, "CastQ2D") >= 0 &&
+    indexOf1(seq, "CastD2F") > indexOf1(seq, "CastQ2D"),
+    msg="防御层 float←signedLL 发 Q2D+D2F（手抄链零发射分叉格归一）",
+  )
+}

@@ -506,6 +506,8 @@ fn BytecodeGen::emit_promote_to_compound_domain(
 /// 域 [0,256) ⊆ CastD2I 饱和域内段不走此分）改走 CastD2UQ 链（域内
 /// [0,2^64) 无损；旧 CastD2Q/D2I 饱和把 3e9 截 2147483647、1.8e19 截
 /// INT64_MAX——C11 6.3.1.4 域内定义行为被破坏，四路径同错之复合臂）。
+/// PR #485 审阅 P2-1：fp 域 × Int/LL/Float 左值的窄化归一 emit_conversion
+/// 单源（原手抄同构体——char 与 Q 域两特殊格本地保留，见体内注释）。
 fn BytecodeGen::emit_compound_narrow(
   self : BytecodeGen,
   left_ty : @ast.Type,
@@ -515,45 +517,50 @@ fn BytecodeGen::emit_compound_narrow(
   loc : @source.SourceLoc,
 ) -> Unit {
   let lk = left_ty.kind()
-  // #471：无符号左值判据（char 排除——域小零饱和损耗）
-  let lu_int = left_ty.is_unsigned() && lk is TK_Int
-  let lu_ll = left_ty.is_unsigned() && lk is TK_LongLong
+  // PR #485 审阅 P2-1（2026-11-05）：fp 域窄化归一 **emit_conversion 单源**
+  //——原手抄同构体收敛（域布尔映射伪源 kind：is_double→Double /
+  // is_float→Float；#471 的 lu_int/lu_ll 判据由单源 target_u 承载）。
+  // 本地保留两类方向特殊格（不归一）：
+  // ① lk TK_Char——compound 语义是「域级回 int」字节窄化由 store 段
+  //   #198 Trunc 幂等接力（emit_conversion 的 char 分支自带 Trunc，
+  //   归一将多发一条指令翻指令 digest；uchar 域 [0,256) 零饱和损耗）；
+  // ② is_long_long 域——方向相反（LL 域→int 左值 = Q2I 窄化，非
+  //   emit_conversion 的 Int→LL 加宽 I2Q/U2Q）。
   if is_double {
-    if lk is TK_LongLong {
-      if lu_ll {
-        self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
-      } else {
-        self.emit(@opcode.OpCode::CastD2Q, 0, loc)
-      }
-    } else if lk is TK_Float {
+    if lk is TK_Float {
       self.emit(@opcode.OpCode::CastD2F, 0, loc)
-    } else if lk is TK_Int || lk is TK_Char {
-      if lu_int {
-        self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
-        self.emit(@opcode.OpCode::CastQ2I, 0, loc)
-      } else {
-        self.emit(@opcode.OpCode::CastD2I, 0, loc)
-      }
+    } else if lk is TK_Int || lk is TK_LongLong {
+      self.emit_conversion(
+        @ast.Type::double().kind(),
+        lk,
+        false,
+        left_ty.is_unsigned(),
+        loc,
+      )
+    } else if lk is TK_Char {
+      self.emit(@opcode.OpCode::CastD2I, 0, loc)
     } else {
       ()
     }
   } else if is_float {
     if lk is TK_LongLong {
-      if lu_ll {
-        self.emit(@opcode.OpCode::CastF2D, 0, loc)
-        self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
-      } else {
-        self.emit(@opcode.OpCode::CastF2D, 0, loc)
-        self.emit(@opcode.OpCode::CastD2Q, 0, loc)
-      }
-    } else if lk is TK_Int || lk is TK_Char {
-      if lu_int {
-        self.emit(@opcode.OpCode::CastF2D, 0, loc)
-        self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
-        self.emit(@opcode.OpCode::CastQ2I, 0, loc)
-      } else {
-        self.emit(@opcode.OpCode::CastF2I, 0, loc)
-      }
+      self.emit_conversion(
+        @ast.Type::float().kind(),
+        lk,
+        false,
+        left_ty.is_unsigned(),
+        loc,
+      )
+    } else if lk is TK_Int {
+      self.emit_conversion(
+        @ast.Type::float().kind(),
+        lk,
+        false,
+        left_ty.is_unsigned(),
+        loc,
+      )
+    } else if lk is TK_Char {
+      self.emit(@opcode.OpCode::CastF2I, 0, loc)
     } else {
       ()
     }

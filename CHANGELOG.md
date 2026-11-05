@@ -53,10 +53,22 @@
   承接）；**gap 留观 8 项**（位域/__FUNCTION__/GNU 混型/逆下标/多级解引用/
   typeof(int) 类型参数/多声明数组维/空实参族——主控拍板收录面，本批不动）。
   连坐：速查表 C3 行改标 D + C 族九行翻面更新。
+- **PR #485 审阅处置（同日追记）**：P2-1 单源化收实——var_decl
+  `emit_scalar_cast_store`（12 条手抄 if）与 assign `emit_compound_narrow`
+  fp 域（Int/LL/Float 左值）改调 emit_conversion 单源（**手抄同构体 4 份→
+  1 份**；两处白盒分叉格 F/D←signed LL 零发射随之归一双跳——typeck 前置
+  收口使常规管线不可达、digest 全量零翻、直驱锚
+  `vardecl defensive cast store drives emit_conversion` 锁防御层）；char
+  窄化与 Q 域（方向相反格）本地保留。P3-1 vm 数字勘误（见上）；P3-2
+  opcode 条数三处文档连坐 154 条（AGENTS.md/README.md×2）；P3-3 C1 负值
+  面 -5e9 进语料 ll_float_casts_domain.c（三端一致，五家 digest 重冻）；
+  P3-4 孪生防复活锚边界注释诚实化（配置断言——链级复活检测归 --discover）。
 - **digest 受控重冻逐条归因**：codegen `compound_assign_fp_rhs.c`（REFRESH——
   uint 复合臂指令序列 CastD2I→CastD2UQ+CastQ2I，值不变）+ 新语料两份 ADD；
-  vm_diff 新增 2 例重算 548 全 SAME（行为零漂移）；parser/typeck 仅 ADD（E1001
-  列变对语料零扰动）；facts 双口径：`moonbit_test_passed` 1329（裸）/ 
+  vm_diff 新增 2 例后全量 832 全 SAME（行为零漂移；PR #485 审阅 P3-1
+  勘误：原稿「重算 548」串号自 codegen 的 549，实测口径 = golden
+  830→832 全 SAME）；parser/typeck 仅 ADD（E1001 列变对语料零扰动）；
+  facts 双口径：`moonbit_test_passed` 1329（裸）/ 
   `moonbit_test_passed_native` 1378。
 
 ### fix(engine+util): #429 审阅 v2 批 B6——json_parse 孤立代理入口拒绝 + C 字节串「码元=字节」承载治本（2026-11-03）

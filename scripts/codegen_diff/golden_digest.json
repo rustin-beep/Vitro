@@ -272,7 +272,7 @@
         "linked_list_tail.c": "f7662dcc",
         "linked_queue.c": "560447ef",
         "linked_stack.c": "a0e038b1",
-        "ll_float_casts_domain.c": "6ceb46dd",
+        "ll_float_casts_domain.c": "d5192322",
         "llm_corpus_rejects.c": "e6988440",
         "llm_fnptr_callback.c": "9f4d30b6",
         "llm_fnptr_dispatch.c": "ba320198",
@@ -1395,7 +1395,7 @@
           "result_sha": "b172192ec7b02372"
         },
         "ll_float_casts_domain.c": {
-          "result_sha": "6ff8d5ad955e256f"
+          "result_sha": "4356a47381ca0726"
         },
         "llm_corpus_rejects.c": {
           "result_sha": "a3d8944b9c8fbdcf"

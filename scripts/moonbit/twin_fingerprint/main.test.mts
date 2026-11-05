@@ -81,7 +81,10 @@ test("真实仓库：cast_mbt 孪生集已注销（#471 单源化）；dump 四�
   const rd = loadRules();
   const fps = allFingerprints(rd);
   // #471（2026-11-05）：gen_cast_expr / gen_expr_with_cast 两链合一为 emit_conversion
-  // 单源——孪生本体消亡，cast_mbt 集注销（防复活锚：集不得回归）
+  // 单源——孪生本体消亡，cast_mbt 集注销（防复活锚：集不得回归）。
+  // 边界（PR #485 审阅 P3-4）：本断言是**配置级**（twin_sets 无该集），
+  // 不检测「cast 链重新长出复制件」——链级复活检测归 --discover 人工
+  // 重立（rules.json _doc 已登记该口径）
   assert.equal(rd.twin_sets.some((s) => s.name === "cast_mbt"), false);
   assert.equal(fps["cast_mbt"], undefined);
   // dump：F5 两门禁差异已随 PR #450（M36b 四家连坐 + P2-3 归一比较）销案——现存仅

@@ -178,6 +178,7 @@ pub(all) enum OpCode {
   LoadGlobalUByte
   CastUQ2D
   CastUQ2F
+  CastD2UQ
 } derive(Debug, Eq, Hash, Compare)
 
 ///|
@@ -349,6 +350,7 @@ pub fn OpCode::code(self : OpCode) -> Int32 {
     LoadGlobalUByte => 153
     CastUQ2D => 154
     CastUQ2F => 155
+    CastD2UQ => 156
   }
 }
 
@@ -509,6 +511,7 @@ pub fn OpCode::from_u8(value : Int32) -> OpCode? {
     153 => Some(LoadGlobalUByte)
     154 => Some(CastUQ2D)
     155 => Some(CastUQ2F)
+    156 => Some(CastD2UQ)
     _ => None
   }
 }
@@ -528,6 +531,7 @@ pub fn OpCode::name(self : OpCode) -> String {
     LoadGlobalUByte => "LoadGlobalUByte"
     CastUQ2D => "CastUQ2D"
     CastUQ2F => "CastUQ2F"
+    CastD2UQ => "CastD2UQ"
     GetFrameBase => "GetFrameBase"
     Pop => "Pop"
     Dup => "Dup"
@@ -765,6 +769,7 @@ pub fn OpCode::from_name(s : String) -> OpCode? {
     "LoadGlobalUByte" => Some(LoadGlobalUByte)
     "CastUQ2D" => Some(CastUQ2D)
     "CastUQ2F" => Some(CastUQ2F)
+    "CastD2UQ" => Some(CastD2UQ)
     "LoadMemD" => Some(LoadMemD)
     "StoreMemD" => Some(StoreMemD)
     "SplitD" => Some(SplitD)

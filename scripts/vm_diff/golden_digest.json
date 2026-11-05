@@ -1202,6 +1202,12 @@
       "stdout_sha": "801e1a812a891fec",
       "memory_sha": "94c63d84f164994e"
     },
+    "baseline/fp_to_unsigned_domain.c": {
+      "src_sha": "1184f3cb",
+      "exit_code": 0,
+      "stdout_sha": "b4aa6e6102bf7fb2",
+      "memory_sha": "b697e353c331f536"
+    },
     "baseline/fprintf_basic.c": {
       "src_sha": "853d5fe4",
       "exit_code": 0,
@@ -1603,6 +1609,12 @@
       "exit_code": 0,
       "stdout_sha": "c13c6ee09f69f5be",
       "memory_sha": "8b674dfc1d0f7632"
+    },
+    "baseline/ll_float_casts_domain.c": {
+      "src_sha": "d5192322",
+      "exit_code": 0,
+      "stdout_sha": "e6e09845bb7b0639",
+      "memory_sha": "8b02a7c489eafc83"
     },
     "baseline/llm_corpus_rejects.c": {
       "src_sha": "e6988440",

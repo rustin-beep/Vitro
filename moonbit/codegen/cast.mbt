@@ -2,10 +2,17 @@
 
 ///|
 /// 类型转换与编译期尺寸生成（S5 表达式核心批·Cast 28 例 + sizeof 17 例）
-/// ——Rust `expr/cast.rs` 全量照搬：10 向转换分派（I2D/F2D/Q2D/I2F/D2F/
-/// I2Q/D2Q/D2I/F2I/Q2I）、VLA 的 sizeof 维度展开、alignof（type_align
+/// ——Rust `expr/cast.rs` 全量照搬：10 向转换分派（I2D/F2D/Q2D/I2F/
+/// D2F/I2Q/D2Q/D2I/F2I/Q2I）、VLA 的 sizeof 维度展开、alignof（type_align
 /// 纯函数随迁——struct/union 成员最大自然对齐 + 自含环检测）、offsetof
 /// 编译期偏移、gen_expr_with_cast（赋值/传参侧的隐式转换收口）。
+/// #471（2026-11-05）：转换分派单源化——gen_cast_expr 与
+/// gen_expr_with_cast 原为两份同构 if-else 链（B1 类冗余，后者还缺
+/// LL←D/LL←int 防御臂——typeck insert_implicit_cast 前置插节点使其
+/// 不可达，实测零扰动），合一为 emit_conversion 供四处路径共用
+///（cast 双链 + var_decl 防御收口 + emit_compound_narrow 域参形态），
+/// 并补 fp→**无符号**整型分支（C11 6.3.1.4 域内定义行为——旧一律走
+/// 饱和 CastD2I/CastD2Q/F2I 把域内值截成 INT_MAX/INT64_MAX）。
 fn BytecodeGen::gen_cast_expr(
   self : BytecodeGen,
   inner : @ast.Expr,
@@ -26,8 +33,32 @@ fn BytecodeGen::gen_cast_expr(
     }
     return
   }
+  self.emit_conversion(
+    ik,
+    tk,
+    inner.ty().is_unsigned(),
+    target_type.is_unsigned(),
+    loc,
+  )
+}
+
+///|
+/// 转换发射单源（#471）：栈顶已压源值，按 (源 kind × 目标 kind × 源
+/// unsigned × 目标 unsigned) 发射转换指令序列。unsigned 目标的 fp 源
+/// 走 **CastD2UQ**（opcode 156，f64→u64 饱和：域内 [0,2^64) 无损——
+/// CastD2Q 在 [2^63,2^64) 段饱和 INT64_MAX 即旧病灶；负值→0、越上界
+/// →UINT64_MAX 为 UB 域安全降级）；uint 目标再 CastQ2I 低 32 位截断
+///（位模式对 signed/unsigned 通用）。float 源先 CastF2D 归一。signed
+/// 目标维持 Rust as 饱和语义（CastD2I/D2Q/F2I）不变。
+fn BytecodeGen::emit_conversion(
+  self : BytecodeGen,
+  ik : @ast.TypeKind,
+  tk : @ast.TypeKind,
+  inner_u : Bool,
+  target_u : Bool,
+  loc : @source.SourceLoc,
+) -> Unit {
   // u32 源零符号位（病 31）：unsigned int/char 转 Q/D/F 走 U 系对偶
-  let inner_u = inner.ty().is_unsigned()
   if tk is TK_Double && ik is TK_Float {
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   } else if tk is TK_Double && ik is TK_LongLong {
@@ -48,11 +79,16 @@ fn BytecodeGen::gen_cast_expr(
   } else if tk is TK_Float && ik is TK_Double {
     self.emit(@opcode.OpCode::CastD2F, 0, loc)
   } else if tk is TK_Float && ik is TK_LongLong {
-    // u64 源 f32 对偶（同 #345 P1；先 D 再窄——与 CastUQ2D 同值路径）
+    // u64 源 f32 对偶（同 #345 P1）；signed 源经 Q2D+D2F 双跳（#471
+    // B 轮连坐：速查表 C1/C11——旧 CastI2F 直喂 i64 栈低 32 位，
+    // (float)5000000000LL 产 705032704 位模式值；无 F 直连指令，先
+    // Q2D 再 D2F 与 (float)ll 同值路径，尾数舍入差 1ulp 形态登记
+    // M12-A2 族的指令面缺口就此闭合）
     if inner_u {
       self.emit(@opcode.OpCode::CastUQ2F, 0, loc)
     } else {
-      self.emit(@opcode.OpCode::CastI2F, 0, loc)
+      self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+      self.emit(@opcode.OpCode::CastD2F, 0, loc)
     }
   } else if tk is TK_Float && !(ik is TK_Float) {
     // ik ∈ {Int/Char/Pointer}：u32 源走 U 系；ik 已是 Float 则零转换
@@ -62,8 +98,23 @@ fn BytecodeGen::gen_cast_expr(
       self.emit(@opcode.OpCode::CastI2F, 0, loc)
     }
   } else if tk is TK_LongLong && ik is TK_Double {
-    self.emit(@opcode.OpCode::CastD2Q, 0, loc)
-  } else if tk is TK_LongLong && !(ik is TK_LongLong) && !(ik is TK_Float) {
+    // #471：无符号 LL 目标走 D2UQ（1.8e19 ∈ [2^63,2^64) 域内无损）
+    if target_u {
+      self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+    }
+  } else if tk is TK_LongLong && ik is TK_Float {
+    // #471：F→LL 双跳（F2D 后 D2Q/D2UQ 分符号）——B 轮连坐速查表
+    // C2/C10：旧零发射致 f32 位模式直塞 i64 槽（-2.5f 产 -1071644672）
+    if target_u {
+      self.emit(@opcode.OpCode::CastF2D, 0, loc)
+      self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastF2D, 0, loc)
+      self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+    }
+  } else if tk is TK_LongLong && !(ik is TK_LongLong) {
     if inner_u {
       self.emit(@opcode.OpCode::CastU2Q, 0, loc)
     } else {
@@ -73,6 +124,7 @@ fn BytecodeGen::gen_cast_expr(
     // char 窄化（病 33）：低 8 位按目标 signedness 截断——任意更宽整型
     // 源一律 Trunc（幂等：源 char 已按自身符号扩展，重复截断不变值；
     // (char)200 与 (char)(unsigned char)200 都得 -56）；fp/Q 源先归 i32
+    //（uchar 域 [0,256) ⊆ CastD2I 饱和域内段——无需 D2UQ）
     if ik is TK_LongLong {
       self.emit(@opcode.OpCode::CastQ2I, 0, loc)
     } else if ik is TK_Double {
@@ -80,7 +132,7 @@ fn BytecodeGen::gen_cast_expr(
     } else if ik is TK_Float {
       self.emit(@opcode.OpCode::CastF2I, 0, loc)
     }
-    if target_type.is_unsigned() {
+    if target_u {
       self.emit(@opcode.OpCode::TruncUByte, 0, loc)
     } else {
       self.emit(@opcode.OpCode::TruncByte, 0, loc)
@@ -89,12 +141,25 @@ fn BytecodeGen::gen_cast_expr(
     !(tk is TK_Double) &&
     !(tk is TK_LongLong) &&
     ik is TK_Double {
-    self.emit(@opcode.OpCode::CastD2I, 0, loc)
+    // #471：uint 目标走 D2UQ+Q2I（3e9 域内无损；CastD2I 饱和 2^31-1
+    // 即旧病灶）；signed 目标维持 CastD2I 饱和（Rust as i32 语义）
+    if target_u {
+      self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastD2I, 0, loc)
+    }
   } else if !(tk is TK_Float) &&
     !(tk is TK_Double) &&
     !(tk is TK_LongLong) &&
     ik is TK_Float {
-    self.emit(@opcode.OpCode::CastF2I, 0, loc)
+    if target_u {
+      self.emit(@opcode.OpCode::CastF2D, 0, loc)
+      self.emit(@opcode.OpCode::CastD2UQ, 0, loc)
+      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastF2I, 0, loc)
+    }
   } else if !(tk is TK_Float) &&
     !(tk is TK_Double) &&
     !(tk is TK_LongLong) &&
@@ -305,7 +370,9 @@ fn type_align_impl(
 
 ///|
 /// 赋值/传参侧的隐式转换收口（Rust `gen_expr_with_cast`——二元/赋值批
-/// 消费）。
+/// 消费）。#471 起与 gen_cast_expr 共用 emit_conversion 单源（原两份
+/// 同构 if-else 链合一；本链原缺 LL←D / LL←int 防御臂——typeck
+/// insert_implicit_cast 前置插节点使其不可达，单源化后自然补齐）。
 fn BytecodeGen::gen_expr_with_cast(
   self : BytecodeGen,
   expr : @ast.Expr,
@@ -313,63 +380,11 @@ fn BytecodeGen::gen_expr_with_cast(
   loc : @source.SourceLoc,
 ) -> Unit {
   self.gen_expr(expr)
-  let tk = target_ty.kind()
-  let ek = expr.ty().kind()
-  let target_is_fp = tk is TK_Float || tk is TK_Double
-  // u32 源零符号位（病 31）：与 gen_cast_expr 同款 U 系桥
-  let expr_u = expr.ty().is_unsigned()
-  if tk is TK_Double && ek is TK_Float {
-    self.emit(@opcode.OpCode::CastF2D, 0, loc)
-  } else if tk is TK_Double && ek is TK_LongLong {
-    // #345 P1 连坐（赋值/传参隐式收口同款）：u64 无符号源走 UQ 系
-    if expr_u {
-      self.emit(@opcode.OpCode::CastUQ2D, 0, loc)
-    } else {
-      self.emit(@opcode.OpCode::CastQ2D, 0, loc)
-    }
-  } else if tk is TK_Double && !(ek is TK_Double) {
-    // ek ∈ {Int/Char/Pointer}：u32 源走 U 系；ek 已是 Double 则零转换
-    if expr_u {
-      self.emit(@opcode.OpCode::CastU2D, 0, loc)
-    } else {
-      self.emit(@opcode.OpCode::CastI2D, 0, loc)
-    }
-  } else if tk is TK_Float && ek is TK_Double {
-    self.emit(@opcode.OpCode::CastD2F, 0, loc)
-  } else if tk is TK_Float && ek is TK_LongLong {
-    // u64 源 f32 对偶（同 #345 P1）
-    if expr_u {
-      self.emit(@opcode.OpCode::CastUQ2F, 0, loc)
-    } else {
-      self.emit(@opcode.OpCode::CastI2F, 0, loc)
-    }
-  } else if tk is TK_Float && !(ek is TK_Float) {
-    // ek ∈ {Int/Char/Pointer}：u32 源走 U 系；ek 已是 Float 则零转换
-    if expr_u {
-      self.emit(@opcode.OpCode::CastU2F, 0, loc)
-    } else {
-      self.emit(@opcode.OpCode::CastI2F, 0, loc)
-    }
-  } else if tk is TK_Char {
-    // char 窄化（病 33）：赋值/传参收口同款 Trunc（fp/Q 源先归 i32）
-    if ek is TK_LongLong {
-      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
-    } else if ek is TK_Double {
-      self.emit(@opcode.OpCode::CastD2I, 0, loc)
-    } else if ek is TK_Float {
-      self.emit(@opcode.OpCode::CastF2I, 0, loc)
-    }
-    if target_ty.is_unsigned() {
-      self.emit(@opcode.OpCode::TruncUByte, 0, loc)
-    } else {
-      self.emit(@opcode.OpCode::TruncByte, 0, loc)
-    }
-  } else if !target_is_fp && !(tk is TK_LongLong) && ek is TK_Double {
-    self.emit(@opcode.OpCode::CastD2I, 0, loc)
-  } else if !target_is_fp && !(tk is TK_LongLong) && ek is TK_Float {
-    self.emit(@opcode.OpCode::CastF2I, 0, loc)
-  } else if !target_is_fp && !(tk is TK_LongLong) && ek is TK_LongLong {
-    // int/uint 目标：低 32 位截断
-    self.emit(@opcode.OpCode::CastQ2I, 0, loc)
-  }
+  self.emit_conversion(
+    expr.ty().kind(),
+    target_ty.kind(),
+    expr.ty().is_unsigned(),
+    target_ty.is_unsigned(),
+    loc,
+  )
 }

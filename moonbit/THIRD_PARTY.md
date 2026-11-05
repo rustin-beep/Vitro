@@ -31,6 +31,7 @@
 | `fs/utf8_compat.mbt` | #363（2026-10-28） | `to_utf8_string` 非法 UTF-8 由「截断」改「U+FFFD 替换」（WHATWG 最大子部分对齐，16 例矩阵锚） | 上游 main 同向已迁 core/encoding/utf8 |
 | `fs/fs_native.c` | B3 批（2026-11-02，审阅 v2 M37 A-3） | `_WIN32` stat 族（`stat`/`is_dir`/`is_file`）走 `GetFileAttributesW` 失败不设 CRT errno，`get_error_message` 读到前序 CRT 残留（实测 `create_dir` 已存在后 `is_dir(不存在)` 报 "File exists"）——失败路径按 `GetLastError` 映射 errno；锚 `fs_wbtest.mbt::stat_族_errno_不被前序操作污染`（修前 native 红） | 上游同病，未上报（上游反馈政策：非必要不发） |
 | `fs/fs_native.c` | B3 批（2026-11-02，审阅 v2 V3-③-A1） | `read_dir` 两次遍历（先计数再填充）TOCTOU：两遍之间目录收缩 → 尾部 NULL 槽、增长 → 越界写——改单遍历倍增缓冲后一次性拷入定长 ref_array；锚 `fs_wbtest.mbt::read_dir_超初始容量_倍增路径全量返回`（钉倍增路径正确性；竞态窗口由单遍历结构消灭，不可单测复现） | 上游同病，未上报 |
+| `fs/utf8_compat.mbt` | #448（2026-11-05，审阅 v2 M37b A-1） | `to_utf8_bytes` 孤立代理项收口（#363 解码方向的编码配对）：孤立前导（串尾越界 / 后随非尾伴 unwrap None）修前三臂三结局崩（js 可捕获异常 / wasm 裸 unreachable / native 0xC0000409）、孤立尾代理静默产 ED A0 80 非法 UTF-8——统一各折一个 U+FFFD（WHATWG 孤立代理方向）；锚 `fs_wbtest.mbt::utf8_encode_replaces_lone_surrogates_with_ufffd`（修前红） | 上游 x@0.5.5 同病；main 的 core/encoding/utf8 迁移版待核 |
 
 上游修复日按 vendor_drift 基线漂移评估合流；本地修复与上游修法不同时以上游为准重新对齐（本表随之更新）。
 

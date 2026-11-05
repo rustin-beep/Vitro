@@ -2116,3 +2116,31 @@ test "exec_inf_loop_snapshot_stale_changed_issue314" {
     msg="快照未建立时不得伪造 stale 分组",
   )
 }
+
+///|
+/// #471（2026-11-05）：CastD2UQ 直驱锚——f64→u64 饱和无符号转换。
+/// 域内 [0,2^64) 无损（含 [2^63,2^64) 段——1.8e19 修前经 CastD2Q 饱和
+/// INT64_MAX 即病灶）；负值→0；≥2^64→UINT64_MAX。
+test "exec_cast_d2uq_domain_and_saturate" {
+  // 0.5 → 0（向零截断）
+  let vm = VitroVM::new()
+  vm.f64_constants.push(0.5)
+  vm.load_program(code_of([instr(PushConstD, 0), instr(CastD2UQ, 0)]))
+  let _ = vm.run()
+  assert_true(vm.error.is_empty())
+  assert_eq(vm.pop(), 0UL)
+  // 18000000000000000000.0（≥2^63 域内段）→ 位同值
+  let vm2 = VitroVM::new()
+  vm2.f64_constants.push(18000000000000000000.0)
+  vm2.load_program(code_of([instr(PushConstD, 0), instr(CastD2UQ, 0)]))
+  let _ = vm2.run()
+  assert_true(vm2.error.is_empty())
+  assert_eq(vm2.pop(), 18000000000000000000UL)
+  // -1.5 → 0（负饱和）
+  let vm3 = VitroVM::new()
+  vm3.f64_constants.push(-1.5)
+  vm3.load_program(code_of([instr(PushConstD, 0), instr(CastD2UQ, 0)]))
+  let _ = vm3.run()
+  assert_true(vm3.error.is_empty())
+  assert_eq(vm3.pop(), 0UL)
+}

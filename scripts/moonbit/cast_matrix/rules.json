@@ -9,19 +9,20 @@
     "  ③不可达（LL←Pointer 隐式赋值 = 非法 C，typeck E3004 拦截，clang 亦拒收）。",
     "known_gaps 是公开待修清单（非豁免）：修复后该组合命中发射，僵尸判据逼着删条目。"
   ],
-  "kinds": ["Int", "Char", "LongLong", "Float", "Double", "Pointer"],
+  "kinds": [
+    "Int",
+    "Char",
+    "LongLong",
+    "Float",
+    "Double",
+    "Pointer"
+  ],
   "chain_sources": [
     {
-      "name": "gen_cast_expr",
+      "name": "emit_conversion",
       "file": "moonbit/codegen/cast.mbt",
-      "anchor_start": "fn BytecodeGen::gen_cast_expr(",
-      "note": "显式 cast 表达式分派（含 TK_Void 显式丢弃早退臂）"
-    },
-    {
-      "name": "gen_expr_with_cast",
-      "file": "moonbit/codegen/cast.mbt",
-      "anchor_start": "fn BytecodeGen::gen_expr_with_cast(",
-      "note": "赋值/传参隐式转换收口（孪生——面 A 逐链独立求值即孪生对拍的完备性半边）"
+      "anchor_start": "fn BytecodeGen::emit_conversion(",
+      "note": "转换发射单源（#471 2026-11-05：原 gen_expr_with_cast 孪生链合一入 emit_conversion——矩阵闸随单源锚点迁移；面 A 单链求值）"
     }
   ],
   "opcode_source": {
@@ -30,51 +31,50 @@
     "anchor_end": ""
   },
   "zero_emit_allowed": {
-    "gen_cast_expr::Int|Int|s": { "reason": "恒等：int→int 位模式不变（u 标志是类型属性，比较/移位运算时解释，不产生转换指令）" },
-    "gen_cast_expr::Int|Int|u": { "reason": "同 s：unsigned int→int 位模式不变" },
-    "gen_cast_expr::Int|Char|s": { "reason": "char→int：char 加载时已按符号扩展归一入 i32 槽（TruncByte/TruncUByte 收口），窄→宽零指令正确" },
-    "gen_cast_expr::Int|Char|u": { "reason": "同 s：unsigned char→int 零扩展已归一" },
-    "gen_cast_expr::Int|Pointer|s": { "reason": "指针→int：LLP64 下 32 位同宽位模式直用" },
-    "gen_cast_expr::LongLong|LongLong|s": { "reason": "恒等" },
-    "gen_cast_expr::LongLong|LongLong|u": { "reason": "恒等" },
-    "gen_cast_expr::Float|Float|s": { "reason": "恒等" },
-    "gen_cast_expr::Double|Double|s": { "reason": "恒等" },
-    "gen_cast_expr::Pointer|Int|s": { "reason": "int→指针：32 位同宽位模式直用" },
-    "gen_cast_expr::Pointer|Int|u": { "reason": "同 s" },
-    "gen_cast_expr::Pointer|Char|s": { "reason": "char→指针：符号扩展后的位模式（窄源进宽槽，语料域无实际形态）" },
-    "gen_cast_expr::Pointer|Char|u": { "reason": "同 s" },
-    "gen_cast_expr::Pointer|Pointer|s": { "reason": "恒等" },
-    "gen_expr_with_cast::Int|Int|s": { "reason": "恒等（同显式链）" },
-    "gen_expr_with_cast::Int|Int|u": { "reason": "恒等" },
-    "gen_expr_with_cast::Int|Char|s": { "reason": "char 已归一入 i32 槽（同显式链）" },
-    "gen_expr_with_cast::Int|Char|u": { "reason": "同 s" },
-    "gen_expr_with_cast::Int|Pointer|s": { "reason": "位模式兼容（同显式链）" },
-    "gen_expr_with_cast::LongLong|Int|s": { "reason": "隐式 int→LL 零发射：i64 槽符号扩展假设实证（探针 A 行 `int i=-1; long long a=i` 双臂输出 -1 == clang）" },
-    "gen_expr_with_cast::LongLong|Int|u": { "reason": "同 s（unsigned int→LL 高位零扩展——u32 值域非负，i64 槽位模式即正确）" },
-    "gen_expr_with_cast::LongLong|Char|s": { "reason": "隐式 char→LL：同 Int 系（char 已符号扩展入槽，探针 A 行同款假设）" },
-    "gen_expr_with_cast::LongLong|Char|u": { "reason": "同 s" },
-    "gen_expr_with_cast::LongLong|LongLong|s": { "reason": "恒等" },
-    "gen_expr_with_cast::LongLong|LongLong|u": { "reason": "恒等" },
-    "gen_expr_with_cast::LongLong|Double|s": { "reason": "隐式 double→LL 本链无臂但行为正确（探针 B 行 `double d=2.5; long long b=d` 双臂输出 2 == clang）——隐式赋值的 fp→LL 转换由 typeck 插入显式 Cast 节点走 gen_cast_expr 的 CastD2Q 臂承接，本链该组合实际不可达" },
-    "gen_expr_with_cast::LongLong|Pointer|s": { "reason": "不可达：指针→LL 隐式赋值是非法 C（typeck E3004 拦截；clang -Wint-conversion error 同拒——探针首版实测）" },
-    "gen_expr_with_cast::Float|Float|s": { "reason": "恒等" },
-    "gen_expr_with_cast::Double|Double|s": { "reason": "恒等" },
-    "gen_expr_with_cast::Pointer|Int|s": { "reason": "位模式兼容（同显式链）" },
-    "gen_expr_with_cast::Pointer|Int|u": { "reason": "同 s" },
-    "gen_expr_with_cast::Pointer|Char|s": { "reason": "同显式链" },
-    "gen_expr_with_cast::Pointer|Char|u": { "reason": "同显式链" },
-    "gen_expr_with_cast::Pointer|Pointer|s": { "reason": "恒等" }
-  },
-  "zero_emit_known_gaps": {
-    "gen_cast_expr::LongLong|Float|s": {
-      "reason": "R1a-F1 实锤：显式 (long long)f 零发射——float 位模式直出（探针 F 行 `(long long)2.5f` 双臂 1075838976 = 0x40200000，clang = 2；链上 `!(ik is TK_Float)` 显式排除该组合）。修法：链补 `tk is TK_LongLong && ik is TK_Float` 臂（先归 i32 再 I2Q，或补 CastF2Q 指令）——修后本条变僵尸即删",
-      "issue": "R1a-F1（tmp/review_v2_R1a/report.md）；B 轮修复批治"
+    "emit_conversion::Int|Int|s": {
+      "reason": "恒等（同显式链）"
     },
-    "gen_expr_with_cast::LongLong|Float|s": {
-      "reason": "R1a-F1 隐式路径同漏（探针 C 行 `float f=2.5f; long long c=f` 双臂 1075838976，clang = 2）——与显式路径同修",
-      "issue": "R1a-F1；B 轮修复批治"
+    "emit_conversion::Int|Int|u": {
+      "reason": "恒等"
+    },
+    "emit_conversion::Int|Char|s": {
+      "reason": "char 已归一入 i32 槽（同显式链）"
+    },
+    "emit_conversion::Int|Char|u": {
+      "reason": "同 s"
+    },
+    "emit_conversion::Int|Pointer|s": {
+      "reason": "位模式兼容（同显式链）"
+    },
+    "emit_conversion::LongLong|LongLong|s": {
+      "reason": "恒等"
+    },
+    "emit_conversion::LongLong|LongLong|u": {
+      "reason": "恒等"
+    },
+    "emit_conversion::Float|Float|s": {
+      "reason": "恒等"
+    },
+    "emit_conversion::Double|Double|s": {
+      "reason": "恒等"
+    },
+    "emit_conversion::Pointer|Int|s": {
+      "reason": "位模式兼容（同显式链）"
+    },
+    "emit_conversion::Pointer|Int|u": {
+      "reason": "同 s"
+    },
+    "emit_conversion::Pointer|Char|s": {
+      "reason": "同显式链"
+    },
+    "emit_conversion::Pointer|Char|u": {
+      "reason": "同显式链"
+    },
+    "emit_conversion::Pointer|Pointer|s": {
+      "reason": "恒等"
     }
   },
+  "zero_emit_known_gaps": {},
   "dual_exemptions": {
     "CastU2Q::CastQ2U": {
       "reason": "u64→u32 反向用 CastQ2I 位模式通用（低 32 位截断对 signed/unsigned 同值——opcode 头注「C unsigned 语义对偶」设计如此），无需独立指令"
@@ -82,16 +82,12 @@
   },
   "dual_known_gaps": {
     "CastU2D::CastD2U": {
-      "reason": "R1a-F2 宽度轴：double→u32 反向缺独立指令，走 CastD2I 饱和——(unsigned)3.9e9 域内精确值 3900000000 被 saturate 成 2147483647（C11 确定语义非 UB）。修法：补 CastD2U（域内截断 UB 域 trap 同 clang）",
-      "issue": "R1a-F2；B 轮修复批治"
+      "reason": "R1a-F2 行为面已治（#471，2026-11-05）：u32 目标经 CastD2UQ+CastQ2I 组合域内精确（3.9e9→3900000000 ✓clang）；独立 CastD2U 指令未补属设计取舍（组合即等效，UB 域外饱和降级）——保留登记指 opcode 对偶面缺位",
+      "issue": "R1a-F2；行为治于 #471（B 轮 cast 修复批）"
     },
     "CastU2F::CastF2U": {
-      "reason": "R1a-F2 同族 float→u32：走 CastF2I 饱和",
-      "issue": "R1a-F2；B 轮修复批治"
-    },
-    "CastUQ2D::CastD2UQ": {
-      "reason": "R1a-F2 实锤：double→u64 反向缺——(unsigned long long)1e19 双臂 9223372036854775807 饱和，clang 10000000000000000000（域内精确值）；NaN→u64 属 UB 域登记级",
-      "issue": "R1a-F2；B 轮修复批治"
+      "reason": "R1a-F2 同族行为面已治（#471）：float→u32 经 CastF2D+CastD2UQ+CastQ2I 组合域内精确；独立指令未补同上取舍",
+      "issue": "R1a-F2；行为治于 #471（B 轮 cast 修复批）"
     },
     "CastUQ2F::CastF2UQ": {
       "reason": "R1a-F2 同族 float→u64：走 CastF2I 饱和",

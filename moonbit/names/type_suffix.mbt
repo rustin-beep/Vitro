@@ -18,6 +18,21 @@
 /// 服务重载决议（短码），mangle_name 服务实例化名（可读长码）——Rust
 /// 侧即两处独立实现，照搬不合并（勘察 §⑤-5：Typeof 在本编码落 `y`
 /// 而非打印表达式，正是 mangle_name 的 `{:?}` 缺陷被规避的正面路径）。
+///
+/// **沿革风险登记**（#446，2026-11-05，S9 C++ 批前置）：本表存在**已知
+/// 撞码形态**，C 域零实害（无引用/模板类型可达），但 C++ 批若按现行
+/// 黄金锚直接实现重载派发即复发 D1 事故形状——翻案清单：
+/// ① `Reference` 与 `RValueRef` 同码 `R`（`f(int&)`/`f(int&&)` 是合法
+///   重载对，撞名 → 静默错派发）——C++ 批 RValueRef 改 `O`（Itanium ABI
+///   口径），黄金锚 `names_wbtest` 翻案为 `"Ri"`/`"Oi"`；
+/// ② `Array` 编码丢 dims（C decay 语义正确；C++ 引用数组
+///   `f(int(&)[2])`/`f(int(&)[3])` 撞码）——dims 保留；
+/// ③ `Struct`/`Union`/`Class` 同前缀 `S`（同 scope tag 唯一性使实害域
+///   极窄，登记备查）；
+/// ④ `TemplateId` base 名无定界（`TveciI3` 可由恶意命名 `veci` 复现）
+///   ——定界符补齐。
+/// 现行输出不动（C 域行为冻结，任何改动连坐 bytecode/codegen golden
+/// 重冻须 C++ 批统筹）。
 pub fn type_mangle_suffix(ty : @ast.Type) -> String {
   match ty {
     Void(_) => "v"

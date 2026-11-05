@@ -434,8 +434,10 @@ fn Scanner::next_token(self : Scanner, body_mode~ : Bool) -> @token.Token {
       // L2 普通行内非首位置的 `#`：独立 pass 架构下指令行已被 pp 截走，
       // 行内 stray `#` 是非法字符（C 标准 stray '#'）——显式诊断。
       //（与 Rust 的差异已登记已知差异清单：Rust 会把任意位置的 `#` 当指令消费。）
-      ignore(self.advance())
+      // #447：err 先于 advance——报错列指向 '#' 本体（契约 §4 不复刻
+      // Rust "advance 后报错"的 +1）。
       self.err("无法识别的字符: '#'", E1001_UnknownChar)
+      ignore(self.advance())
       return self.make_token(Unknown, "#", start)
     }
     return match c {
@@ -615,11 +617,13 @@ fn Scanner::next_token(self : Scanner, body_mode~ : Bool) -> @token.Token {
         self.make_token(Question, "?", start)
       }
       _ => {
-        ignore(self.advance())
+        // #447：err 先于 advance——报错列指向非法字符本体（契约 §4：
+        // 「词法 +1 现状不复刻」，不继承 Rust "advance 后报错"偏移）。
         self.err(
           "无法识别的字符: '\{char_from_code(c)}'",
           E1001_UnknownChar,
         )
+        ignore(self.advance())
         self.make_token(Unknown, char_to_string(char_from_code(c)), start)
       }
     }

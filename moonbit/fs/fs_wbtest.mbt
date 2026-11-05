@@ -424,3 +424,51 @@ test "read_dir_超初始容量_倍增路径全量返回" {
   }
   remove_dir(dir)
 }
+
+///|
+/// #448（2026-11-05）：to_utf8_bytes 代理项收口锚——#363（解码方向
+/// U+FFFD）的编码配对。修前三臂三结局：孤立前导（串尾越界 / 后随非尾
+/// 伴 utf16_pair_to_char None → unwrap panic）js 可捕获异常 / wasm 裸
+/// unreachable / native 0xC0000409 进程崩；孤立尾代理不崩但静默产
+/// ED A0 80 非法 UTF-8（不崩更隐蔽）。修后统一：孤立代理各折一个
+/// U+FFFD（EF BF BD），后随字节下一轮重判（WHATWG UTF-16 孤立代理
+/// 方向，正常域 String 恒合法——唯 unsafe_to_char 构造的脏串可达）。
+test "utf8_encode_replaces_lone_surrogates_with_ufffd" {
+  // U+FFFD = EF BF BD
+  let fffd = Bytes::from_array([
+    (0xEF).to_byte(),
+    (0xBF).to_byte(),
+    (0xBD).to_byte(),
+  ])
+  // 形态一：孤立前导代理在串尾（i+1 越界——修前 native 0xC0000409）
+  let lone_lead_tail = String::from_array([Int32::unsafe_to_char(0xD800)])
+  assert_eq(to_utf8_bytes(lone_lead_tail), fffd)
+  // 形态二：孤立前导 + 后随 ASCII（修前三臂崩；'a' 下一轮重判正常编码）
+  let lone_lead_then_a = String::from_array([Int32::unsafe_to_char(0xD800), 'a'])
+  assert_eq(
+    to_utf8_bytes(lone_lead_then_a),
+    Bytes::from_array([
+      (0xEF).to_byte(),
+      (0xBF).to_byte(),
+      (0xBD).to_byte(),
+      (0x61).to_byte(),
+    ]),
+  )
+  // 形态三：孤立尾代理（修前静默产 ED A0 80 非法 UTF-8）
+  let lone_trail = String::from_array([Int32::unsafe_to_char(0xDC00)])
+  assert_eq(to_utf8_bytes(lone_trail), fffd)
+  // 回归锚：合法代理对（D800 DC00 = U+10000）不受扰动 → F0 90 80 80
+  let valid_pair = String::from_array([
+    Int32::unsafe_to_char(0xD800),
+    Int32::unsafe_to_char(0xDC00),
+  ])
+  assert_eq(
+    to_utf8_bytes(valid_pair),
+    Bytes::from_array([
+      (0xF0).to_byte(),
+      (0x90).to_byte(),
+      (0x80).to_byte(),
+      (0x80).to_byte(),
+    ]),
+  )
+}

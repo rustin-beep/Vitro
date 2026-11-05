@@ -523,68 +523,21 @@ fn BytecodeGen::emit_scalar_cast_store(
   local_offset : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
-  let ik = init.ty().kind()
-  // u32 源零符号位（病 31）+ char/int 窄化截断（病 33）——与
-  // gen_expr_with_cast 同口径（本函数是初始化声明的收口点）
-  let init_u = init.ty().is_unsigned()
-  // #345 审阅 P1 连坐（2026-10-28）：u64 源 fp 目标——旧 LongLong 排除
-  // 分支下位模式直塞（float 目标产 NaN / double 目标产 -1 类错值）；
-  // 有符号 LL 源保持排除（存量路径正确——typeck 侧已收口）
-  if vty.kind() is TK_Float && ik is TK_LongLong && init_u {
-    self.emit(@opcode.OpCode::CastUQ2F, 0, loc)
-  }
-  if vty.kind() is TK_Double && ik is TK_LongLong && init_u {
-    self.emit(@opcode.OpCode::CastUQ2D, 0, loc)
-  }
-  if vty.kind() is TK_Float &&
-    !(ik is TK_Float) &&
-    !(ik is TK_Double) &&
-    !(ik is TK_LongLong) {
-    if init_u {
-      self.emit(@opcode.OpCode::CastU2F, 0, loc)
-    } else {
-      self.emit(@opcode.OpCode::CastI2F, 0, loc)
-    }
-  }
-  if vty.kind() is TK_Double &&
-    !(ik is TK_Float) &&
-    !(ik is TK_Double) &&
-    !(ik is TK_LongLong) {
-    if init_u {
-      self.emit(@opcode.OpCode::CastU2D, 0, loc)
-    } else {
-      self.emit(@opcode.OpCode::CastI2D, 0, loc)
-    }
-  }
-  if vty.kind() is TK_LongLong &&
-    !(ik is TK_LongLong) &&
-    !(ik is TK_Double) &&
-    !(ik is TK_Float) {
-    if init_u {
-      self.emit(@opcode.OpCode::CastU2Q, 0, loc)
-    } else {
-      self.emit(@opcode.OpCode::CastI2Q, 0, loc)
-    }
-  }
-  if vty.kind() is TK_Char {
-    // char 窄化（病 33）：char c=200 读回 -56；fp/Q 源先归 i32
-    if ik is TK_LongLong {
-      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
-    } else if ik is TK_Double {
-      self.emit(@opcode.OpCode::CastD2I, 0, loc)
-    } else if ik is TK_Float {
-      self.emit(@opcode.OpCode::CastF2I, 0, loc)
-    }
-    if vty.is_unsigned() {
-      self.emit(@opcode.OpCode::TruncUByte, 0, loc)
-    } else {
-      self.emit(@opcode.OpCode::TruncByte, 0, loc)
-    }
-  }
-  if vty.kind() is TK_Int && ik is TK_LongLong {
-    // int 窄化（病 33 同族）：int x = someLL 低 32 位截断
-    self.emit(@opcode.OpCode::CastQ2I, 0, loc)
-  }
+  // PR #485 审阅 P2-1（2026-11-05）：转换发射归一 **emit_conversion 单源**
+  //——本函数原为手抄同构链（12 条独立 if，与单源逐格同构 + 两处分叉：
+  // F/D←signed LL 零发射），单源化批只治 cast 双链未及此处，链从 2 份
+  // 变 4 份；现收敛为单源调用（分叉两格随之归一——typeck 前置收口使
+  // 常规管线不可达，白盒直驱下零发射是错值：LL(s)→F 位模式直塞）。
+  // #345 U 系桥 / 病 31 零符号位 / 病 33 char·int 窄化 / #471 D2UQ 链
+  // 的全部语义由单源承载（emit_conversion 逐格同构，见 cast.mbt 头注）。
+  // 本地保留：仅 store 宽度分派（store 段职责，非转换语义）。
+  self.emit_conversion(
+    init.ty().kind(),
+    vty.kind(),
+    init.ty().is_unsigned(),
+    vty.is_unsigned(),
+    loc,
+  )
   if vty.kind() is TK_Double {
     self.emit(@opcode.OpCode::StoreLocalD, local_offset, loc)
   } else if vty.kind() is TK_LongLong {

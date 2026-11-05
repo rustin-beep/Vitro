@@ -255,3 +255,17 @@ test "string_literal_byte_carriage_b6" {
     None => fail("应产出字符串 token")
   }
 }
+
+///|
+/// #447（2026-11-05）：E1001 报错列 = 非法字符**本体**（source 契约 §4
+/// 「词法 +1 现状不复刻」——《列号口径冻结》§2.4 规范语气「应指向本体」；
+/// 此前兜底臂沿袭 Rust oracle 时代的 "advance 后报错"形态：中 报 10
+///（=本体 7+3 字节）、@ 报 16（=本体 15+1），违契约，本批对齐——修前红锚）。
+test "scan_raw E1001 column points at offending char body" {
+  // `  int 中 = 1 @;`：中 = U+4E2D（UTF-8 三字节，首字节列 7）；@ 列 15
+  let r = scan_raw(@utf8.encode("  int 中 = 1 @;"))
+  assert_eq(r.errors.length(), 2, msg="中 与 @ 各一条 E1001")
+  inspect(r.errors[0].loc.column, content="7")
+  inspect(r.errors[0].loc.line, content="1")
+  inspect(r.errors[1].loc.column, content="15")
+}

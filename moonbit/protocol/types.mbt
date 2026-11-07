@@ -9,6 +9,7 @@
 
 ///|
 /// 字段自持收拢至此——落点裁定见 moon.pkg 头注）。
+#derive(Debug)
 pub(all) struct VisEvent {
   ty : Int32
   line : Int32
@@ -16,7 +17,7 @@ pub(all) struct VisEvent {
   extra1 : Int32
   extra2 : Int32
   context : String
-} derive(Debug)
+}
 
 ///|
 pub extend VisEvent with Debug::{to_repr}
@@ -25,6 +26,7 @@ pub extend VisEvent with Debug::{to_repr}
 
 ///|
 /// 由 TraceAnalyzer 生成、前端展示的运行期 trap 根因结构化提示。
+#derive(Debug)
 pub(all) struct RootCauseHint {
   /// 根因类别标识，如 "OffByOne"/"UseAfterFree"/"UninitializedIndex"/
   ///| "WrongStartIndex"/"SizeMismatch"/"NullDeref"/"DivZero"/"DoubleFree"
@@ -41,7 +43,7 @@ pub(all) struct RootCauseHint {
   suggested_fix_line : Int32?
   /// 修复的可读描述（如「将 <= 改为 <」）
   suggested_fix_desc : String?
-} derive(Debug)
+}
 
 ///|
 pub extend RootCauseHint with Debug::{to_repr}
@@ -51,6 +53,7 @@ pub extend RootCauseHint with Debug::{to_repr}
 /// 进本包：session import time_travel 成环约束下，time_travel/teaching 两侧
 /// 消费须走 protocol〔VisEvent/RootCauseHint 同款收编先例〕；Rust 侧该类型
 /// 在 algorithm_detector/session 两域各一份靠 map 转换，本侧单源不造孪生）。
+#derive(Debug)
 pub(all) struct AlgorithmMatch {
   name : String
   display_name : String
@@ -66,19 +69,20 @@ pub(all) struct AlgorithmMatch {
   /// `"structure"` = 代码结构特征证据。sorting 族内互斥裁决的优先级
   /// 依据（命名 > 结构）；下游可按此自行取舍置信度。
   evidence : String
-} derive(Debug)
+}
 
 ///|
 pub extend AlgorithmMatch with Debug::{to_repr}
 
 ///|
 /// 算法步骤语义快照（用于前端步骤标注）。
+#derive(Debug)
 pub(all) struct AlgorithmStepSnapshot {
   algorithm_name : String
   display_name : String
   phase : String
   description : String
-} derive(Debug)
+}
 
 ///|
 pub extend AlgorithmStepSnapshot with Debug::{to_repr}
@@ -87,12 +91,13 @@ pub extend AlgorithmStepSnapshot with Debug::{to_repr}
 
 ///|
 /// "Null"/"Dangling"）。
+#derive(Debug, Eq, Compare)
 pub(all) enum PointerStatus {
   Valid // 指向有效内存（栈、全局、已分配堆）
   Freed // 指向已释放的堆内存
   Null // NULL 指针
   Dangling // 悬空指针（越界或未初始化）
-} derive(Debug, Eq, Compare)
+}
 
 ///|
 pub extend PointerStatus with Compare::{op_lt, op_le, op_ge, compare, op_gt}
@@ -116,6 +121,7 @@ pub fn PointerStatus::to_json_text(self : PointerStatus) -> String {
 
 ///|
 /// 指针变量快照（用于指针追踪动画）。
+#derive(Debug)
 pub(all) struct PointerSnapshot {
   name : String
   addr : UInt32
@@ -124,25 +130,27 @@ pub(all) struct PointerSnapshot {
   mut target_addr : UInt32
   target_name : String
   status : PointerStatus
-} derive(Debug)
+}
 
 ///|
 pub extend PointerSnapshot with Debug::{to_repr}
 
 ///|
 /// 当前步访问的变量（用于变量级高亮）。
+#derive(Debug)
 pub(all) struct AccessedVar {
   name : String
   /// "Read" | "Write"（保持 Rust 侧 String 形态，不造枚举）；
   /// mut：消费方 clone+mutate 使用形态
   mut access_type : String
-} derive(Debug)
+}
 
 ///|
 pub extend AccessedVar with Debug::{to_repr}
 
 ///|
 /// FRB 友好的变量快照（ty 已格式化为字符串）。
+#derive(Debug)
 pub(all) struct ApiVariableSnapshot {
   name : String
   addr : UInt32
@@ -150,13 +158,14 @@ pub(all) struct ApiVariableSnapshot {
   ty_name : String
   /// mut：decode 差分应用与消费方 clone+mutate 使用形态（历史蓝本同形）
   mut value : String
-} derive(Debug)
+}
 
 ///|
 pub extend ApiVariableSnapshot with Debug::{to_repr}
 
 ///|
 /// 数组变量快照（用于算法可视化条形图）。
+#derive(Debug)
 pub(all) struct ArraySnapshot {
   name : String
   element_ty : String
@@ -164,17 +173,18 @@ pub(all) struct ArraySnapshot {
   mut elements : Array[String]
   /// U2#10：元素被截断的可见标记
   truncated : Bool
-} derive(Debug)
+}
 
 ///|
 pub extend ArraySnapshot with Debug::{to_repr}
 
 ///|
 /// FRB 友好的调用帧信息。
+#derive(Debug)
 pub(all) struct ApiFrameInfo {
   func_name : String
   return_line : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend ApiFrameInfo with Debug::{to_repr}
@@ -200,6 +210,7 @@ pub extend ApiFrameInfo with Debug::{to_repr}
 /// 与 semantic_label 空串同态）。消费方按 id 聚合/过滤/着色，不再对
 /// 渲染文本做脆弱前缀匹配；id 值域 = semantic_labels 方法帧（词汇只
 /// 增不改）。
+#derive(Debug)
 pub(all) struct StepPayload {
   step_index : Int32
   code_line : Int32
@@ -217,58 +228,63 @@ pub(all) struct StepPayload {
   mut array_snapshots : Array[ArraySnapshot]
   mut pointer_snapshots : Array[PointerSnapshot]
   root_cause_hint : RootCauseHint?
-} derive(Debug)
+}
 
 ///|
 pub extend StepPayload with Debug::{to_repr}
 
 ///|
 /// 语义元数据（用于进度条标签和智能检查点）。
+#derive(Debug)
 pub(all) struct StepMeta {
   code_line : Int32
   func_name : String
   loop_depth : Int32
   semantic_label : String
-} derive(Debug)
+}
 
 ///|
 pub extend StepMeta with Debug::{to_repr}
 
 ///|
 /// 调试摘要（悬浮球零延迟）。
+#derive(Debug)
 pub(all) struct DebugSummary {
   local_vars : Array[ApiVariableSnapshot]
   call_stack : Array[ApiFrameInfo]
   output_len : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend DebugSummary with Debug::{to_repr}
 
 ///|
 /// 执行热力图增量。
+#derive(Debug)
 pub(all) struct HeatmapDelta {
   line : Int32
   count : UInt64
-} derive(Debug)
+}
 
 ///|
 pub extend HeatmapDelta with Debug::{to_repr}
 
 ///|
 /// 编译并启动统一模式的返回结果。
+#derive(Debug)
 pub(all) struct UnifiedRunResult {
   success : Bool
   error : String?
   total_steps : Int32
   finished : Bool
-} derive(Debug)
+}
 
 ///|
 pub extend UnifiedRunResult with Debug::{to_repr}
 
 ///|
 /// 批量自动执行的返回结果。
+#derive(Debug)
 pub(all) struct AutoStepResult {
   payloads : Array[StepPayload]
   finished : Bool
@@ -279,18 +295,19 @@ pub(all) struct AutoStepResult {
   trap_message : String?
   /// 当前 frame_cache 窗口起始步号，供前端同步窗口起点
   cache_start_step : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend AutoStepResult with Debug::{to_repr}
 
 ///|
 /// seek 到指定步的返回结果。
+#derive(Debug)
 pub(all) struct SeekResult {
   success : Bool
   payload : StepPayload?
   error : String?
-} derive(Debug)
+}
 
 ///|
 pub extend SeekResult with Debug::{to_repr}
@@ -299,10 +316,11 @@ pub extend SeekResult with Debug::{to_repr}
 
 ///|
 /// [line, count]，emitter 随 gateway serve 批对齐——moon.pkg 头注登记）。
+#derive(Debug)
 pub(all) struct HeatmapData {
   line_counts : Array[(Int32, UInt64)]
   max_count : UInt64
-} derive(Debug)
+}
 
 ///|
 pub extend HeatmapData with Debug::{to_repr}

@@ -8,10 +8,11 @@
 ///|
 /// 变量快照（轻量形态——value 已格式化为字符串；与帧上下文解耦，
 /// Rust crate 同款非 FRB 版）。
+#derive(Debug)
 pub(all) struct VarSnapshot {
   name : String
   value : String
-} derive(Debug)
+}
 
 ///|
 pub extend VarSnapshot with Debug::{to_repr}
@@ -22,12 +23,13 @@ pub extend VarSnapshot with Debug::{to_repr}
 /// 拼算式，行末帧的 b 已被本语句赋值〕/ `at_callee_entry`+`caller_is_main`
 /// 被调函数入口帧与顶层启动调用的区分 / `lookahead` 下 3 行源码
 //〔多行/嵌套 for 的循环体不在 for 行内，初始化循环判定需要看体〕）。
+#derive(Debug)
 pub(all) struct InferEnv {
   prev_vars : Array[VarSnapshot]
   at_callee_entry : Bool
   caller_is_main : Bool
   lookahead : String
-} derive(Debug)
+}
 
 ///|
 pub extend InferEnv with Debug::{to_repr}

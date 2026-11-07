@@ -23,6 +23,7 @@ pub fn normalize(Int64, IntDomain) -> Int64
 // Errors
 
 // Types and methods
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum ArithFault {
   DivByZero
   DivOverflow
@@ -31,7 +32,7 @@ pub(all) enum ArithFault {
   SubOverflow
   MulOverflow
   NegOverflow
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn ArithFault::compare(Self, Self) -> Int32
 pub fn ArithFault::equal(Self, Self) -> Bool
 pub fn ArithFault::not_equal(Self, Self) -> Bool
@@ -60,12 +61,13 @@ pub(all) enum IntBinOp {
   OpNe
 }
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum IntDomain {
   I32
   U32
   I64
   U64
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn IntDomain::compare(Self, Self) -> Int32
 pub fn IntDomain::equal(Self, Self) -> Bool
 pub fn IntDomain::not_equal(Self, Self) -> Bool
@@ -75,11 +77,12 @@ pub fn IntDomain::op_le(Self, Self) -> Bool
 pub fn IntDomain::op_lt(Self, Self) -> Bool
 pub fn IntDomain::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum IntKind {
   KChar
   KInt
   KLongLong
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn IntKind::compare(Self, Self) -> Int32
 pub fn IntKind::equal(Self, Self) -> Bool
 pub fn IntKind::not_equal(Self, Self) -> Bool

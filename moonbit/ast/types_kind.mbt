@@ -12,6 +12,7 @@
 ///
 /// **Typeof 投影为 Auto**（Rust kind() 现状照搬）：两者在 kind 层共享
 /// 形状（"待定型"），语义区分发生在 typeck 的 typeof 解析期。
+#derive(Eq, Compare, Hash)
 pub enum TypeKind {
   TK_Void
   TK_Int
@@ -29,7 +30,7 @@ pub enum TypeKind {
   TK_RValueRef
   TK_Auto
   TK_TemplateId
-} derive(Eq, Compare, Hash)
+}
 
 ///|
 pub extend TypeKind with Compare::{op_lt, op_le, op_ge, compare, op_gt}

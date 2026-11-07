@@ -2,6 +2,7 @@
 package "vitro/engine/mcp"
 
 import {
+  "moonbitlang/core/json",
   "vitro/engine/session",
 }
 
@@ -17,10 +18,10 @@ pub struct Entry {
   title : String
   source : String
   argv : Array[String]
-  mut compile_result : Json
+  mut compile_result : @json.Json
   frames : Array[Frame]
   mut phase : Int32
-  mut run_result : Json
+  mut run_result : @json.Json
   mut stdout : String
   mut stderr : String
   mut paused_at : Int32
@@ -40,12 +41,12 @@ pub struct Frame {
   c : Array[String]
   e : Array[VisEv]
   r : Map[String, Array[String]]
-  h : Json
+  h : @json.Json
 }
 
 pub(all) struct Host {
   clock_ms : () -> Double
-  render : (Json) -> Json
+  render : (@json.Json) -> @json.Json
 }
 
 pub struct Server {

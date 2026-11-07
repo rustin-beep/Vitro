@@ -26,6 +26,7 @@
 /// 读写三态：`ReadWrite`（r+：须存在/不清空/游标 0）、`WriteRead`
 ///（w+：建或清空）、`AppendRead`（a+：建文件/读起点文件头——写恒末尾，
 /// 由消费点判「仅纯 `Read` 拒写」天然覆盖（fread 无模式检查）。
+#derive(Debug, Eq)
 pub enum VfsMode {
   Read
   Write
@@ -33,7 +34,7 @@ pub enum VfsMode {
   ReadWrite
   WriteRead
   AppendRead
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend VfsMode with Debug::{to_repr}
@@ -43,17 +44,19 @@ pub extend VfsMode with Eq::{not_equal, equal}
 
 ///|
 /// 文件元数据（数据在 VM 堆 `heap_addr` 处）。
+#derive(Debug)
 pub struct VfsFileMeta {
   mut heap_addr : UInt32
   mut size : Int32
   mut capacity : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend VfsFileMeta with Debug::{to_repr}
 
 ///|
 /// 文件描述符。
+#derive(Debug)
 pub struct VfsDesc {
   mut file_name : String
   mode : VfsMode
@@ -65,7 +68,7 @@ pub struct VfsDesc {
   /// 末尾（C11 §7.21.5.3——fseek 不改变 a/a+ 的写位）；mode 的派生
   /// 位（restore 时按 mode 重导出，不入快照）——构造期定死，非 mut
   is_append : Bool
-} derive(Debug)
+}
 
 ///|
 pub extend VfsDesc with Debug::{to_repr}

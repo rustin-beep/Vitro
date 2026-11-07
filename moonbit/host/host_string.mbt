@@ -31,6 +31,7 @@
 /// 包含 `dest` 的缓冲区即判容量。VM 耦合数据由 vm 侧展平传入：按内层到外层
 /// 顺序 append，命中即停的语义与本数组迭代一致。空数组 = 无栈缓冲（等价
 /// oracle 空调用栈）。
+#derive(Debug, Eq)
 pub(all) struct StackBufferSpan {
   /// 缓冲区绝对地址（`frame.locals_base + buf.offset`）。
   base : UInt32
@@ -38,7 +39,7 @@ pub(all) struct StackBufferSpan {
   size : Int32
   /// 源码里的缓冲区名（E3070 文案用）。
   name : String
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend StackBufferSpan with Debug::{to_repr}

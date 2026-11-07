@@ -23,6 +23,7 @@
 ///
 /// operand 语义校验：**未在本版落地**——Rust 侧无先验语义表，将待 S5（codegen 片）
 /// 以发射侧为真值源补齐（诚实登记，不脑测发明语义）。
+#derive(Debug, Eq, Hash, Compare)
 pub(all) enum OpCode {
   Nop
   PushConst
@@ -179,7 +180,7 @@ pub(all) enum OpCode {
   CastUQ2D
   CastUQ2F
   CastD2UQ
-} derive(Debug, Eq, Hash, Compare)
+}
 
 ///|
 pub extend OpCode with Compare::{op_lt, op_le, op_ge, compare, op_gt}

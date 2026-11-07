@@ -16,6 +16,7 @@
 
 ///|
 /// 词汇表条目：一个 semantic_label 的受控形态。
+#derive(Debug)
 pub(all) struct SemanticLabelKind {
   /// 稳定标识（消费方按此分支，不解析 template 文本）
   id : String
@@ -29,7 +30,7 @@ pub(all) struct SemanticLabelKind {
   status : String
   /// 激活批次（"-" = 已激活）
   since : String
-} derive(Debug)
+}
 
 ///|
 pub extend SemanticLabelKind with Debug::{to_repr}

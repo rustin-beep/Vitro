@@ -38,9 +38,10 @@
 //   vitro 业务层诊断（E1021 等）不透传 fs 原文，双端同形。
 
 ///|
+#derive(Debug)
 pub(all) suberror IOError {
   IOError(String)
-} derive(Debug)
+}
 
 ///|
 /// Reads the content of a file specified by the given path and returns its

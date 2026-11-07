@@ -16,6 +16,7 @@ pub type SymIdx = Int32
 
 ///|
 /// 使用符号表的变量快照（不变数据 dedup）。
+#derive(Debug)
 pub(all) struct ApiVarSnapshotRef {
   name_idx : SymIdx
   addr : UInt32
@@ -23,23 +24,25 @@ pub(all) struct ApiVarSnapshotRef {
   ty_name_idx : SymIdx
   /// mut：encode 差分累积应用（current_full_ref）使用形态
   mut value : String
-} derive(Debug)
+}
 
 ///|
 pub extend ApiVarSnapshotRef with Debug::{to_repr}
 
 ///|
 /// 差分变量：仅包含值发生变化的变量。
+#derive(Debug)
 pub(all) struct VarDelta {
   name_idx : SymIdx
   value : String
-} derive(Debug)
+}
 
 ///|
 pub extend VarDelta with Debug::{to_repr}
 
 ///|
 /// 使用符号表的指针快照。
+#derive(Debug)
 pub(all) struct PointerSnapshotRef {
   name_idx : SymIdx
   addr : UInt32
@@ -47,7 +50,7 @@ pub(all) struct PointerSnapshotRef {
   target_addr : UInt32
   target_name_idx : SymIdx
   status : PointerStatus
-} derive(Debug)
+}
 
 ///|
 pub extend PointerSnapshotRef with Debug::{to_repr}
@@ -56,50 +59,55 @@ pub extend PointerSnapshotRef with Debug::{to_repr}
 
 ///|
 /// default 语义由 gateway 序列化批承接，本结构显式字段）。
+#derive(Debug)
 pub(all) struct ArraySnapshotRef {
   name_idx : SymIdx
   element_ty_idx : SymIdx
   elements : Array[String]
   truncated : Bool
-} derive(Debug)
+}
 
 ///|
 pub extend ArraySnapshotRef with Debug::{to_repr}
 
 ///|
 /// 使用符号表的访问变量。
+#derive(Debug)
 pub(all) struct AccessedVarRef {
   name_idx : SymIdx
   access_type_idx : SymIdx
-} derive(Debug)
+}
 
 ///|
 pub extend AccessedVarRef with Debug::{to_repr}
 
 ///|
 /// 使用符号表的调用帧。
+#derive(Debug)
 pub(all) struct ApiFrameInfoRef {
   func_name_idx : SymIdx
   return_line : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend ApiFrameInfoRef with Debug::{to_repr}
 
 ///|
 /// 使用符号表的算法步骤。
+#derive(Debug)
 pub(all) struct AlgorithmStepSnapshotRef {
   algorithm_name_idx : SymIdx
   display_name_idx : SymIdx
   phase_idx : SymIdx
   description_idx : SymIdx
-} derive(Debug)
+}
 
 ///|
 pub extend AlgorithmStepSnapshotRef with Debug::{to_repr}
 
 ///|
 /// 使用符号表的 StepPayload（基准快照）。
+#derive(Debug)
 pub(all) struct StepPayloadRef {
   step_index : Int32
   code_line : Int32
@@ -120,13 +128,14 @@ pub(all) struct StepPayloadRef {
   array_snapshots : Array[ArraySnapshotRef]
   pointer_snapshots : Array[PointerSnapshotRef]
   root_cause_hint : RootCauseHint?
-} derive(Debug)
+}
 
 ///|
 pub extend StepPayloadRef with Debug::{to_repr}
 
 ///|
 /// 差分 StepPayload（基于前一个 StepPayloadRef 或 StepPayloadDelta）。
+#derive(Debug)
 pub(all) struct StepPayloadDelta {
   step_index : Int32
   code_line : Int32
@@ -163,7 +172,7 @@ pub(all) struct StepPayloadDelta {
   /// 已删除的指针变量名索引（相对于上一步）。
   removed_pointer_name_indices : Array[SymIdx]
   root_cause_hint : RootCauseHint?
-} derive(Debug)
+}
 
 ///|
 pub extend StepPayloadDelta with Debug::{to_repr}
@@ -172,6 +181,7 @@ pub extend StepPayloadDelta with Debug::{to_repr}
 
 ///|
 /// serve 批填充语义，encode_payloads 全部置默认值——与 Rust 同形）。
+#derive(Debug)
 pub(all) struct StepStreamBatch {
   symbol_table : Array[String]
   base_payloads : Array[StepPayloadRef]
@@ -184,7 +194,7 @@ pub(all) struct StepStreamBatch {
   trap_message : String?
   /// 当前 frame_cache 窗口起始步号，供前端同步窗口起点。
   cache_start_step : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend StepStreamBatch with Debug::{to_repr}

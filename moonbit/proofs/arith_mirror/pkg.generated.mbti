@@ -19,6 +19,7 @@ pub fn wrap32u(Int64) -> Int64
 // Errors
 
 // Types and methods
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum Fault {
   FDivByZero
   FDivOverflow
@@ -27,7 +28,7 @@ pub(all) enum Fault {
   FSubOverflow
   FMulOverflow
   FNegOverflow
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn Fault::compare(Self, Self) -> Int32
 pub fn Fault::equal(Self, Self) -> Bool
 pub fn Fault::not_equal(Self, Self) -> Bool
@@ -37,12 +38,13 @@ pub fn Fault::op_le(Self, Self) -> Bool
 pub fn Fault::op_lt(Self, Self) -> Bool
 pub fn Fault::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum IntDomain {
   I32
   U32
   I64
   U64
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn IntDomain::compare(Self, Self) -> Int32
 pub fn IntDomain::equal(Self, Self) -> Bool
 pub fn IntDomain::not_equal(Self, Self) -> Bool
@@ -52,10 +54,11 @@ pub fn IntDomain::op_le(Self, Self) -> Bool
 pub fn IntDomain::op_lt(Self, Self) -> Bool
 pub fn IntDomain::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum Outcome {
   V(Int64)
   F(Fault)
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn Outcome::compare(Self, Self) -> Int32
 pub fn Outcome::equal(Self, Self) -> Bool
 pub fn Outcome::not_equal(Self, Self) -> Bool
@@ -65,10 +68,11 @@ pub fn Outcome::op_le(Self, Self) -> Bool
 pub fn Outcome::op_lt(Self, Self) -> Bool
 pub fn Outcome::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum ShiftGuardM {
   GOk
   GBad(Int64)
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn ShiftGuardM::compare(Self, Self) -> Int32
 pub fn ShiftGuardM::equal(Self, Self) -> Bool
 pub fn ShiftGuardM::not_equal(Self, Self) -> Bool

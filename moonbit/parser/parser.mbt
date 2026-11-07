@@ -28,12 +28,13 @@
 ///
 /// 病态深度预算四常量照搬（P1 后 Rust 现值）：MAX_PARSE_DEPTH=256 /
 /// MAX_AST_DEPTH=512 / MAX_DECLARATOR_SUFFIX=1250 / MAX_TYPE_DEPTH=1250。
+#derive(Eq, @debug.Debug)
 pub(all) struct ParseError {
   message : String
   line : Int32
   column : Int32
   code : Int32
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend ParseError with Debug::{to_repr}
@@ -55,6 +56,7 @@ pub(all) struct ParseResult {
 
 ///|
 /// 声明符节点树（C 螺旋规则中间表示；照搬 Rust `DeclaratorNode`）。
+#derive(@debug.Debug)
 pub enum DeclaratorNode {
   Base
   Pointer(DeclaratorNode, Bool) // is_const（#194 N-2）
@@ -62,7 +64,7 @@ pub enum DeclaratorNode {
   RValueRef(DeclaratorNode)
   Array(DeclaratorNode, @ast.Expr?) // size_expr
   Function(DeclaratorNode, Array[@ast.Param], Bool) // is_variadic
-} derive(@debug.Debug)
+}
 
 ///|
 pub extend DeclaratorNode with Debug::{to_repr}

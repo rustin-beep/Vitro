@@ -9,6 +9,7 @@
 ///
 /// `to_name` 输出与 Rust `format!("{:?}", ty)`（变体名）一致——TSV 的 Ty 字段
 /// 两侧逐字节可比的依据。
+#derive(Eq, @debug.Debug)
 pub(all) enum TokenType {
   Int
   Void
@@ -130,7 +131,7 @@ pub(all) enum TokenType {
   Hash
   /// E2：`##`（宏体内 token 拼接操作符）
   HashHash
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend TokenType with Debug::{to_repr}

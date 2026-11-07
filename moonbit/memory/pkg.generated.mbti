@@ -24,18 +24,20 @@ pub fn sat_u32_sub(UInt32, UInt32) -> UInt32
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum AccessKind {
   Read
   Write
-} derive(Eq, @debug.Debug)
+}
 pub fn AccessKind::equal(Self, Self) -> Bool
 pub fn AccessKind::not_equal(Self, Self) -> Bool
 pub fn AccessKind::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct FreeBlock {
   mut addr : UInt32
   mut size : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn FreeBlock::equal(Self, Self) -> Bool
 pub fn FreeBlock::not_equal(Self, Self) -> Bool
 pub fn FreeBlock::to_repr(Self) -> @debug.Repr
@@ -56,6 +58,7 @@ pub fn FreedLogs::new() -> Self
 pub fn FreedLogs::remove_overlapping(Self, UInt32, UInt32) -> Unit
 pub fn FreedLogs::to_array(Self) -> Array[FreedRegionInfo]
 
+#derive(Eq, @debug.Debug)
 pub(all) struct FreedRegionInfo {
   addr : UInt32
   mut size : Int32
@@ -63,27 +66,29 @@ pub(all) struct FreedRegionInfo {
   freed_line : Int32
   alloc_step : Int32
   freed_step : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn FreedRegionInfo::equal(Self, Self) -> Bool
 pub fn FreedRegionInfo::not_equal(Self, Self) -> Bool
 pub fn FreedRegionInfo::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct HeapStatsData {
   heap_base : Int32
   total_heap : Int32
   allocated : Int32
   fragmented : Int32
   fragmentation_rate : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn HeapStatsData::equal(Self, Self) -> Bool
 pub fn HeapStatsData::not_equal(Self, Self) -> Bool
 pub fn HeapStatsData::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum MemFault {
   NullDeref(UInt32, AccessKind)
   OutOfBounds(UInt32, UInt32)
   UseAfterFree(FreedRegionInfo, AccessKind)
-} derive(Eq, @debug.Debug)
+}
 pub fn MemFault::equal(Self, Self) -> Bool
 pub fn MemFault::not_equal(Self, Self) -> Bool
 pub fn MemFault::to_repr(Self) -> @debug.Repr
@@ -161,6 +166,7 @@ pub fn MemoryMap::total_allocated(Self) -> Int32
 pub fn MemoryMap::total_fragmented(Self) -> Int32
 pub fn MemoryMap::verify(Self) -> Result[Unit, String]
 
+#derive(Eq, @debug.Debug)
 pub(all) struct MemoryRegionData {
   mut size : Int32
   mut name : String
@@ -171,12 +177,13 @@ pub(all) struct MemoryRegionData {
   mut alloc_by : String
   mut kind : String
   mut refcount : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn MemoryRegionData::equal(Self, Self) -> Bool
 pub fn MemoryRegionData::heap_block(Int32, String, String, Int32, String) -> Self
 pub fn MemoryRegionData::not_equal(Self, Self) -> Bool
 pub fn MemoryRegionData::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct MemorySnapshot {
   regions : Array[(UInt32, MemoryRegionData)]
   free_list : Array[FreeBlock]
@@ -187,7 +194,7 @@ pub(all) struct MemorySnapshot {
   heap_offset : UInt32
   alloc_counter : Int32
   freed : Array[FreedRegionInfo]
-} derive(Eq, @debug.Debug)
+}
 pub fn MemorySnapshot::equal(Self, Self) -> Bool
 pub fn MemorySnapshot::not_equal(Self, Self) -> Bool
 pub fn MemorySnapshot::to_repr(Self) -> @debug.Repr

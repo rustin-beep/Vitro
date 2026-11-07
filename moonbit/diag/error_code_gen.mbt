@@ -6,6 +6,7 @@
 /// 诊断错误码（120 臂，禁手抄，T2 纪律；基线数随批在 gen_diag.go expectedArms 更新）。
 /// 段位：1xxx 词法 / 2xxx 语法 / 3xxx 语义 / 4xxx C++ 专属。
 /// severity 由 W/H 白名单（与变体前缀双向对账）决定；lang 按 4xxx 段位。
+#derive(Debug, Eq, Hash, Compare)
 pub(all) enum ErrorCode {
   Unknown
   E1001_UnknownChar
@@ -127,7 +128,7 @@ pub(all) enum ErrorCode {
   E3088_DivideZero
   E3089_FunctionDeclaredNotDefined
   W3090_ConstIntOverflow
-} derive(Debug, Eq, Hash, Compare)
+}
 
 ///|
 pub extend ErrorCode with Debug::{to_repr}

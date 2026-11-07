@@ -1,12 +1,13 @@
 ///|
 /// 镜像域枚举与求值载体（PROVE-arith 批，2026-11-04）——vitro/engine/arith
 /// 的 IntDomain 同名镜像（跨包须限定 @arith.，镜像侧裸名不冲突）。
+#derive(Eq, Compare, Debug)
 pub(all) enum IntDomain {
   I32
   U32
   I64
   U64
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend IntDomain with Eq::{not_equal, equal}
@@ -20,10 +21,11 @@ pub extend IntDomain with Debug::{to_repr}
 ///|
 /// 求值载体镜像——Result 的 Ok/Err 构造器在 .mlw 层 unbound（moon prove
 /// 0.10.18 上游缺口，探针实锤），自定义 Outcome 两态替代。
+#derive(Eq, Compare, Debug)
 pub(all) enum Outcome {
   V(Int64) // Ok 值
   F(Fault) // 故障（ArithFault 镜像）
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend Outcome with Eq::{not_equal, equal}
@@ -37,6 +39,7 @@ pub extend Outcome with Debug::{to_repr}
 ///|
 /// ArithFault 镜像（变体名前加 F 避与 Outcome 构造器混淆；ShiftOutOfRange
 /// 携越界移位量原值）。
+#derive(Eq, Compare, Debug)
 pub(all) enum Fault {
   FDivByZero
   FDivOverflow
@@ -45,7 +48,7 @@ pub(all) enum Fault {
   FSubOverflow
   FMulOverflow
   FNegOverflow
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend Fault with Eq::{not_equal, equal}
@@ -87,10 +90,11 @@ pub fn wrap32s(
 ///|
 /// 移位量判界镜像返回（shift_guard 的 Ok(s.to_int()) / Err(ShiftOutOfRange(s))
 /// 两态——原函数嵌套 fn 不被支持，镜像提为独立类型与顶层函数）。
+#derive(Eq, Compare, Debug)
 pub(all) enum ShiftGuardM {
   GOk
   GBad(Int64) // 越界移位量原值（诊断渲染用，同 ShiftOutOfRange）
-} derive(Eq, Compare, Debug)
+}
 
 ///|
 pub extend ShiftGuardM with Eq::{not_equal, equal}

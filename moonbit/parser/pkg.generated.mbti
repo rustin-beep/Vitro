@@ -13,6 +13,7 @@ pub fn parse(Array[@token.Token]) -> ParseResult
 // Errors
 
 // Types and methods
+#derive(@debug.Debug)
 pub enum DeclaratorNode {
   Base
   Pointer(DeclaratorNode, Bool)
@@ -20,15 +21,16 @@ pub enum DeclaratorNode {
   RValueRef(DeclaratorNode)
   Array(DeclaratorNode, @ast.Expr?)
   Function(DeclaratorNode, Array[@ast.Param], Bool)
-} derive(@debug.Debug)
+}
 pub fn DeclaratorNode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct ParseError {
   message : String
   line : Int32
   column : Int32
   code : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn ParseError::equal(Self, Self) -> Bool
 pub fn ParseError::not_equal(Self, Self) -> Bool
 pub fn ParseError::to_repr(Self) -> @debug.Repr

@@ -12,32 +12,32 @@
 
 > 教学 C 子集参考执行引擎（白箱后端）
 
-一个教学 C 子集编译器与字节码虚拟机：**Lexer → Parser → TypeChecker → BytecodeGen → VitroVM** 全链路自研，以 Clang 为行为基准做诚实对照，把"程序究竟怎么跑"变成可见、可解释、可回放的教学素材。**现役且唯一的实现是 MoonBit**（`moonbit/`，mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/)）；迁移期的 Rust 对照实现已于 2026-10-05 退役删除（S9 工序④删区，档案 = tag `rust-oracle-freeze` + git 历史），对拍防线全部切换为冻结 golden + Clang 直拍。
+一个教学 C 子集编译器与字节码虚拟机：**Lexer → Parser → TypeChecker → BytecodeGen → VitroVM** 全链路自研，以 Clang 为行为基准做诚实对照，把"程序究竟怎么跑"变成可见、可解释、可回放的教学素材。**现役且唯一的实现是 MoonBit**（`moonbit/`，mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/)）；原 Rust 对照实现已于 2026-10-05 退役删除（档案 = tag `rust-oracle-freeze` + git 历史），对拍防线全部切换为冻结 golden + Clang 直拍。
 
 > **本仓库只做后端（MIT 许可）。** 2026-09-11 完成前端切割：`CideFlutter/`、FRB 桥接、web 部署 workflow 与全部 Flutter 构建脚本已迁出，前端交给社区；原生移动端放弃（"看"的场景由 wasm32 + 任意 Web 前端的移动浏览器天然覆盖）。切割前最后完整状态由标签 `before-frontend-split` 保留（`git checkout before-frontend-split -- CideFlutter` 可取回）。为展示 wasm-gc 单出口，仓库附带一个**浏览器直调 gateway 的教学展示页**（`demo/`，Svelte 5 + Vite 构建的静态单页，[在线体验](https://rustin-beep.github.io/Vitro/)）——它是引擎能力的展示面，不是前端产品。
 >
-> **MoonBit 迁移（2026-09-18 起，同仓绞杀者模式）**：S2–S9 已收官——lexer / parser / typeck / codegen·bytecode / memory·host·vm / 协议会话与 wasm-gc 单出口 / 时间旅行与教学智能四域全部落地并对拍闭环；mooncakes 已发布至 **0.9.1**（0.9.0 S9 收官版 2026-10-25 → 0.9.1 在架事故修复版 2026-10-31）。迁移 v1 范围 = **C only**（C++ 已裁砍，2026-09-20），目标出口为 **wasm-gc 单出口多宿主**。形态裁定、包切分与逐片进度见 [MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md)，活跃区操作手册见 [`moonbit/AGENTS.md`](moonbit/AGENTS.md)。
+> **引擎形态（C only，wasm-gc 单出口多宿主）**：lexer / parser / typeck / codegen·bytecode / memory·host·vm / 协议会话与 wasm-gc 单出口 / 时间旅行与教学智能四域全部落地并对拍闭环；mooncakes 现行版 **0.9.1**（2026-10-31）。设计始于 2026-09-18 的同仓绞杀者迁移，已随 Rust 对照区退役（2026-10-05）完成收官——迁移史与包切分档案见 [MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md)，活跃区操作手册见 [`moonbit/AGENTS.md`](moonbit/AGENTS.md)。
 >
 > 定位转型的决策依据与路线见 [`docs/archive/ARCHIVE_后端定位与白箱计划20260911.md`](docs/archive/ARCHIVE_后端定位与白箱计划20260911.md)。
 
 ## 现役引擎：MoonBit（`vitro/engine`）
 
 - **wasm-gc 单出口（F-5）**：`vitro/engine/gateway`——NDJSON 帧协议层（4 函数导出 invoke/reset/protocol_version/engine_version，String 零拷贝直传），Node 宿主驱动与 17 断言冒烟见 [scripts/wasm_gateway](scripts/wasm_gateway/host.mts)；native stdio 壳 `cmd/serve` 与 wasm 宿主消费同一 dispatch
-- **已发布**：mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 0.1.0 → 0.5.0（2026-09-23）→ 0.6.0（S6 收官版，2026-09-27 发布）→ 0.7.0（S7 协议层与 wasm-gc 单出口版：`fs`（vendored，module 依赖清零）/ `protocol` / `session` / `gateway`(+`gateway/wasm`) 五新包 + `cmd/serve`，2026-09-30 发布）→ 0.8.0（S8 收官版：净增 4 包共 24 包 + `cmd/vitro` 总入口与 `vitro api` 万能单帧，2026-10-05 发布）→ **0.9.0**（S9 收官版：S9 修复批——已知缺陷清零 + 防线扩面与发版机械批，2026-10-25 发布，线上验收三件全绿，tag `vitro-engine-0.9.0`，[发布档案](docs/current/08-发布档案/0.9.0.md)）→ **0.9.1**（在架事故修复版：moonc ≥0.10.18 删 core/abort 致 0.9.0 包下游 `moon add` 后 build 必红的重建发布，携 `vfs.list`/`algorithms.catalog` 新增面，2026-10-31 发布，线上验收三件全绿，tag `vitro-engine-0.9.1`，[发布档案](docs/current/08-发布档案/0.9.1.md)）——变更与性能披露见 [moonbit/CHANGELOG.md](moonbit/CHANGELOG.md)
-- **已收官片**（各片收官时点数字，历史快照不连坐当前真值）：S2 lexer（token TSV 差分 6002 逐字节一致）/ S3 parser（597 语料 AST+诊断归一逐字节一致）/ S4 typeck·names·libc（598 语料 E1–E4 全绿）/ S5 codegen·bytecode（**A 级对拍 598/598 全闭环**，含 code 段逐指令）/ S6 memory·host·vm（135 opcode 穷尽执行器 + `VMSnapshot` 快照体系 + 110 host 路由 + `cmd/run` 端到端 runner）/ **S8 时间旅行与教学智能四域**（`time_travel` 检查点体系与 FrameWindow + `teaching/steps` 43 算法族 311 条标注 golden 对拍全绿 + `diagnostics` 教学七元组 + serve step/dump 族全接；白箱招牌能力——每步可回放、算法自动识别、根因提示——均已进现役引擎，总览见 [S8时间旅行与教学智能总览](docs/current/05-教学体验/S8时间旅行与教学智能总览.md)）
+- **已发布**：mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 0.1.0 → **0.9.1**（2026-10-31，现行版；0.5.0~0.9.0 沿收官节奏逐版发布，tag `vitro-engine-0.9.0` / `vitro-engine-0.9.1`，[0.9.0 发布档案](docs/current/08-发布档案/0.9.0.md) / [0.9.1 发布档案](docs/current/08-发布档案/0.9.1.md)）——逐版变更与性能披露见 [moonbit/CHANGELOG.md](moonbit/CHANGELOG.md)
+- **现役能力面**：编译管线四层对拍闭环（token / AST / 诊断 / 字节码逐指令）+ 153 opcode 穷尽执行器（1MB 线性内存 / 110 host 路由 / `VMSnapshot` 快照体系）+ 时间旅行（检查点 + FrameWindow）+ 43 算法族识别推断与教学诊断七元组——白箱招牌能力（逐步重放、算法自动识别、根因提示）总览见 [S8时间旅行与教学智能总览](docs/current/05-教学体验/S8时间旅行与教学智能总览.md)
 - **验证**：`moon test` **1344 用例**全绿 + **全部闸门绿**（分解明细见 [moonbit/README.md](moonbit/README.md)，裸总数真值以 facts `moonbit_test_passed` 为准；本行为现值行，不写日期——留在 facts 数字对账管束内，漂移即红即连坐）- **验证明细**：对拍四件（token / AST / 诊断 / 字节码逐层）+ 运行期 `vm_diff`/`clang_direct`（层 2 直拍全量语料逐例对照，已知差异清单与计数见 scripts/clang_direct/known_direct.json〔活文档，数字不锚此处〕）+ **实机代码勘探**（真实世界 C 语料 [TheAlgorithms/C 的 fork 基线](https://github.com/rustin-beep/C/tree/vitro-probe-baseline)逐文件 vs Clang 差分——累计开立 20 个缺陷 issue（见 [台账](https://github.com/rustin-beep/Vitro/issues?q=is%3Aissue)，as_of 2026-10-02）且形态收敛（运行差异全部可归因，零未知形态），金样本回归锚 + fork 语料随修复批重跑作外部印证；GPL 语料外置不进仓，工具见 [scripts/realcode_diff](scripts/realcode_diff/)）+ 卫生与生成器闸；闸清单以 [ci.yml](.github/workflows/ci.yml) 为权威（core + hygiene 两 job 全表，闸随批增长**不锚闸数**——2026-09-29 起统一口径，此前「十五闸/十二闸」为各自时点计数）；对外面以 `moonbit_surface -check` 机判对账- **已知限制与差异**（主动披露，as-of S9 修复批）：**①已知缺陷已清零**（9 条全部随 S9 修复批〔批一~批五，2026-10-05~07〕销案划线留档）/ 教学语义设计 6 条（受检访存、E3070 栈缓冲校验等——**有意为之的产品语义**，Clang 在同输入下是未定义行为）/ 与 C 标准·Clang 的架构差异 8 条（32 位指针模型等）/ 路线图缺口——分类清单见 [docs/current/07-质量与裁定/已知限制与差异.md](docs/current/07-质量与裁定/已知限制与差异.md)，每条标注 Clang 对照状态；机器单源 = 差异台账 `scripts/diff_ledger/ledger.json`（37 条，resolved-verified 13——as-of 2026-10-28 #251 翻案批）- **性能现状**（同机对拍 Rust oracle〔该基线随 2026-10-05 删区退役，此后对照通道为 Clang / CPython〕；2026-09-26 首测，2026-10-04 S8 收官批全量复跑）：端到端小程序中位 **1.42×**（编译主导）；计算密集 fib(20) 1.92× / 冒泡 6.32× / 500×500 嵌套 15.7×（S8 复测 1.58–1.74× / 6.43–6.89× / 15.8×，同量级）；**HEAD vs 0.7.0 同时段 A/B 判「无回归」**（四层管线 0.86–1.01× / 执行层 0.99–1.08×）。S8 交付面首次有 mb 侧实测：时间旅行 28 万帧纯引擎 **14.2 μs/帧**、seek 越窗 55.6ms（检查点+正向重放）、teaching 判据 ~62μs / diagnostics ~44μs/轮。**端到端口径另计（#232 披露）**：单次 `vitro api` 调用（进程起停+帧解析）中位 **26.6 ms**——每帧起一进程的逐步动画上限 ~38 FPS；长驻 serve / 100 帧批式摊薄 **~0.28 ms/帧**（≈95× 差），下游动画应走批式或长驻会话——详见[性能探究实录 §13–§15](docs/archive/ARCHIVE_性能探究实录20260922.md)
 - **出口与短板（诚实披露）**：**wasm-gc 同请求对照全部七场景快 native CLI 1.5–6.3×**（step 帧流 21.4 μs/帧 vs native 88.5；compile 差距最显著；对照对象为已退役的 Rust native CLI，历史实测）——「wasm-gc 主出口」的实测印证；全速执行仍慢 CPython（纯解释器，最公平基准）**9.6–19.8×**（wasm）/ 31–54×（native），系 VM 解释循环本身（自 Rust 期继承——历史实测 oracle VM 亦慢 CPython ~2×），优化挂 issue #41（bytecode→wasm 生成器实测仅 2–2.8×，量级不足以补齐，需单独评估）；解释器形态持续服务单步语义与时间旅行
-- **其后**：S9 已收官——0.9.0 已于 2026-10-25 发布（S9 收官版，tag `vitro-engine-0.9.0`，[发布档案](docs/current/08-发布档案/0.9.0.md)）；0.9.1 已于 2026-10-31 发布（在架事故修复版，tag `vitro-engine-0.9.1`，[发布档案](docs/current/08-发布档案/0.9.1.md)）；下一阶段 1.0 = 退役评估（Go 防线层与三外援终局）——排期权威见[总计划 §10](docs/current/01-定位与路线/MoonBit迁移总计划.md)
+- **下一阶段 1.0**：Go 防线层与三外援的退役评估——排期权威见[总计划 §10](docs/current/01-定位与路线/MoonBit迁移总计划.md)
 
-## 架构总览与 Rust oracle 退役档案
+## 架构总览
 
 <p align="center">
   <img src="docs/current/01-定位与路线/vitro-architecture.svg" alt="vitro 架构总览：MoonBit 现役引擎 × 脚本防线层 × Clang 真值源" width="900">
 </p>
 
-**单轨格局** —— 主体 **MoonBit 现役引擎**（`vitro/engine`：编译管线 → 字节码 → VM，memory/host 底座；出口收敛为 wasm-gc 单出口多宿主）；中带 **脚本司法与防线层**（差分 golden 对拍 · Clang 直拍 · 生成器 · facts 对账；ts 统一 #273 · 存量 Go 触达即迁）；真值源 **Clang**（golden 唯一来源）。迁移期的下轨 **Rust 冻结对照 oracle** 已于 2026-10-05（S9 工序④删区）物理删除。详图与决策：[架构设计.md](docs/current/01-定位与路线/架构设计.md)
+**单轨格局** —— 主体 **MoonBit 现役引擎**（`vitro/engine`：编译管线 → 字节码 → VM，memory/host 底座；出口收敛为 wasm-gc 单出口多宿主）；中带 **脚本司法与防线层**（差分 golden 对拍 · Clang 直拍 · 生成器 · facts 对账；ts 统一 #273 · 存量 Go 触达即迁）；真值源 **Clang**（golden 唯一来源）。详图与决策：[架构设计.md](docs/current/01-定位与路线/架构设计.md)
 
-**Rust oracle 历史快照（删区前终态，2026-09-23 实测口径）**：C Shadow Verification 685 用例（680 匹配 + 4 known_issue + 1 gap_extension）、cargo test 1029 用例全绿、capi ABI 2.1.0、wasm32 构建 3.75MB——完整终态见 tag `rust-oracle-freeze` 与 [0.8.0 发布档案](docs/current/08-发布档案/0.8.0.md)；语料域差量已由 clang_direct 吸收（shadow 685 ⊆ 698，差量 0），历史失败记录见 tag 内 `native/tests/*_FAILURES.md`。现行差异台账 = `scripts/diff_ledger/ledger.json`。
+**历史对照档案**：原 Rust 对照实现（`native/` workspace，差分 oracle）已于 2026-10-05 物理删除——删区前终态与历史失败记录见 tag `rust-oracle-freeze` 与 [0.8.0 发布档案](docs/current/08-发布档案/0.8.0.md)；其防线职责已由 MoonBit 侧与 Clang 直拍全部承接（Shadow → `clang_direct`、语料迁 `corpus/`、契约名册经 `host_contract_map` 对账承接），现行差异台账 = `scripts/diff_ledger/ledger.json`。
 
 > 失败与差异一律如实记录（现行于 [已知限制与差异.md](docs/current/07-质量与裁定/已知限制与差异.md)），禁止通过修改测试预期值粉饰数据。
 
@@ -54,14 +54,14 @@
   <img src="docs/current/05-教学体验/unified-triple-cache.svg" alt="统一模式三态缓存" width="900">
 </p>
 
-**统一模式三态缓存** —— 时间旅行教学交互的三层缓存：Frame Cache 承接动画与面板的零延迟浏览，Checkpoint 支撑状态恢复，Active VM 保持唯一可执行现场（**MoonBit 侧已实现**——随 S8 收官：`time_travel` 包 FrameWindow O(1) 窗口 + step 族五方法上线；Rust 侧历史实现随删区退役）。
+**统一模式三态缓存** —— 时间旅行教学交互的三层缓存：Frame Cache 承接动画与面板的零延迟浏览，Checkpoint 支撑状态恢复，Active VM 保持唯一可执行现场（已实现——`time_travel` 包 FrameWindow O(1) 窗口 + step 族五方法）。
 设计与落地口径：[统一模式设计.md](docs/current/05-教学体验/统一模式设计.md)；S8 落地面：[S8时间旅行与教学智能总览](docs/current/05-教学体验/S8时间旅行与教学智能总览.md)
 
 <p align="center">
   <img src="docs/current/05-教学体验/cognitive-knowledge-graph.svg" alt="P2 知识图谱概念三域" width="900">
 </p>
 
-**认知推理知识图谱** —— 把 C 语言离散知识点建模为编译 / 内存 / 控制流三域概念图，学生遇错时动态激活关联子图（**MoonBit 侧已实现**——教学智能随 S8 收官：teaching 43 族识别与推断 + diagnostics 教学七元组〔概念激活 / 先修路径〕，算法识别经 compile 帧 `algorithm_matches` 直出。识别判据 = 函数名关键词**或**典型结构特征二选一（#104 登记）——命名含算法关键词（如 `bubbleSort`）即命中；非典型命名（如 `mySort`）须结构特征充分才命中，两者皆缺则不报——教学建议函数名包含算法关键词）。
+**认知推理知识图谱** —— 把 C 语言离散知识点建模为编译 / 内存 / 控制流三域概念图，学生遇错时动态激活关联子图（已实现——teaching 43 族识别与推断 + diagnostics 教学七元组〔概念激活 / 先修路径〕，算法识别经 compile 帧 `algorithm_matches` 直出。识别判据 = 函数名关键词**或**典型结构特征二选一（#104 登记）——命名含算法关键词（如 `bubbleSort`）即命中；非典型命名（如 `mySort`）须结构特征充分才命中，两者皆缺则不报——教学建议函数名包含算法关键词）。
 节点分类树与已实现范围：[认知推理系统设计.md](docs/current/05-教学体验/认知推理系统设计.md)；教学智能落地面：[S8时间旅行与教学智能总览](docs/current/05-教学体验/S8时间旅行与教学智能总览.md)
 
 <p align="center">
@@ -81,7 +81,7 @@
 | 执行 | 自研字节码解释器（153 opcode 穷尽 match，1MB 线性内存，指令级边界检查）+ `VMSnapshot` 快照体系（时间旅行基座） |
 | 加速规划 | 0.7.0+ bytecode→wasm-GC 生成器（全速执行）；解释器持续服务单步语义与时间旅行 |
 | 行为基准 | Clang / Clang++（Golden 唯一来源，禁止来自 Vitro 自己） |
-| 已退役对照 | ~~Rust oracle~~（迁移期差分对照实现，2026-10-05 删区退役；档案 = tag `rust-oracle-freeze` + git 历史；模板 JIT 随之退役、MoonBit 侧不复刻——裁定见 S9 判定书） |
+| 已退役对照 | Rust oracle（历史差分对照实现，2026-10-05 删区退役；档案 = tag `rust-oracle-freeze` + git 历史） |
 | 许可 | MIT |
 
 ## 项目结构
@@ -89,11 +89,11 @@
 ```
 moonbit/                   MoonBit 活跃区（vitro/engine workspace）——现役实现，全部新开发在此
 ├── source/ … util/ fs/    基础层（SourceLoc / 153 opcode / diag 生成物 / AST / 零语义机械件 / vendored 文件系统件）
-├── lexer/ parser/ typeck/ 前端（S2–S4 收官）
-├── bytecode/ codegen/     字节码与生成器（S5 收官）
-├── memory/ host/ vm/      运行时（S6 收官：1MB 内存状态机 / 110 host 路由 / 执行器 + 快照）
-├── protocol/ session/ gateway/ 协议冻结层、会话与 wasm-gc 单出口（S7 批一~五已落：StepPayload 契约 + 词汇表 / 会话状态 / gateway 4 导出 + wasm 薄壳；step 族与 dump 族 S8 已接）
-├── time_travel/ teaching/ steps/ diagnostics/ 时间旅行与教学智能（S8 收官：检查点 + FrameWindow / 43 算法族识别推断 / 教学诊断七元组）
+├── lexer/ parser/ typeck/ 前端
+├── bytecode/ codegen/     字节码与生成器
+├── memory/ host/ vm/      运行时（1MB 内存状态机 / 110 host 路由 / 执行器 + 快照）
+├── protocol/ session/ gateway/ 协议冻结层、会话与 wasm-gc 单出口（StepPayload 契约 + 词汇表 / 会话状态 / gateway 4 导出 + wasm 薄壳）
+├── time_travel/ teaching/ steps/ diagnostics/ 时间旅行与教学智能（检查点 + FrameWindow / 43 算法族识别推断 / 教学诊断七元组）
 └── cmd/                   差分对拍工具 ×4（dump_tokens / dump_ast / dump_typeck / dump_compile）+ cmd/run 端到端 runner + cmd/serve JSON-lines 出口 + `vitro` 总入口（run/compile/step/api 四子命令，#37 CLI 出口总账）
 corpus/                    C 语料（baseline / knr / leetcode / gap / cpp / llm_multifile / llm_scale 等；Clang golden 与 e2e 驱动的输入，原 native/tests/cases 迁入）
 templates/                 算法模板源（source.c + meta.yaml；待社区前端或 wasm 出口认领）
@@ -105,7 +105,7 @@ docs/                      设计文档、规范与事故报告
 （协议 schema 已随包分发：`moonbit/docs/spec/`——CLI_PROTOCOL_V1 与 STEP_PAYLOAD_SCHEMA，2026-10-25 搬包）
 ```
 
-> 原 `native/`（Rust workspace：10 子 crate + capi/unified/serve 出口 + runtime_libc + 五层测试防线）已于 2026-10-05 删区退役——完整终态见 tag `rust-oracle-freeze`。
+> 原 Rust 对照实现（`native/` workspace）已于 2026-10-05 删区退役——终态档案见 tag `rust-oracle-freeze`。
 
 ## 快速开始
 
@@ -142,7 +142,7 @@ node scripts/clang_direct/main.mts
 
 1. **`moon test` 1344 用例 + 全部闸门绿**：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍 + `clang_direct` 层 2 直拍（全量语料逐例对照，已知差异清单与计数见 scripts/clang_direct/known_direct.json〔活文档，数字不锚此处〕）；闸清单以 [ci.yml](.github/workflows/ci.yml) 为权威（闸随批增长不锚闸数）2. **运行期双防线**：`scripts/vm_diff` 差分（引擎 vs 冻结 golden——工序③固化锚，stdout / 返回码 / 1MB 映像逐字节）与 `scripts/clang_direct` 层 2 直拍（引擎 vs Clang 本尊），共同被测物 = `cmd/run` 端到端 runner3. **实机代码勘探**（防线外的实测补充——登记制非门禁制）：真实世界 C 语料（[TheAlgorithms/C 的 fork 基线](https://github.com/rustin-beep/C/tree/vitro-probe-baseline)）与 demo 实测用户代码的逐文件 vs Clang 差分——累计开立 **20 个缺陷 issue**（见 [issue 台账](https://github.com/rustin-beep/Vitro/issues?q=is%3Aissue)，as_of 2026-10-02，台账为活文档）；缺陷形态呈**收敛**而非蔓延：后期实测以存量 issue 的实例增补为主，全量勘探的运行差异全部可归因定性（已知缺陷 / UB / 护栏与资源上限 / 交互依赖——零未知形态）；配测量金样本回归锚（缺陷只应向绿迁移），fork 语料在修复批全量重跑即为各 issue 修复的**外部语料印证**；GPL 语料外置不进仓，工具见 [`scripts/realcode_diff`](scripts/realcode_diff/)4. **对外面对账**：`node scripts/moonbit/moonbit_surface/moonbit_surface.mts -check` 机判 `.mbti` 接口面
 
-**Rust oracle 侧（已随 2026-10-05 删区退役）**：Shadow Verification（由 `clang_direct` 吸收，语料差量 0）、K&R + LeetCode 真实程序回归（语料迁 `corpus/` 由 MoonBit 侧驱动接续）、三层契约验证（Host Contract 以 103 条冻结名册经 `host_contract_map` 对账承接）、Fuzz 压力测试（不变量自检路 A 已迁入 MoonBit 测试）、`*_FAILURES.md` 一致性监控（随 CI 拆臂退役，现行差异台账 = `scripts/diff_ledger/ledger.json`）——历史终态见 tag `rust-oracle-freeze`。
+**已承接的历史防线**：原 Rust oracle 侧防线（Shadow Verification / K&R+LeetCode 回归 / 三层契约验证 / Fuzz 不变量 / FAILURES 监控）已随 2026-10-05 删区退役，职责分别由 `clang_direct`、`corpus/` 语料驱动、`host_contract_map` 对账与 MoonBit 测试承接——历史终态见 tag `rust-oracle-freeze`。
 
 ## 协作方式与可审计性：人主审，AI 实现
 

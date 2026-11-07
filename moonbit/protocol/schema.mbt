@@ -47,6 +47,7 @@ pub fn v0_2_activation_checklist() -> Array[String] {
 
 ///|
 /// v0.2 字段台账一条（文档 §9 的机器可读单源条目）。
+#derive(Debug)
 pub(all) struct SchemaFieldPlan {
   /// 字段名（或字段路径形态如 "call_stack[].return_line"）
   field : String
@@ -57,7 +58,7 @@ pub(all) struct SchemaFieldPlan {
   /// 激活批次
   batch : String
   note : String
-} derive(Debug)
+}
 
 ///|
 pub extend SchemaFieldPlan with Debug::{to_repr}
@@ -147,6 +148,7 @@ pub fn error_frame_fields_v0_1() -> Array[String] {
 
 ///|
 /// 行为契约：不得被性能优化破坏的可观测行为（CSharp前端引入计划 §6-B）。
+#derive(Debug)
 pub(all) struct BehaviorContract {
   id : String
   statement : String
@@ -155,7 +157,7 @@ pub(all) struct BehaviorContract {
   batch : String
   /// 防线载体（可执行的判据所在）
   enforced_by : String
-} derive(Debug)
+}
 
 ///|
 pub extend BehaviorContract with Debug::{to_repr}
@@ -219,11 +221,12 @@ pub fn behavior_contracts() -> Array[BehaviorContract] {
 
 ///|
 /// 展开步样本（"UNWINDING 不得合并单步"判据的输入）。
+#derive(Debug, Eq, Compare)
 pub(all) struct UnwindSample {
   step_index : Int32
   unwinding : Bool
   unwind_frames_left : Int32
-} derive(Debug, Eq, Compare)
+}
 
 ///|
 pub extend UnwindSample with Compare::{op_lt, op_le, op_ge, compare, op_gt}

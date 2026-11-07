@@ -17,18 +17,20 @@
 // （camelCase：compileOk/ppTrace/bpLines 由 demo 侧 IPC shim 负责映射）。
 
 ///|
+#derive(Debug)
 suberror EngineError {
   Frame(message~ : String)
-} derive(Debug)
+}
 
 ///|
 pub extend EngineError with Debug::{to_repr}
 
 ///|
+#derive(ToJson, FromJson)
 struct VersionsReply {
   engine : String
   protocol : String
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub extend VersionsReply with ToJson::{to_json}
@@ -37,10 +39,11 @@ pub extend VersionsReply with ToJson::{to_json}
 pub extend VersionsReply with FromJson::{from_json}
 
 ///|
+#derive(ToJson, FromJson)
 struct InvokeRequest {
   api : String
   params : Json?
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub extend InvokeRequest with ToJson::{to_json}
@@ -49,10 +52,11 @@ pub extend InvokeRequest with ToJson::{to_json}
 pub extend InvokeRequest with FromJson::{from_json}
 
 ///|
+#derive(ToJson, FromJson)
 struct CompileFile {
   filename : String
   source : String
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub extend CompileFile with ToJson::{to_json}
@@ -61,6 +65,7 @@ pub extend CompileFile with ToJson::{to_json}
 pub extend CompileFile with FromJson::{from_json}
 
 ///|
+#derive(ToJson, FromJson)
 struct CollectRequest {
   source : String?
   cap : Int32?
@@ -68,7 +73,7 @@ struct CollectRequest {
   files : Array[CompileFile]?
   cfg : Json?
   argv : Array[String]?
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub extend CollectRequest with ToJson::{to_json}
@@ -77,10 +82,11 @@ pub extend CollectRequest with ToJson::{to_json}
 pub extend CollectRequest with FromJson::{from_json}
 
 ///|
+#derive(ToJson, FromJson)
 struct FeedRequest {
   text : String
   cap : Int32?
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub extend FeedRequest with ToJson::{to_json}

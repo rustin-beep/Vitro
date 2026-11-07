@@ -15,6 +15,7 @@
 /// 未照搬面（消费驱动，登记）：kind()/name()/is_* 系列、total_elements/
 /// subscript_type/innermost_element_type、set_const——待 S4/S5 消费侧
 /// 落地时补（本包首批只含构造 / 判等 / 渲染 / mangle / depth / dump）。
+#derive(Debug)
 pub(all) enum Type {
   Void(Bool) // is_const
   Int(Bool, Bool) // is_unsigned, is_const
@@ -34,7 +35,7 @@ pub(all) enum Type {
   Auto
   TemplateId(String, Array[TemplateArg], Bool) // base, args, is_const
   Typeof(Expr, Bool, Bool) // expr, is_const, unqual（C23 typeof_unqual）
-} derive(Debug)
+}
 
 ///|
 pub extend Type with Debug::{to_repr}

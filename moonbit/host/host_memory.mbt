@@ -38,6 +38,7 @@
 /// - `note`：教学附注文本（调用方负责去重后写入 note 通道——去重口径是
 ///   `OutputLog::has_note`）；
 /// - `trap`：要发的 trap 文本（`Some` 时调用方按 vm 的 trap 路径处理）。
+#derive(Debug, Eq)
 pub(all) struct HostMemReply {
   value : UInt64?
   note : String?
@@ -45,7 +46,7 @@ pub(all) struct HostMemReply {
   /// trap 的结构化 E 码（#261：空串 = 无码；与 trap 文案同生命周期——
   /// apply_reply 消费时传给 vm.trap 的 code~ 具名参数）。
   trap_code : String
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend HostMemReply with Debug::{to_repr}

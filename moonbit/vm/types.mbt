@@ -22,6 +22,7 @@
 
 ///|
 /// 单步执行结果（照搬 Rust `core/state.rs:46-53` 五态）。
+#derive(Eq, Debug)
 pub(all) enum StepResult {
   /// 正常执行一步。
   Ok
@@ -33,7 +34,7 @@ pub(all) enum StepResult {
   Trap
   /// 等待输入（Interactive 模式 stdin 未就绪——可续跑，`ip` 已回退）。
   WaitingInput
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend StepResult with Debug::{to_repr}
@@ -48,6 +49,7 @@ pub extend StepResult with Eq::{not_equal, equal}
 /// `call_user_function` 从 host 进入用户函数，该帧"无处可返"——Rust 用
 /// `usize::MAX` 标识（`control.rs:214/236`），MoonBit 换 `Option` 显式表达
 /// （勘察 §2.1 调用约定条目的等价变换）。
+#derive(Eq, Debug)
 pub(all) struct CallFrame {
   /// 返回地址；`None` = 宿主回调帧（返回即回 host 分发点）。
   return_ip : Int32?
@@ -63,7 +65,7 @@ pub(all) struct CallFrame {
   caller_line : Int32
   /// 栈上局部数组缓冲区表（V-P1-6 栈缓冲容量校验；随函数 meta 克隆进帧）。
   local_buffers : Array[@bytecode.LocalBuffer]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CallFrame with Debug::{to_repr}
@@ -74,6 +76,7 @@ pub extend CallFrame with Eq::{not_equal, equal}
 ///|
 /// 可视化事件（照搬 Rust `VisEventData`，`runtime_state.rs:17-24`；
 /// S8 teaching/steps 消费——`StepPayload` 的词汇来源之一）。
+#derive(Eq, Debug)
 pub(all) struct VisEventData {
   ty : Int32
   line : Int32
@@ -81,7 +84,7 @@ pub(all) struct VisEventData {
   extra1 : Int32
   extra2 : Int32
   context : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend VisEventData with Debug::{to_repr}
@@ -92,10 +95,11 @@ pub extend VisEventData with Eq::{not_equal, equal}
 ///|
 /// 变量访问记录（每步的 `last_accessed_vars` 元素；访问类型复用
 /// `@memory.AccessKind`——同一 Read/Write 语义，不另立枚举）。
+#derive(Eq, Debug)
 pub(all) struct VariableAccess {
   name : String
   access_type : @memory.AccessKind
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend VariableAccess with Debug::{to_repr}
@@ -116,10 +120,11 @@ pub extend VariableAccess with Eq::{not_equal, equal}
 ///   （每帧批量 release 局部引用 + 执行未完成的 finally，**每帧一 step**
 ///   ——行为契约「UNWINDING 不得合并单步」），直到命中 `unwind_target`
 ///   锁定的 handler 或传播出 main 转 trap。
+#derive(Eq, Debug)
 pub(all) enum ExecMode {
   Running
   Unwinding
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend ExecMode with Debug::{to_repr}
@@ -135,12 +140,13 @@ pub extend ExecMode with Eq::{not_equal, equal}
 /// 自然作废——显式 handler 栈而非异常表，白箱可见，CS 计划 §4.1 裁决）。
 /// `frame_idx` 记录压栈时的 `call_stack` 深度（跨帧展开时判断 handler
 /// 是否仍属于当前帧）。
+#derive(Eq, Debug)
 pub(all) struct HandlerFrame {
   catch_ip : Int32
   frame_idx : Int32
   stack_depth : Int32
   mem_stack_top : UInt32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend HandlerFrame with Debug::{to_repr}

@@ -2,6 +2,7 @@
 package "vitro/engine/gateway"
 
 import {
+  "moonbitlang/core/json",
   "vitro/engine/session",
 }
 
@@ -14,7 +15,7 @@ pub fn invoke(String) -> String
 
 pub fn invoke_on(@session.Session, String) -> String
 
-pub fn invoke_parsed(String) -> Json?
+pub fn invoke_parsed(String) -> @json.Json?
 
 pub fn protocol_version() -> String
 

@@ -11,6 +11,7 @@
 ///|
 /// 局部缓冲区描述（V-P1-6 栈缓冲区溢出检测用）：
 /// 编译期登记的栈上数组（如 `char buf[4]`），offset 相对帧 locals_base。
+#derive(Eq, Debug)
 pub(all) struct LocalBuffer {
   /// 相对 locals_base 的字节偏移。
   offset : Int32
@@ -18,7 +19,7 @@ pub(all) struct LocalBuffer {
   size : Int32
   /// 变量名（教学诊断用）。
   name : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend LocalBuffer with Debug::{to_repr}
@@ -31,6 +32,7 @@ pub extend LocalBuffer with Eq::{not_equal, equal}
 /// ip/arg_count/param_count/local_count/param_sizes/is_variadic 为 mut——
 /// codegen 两阶段回填（Pass 2 建骨架、enter_function 回填 param_sizes、
 /// exit_function 回填 local_count/计数），消费侧（dump/VM）只读。
+#derive(Debug)
 pub(all) struct FuncMeta {
   mut ip : Int32
   /// 参数总 word 数（以 4-byte words 计），供 Call 指令弹栈使用。
@@ -47,13 +49,14 @@ pub(all) struct FuncMeta {
   /// 据此对栈缓冲区做容量校验（此前只查堆 region，栈上 `char buf[4]`
   /// 被静默覆写）。
   local_buffers : Array[LocalBuffer]
-} derive(Debug)
+}
 
 ///|
 pub extend FuncMeta with Debug::{to_repr}
 
 ///|
 /// 符号表条目（Rust `vitro_runtime::Symbol` 照搬，字段序一致）。
+#derive(Debug)
 pub(all) struct Symbol {
   name : String
   addr : UInt32
@@ -67,7 +70,7 @@ pub(all) struct Symbol {
   /// 作用域"。`scope_depth` 在所有构造点都是常量（1 = 局部 / 0 = 静态），
   /// 不表达嵌套深度。
   decl_line : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend Symbol with Debug::{to_repr}
@@ -77,6 +80,7 @@ pub extend Symbol with Debug::{to_repr}
 /// 字段序一致）。前 8 项进 dump-compile 产物对拍面；source_map/symbols/
 /// struct_defs/union_defs/global_data_end 五项是 export 不导出、仅进程内
 /// 契约的部分（S5 起 dump-compile 全量对拍）。
+#derive(Debug)
 pub(all) struct CompileOutput {
   code : Array[@opcode.Instruction]
   globals_init_32 : Array[(UInt32, Int32)]
@@ -94,7 +98,7 @@ pub(all) struct CompileOutput {
   /// next_global_offset)`，含 Bytecode Libc 预留段）。运行层据此计算动态
   /// 堆起点 `max(HEAP_START, align4(global_data_end))`。
   global_data_end : UInt32
-} derive(Debug)
+}
 
 ///|
 pub extend CompileOutput with Debug::{to_repr}

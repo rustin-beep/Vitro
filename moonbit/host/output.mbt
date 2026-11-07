@@ -32,6 +32,7 @@
 
 ///|
 /// 单个输出片段的来源。
+#derive(Debug, Eq)
 pub(all) enum OutputKind {
   /// 程序自身写到 stdout 的字节（`printf` / `puts` / `putchar` / `fputs(stdout)` 等）。
   ///
@@ -45,7 +46,7 @@ pub(all) enum OutputKind {
   ///
   /// **不属于程序输出**，任何 stdout 比对都必须排除。
   Note
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend OutputKind with Debug::{to_repr}
@@ -88,10 +89,11 @@ fn OutputKind::index(self : OutputKind) -> Int32 {
 
 ///|
 /// 一段带来源标记的输出。
+#derive(Debug, Eq)
 pub(all) struct OutputChunk {
   kind : OutputKind
   bytes : Bytes
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend OutputChunk with Debug::{to_repr}

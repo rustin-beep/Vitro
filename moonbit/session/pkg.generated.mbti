@@ -15,6 +15,7 @@ import {
 // Errors
 
 // Types and methods
+#derive(@debug.Debug)
 pub(all) struct CompileState {
   mut errors : String
   mut compile_units : Array[CompileUnit]
@@ -25,16 +26,18 @@ pub(all) struct CompileState {
   mut struct_fields : Map[String, Array[(String, Int32)]]
   mut file_ranges : Array[FileRange]
   mut preprocessor_trace : Array[String]
-} derive(@debug.Debug)
+}
 pub fn CompileState::new() -> Self
 pub fn CompileState::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct CompileUnit {
   filename : String
   source : String
-} derive(@debug.Debug)
+}
 pub fn CompileUnit::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct Diagnostic {
   line : Int32
   column : Int32
@@ -49,31 +52,35 @@ pub(all) struct Diagnostic {
   replace_end_column : Int32
   replacement_text : String
   filename : String
-} derive(@debug.Debug)
+}
 pub fn Diagnostic::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct FileRange {
   filename : String
   start_line : Int32
   end_line : Int32
-} derive(@debug.Debug)
+}
 pub fn FileRange::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct HeapStats {
   heap_base : Int32
   total_heap : Int32
   allocated : Int32
   fragmented : Int32
   fragmentation_rate : Int32
-} derive(@debug.Debug)
+}
 pub fn HeapStats::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct MemoryFragment {
   addr : UInt32
   size : Int32
-} derive(@debug.Debug)
+}
 pub fn MemoryFragment::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct MemoryRegion {
   addr : UInt32
   size : Int32
@@ -84,7 +91,7 @@ pub(all) struct MemoryRegion {
   alloc_line : Int32
   alloc_by : String
   kind : String
-} derive(@debug.Debug)
+}
 pub fn MemoryRegion::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Session {
@@ -106,31 +113,34 @@ pub fn Session::set_max_steps(Self, Int32) -> Unit
 pub fn Session::source_file_at(Self, Int32) -> String?
 pub fn Session::source_line_at(Self, Int32) -> String?
 
+#derive(@debug.Debug)
 pub(all) struct SessionConfig {
   mut max_steps : Int32
   mut call_depth_limit : Int32
   mut deterministic : Bool
   mut max_checkpoints : Int32
-} derive(@debug.Debug)
+}
 pub fn SessionConfig::apply_to_vm(Self, @vm.VitroVM) -> Unit
 pub fn SessionConfig::default() -> Self
 pub fn SessionConfig::from_vm(@vm.VitroVM) -> Self
 pub fn SessionConfig::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct StepResult {
   status : StepStatus
   current_line : Int32
   output : String
   waiting_input : Bool
-} derive(@debug.Debug)
+}
 pub fn StepResult::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum StepStatus {
   Paused
   WaitingInput
   Finished
   Trap
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn StepStatus::compare(Self, Self) -> Int32
 pub fn StepStatus::equal(Self, Self) -> Bool
 pub fn StepStatus::not_equal(Self, Self) -> Bool
@@ -141,19 +151,21 @@ pub fn StepStatus::op_lt(Self, Self) -> Bool
 pub fn StepStatus::to_repr(Self) -> @debug.Repr
 pub fn StepStatus::to_text(Self) -> String
 
+#derive(@debug.Debug)
 pub(all) struct TraceEntry {
   line : Int32
   operation : String
-} derive(@debug.Debug)
+}
 pub fn TraceEntry::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct VariableSnapshot {
   name : String
   addr : UInt32
   is_local : Bool
   ty : @ast.Type
   value : Int64
-} derive(@debug.Debug)
+}
 pub fn VariableSnapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases

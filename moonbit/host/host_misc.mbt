@@ -19,9 +19,10 @@
 /// 算法照搬 `misc.rs:4-14`：`next = seed * 1103515245 + 12345`（u32 回绕，
 /// MoonBit `UInt` 四则静默回绕，F1）、取 `next & 0x7fff`。**初值由 vm
 /// 接线时对齐 oracle `RuntimeState` 缺省（vm 片义务）**。
+#derive(Debug, Eq)
 pub(all) struct RandState {
   mut seed : UInt32
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend RandState with Debug::{to_repr}

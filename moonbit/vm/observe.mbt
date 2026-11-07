@@ -22,6 +22,7 @@
 ///|
 /// 变量快照（Rust vitro_runtime::VariableSnapshotData 照搬）——ty 保持
 /// ast 形态（文本化在消费方 collector：L9 可 import ast+protocol）。
+#derive(Debug)
 pub(all) struct VariableSnapshotData {
   name : String
   addr : UInt32
@@ -29,7 +30,7 @@ pub(all) struct VariableSnapshotData {
   ty : @ast.Type
   /// 位模式值（Rust `u64 as i64`：Double 按位重解释，其余按 i32 符号扩展）。
   value : Int64
-} derive(Debug)
+}
 
 ///|
 pub extend VariableSnapshotData with Debug::{to_repr}

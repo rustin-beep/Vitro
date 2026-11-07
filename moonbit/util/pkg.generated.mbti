@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vitro/engine/util"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub fn base64_decode(String) -> Bytes?
 
@@ -12,7 +16,7 @@ pub fn json_escape(String) -> String
 
 pub fn json_escape_into(String, StringBuilder) -> Unit
 
-pub fn json_parse(String, depth_limit? : Int32) -> Json raise JsonParseError
+pub fn json_parse(String, depth_limit? : Int32) -> @json.Json raise JsonParseError
 
 pub fn le_u32_at(FixedArray[Byte], Int32) -> UInt32
 

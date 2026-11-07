@@ -11,6 +11,7 @@
 
 ///|
 /// 会话级配置（跨 run 存活；reset 保留）。
+#derive(Debug)
 pub(all) struct SessionConfig {
   /// 步数保险丝（会话级）——全速运行的总步数上限。
   mut max_steps : Int32
@@ -25,7 +26,7 @@ pub(all) struct SessionConfig {
   /// 无检查点——step.begin 建 engine 时应用 + 现存 engine 经
   /// Session::set_max_checkpoints 即时应用）。
   mut max_checkpoints : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend SessionConfig with Debug::{to_repr}

@@ -67,12 +67,13 @@ pub(all) struct FuncFeatures {
 }
 pub fn FuncFeatures::default() -> Self
 
+#derive(@debug.Debug)
 pub(all) struct InferEnv {
   prev_vars : Array[VarSnapshot]
   at_callee_entry : Bool
   caller_is_main : Bool
   lookahead : String
-} derive(@debug.Debug)
+}
 pub fn InferEnv::to_repr(Self) -> @debug.Repr
 
 pub struct VarMap {
@@ -83,10 +84,11 @@ pub fn VarMap::get_int_any(Self, Array[String]) -> Int32?
 pub fn VarMap::get_str(Self, String) -> String?
 pub fn VarMap::new(Array[VarSnapshot]) -> Self
 
+#derive(@debug.Debug)
 pub(all) struct VarSnapshot {
   name : String
   value : String
-} derive(@debug.Debug)
+}
 pub fn VarSnapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases

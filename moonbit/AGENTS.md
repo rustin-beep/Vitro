@@ -93,7 +93,7 @@ node scripts/clang_direct/main.mts [--sample N | --corpus dir | --cases f1.c,...
 > 总计划 §3 的 F1–F9 仍有效；以下是**工程语法/工具层**补充，多数来自 S1 实作的编译器报错。
 
 1. **`ref` 是保留字**——可变局部状态用 `let mut x = 0`（`Array.push` 改内容**不需要** mut，mut 只管重新绑定；unused_mut 默认 error）。
-2. **比较 trait 是 `Compare` 不是 `Ord`**——`derive(Debug, Eq, Compare, Hash, Default)`；derive 子句在类型体 `{}` 之后。
+2. **比较 trait 是 `Compare` 不是 `Ord`**——`#derive(Debug, Eq, Compare, Hash, Default)`；**derive 注解在类型声明行之前**（moonc 0.10.20 起 `derive(...)` 后置语法升格为 error [0027]，2026-11-07 全仓 147 处迁移为前置 `#derive`——`pub(all) suberror` 声明同样受影响）。
 3. **`derive` 不能作方法名**（关键字）——S1 用 `Pos::from_byte_off` 替代。
 4. **枚举构造器可与其余类型名同名**（`Type::Int` 与内置 `Int` 按期望类型消歧）；但**两个枚举的同名构造器**（`AssignOp::Assign` vs `Expr::Assign`）在构造与模式两处都要显式 `Expr::Assign(...)` 限定。
 5. **跨包类型必须 `@pkg.` 前缀**——包括 struct 字段类型与函数签名参数（`loc : @source.SourceLoc`），裸类型名会撞"未定义"或静默歧义。

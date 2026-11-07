@@ -23,12 +23,13 @@
 
 ///|
 /// 一个名字的调用形态。
+#derive(Debug, Eq)
 pub(all) enum CallRoute {
   /// 走 `Call <固定索引>`——Bytecode Libc 预编译产物（`libc_index.mbt` 的 88 名）。
   BytecodeLibc(Int32)
   /// 走 `CallHost <id>`——host handler（`host_func_id_gen.mbt` 的 114 名）。
   Host(Int32)
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend CallRoute with Debug::{to_repr}

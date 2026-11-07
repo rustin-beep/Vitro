@@ -38,6 +38,7 @@
 
 ///|
 /// 验证违约（结构化——kind 稳定字符串供 Go 侧与测试锚定）。
+#derive(Debug, Eq)
 pub(all) struct VerifyViolation {
   /// 不变量类别码（stack-underflow / stack-unbalanced-ret /
   /// jump-cross-segment / jump-out-of-range / meta-inconsistent /
@@ -49,7 +50,7 @@ pub(all) struct VerifyViolation {
   /// 指令下标（产物级检查 = -1）。
   ip : Int32
   detail : String
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend VerifyViolation with Debug::{to_repr}

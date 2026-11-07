@@ -7,30 +7,33 @@
 ///|
 /// 静态修复载荷的坐标锚定模式（勘察 A3 拆分：载荷文案是数据、
 /// 坐标计算是机制——本枚举是表与机制的接口）。
+#derive(Debug)
 pub enum FixAnchor {
   /// 手工提示（fix_kind=4 形态）：坐标全 0、无替换文本
   Manual
   /// 行末锚定（fix_kind=2 插入形态）：坐标 = (line, 行尾 trim_end 长) ×2
   LineEnd
-} derive(Debug)
+}
 
 ///|
 pub extend FixAnchor with Debug::{to_repr}
 
 ///|
 /// 静态修复载荷（error_catalog.rs generate_fix 的纯静态码子集）。
+#derive(Debug)
 pub(all) struct FixPayload {
   suggestion : String
   fix_kind : Int32
   anchor : FixAnchor
   text : String
-} derive(Debug)
+}
 
 ///|
 pub extend FixPayload with Debug::{to_repr}
 
 ///|
 /// 知识图谱概念节点（knowledge_graph.rs ConceptNode 照搬）。
+#derive(Debug)
 pub(all) struct ConceptNode {
   id : String
   /// "Compile" | "Memory" | "ControlFlow"
@@ -40,13 +43,14 @@ pub(all) struct ConceptNode {
   /// 1-5
   difficulty : Int32
   related_card_ids : Array[String]
-} derive(Debug)
+}
 
 ///|
 pub extend ConceptNode with Debug::{to_repr}
 
 ///|
 /// 概念间有向边（knowledge_graph.rs ConceptEdge 照搬）。
+#derive(Debug)
 pub(all) struct ConceptEdge {
   from_id : String
   to_id : String
@@ -56,26 +60,28 @@ pub(all) struct ConceptEdge {
   ///（0.6/0.7/0.8/0.9）两侧文本一致，**系常量域遮蔽非宽度无害**（审阅
   /// F6 登记）：表内新增非十进制 strength 时须过 round_to_f32 语义化
   strength : Double
-} derive(Debug)
+}
 
 ///|
 pub extend ConceptEdge with Debug::{to_repr}
 
 ///|
 /// 学生编译历史单条记录（misconception_patterns.rs CompileRecord 照搬）。
+#derive(Debug)
 pub(all) struct CompileRecord {
   /// Unix 毫秒时间戳（机制不消费，仅为记录保真）
   timestamp_ms : Int64
   success : Bool
   error_codes : Array[Int32]
   trap_message : String?
-} derive(Debug)
+}
 
 ///|
 pub extend CompileRecord with Debug::{to_repr}
 
 ///|
 /// 预置误区模式（misconception_patterns.rs MisconceptionPattern 照搬）。
+#derive(Debug)
 pub(all) struct MisconceptionPattern {
   id : String
   name : String
@@ -84,13 +90,14 @@ pub(all) struct MisconceptionPattern {
   error_codes : Array[Int32]
   min_occurrences : Int32
   time_window : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend MisconceptionPattern with Debug::{to_repr}
 
 ///|
 /// 检出的误区（misconception_patterns.rs DetectedMisconception 照搬）。
+#derive(Debug)
 pub(all) struct DetectedMisconception {
   pattern_id : String
   pattern_name : String
@@ -98,13 +105,14 @@ pub(all) struct DetectedMisconception {
   occurrence_count : Int32
   /// 0.0 ~ 1.0（occurrences / min(window, records)）
   confidence : Double
-} derive(Debug)
+}
 
 ///|
 pub extend DetectedMisconception with Debug::{to_repr}
 
 ///|
 /// 学习路径单步（learning_path.rs PathStep 照搬）。
+#derive(Debug)
 pub(all) struct PathStep {
   /// "ReadKnowledgeCard" | "StudyTemplate" | "CompleteExercise" | "ReviewOwnCode"
   step_type : String
@@ -115,19 +123,20 @@ pub(all) struct PathStep {
   target_id : String
   /// 1-based 高亮行（StudyTemplate 用）
   highlight_lines : Array[Int32]
-} derive(Debug)
+}
 
 ///|
 pub extend PathStep with Debug::{to_repr}
 
 ///|
 /// 完整学习路径（learning_path.rs LearningPath 照搬）。
+#derive(Debug)
 pub(all) struct LearningPath {
   target_misconception_id : String
   target_misconception_name : String
   estimated_time_minutes : Int32
   steps : Array[PathStep]
-} derive(Debug)
+}
 
 ///|
 pub extend LearningPath with Debug::{to_repr}
@@ -135,6 +144,7 @@ pub extend LearningPath with Debug::{to_repr}
 ///|
 /// 修复应用目标（auto_fix.rs 消费 session::Diagnostic 的坐标五件套 +
 /// fix_kind 的自持形态——本包不依赖 session，gateway 调用处转装）。
+#derive(Debug)
 pub(all) struct FixTarget {
   /// 0=None 1=ReplaceText 2=InsertText 3=DeleteText 4=ManualHint
   fix_kind : Int32
@@ -143,7 +153,7 @@ pub(all) struct FixTarget {
   replace_end_line : Int32
   replace_end_column : Int32
   replacement_text : String
-} derive(Debug)
+}
 
 ///|
 pub extend FixTarget with Debug::{to_repr}
@@ -151,6 +161,7 @@ pub extend FixTarget with Debug::{to_repr}
 ///|
 /// 修复生成结果（Rust generate_fix 七元组的 record 形态——勘察 R5
 /// 抛弃位置参数元组；字段序 = 七元组序）。
+#derive(Debug)
 pub(all) struct FixOutcome {
   suggestion : String
   fix_kind : Int32
@@ -159,31 +170,33 @@ pub(all) struct FixOutcome {
   end_line : Int32
   end_col : Int32
   text : String
-} derive(Debug)
+}
 
 ///|
 pub extend FixOutcome with Debug::{to_repr}
 
 ///|
 /// 激活子图的邻居概念（knowledge_graph.rs NeighborConcept 照搬）。
+#derive(Debug)
 pub(all) struct NeighborConcept {
   node : ConceptNode
   relation : String
   strength : Double
   is_prerequisite : Bool
-} derive(Debug)
+}
 
 ///|
 pub extend NeighborConcept with Debug::{to_repr}
 
 ///|
 /// 激活的概念及其 1-hop 邻居（knowledge_graph.rs ActivatedConcept 照搬）。
+#derive(Debug)
 pub(all) struct ActivatedConcept {
   node : ConceptNode
   /// "Error" | "AST" | "Runtime"（现状两产者）
   activated_by : String
   neighbors : Array[NeighborConcept]
-} derive(Debug)
+}
 
 ///|
 pub extend ActivatedConcept with Debug::{to_repr}

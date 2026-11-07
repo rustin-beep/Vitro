@@ -10,11 +10,12 @@
 ///
 /// 三值同源派生：任一列值可由 `byte_off` + 行首信息重算（见
 /// [Pos::from_byte_off]）。禁止互相直接换算（量纲混算禁令的落点）。
+#derive(Debug, Eq)
 pub(all) struct Pos {
   byte_off : Int32
   col_scalar : Int32
   col_utf16 : Int32
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend Pos with Debug::{to_repr}

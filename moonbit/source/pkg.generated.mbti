@@ -10,21 +10,23 @@ import {
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct Pos {
   byte_off : Int32
   col_scalar : Int32
   col_utf16 : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn Pos::equal(Self, Self) -> Bool
 pub fn Pos::from_byte_off(Bytes, Int32, Int32) -> Self
 pub fn Pos::not_equal(Self, Self) -> Bool
 pub fn Pos::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Default, Eq, Hash, @debug.Debug)
 pub(all) struct SourceLoc {
   line : Int32
   column : Int32
   file_id : Int32
-} derive(Compare, Default, Eq, Hash, @debug.Debug)
+}
 pub fn SourceLoc::compare(Self, Self) -> Int32
 pub fn SourceLoc::default() -> Self
 pub fn SourceLoc::display(Self) -> String

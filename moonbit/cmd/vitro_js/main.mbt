@@ -69,7 +69,9 @@ fn main {
 }
 
 ///|
-extern "js" fn js_args() -> Array[String] =
+// 0.10.20 起 Array 在 JS FFI deprecated（探针实测：JS 原生数组跨界约定
+// 保留在 FixedArray——Array 返回值在产物里已是不可用的空壳）。
+extern "js" fn js_args() -> FixedArray[String] =
   #| function() {
   #| return process.argv.slice(2);
   #| }

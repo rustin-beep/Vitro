@@ -13,6 +13,7 @@
 ///   §3 禁止的回推法本身待处置（PR #294 审阅 P2-2）；无缺陷坐标用 `byte_off`；
 /// - `byte_off`：token 首字节的源内偏移（0 起，BOM 剥离后坐标系），扫描器直记
 ///   ——L1 强锚字段；L2 展开产物钉宏调用点的 byte_off（与 line/column 钉点一致）。
+#derive(Eq, @debug.Debug)
 pub(all) struct Token {
   ty : TokenType
   text : String
@@ -22,7 +23,7 @@ pub(all) struct Token {
   /// 行号——与仿古 loc.line 的主坐标系解耦；宏展开产物钉调用点的 real_line）。
   /// S2 审阅 P1-6 修复：真实归属的权威通道（LineMap 对重叠仿古区间只能尽力）。
   real_line : Int32
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend Token with Debug::{to_repr}
@@ -33,11 +34,12 @@ pub extend Token with Eq::{not_equal, equal}
 ///|
 /// 词法错误（致命，收集不中断——与 Rust `LexerError` 同构）。
 /// `code` 为类型化错误码（diag 包 137 臂），`code()` 取数字与 Rust `code : i32` 对齐。
+#derive(Eq, @debug.Debug)
 pub(all) struct LexError {
   message : String
   loc : @source.SourceLoc
   code : @diag.ErrorCode
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend LexError with Debug::{to_repr}
@@ -47,11 +49,12 @@ pub extend LexError with Eq::{not_equal, equal}
 
 ///|
 /// E2 白箱教学层：预处理阶段**非致命**提示（宏遮蔽 W1018 / 宏参数副作用 W1019）。
+#derive(Eq, @debug.Debug)
 pub(all) struct LexWarning {
   message : String
   loc : @source.SourceLoc
   code : @diag.ErrorCode
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend LexWarning with Debug::{to_repr}
@@ -62,12 +65,13 @@ pub extend LexWarning with Eq::{not_equal, equal}
 ///|
 /// 宏定义。对象式与函数式**显式分型**（勘察 ⑥-9 修复：Rust `params : Vec<String>`
 /// 以 `is_empty()` 判对象宏，导致 `#define FOO() 42` 零参数函数式宏被误当对象宏）。
+#derive(Eq, @debug.Debug)
 pub(all) enum MacroDef {
   Object(body~ : Array[Token])
   Function(params~ : Array[String], body~ : Array[Token], variadic~ : Bool)
   // ^ #164（2026-10-21，C99 §6.10.3）：`...` 变参宏位——true 时 params 只
   // 含命名形参，`__VA_ARGS__` 为隐式附加名（调用时多余实参 join 逗号绑定）
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend MacroDef with Debug::{to_repr}
@@ -78,10 +82,11 @@ pub extend MacroDef with Eq::{not_equal, equal}
 ///|
 /// 教学追踪（结构化——勘察 ⑤-6：Rust 侧是拼好的中文串；本侧结构化存储，
 /// `render` 输出与 Rust wire format 逐字一致的中文串，serve 出口契约不变）。
+#derive(Eq, @debug.Debug)
 pub(all) enum TraceEntry {
   Expand(name~ : String, args~ : String?, result~ : String, depth~ : Int32)
   CondBranch(expr~ : String, value~ : Bool, reason~ : String)
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend TraceEntry with Debug::{to_repr}
@@ -112,12 +117,13 @@ pub fn TraceEntry::render(self : TraceEntry) -> String {
 ///|
 /// LineMap 区间：主文件行号区间 `[main_first, main_last]` 映射到真实文件坐标。
 /// 区间按拼接顺序单调递增、首尾相接铺满全源。
+#derive(Eq, @debug.Debug)
 pub(all) struct LineSpan {
   main_first : Int32
   main_last : Int32
   file_id : Int32
   file_line : Int32
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend LineSpan with Debug::{to_repr}
@@ -129,9 +135,10 @@ pub extend LineSpan with Eq::{not_equal, equal}
 /// include 拼接后的行号映射（勘察 ⑤-1：预处理独立 pass 的结构性产物）。
 /// Rust oracle 因 `Vec::splice` 行号补偿缺陷（③-3）无法提供此信息——本侧
 /// token 的 `loc.line` 仍按仿古口径对拍，真实归属经 `lookup` 查询。
+#derive(Eq, @debug.Debug)
 pub(all) struct LineMap {
   spans : Array[LineSpan]
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend LineMap with Debug::{to_repr}
@@ -170,10 +177,11 @@ pub fn LineMap::lookup(self : LineMap, main_line : Int32) -> (Int32, Int32) {
 
 ///|
 /// L1 结果：字符级原始词法（无行拼接、无指令消费、无宏展开；`#` 产出 Hash/HashHash）。
+#derive(Eq, @debug.Debug)
 pub(all) struct RawResult {
   tokens : Array[Token]
   errors : Array[LexError]
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend RawResult with Debug::{to_repr}
@@ -185,6 +193,7 @@ pub extend RawResult with Eq::{not_equal, equal}
 /// L2 结果：完整管线（行拼接 → 指令消费 → include → 宏展开）。
 /// 诊断与 token 流**单值同返**（勘察 8.3-1 硬约束：禁止"只看 tokens 不看 errors"
 /// 的调用形态；差分驱动对 `errors`/`warnings` 计数强比对）。
+#derive(Eq, @debug.Debug)
 pub(all) struct LexResult {
   tokens : Array[Token]
   errors : Array[LexError]
@@ -200,7 +209,7 @@ pub(all) struct LexResult {
   /// 同域**，#390 审阅 P1：诊断归属按 id 直查本表，禁止 `included[id-1]`
   /// 下标换算）。主文件 id=0 预置名。
   file_names : Map[Int32, String]
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub extend LexResult with Debug::{to_repr}

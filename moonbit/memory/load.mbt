@@ -19,6 +19,7 @@
 
 ///|
 /// 堆元数据快照（全字段；region 的 `refcount`〔CS 批 ARC 预留〕随条目自动随行）。
+#derive(Eq, Debug)
 pub(all) struct MemorySnapshot {
   regions : Array[(UInt32, MemoryRegionData)]
   free_list : Array[FreeBlock]
@@ -29,7 +30,7 @@ pub(all) struct MemorySnapshot {
   heap_offset : UInt32
   alloc_counter : Int32
   freed : Array[FreedRegionInfo]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MemorySnapshot with Debug::{to_repr}

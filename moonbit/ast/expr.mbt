@@ -2,6 +2,7 @@
 
 ///|
 /// 二元运算符（19 个，照搬 Rust BinaryOp）。
+#derive(Debug, Eq, Compare)
 pub(all) enum BinaryOp {
   Add
   Sub
@@ -22,7 +23,7 @@ pub(all) enum BinaryOp {
   Shl
   Shr
   Comma
-} derive(Debug, Eq, Compare)
+}
 
 ///|
 pub extend BinaryOp with Compare::{op_lt, op_le, op_ge, compare, op_gt}
@@ -35,6 +36,7 @@ pub extend BinaryOp with Eq::{not_equal, equal}
 
 ///|
 /// 一元运算符（9 个，照搬 Rust UnaryOp）。
+#derive(Debug, Eq, Compare)
 pub(all) enum UnaryOp {
   Neg
   /// 一元 +（#71 病 39，2026-10-11——恒等操作数：类型/值原样，仅词法合法化）
@@ -47,7 +49,7 @@ pub(all) enum UnaryOp {
   PreDec
   PostInc
   PostDec
-} derive(Debug, Eq, Compare)
+}
 
 ///|
 pub extend UnaryOp with Compare::{op_lt, op_le, op_ge, compare, op_gt}
@@ -60,6 +62,7 @@ pub extend UnaryOp with Eq::{not_equal, equal}
 
 ///|
 /// 赋值运算符（11 个，照搬 Rust AssignOp）。
+#derive(Debug, Eq, Compare)
 pub(all) enum AssignOp {
   Assign
   AddAssign
@@ -72,7 +75,7 @@ pub(all) enum AssignOp {
   XorAssign
   ShlAssign
   ShrAssign
-} derive(Debug, Eq, Compare)
+}
 
 ///|
 pub extend AssignOp with Compare::{op_lt, op_le, op_ge, compare, op_gt}
@@ -85,20 +88,22 @@ pub extend AssignOp with Eq::{not_equal, equal}
 
 ///|
 /// 初始化器指派符（designated initializer）。
+#derive(Debug)
 pub(all) enum Designator {
   Field(String)
   Index(Expr)
-} derive(Debug)
+}
 
 ///|
 pub extend Designator with Debug::{to_repr}
 
 ///|
 /// 初始化列表元素（指派符序列 + 值）。
+#derive(Debug)
 pub(all) struct InitElement {
   designators : Array[Designator]
   value : Expr
-} derive(Debug)
+}
 
 ///|
 pub extend InitElement with Debug::{to_repr}
@@ -110,6 +115,7 @@ pub extend InitElement with Debug::{to_repr}
 ///
 /// 字段序即 E1 dump 键序（Binary: op, left, right, loc, ty；沿用历史蓝本
 /// serde 字段序，canonicalize 归一后锁 golden）。
+#derive(Debug)
 pub(all) enum Expr {
   Binary(BinaryOp, Expr, Expr, @source.SourceLoc, Type)
   Unary(UnaryOp, Expr, @source.SourceLoc, Type)
@@ -152,7 +158,7 @@ pub(all) enum Expr {
     Type
   ) // capture, params, body, unique_id
   Move(Expr, @source.SourceLoc, Type)
-} derive(Debug)
+}
 
 ///|
 pub extend Expr with Debug::{to_repr}

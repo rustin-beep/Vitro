@@ -1,10 +1,11 @@
 ///|
 /// 诊断严重级（三档，与 Rust oracle serve 帧 severity 值一致）。
+#derive(Debug, Eq, Compare)
 pub(all) enum Severity {
   Error
   Warning
   Hint
-} derive(Debug, Eq, Compare)
+}
 
 ///|
 pub extend Severity with Compare::{op_lt, op_le, op_ge, compare, op_gt}
@@ -53,11 +54,12 @@ pub fn Severity::prefix(self : Severity) -> String {
 /// C = C 共通域（C++ 模式下的 C 子集同属）；Cpp = 仅 C++ 形态；
 /// CSharp = 5xxx 段预留（Stmt::Try reserved-for-csharp 同批）——现库
 /// 无 5xxx 码，变体先行落位防"落地即静默错"（审阅 P2-3）。
+#derive(Debug, Eq, Compare)
 pub(all) enum SourceLang {
   C
   Cpp
   CSharp
-} derive(Debug, Eq, Compare)
+}
 
 ///|
 pub extend SourceLang with Compare::{op_lt, op_le, op_ge, compare, op_gt}

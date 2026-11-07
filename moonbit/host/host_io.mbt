@@ -27,12 +27,13 @@
 
 ///|
 /// 输入函数的三种结果：压栈值 / 等待输入（Interactive 模式输入耗尽）/ trap。
+#derive(Debug, Eq)
 pub(all) enum InputOutcome {
   Value(UInt64)
   Waiting
   /// (trap 文案, 结构化 E 码)——#261：与 HostMemReply.trap 同形态双件。
   Trap(String, String)
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend InputOutcome with Debug::{to_repr}

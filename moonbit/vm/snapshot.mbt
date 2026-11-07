@@ -29,13 +29,14 @@
 
 ///|
 /// 1MB 载体的快照形态（照搬 Rust `MemoryImage` 二分，`snapshot.rs:9-15`）。
+#derive(Eq, Debug)
 pub(all) enum MemoryImage {
   /// 全量 1MB 逐字节。
   Full(FixedArray[Byte])
   /// 脏页增量：(base_step, pages)——`base_step` 为所基于的最近 Full 快照
   /// 步号；`pages` 为 (页号, 页字节) 对（页号 0..255，`PAGE_SIZE` 4096）。
   Delta(Int32, Array[(Int32, FixedArray[Byte])])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend MemoryImage with Debug::{to_repr}

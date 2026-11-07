@@ -67,11 +67,12 @@ pub fn InputState::snapshot(self : InputState) -> InputState {
 /// VFS 文件元数据快照（文件**数据在 VM 堆内**，随 `MemoryImage` 自然往返；
 /// 这里只快照元数据——勘察 §4.2-7「VFS 纳入快照」的口径，修复 Rust 侧
 /// 「时间旅行回退后文件状态来自未来」的 P1 缺陷）。
+#derive(Eq, Debug)
 pub(all) struct VfsFileSnapshot {
   mut heap_addr : UInt32
   mut size : Int32
   mut capacity : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend VfsFileSnapshot with Debug::{to_repr}
@@ -82,6 +83,7 @@ pub extend VfsFileSnapshot with Eq::{not_equal, equal}
 ///|
 /// VFS 描述符快照。`mode` 为 `VfsMode`（priv）的编号投影：
 /// 0=Read / 1=Write / 2=Append——restore 穷尽 match，越界 fail loud。
+#derive(Eq, Debug)
 pub(all) struct VfsDescSnapshot {
   mut file_name : String
   mode : Int32
@@ -89,7 +91,7 @@ pub(all) struct VfsDescSnapshot {
   mut eof : Bool
   mut error : Bool
   is_text_mode : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend VfsDescSnapshot with Debug::{to_repr}
@@ -99,11 +101,12 @@ pub extend VfsDescSnapshot with Eq::{not_equal, equal}
 
 ///|
 /// VFS 快照整体（文件表 + 描述符表 + fd 计数——「fd 元数据进快照」的落点）。
+#derive(Eq, Debug)
 pub(all) struct VfsSnapshot {
   files : Array[(String, VfsFileSnapshot)]
   descriptors : Array[(UInt32, VfsDescSnapshot)]
   next_fd : UInt32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend VfsSnapshot with Debug::{to_repr}

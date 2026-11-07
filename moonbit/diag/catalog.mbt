@@ -4,13 +4,14 @@
 /// issue #27：emoji 码点退役，字形由消费方按 id 自备；资产随包发布）。
 /// 数据由 scripts/gen_diag 从 diagnostics_data/catalog.json 生成
 /// （catalog_gen.mbt），本类型为手写契约。
+#derive(Debug, Eq)
 pub(all) struct CatalogEntry {
   code : Int32
   icon : String
   title : String
   explanation : String
   common_causes : Array[String]
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend CatalogEntry with Debug::{to_repr}

@@ -7,6 +7,7 @@
 
 ///|
 /// 编译诊断（协议形态——含修复建议字段族，E1 出口的消费侧形态）。
+#derive(Debug)
 pub(all) struct Diagnostic {
   line : Int32
   column : Int32
@@ -21,7 +22,7 @@ pub(all) struct Diagnostic {
   replace_end_column : Int32
   replacement_text : String
   filename : String
-} derive(Debug)
+}
 
 ///|
 pub extend Diagnostic with Debug::{to_repr}
@@ -33,10 +34,11 @@ pub extend Diagnostic with Debug::{to_repr}
 
 ///|
 /// 执行追踪条目。
+#derive(Debug)
 pub(all) struct TraceEntry {
   line : Int32
   operation : String
-} derive(Debug)
+}
 
 ///|
 pub extend TraceEntry with Debug::{to_repr}
@@ -45,19 +47,21 @@ pub extend TraceEntry with Debug::{to_repr}
 /// 变量快照（会话侧——ty 为渲染好的字符串形态时用 protocol 的
 /// ApiVariableSnapshot；本形态保留 Rust 的 i64 位模式版本，vm 互转
 /// 随 serve 批）。
+#derive(Debug)
 pub(all) struct VariableSnapshot {
   name : String
   addr : UInt32
   is_local : Bool
   ty : @ast.Type
   value : Int64
-} derive(Debug)
+}
 
 ///|
 pub extend VariableSnapshot with Debug::{to_repr}
 
 ///|
 /// 内存地图区域（C2 三段式——global/stack/heap）。
+#derive(Debug)
 pub(all) struct MemoryRegion {
   addr : UInt32
   size : Int32
@@ -71,23 +75,25 @@ pub(all) struct MemoryRegion {
   alloc_by : String
   /// 段标识："global" / "stack" / "heap"
   kind : String
-} derive(Debug)
+}
 
 ///|
 pub extend MemoryRegion with Debug::{to_repr}
 
 ///|
 /// 空闲块（free_list 条目的协议形态）。
+#derive(Debug)
 pub(all) struct MemoryFragment {
   addr : UInt32
   size : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend MemoryFragment with Debug::{to_repr}
 
 ///|
 /// 堆统计。
+#derive(Debug)
 pub(all) struct HeapStats {
   /// 本次运行的堆起点（R1：动态堆起点）
   heap_base : Int32
@@ -99,31 +105,33 @@ pub(all) struct HeapStats {
   fragmented : Int32
   /// 碎片率（0~100）
   fragmentation_rate : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend HeapStats with Debug::{to_repr}
 
 ///|
 /// 单步执行结果。
+#derive(Debug)
 pub(all) struct StepResult {
   status : StepStatus
   current_line : Int32
   output : String
   waiting_input : Bool
-} derive(Debug)
+}
 
 ///|
 pub extend StepResult with Debug::{to_repr}
 
 ///|
 /// 步进状态四态。
+#derive(Debug, Eq, Compare)
 pub(all) enum StepStatus {
   Paused
   WaitingInput
   Finished
   Trap
-} derive(Debug, Eq, Compare)
+}
 
 ///|
 pub extend StepStatus with Compare::{op_lt, op_le, op_ge, compare, op_gt}

@@ -24,18 +24,20 @@ pub suberror InstallCatalogTextsError {
 }
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct CatalogEntry {
   code : Int32
   icon : String
   title : String
   explanation : String
   common_causes : Array[String]
-} derive(Eq, @debug.Debug)
+}
 pub fn CatalogEntry::equal(Self, Self) -> Bool
 pub fn CatalogEntry::not_equal(Self, Self) -> Bool
 pub fn CatalogEntry::of(Int32, String, String, String, Array[String]) -> Self
 pub fn CatalogEntry::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, Hash, @debug.Debug)
 pub(all) enum ErrorCode {
   Unknown
   E1001_UnknownChar
@@ -157,7 +159,7 @@ pub(all) enum ErrorCode {
   E3088_DivideZero
   E3089_FunctionDeclaredNotDefined
   W3090_ConstIntOverflow
-} derive(Compare, Eq, Hash, @debug.Debug)
+}
 pub fn ErrorCode::all() -> Array[Self]
 pub fn ErrorCode::catalog(Self) -> CatalogEntry?
 pub fn ErrorCode::code(Self) -> Int32
@@ -177,11 +179,12 @@ pub fn ErrorCode::op_lt(Self, Self) -> Bool
 pub fn ErrorCode::severity(Self) -> Severity
 pub fn ErrorCode::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum Severity {
   Error
   Warning
   Hint
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn Severity::compare(Self, Self) -> Int32
 pub fn Severity::equal(Self, Self) -> Bool
 pub fn Severity::not_equal(Self, Self) -> Bool
@@ -193,11 +196,12 @@ pub fn Severity::prefix(Self) -> String
 pub fn Severity::to_repr(Self) -> @debug.Repr
 pub fn Severity::to_str(Self) -> String
 
+#derive(Compare, Eq, @debug.Debug)
 pub(all) enum SourceLang {
   C
   Cpp
   CSharp
-} derive(Compare, Eq, @debug.Debug)
+}
 pub fn SourceLang::compare(Self, Self) -> Int32
 pub fn SourceLang::equal(Self, Self) -> Bool
 pub fn SourceLang::not_equal(Self, Self) -> Bool

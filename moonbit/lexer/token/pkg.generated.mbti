@@ -16,15 +16,17 @@ pub(all) suberror SourceError {
 }
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct LexError {
   message : String
   loc : @source.SourceLoc
   code : @diag.ErrorCode
-} derive(Eq, @debug.Debug)
+}
 pub fn LexError::equal(Self, Self) -> Bool
 pub fn LexError::not_equal(Self, Self) -> Bool
 pub fn LexError::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct LexResult {
   tokens : Array[Token]
   errors : Array[LexError]
@@ -33,65 +35,72 @@ pub(all) struct LexResult {
   line_map : LineMap
   included_files : Array[String]
   file_names : Map[Int32, String]
-} derive(Eq, @debug.Debug)
+}
 pub fn LexResult::equal(Self, Self) -> Bool
 pub fn LexResult::not_equal(Self, Self) -> Bool
 pub fn LexResult::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct LexWarning {
   message : String
   loc : @source.SourceLoc
   code : @diag.ErrorCode
-} derive(Eq, @debug.Debug)
+}
 pub fn LexWarning::equal(Self, Self) -> Bool
 pub fn LexWarning::not_equal(Self, Self) -> Bool
 pub fn LexWarning::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct LineMap {
   spans : Array[LineSpan]
-} derive(Eq, @debug.Debug)
+}
 pub fn LineMap::equal(Self, Self) -> Bool
 pub fn LineMap::lookup(Self, Int32) -> (Int32, Int32)
 pub fn LineMap::not_equal(Self, Self) -> Bool
 pub fn LineMap::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct LineSpan {
   main_first : Int32
   main_last : Int32
   file_id : Int32
   file_line : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn LineSpan::equal(Self, Self) -> Bool
 pub fn LineSpan::not_equal(Self, Self) -> Bool
 pub fn LineSpan::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum MacroDef {
   Object(body~ : Array[Token])
   Function(params~ : Array[String], body~ : Array[Token], variadic~ : Bool)
-} derive(Eq, @debug.Debug)
+}
 pub fn MacroDef::equal(Self, Self) -> Bool
 pub fn MacroDef::not_equal(Self, Self) -> Bool
 pub fn MacroDef::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct RawResult {
   tokens : Array[Token]
   errors : Array[LexError]
-} derive(Eq, @debug.Debug)
+}
 pub fn RawResult::equal(Self, Self) -> Bool
 pub fn RawResult::not_equal(Self, Self) -> Bool
 pub fn RawResult::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Token {
   ty : TokenType
   text : String
   loc : @source.SourceLoc
   byte_off : Int32
   real_line : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn Token::equal(Self, Self) -> Bool
 pub fn Token::not_equal(Self, Self) -> Bool
 pub fn Token::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum TokenType {
   Int
   Void
@@ -209,16 +218,17 @@ pub(all) enum TokenType {
   Unknown
   Hash
   HashHash
-} derive(Eq, @debug.Debug)
+}
 pub fn TokenType::equal(Self, Self) -> Bool
 pub fn TokenType::not_equal(Self, Self) -> Bool
 pub fn TokenType::to_name(Self) -> String
 pub fn TokenType::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum TraceEntry {
   Expand(name~ : String, args~ : String?, result~ : String, depth~ : Int32)
   CondBranch(expr~ : String, value~ : Bool, reason~ : String)
-} derive(Eq, @debug.Debug)
+}
 pub fn TraceEntry::equal(Self, Self) -> Bool
 pub fn TraceEntry::not_equal(Self, Self) -> Bool
 pub fn TraceEntry::render(Self) -> String

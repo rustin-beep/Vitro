@@ -21,11 +21,13 @@
 ///
 /// 0 = 用户主文件（默认）；非 0 区分标准库 / 预编译字节码 / 头文件等
 /// 外部源码位置，避免外部行号污染覆盖率统计。
+/// 序列化归 vitro/engine/protocol（L8）——L0 零依赖不引 JSON
+#derive(Debug, Eq, Compare, Hash, Default)
 pub(all) struct SourceLoc {
   line : Int32
   column : Int32
   file_id : Int32
-} derive(Debug, Eq, Compare, Hash, Default) // 序列化归 vitro/engine/protocol（L8）——L0 零依赖不引 JSON
+}
 
 ///|
 pub extend SourceLoc with Compare::{op_lt, op_le, op_ge, compare, op_gt}

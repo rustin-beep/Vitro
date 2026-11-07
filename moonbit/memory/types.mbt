@@ -12,10 +12,11 @@
 ///|
 /// 访问方向。检查链本身与方向无关；方向决定 NULL 陷阱文案的动词与
 /// UAF 文案的"写入/读取"，故必须随故障一起上报（文案在 vm 侧渲染）。
+#derive(Debug, Eq)
 pub(all) enum AccessKind {
   Read
   Write
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend AccessKind with Debug::{to_repr}
@@ -28,10 +29,11 @@ pub extend AccessKind with Eq::{not_equal, equal}
 ///
 /// `addr` 与 `size` 都可变：`take_from_free_list` 的 first-fit 切分把块
 /// 起点前移并缩小余量（Rust `memory_state.rs:280-286`）。
+#derive(Debug, Eq)
 pub(all) struct FreeBlock {
   mut addr : UInt32
   mut size : Int32
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend FreeBlock with Debug::{to_repr}
@@ -47,6 +49,7 @@ pub extend FreeBlock with Eq::{not_equal, equal}
 /// - `size` 可被精确裁剪缩小 → mut。
 /// - 四个"行号 / 步号"字段喂教学时间轴（`alloc → free → 继续访问`），
 ///   照搬 Rust `FreedRegionInfo`（`state.rs:22-32`）。
+#derive(Debug, Eq)
 pub(all) struct FreedRegionInfo {
   addr : UInt32
   mut size : Int32
@@ -54,7 +57,7 @@ pub(all) struct FreedRegionInfo {
   freed_line : Int32
   alloc_step : Int32
   freed_step : Int32
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend FreedRegionInfo with Debug::{to_repr}
@@ -75,6 +78,7 @@ pub extend FreedRegionInfo with Eq::{not_equal, equal}
 /// 不是「访问」失败，而是 host 释放路径的判定结果——它们的输入是
 /// `MemoryMap.freed_logs` 的精确命中与 `MemoryMap` 的区间查询，由 host 组合
 /// 后自行渲染（Rust `host/memory.rs:60-137`）。
+#derive(Debug, Eq)
 pub(all) enum MemFault {
   /// NULL 陷阱区（`addr < NULL_TRAP_SIZE`）。
   NullDeref(UInt32, AccessKind)
@@ -82,7 +86,7 @@ pub(all) enum MemFault {
   OutOfBounds(UInt32, UInt32)
   /// Use-After-Free：命中 freed_logs 区间。
   UseAfterFree(FreedRegionInfo, AccessKind)
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend MemFault with Debug::{to_repr}
@@ -105,6 +109,7 @@ pub extend MemFault with Eq::{not_equal, equal}
 /// 不写回本清单——否则 `total_allocated` 会把栈帧算成已分配堆内存，
 /// Rust `memory_state.rs:66-70` 有明文）。保留该字段是为了不擅自改 L8
 /// 导出（`memory_regions`）的线格式与旧快照的向后兼容口径。
+#derive(Debug, Eq)
 pub(all) struct MemoryRegionData {
   mut size : Int32
   mut name : String
@@ -120,7 +125,7 @@ pub(all) struct MemoryRegionData {
   /// release 发射，本字段对 C 语料行为零影响；随 `MemorySnapshot.regions` 自动
   /// 序列化（时间旅行免费安全，非事后扩快照结构）。
   mut refcount : Int32
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend MemoryRegionData with Debug::{to_repr}
@@ -156,6 +161,7 @@ pub fn MemoryRegionData::heap_block(
 
 ///|
 /// 堆统计（教学侧口径照搬 Rust `HeapStatsData`，`memory_state.rs:102-115`）。
+#derive(Debug, Eq)
 pub(all) struct HeapStatsData {
   /// 本次运行的堆起点（R1 动态堆起点；原为常量 `HEAP_START`）。
   heap_base : Int32
@@ -167,7 +173,7 @@ pub(all) struct HeapStatsData {
   fragmented : Int32
   /// 碎片率（0~100）。
   fragmentation_rate : Int32
-} derive(Debug, Eq)
+}
 
 ///|
 pub extend HeapStatsData with Debug::{to_repr}

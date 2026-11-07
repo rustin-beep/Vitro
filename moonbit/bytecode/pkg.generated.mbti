@@ -70,14 +70,16 @@ pub fn verify_violations_json(Array[VerifyViolation]) -> String
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum CallRoute {
   BytecodeLibc(Int32)
   Host(Int32)
-} derive(Eq, @debug.Debug)
+}
 pub fn CallRoute::equal(Self, Self) -> Bool
 pub fn CallRoute::not_equal(Self, Self) -> Bool
 pub fn CallRoute::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct CompileOutput {
   code : Array[@opcode.Instruction]
   globals_init_32 : Array[(UInt32, Int32)]
@@ -92,9 +94,10 @@ pub(all) struct CompileOutput {
   f64_constants : Array[Double]
   i64_constants : Array[Int64]
   global_data_end : UInt32
-} derive(@debug.Debug)
+}
 pub fn CompileOutput::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct FuncMeta {
   mut ip : Int32
   mut arg_count : Int32
@@ -104,18 +107,20 @@ pub(all) struct FuncMeta {
   return_type : @ast.Type
   mut is_variadic : Bool
   local_buffers : Array[LocalBuffer]
-} derive(@debug.Debug)
+}
 pub fn FuncMeta::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct LocalBuffer {
   offset : Int32
   size : Int32
   name : String
-} derive(Eq, @debug.Debug)
+}
 pub fn LocalBuffer::equal(Self, Self) -> Bool
 pub fn LocalBuffer::not_equal(Self, Self) -> Bool
 pub fn LocalBuffer::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct Symbol {
   name : String
   addr : UInt32
@@ -124,15 +129,16 @@ pub(all) struct Symbol {
   scope_depth : Int32
   func_name : String
   decl_line : Int32
-} derive(@debug.Debug)
+}
 pub fn Symbol::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct VerifyViolation {
   kind : String
   func : String
   ip : Int32
   detail : String
-} derive(Eq, @debug.Debug)
+}
 pub fn VerifyViolation::equal(Self, Self) -> Bool
 pub fn VerifyViolation::not_equal(Self, Self) -> Bool
 pub fn VerifyViolation::to_repr(Self) -> @debug.Repr

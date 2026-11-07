@@ -11,10 +11,11 @@
 
 ///|
 /// 编译单元（多文件会话的源文件——Rust CompileUnit 的会话侧形态）。
+#derive(Debug)
 pub(all) struct CompileUnit {
   filename : String
   source : String
-} derive(Debug)
+}
 
 ///|
 pub extend CompileUnit with Debug::{to_repr}
@@ -23,11 +24,12 @@ pub extend CompileUnit with Debug::{to_repr}
 /// 多文件会话的全局行号 → 文件映射条目（merge_compile_units 产出；
 /// P0-4：合并编译后字节码行号是全局行号，单文件管线为空——此时全局
 /// 行号即文件内行号）。
+#derive(Debug)
 pub(all) struct FileRange {
   filename : String
   start_line : Int32
   end_line : Int32
-} derive(Debug)
+}
 
 ///|
 pub extend FileRange with Debug::{to_repr}
@@ -36,6 +38,7 @@ pub extend FileRange with Debug::{to_repr}
 /// 编译状态（Rust CompileState 的聚合重构形态）：编译产物整体持
 /// CompileOutput，会话侧只附加产物之外的状态（诊断/算法匹配/多文件
 /// 映射/预处理追踪/错误串）。
+#derive(Debug)
 pub(all) struct CompileState {
   /// 错误串（编译失败原因——serve compile 出口消费）。
   mut errors : String
@@ -57,7 +60,7 @@ pub(all) struct CompileState {
   mut file_ranges : Array[FileRange]
   /// E2 白箱教学层：预处理追踪（宏展开链 + `#if` 分支原因，容量封顶）。
   mut preprocessor_trace : Array[String]
-} derive(Debug)
+}
 
 ///|
 pub extend CompileState with Debug::{to_repr}

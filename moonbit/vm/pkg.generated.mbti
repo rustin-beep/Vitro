@@ -34,6 +34,7 @@ pub(all) struct ArraySnapshotData {
   truncated : Bool
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CallFrame {
   return_ip : Int32?
   locals_base : UInt32
@@ -42,25 +43,27 @@ pub(all) struct CallFrame {
   original_stack_top : UInt32
   caller_line : Int32
   local_buffers : Array[@bytecode.LocalBuffer]
-} derive(Eq, @debug.Debug)
+}
 pub fn CallFrame::equal(Self, Self) -> Bool
 pub fn CallFrame::not_equal(Self, Self) -> Bool
 pub fn CallFrame::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ExecMode {
   Running
   Unwinding
-} derive(Eq, @debug.Debug)
+}
 pub fn ExecMode::equal(Self, Self) -> Bool
 pub fn ExecMode::not_equal(Self, Self) -> Bool
 pub fn ExecMode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct HandlerFrame {
   catch_ip : Int32
   frame_idx : Int32
   stack_depth : Int32
   mem_stack_top : UInt32
-} derive(Eq, @debug.Debug)
+}
 pub fn HandlerFrame::equal(Self, Self) -> Bool
 pub fn HandlerFrame::not_equal(Self, Self) -> Bool
 pub fn HandlerFrame::to_repr(Self) -> @debug.Repr
@@ -74,22 +77,24 @@ pub(all) struct LibcArtifact {
   i64_constants : Array[Int64]
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum MemoryImage {
   Full(FixedArray[Byte])
   Delta(Int32, Array[(Int32, FixedArray[Byte])])
-} derive(Eq, @debug.Debug)
+}
 pub fn MemoryImage::apply_to(Self, VitroVM) -> Unit
 pub fn MemoryImage::equal(Self, Self) -> Bool
 pub fn MemoryImage::not_equal(Self, Self) -> Bool
 pub fn MemoryImage::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum StepResult {
   Ok
   Paused
   Finished
   Trap
   WaitingInput
-} derive(Eq, @debug.Debug)
+}
 pub fn StepResult::equal(Self, Self) -> Bool
 pub fn StepResult::not_equal(Self, Self) -> Bool
 pub fn StepResult::to_repr(Self) -> @debug.Repr
@@ -130,23 +135,26 @@ pub(all) struct VMSnapshot {
   handler_stack : Array[HandlerFrame]
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) struct VariableAccess {
   name : String
   access_type : @memory.AccessKind
-} derive(Eq, @debug.Debug)
+}
 pub fn VariableAccess::equal(Self, Self) -> Bool
 pub fn VariableAccess::not_equal(Self, Self) -> Bool
 pub fn VariableAccess::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) struct VariableSnapshotData {
   name : String
   addr : UInt32
   is_local : Bool
   ty : @ast.Type
   value : Int64
-} derive(@debug.Debug)
+}
 pub fn VariableSnapshotData::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct VisEventData {
   ty : Int32
   line : Int32
@@ -154,7 +162,7 @@ pub(all) struct VisEventData {
   extra1 : Int32
   extra2 : Int32
   context : String
-} derive(Eq, @debug.Debug)
+}
 pub fn VisEventData::equal(Self, Self) -> Bool
 pub fn VisEventData::not_equal(Self, Self) -> Bool
 pub fn VisEventData::to_repr(Self) -> @debug.Repr

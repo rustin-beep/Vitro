@@ -250,21 +250,23 @@ pub fn scanf_spec_count(Array[Int32]) -> Int32
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct HostMemReply {
   value : UInt64?
   note : String?
   trap : String?
   trap_code : String
-} derive(Eq, @debug.Debug)
+}
 pub fn HostMemReply::equal(Self, Self) -> Bool
 pub fn HostMemReply::not_equal(Self, Self) -> Bool
 pub fn HostMemReply::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum InputOutcome {
   Value(UInt64)
   Waiting
   Trap(String, String)
-} derive(Eq, @debug.Debug)
+}
 pub fn InputOutcome::equal(Self, Self) -> Bool
 pub fn InputOutcome::not_equal(Self, Self) -> Bool
 pub fn InputOutcome::to_repr(Self) -> @debug.Repr
@@ -286,19 +288,21 @@ pub fn InputState::snapshot(Self) -> Self
 pub fn InputState::take_stdin_bytes(Self, Int32) -> Bytes?
 pub fn InputState::take_stdin_line(Self, Int32) -> Bytes?
 
+#derive(Eq, @debug.Debug)
 pub(all) struct OutputChunk {
   kind : OutputKind
   bytes : Bytes
-} derive(Eq, @debug.Debug)
+}
 pub fn OutputChunk::equal(Self, Self) -> Bool
 pub fn OutputChunk::not_equal(Self, Self) -> Bool
 pub fn OutputChunk::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum OutputKind {
   Stdout
   Stderr
   Note
-} derive(Eq, @debug.Debug)
+}
 pub fn OutputKind::as_str(Self) -> String
 pub fn OutputKind::equal(Self, Self) -> Bool
 pub fn OutputKind::not_equal(Self, Self) -> Bool
@@ -343,19 +347,21 @@ pub fn OutputLog::set_note_budget(Self, Int32) -> Unit
 pub fn OutputLog::snapshot(Self) -> Self
 pub fn OutputLog::total_bytes(Self) -> Int32
 
+#derive(Eq, @debug.Debug)
 pub(all) struct RandState {
   mut seed : UInt32
-} derive(Eq, @debug.Debug)
+}
 pub fn RandState::equal(Self, Self) -> Bool
 pub fn RandState::new(UInt32) -> Self
 pub fn RandState::not_equal(Self, Self) -> Bool
 pub fn RandState::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct StackBufferSpan {
   base : UInt32
   size : Int32
   name : String
-} derive(Eq, @debug.Debug)
+}
 pub fn StackBufferSpan::equal(Self, Self) -> Bool
 pub fn StackBufferSpan::not_equal(Self, Self) -> Bool
 pub fn StackBufferSpan::to_repr(Self) -> @debug.Repr
@@ -365,6 +371,7 @@ pub enum StdioRead {
   StdioWaiting
 }
 
+#derive(@debug.Debug)
 pub struct VfsDesc {
   mut file_name : String
   mode : VfsMode
@@ -373,9 +380,10 @@ pub struct VfsDesc {
   mut error : Bool
   is_text_mode : Bool
   is_append : Bool
-} derive(@debug.Debug)
+}
 pub fn VfsDesc::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct VfsDescSnapshot {
   mut file_name : String
   mode : Int32
@@ -383,27 +391,30 @@ pub(all) struct VfsDescSnapshot {
   mut eof : Bool
   mut error : Bool
   is_text_mode : Bool
-} derive(Eq, @debug.Debug)
+}
 pub fn VfsDescSnapshot::equal(Self, Self) -> Bool
 pub fn VfsDescSnapshot::not_equal(Self, Self) -> Bool
 pub fn VfsDescSnapshot::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub struct VfsFileMeta {
   mut heap_addr : UInt32
   mut size : Int32
   mut capacity : Int32
-} derive(@debug.Debug)
+}
 pub fn VfsFileMeta::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct VfsFileSnapshot {
   mut heap_addr : UInt32
   mut size : Int32
   mut capacity : Int32
-} derive(Eq, @debug.Debug)
+}
 pub fn VfsFileSnapshot::equal(Self, Self) -> Bool
 pub fn VfsFileSnapshot::not_equal(Self, Self) -> Bool
 pub fn VfsFileSnapshot::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub enum VfsMode {
   Read
   Write
@@ -411,16 +422,17 @@ pub enum VfsMode {
   ReadWrite
   WriteRead
   AppendRead
-} derive(Eq, @debug.Debug)
+}
 pub fn VfsMode::equal(Self, Self) -> Bool
 pub fn VfsMode::not_equal(Self, Self) -> Bool
 pub fn VfsMode::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct VfsSnapshot {
   files : Array[(String, VfsFileSnapshot)]
   descriptors : Array[(UInt32, VfsDescSnapshot)]
   next_fd : UInt32
-} derive(Eq, @debug.Debug)
+}
 pub fn VfsSnapshot::equal(Self, Self) -> Bool
 pub fn VfsSnapshot::not_equal(Self, Self) -> Bool
 pub fn VfsSnapshot::to_repr(Self) -> @debug.Repr

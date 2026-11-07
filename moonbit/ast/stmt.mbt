@@ -4,6 +4,7 @@
 ///
 /// `Try` 为 **reserved-for-csharp**：C++ 子集不发射（异常走 E4001 拒绝），
 /// 节点形态保留给 C# 批次——禁删除禁改语义（总计划 §5 拍板）。
+#derive(Debug)
 pub(all) enum Stmt {
   Block(Array[Stmt], @source.SourceLoc) // stmts
   /// #156（2026-10-18）：is_register——register 存储类声明位（C 禁取
@@ -34,7 +35,7 @@ pub(all) enum Stmt {
   RangeFor(String, Type, Expr, Stmt, @source.SourceLoc) // var, var_type, iter, body
   /// reserved-for-csharp（见包注释）
   Try(Stmt, Array[CatchClause], @source.SourceLoc)
-} derive(Debug)
+}
 
 ///|
 pub extend Stmt with Debug::{to_repr}
@@ -43,23 +44,25 @@ pub extend Stmt with Debug::{to_repr}
 /// `VarDecl.extra_vars` 元素：`int a = 1, b = 2, c;` 的 b/c 尾随声明
 /// （Rust 侧为 (Type, String, Option<Expr>) 元组——MoonBit 具名结构化，
 /// 元组形态语义不变）。
+#derive(Debug)
 pub(all) struct VarDeclExtra {
   var_type : Type
   name : String
   init : Expr?
-} derive(Debug)
+}
 
 ///|
 pub extend VarDeclExtra with Debug::{to_repr}
 
 ///|
 /// catch 子句（Try 的保留配套）。
+#derive(Debug)
 pub(all) struct CatchClause {
   param_type : Type
   param_name : String?
   body : Stmt
   loc : @source.SourceLoc
-} derive(Debug)
+}
 
 ///|
 pub extend CatchClause with Debug::{to_repr}

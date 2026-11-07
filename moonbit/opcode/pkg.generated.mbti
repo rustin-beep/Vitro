@@ -11,16 +11,18 @@ import {
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct Instruction {
   op : OpCode
   operand : Int32
   loc : @source.SourceLoc
-} derive(Eq, @debug.Debug)
+}
 pub fn Instruction::equal(Self, Self) -> Bool
 pub fn Instruction::new(OpCode, Int32, @source.SourceLoc) -> Self
 pub fn Instruction::not_equal(Self, Self) -> Bool
 pub fn Instruction::to_repr(Self) -> @debug.Repr
 
+#derive(Compare, Eq, Hash, @debug.Debug)
 pub(all) enum OpCode {
   Nop
   PushConst
@@ -176,7 +178,7 @@ pub(all) enum OpCode {
   CastUQ2D
   CastUQ2F
   CastD2UQ
-} derive(Compare, Eq, Hash, @debug.Debug)
+}
 pub fn OpCode::code(Self) -> Int32
 pub fn OpCode::compare(Self, Self) -> Int32
 pub fn OpCode::equal(Self, Self) -> Bool

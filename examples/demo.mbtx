@@ -1,3 +1,10 @@
+----
+import {
+  "moonbitlang/core/json",
+  "vitro/engine/gateway",
+}
+----
+
 // examples/demo.mbtx —— Vitro 一键体验脚本(mooncakes 发布版,零脚手架)。
 //
 // 运行(仅需 moon 工具链,无需 clone 本仓库):
@@ -7,11 +14,6 @@
 // 白箱主线:编译一段冒泡排序 → 全速运行 → 取 stdout → 逐步回放数组
 // 在内存里的每次变化(初始化逐元素写入、交换的撕裂中间态全程可见)。
 // 依赖:vitro/engine ≥ 0.8.0(首次运行自动从 mooncakes 拉取并缓存)。
-
-import {
-  "moonbitlang/core/json",
-  "vitro/engine/gateway",
-}
 
 ///|
 /// 发一帧协议请求(NDJSON 单行进单行出)。请求用 Json 构造——C 源码的

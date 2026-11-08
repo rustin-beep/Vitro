@@ -52,8 +52,10 @@ moon fmt                  # 格式化（生成物也参与——见 gen_diag 内
 moon info                 # 生成 .mbti 接口面（API 变更信号；pkg.generated.mbti 入版本控制）
 moon prove arith                  # 证明面①（PROVE-arith 批 2026-11-04）：域判定契约（promote/common_domain 镜像规范+性质）——前置 PATH 有 z3（本机 4.12.6）
 moon prove proofs/arith_mirror    # 证明面②：eval 算术核镜像契约（46 goal 域完备/溢出回绕分口径/拒绝路径）——pre-push 已接两段式证明门（默认 2s 档全绿即过，红时 60s conf 甄别复跑——conf 生成法在钩子内联，陷阱 #45）
-# —— 以下驱动命令：cwd = 仓库根（不是 moonbit/）；已迁 `.mts`（`node`），
-# 仅 clang_direct 仍为 Go（真值源，无 golden 可对拍）——
+# —— 以下驱动命令：cwd = 仓库根（不是 moonbit/）；已迁 `.mts`（`node`）——
+# clang_direct 为 .mts 活行 + .go 回退面双形态（2026-11-08 勘正：原注「仅 clang_direct
+# 仍为 Go」已失步——CI 判定活行 = node scripts/clang_direct/main.mts〔ci.yml 325 行〕，
+# .go 仅作 hygiene go vet/test 的回退性验证面，跑防线不需要 Go）——
 # 2026-09-22 勘误：此前本清单写作 `./scripts/gen_diag` 等（少了 `moonbit/` 段），
 # 在 moonbit/ 与仓库根两处均无法运行（moonbit/ 下无 go.mod 也无 scripts/）；
 # moonbit_surface.go 内部自带 os.Chdir("moonbit")，故必须从仓库根调用。

@@ -1,6 +1,6 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-10-31（**第八轮全库翻新批**——compile 多单元 unity-build 语义补注〔#364：被引用 .c unit 转 vfs-only + 不动点剔除〕+ 源码/输入 UTF-8 解码语义成节〔#363：三臂统一 U+FFFD 替换解码，坏字节源码 E1001 三臂同形〕。前一沿革 2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。更前 2026-10-07 图标语义批〔#27〕、2026-10-06 统一入口批〔#49 批一〕、2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
+> 最后核对日期：2026-11-08（**字段版本表复核批**——「字段 ↔ 最低版本」表逐条亲解在架 0.9.0/0.9.1 包源码复核：原 10 条「HEAD（未发布）」实已随 **0.9.0** 转正、`vfs.list` 随 **0.9.1**，建表时推定已失步〔0.8.0 时代写的表未随 0.9.0/0.9.1 两版发布连坐〕；配方 A `MOON_CC=clang`→`clang-cl` 勘正（拷出 `.mooncakes` 即独立 module，#117 口径——与快速入门同场景口径对齐）。前一沿革 2026-10-31（**第八轮全库翻新批**——compile 多单元 unity-build 语义补注〔#364：被引用 .c unit 转 vfs-only + 不动点剔除〕+ 源码/输入 UTF-8 解码语义成节〔#363：三臂统一 U+FFFD 替换解码，坏字节源码 E1001 三臂同形〕。前一沿革 2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。更前 2026-10-07 图标语义批〔#27〕、2026-10-06 统一入口批〔#49 批一〕、2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
 > 出口定位：本文档是 CLI **使用指南**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`CLI_PROTOCOL_V1.md`](../../../moonbit/docs/spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。完整出口清单与职责边界见 [出口分档与宿主策略.md](../06-出口与协议/出口分档与宿主策略.md)。
 
 ## 统一入口（推荐——agent / 脚本默认形态）
@@ -31,10 +31,10 @@ cd moonbit && moon build --release --target js cmd/vitro_wasm            # wasm 
 
 - ⚠️ **`moon build .mooncakes/vitro/engine/cmd/vitro` 静默陷阱**：rc=0 但**零产物**（`.mooncakes` 是点目录，moon 静默忽略输入过滤器）——看起来成功、build 目录里什么都没有。不要用。
 - ⚠️ **`moon.mod` 写本地路径依赖**：工具链拒绝（`only supports versioned registry dependencies`）。
-- ✅ **可行配方 A（推荐——要 CLI 判分/批处理）**：把 `.mooncakes/vitro/engine/` 整目录拷出到任意独立目录（如 `tmp/engine-cli/`），在其中 `MOON_CC=clang moon build --release --target native cmd/vitro`——自建模块后构建不受点目录限制；产物路径见下节。
+- ✅ **可行配方 A（推荐——要 CLI 判分/批处理）**：把 `.mooncakes/vitro/engine/` 整目录拷出到任意独立目录（如 `tmp/engine-cli/`），在其中 `MOON_CC=clang-cl moon build --release --target native cmd/vitro`——自建模块后构建不受点目录限制；产物路径见下节。
 - ✅ **可行配方 B（零构建——只要引擎能力）**：不走 CLI，直接以**库**形态消费（`vitro/engine/gateway` 的 `invoke` 单口或 `session` 会话族，配方见《快速入门·下游接入》）；`cmd/serve` 的 NDJSON 语义与 `gateway.invoke` 同源，CLI 能做的库都能做。
 
-> Windows/MSVC 冷态构建分钟级悬崖照旧适用（moon#2254）——配方 A 务必 `MOON_CC=clang`。
+> Windows/MSVC 冷态构建分钟级悬崖照旧适用（moon#2254）——配方 A 务必 `MOON_CC=clang-cl`（拷出 `.mooncakes` 即独立 module、走 MSVC 直连目标，裸 `clang` 被 moon 静默忽略回落 MSVC 探测——#117 边界，与《快速入门》「包消费者如何拿到 CLI」节同口径；2026-11-08 勘正，此前本节误写 `clang`）。
 
 ## MoonBit 侧 CLI（agent 主入口）
 
@@ -118,21 +118,21 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `session.create` / `session.reset` / `session.destroy` | — | 会话生命周期（响应带 `session` 拓扑语义字段，见上表"会话拓扑"）|
 | `shutdown` | — | 结束 serve 进程（EOF 亦可） |
 
-**字段 ↔ 最低版本（#116，2026-10-16 起）**：协议纪律「只增不改」的版本归属落点——下游按在架版写消费代码前先查此表。在架 mooncakes 最新版 = **0.8.0**（`moon add --upgrade vitro/engine` 实测口径，2026-10-14）；标「HEAD」的条目**在架版尚不携带**，随下一版发布转正：
+**字段 ↔ 最低版本（#116，2026-10-16 起；2026-11-08 逐条复核）**：协议纪律「只增不改」的版本归属落点——下游按在架版写消费代码前先查此表。在架 mooncakes 最新版 = **0.9.1**（2026-10-31）；本表 2026-11-08 逐条亲解在架 0.9.0 / 0.9.1 包源码复核（`grep` 实证，非沿用建表时的「HEAD」推定——原 10 条「HEAD（未发布）」随 0.9.0 发布已转正，表未随之更新即失步）：
 
 | 字段 / 方法 / 参数 | 载体 | 最低版本 | 出处 |
 |---|---|---|---|
-| `run` 响应 `output_truncated` | run 帧 | **HEAD（未发布）** | #91 截断位 |
-| `run` 响应 `trap_code` | run 帧 | **HEAD（未发布）** | #261 trap 结构化 E 码（空串 = 无码形态；带码 trap 文案首段同步带 `(E####)`——按码查 error_catalog 教学卡） |
-| `output.delta` 响应 `truncated_bytes` | delta 帧 | **HEAD（未发布）** | [CLI_PROTOCOL_V1](../../../moonbit/docs/spec/CLI_PROTOCOL_V1.md) §8 DX ③（2026-10-11 追加） |
-| `error_catalog[].icon`（替代 `emoji` 码点） | error_catalog 帧 | **HEAD（未发布）** | #27 语义图标 |
-| `icons.get` 方法帧 | 方法表 | **HEAD（未发布）** | #27 图标资产单通道（protocol_frames 基线 33 帧） |
-| `memory.dump` 方法帧 | 方法表 | **HEAD（未发布）** | #49 批二（git tag `vitro-engine-0.8.0` 实证无此方法） |
-| `vfs.list` 方法帧 | 方法表 | **HEAD（未发布）** | #95 VFS 列举口（protocol_frames 基线 48 帧） |
-| 错误帧 `error.expected` | 错误帧 | **HEAD（未发布）** | #68 机器可读期望形状（错误帧白名单三键 kind/message/expected） |
-| `step.next` 参数 `frames` | 方法参数 | **HEAD（未发布）** | 病 76（2026-10-16 实现化） |
-| step 帧 `semantic_label_id` | step payload | **HEAD（未发布）** | #231 受控词汇 id（`semantic_label` 的可编程伴生字段——`classify` 单源映射，空串 = 无标签；值域 = `semantic_labels` 方法帧附录 B，词汇只增不改） |
-| `texts.install` 方法帧 | 方法表 | **HEAD（未发布）** | #130 装载门（protocol_frames 基线 47 帧内容位更新） |
+| `run` 响应 `output_truncated` | run 帧 | **0.9.0** | #91 截断位 |
+| `run` 响应 `trap_code` | run 帧 | **0.9.0** | #261 trap 结构化 E 码（空串 = 无码形态；带码 trap 文案首段同步带 `(E####)`——按码查 error_catalog 教学卡） |
+| `output.delta` 响应 `truncated_bytes` | delta 帧 | **0.9.0** | [CLI_PROTOCOL_V1](../../../moonbit/docs/spec/CLI_PROTOCOL_V1.md) §8 DX ③（2026-10-11 追加） |
+| `error_catalog[].icon`（替代 `emoji` 码点） | error_catalog 帧 | **0.9.0** | #27 语义图标 |
+| `icons.get` 方法帧 | 方法表 | **0.9.0** | #27 图标资产单通道（protocol_frames 基线 33 帧） |
+| `memory.dump` 方法帧 | 方法表 | **0.9.0** | #49 批二 |
+| `vfs.list` 方法帧 | 方法表 | **0.9.1** | #95 VFS 列举口（protocol_frames 基线 48 帧） |
+| 错误帧 `error.expected` | 错误帧 | **0.9.0** | #68 机器可读期望形状（错误帧白名单三键 kind/message/expected） |
+| `step.next` 参数 `frames` | 方法参数 | **0.9.0** | 病 76（2026-10-16 实现化） |
+| step 帧 `semantic_label_id` | step payload | **0.9.0** | #231 受控词汇 id（`semantic_label` 的可编程伴生字段——`classify` 单源映射，空串 = 无标签；值域 = `semantic_labels` 方法帧附录 B，词汇只增不改） |
+| `texts.install` 方法帧 | 方法表 | **0.9.0** | #130 装载门（protocol_frames 基线 47 帧内容位更新） |
 | `texts.get` 方法帧 | 方法表 | **HEAD（未发布）** | #323 读口（install 的读-改-写闭环半边；方法清单 30→31，protocol_frames 基线第 25 帧方法列表更新） |
 | `texts.install` 段级合并语义 + `cleared` 响应字段 | 方法语义 | **HEAD（未发布）** | #323 治②/④（整表替换 → 逐键合并；空段 ≠ 清空；`__clear__` 显式清空）——0.9.0 在架版仍是整表替换语义，升级须注意载荷形态差异 |
 

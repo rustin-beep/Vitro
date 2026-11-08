@@ -1511,17 +1511,20 @@ jobs:
           path: moonbit/_build
       # 2026-10-30 审计批接线：examples/demo.mbtx 是 README 快速开始第 0 步的
       # 门面，此前 CI 零引用——示例脚本烂了没人知道。零克隆形态（moon run
-      # demo.mbtx 拉 mooncakes 发布包）当前被 0.9.0 的 time_travel→core/abort
-      # 解析病挡住（#374；源码侧已摘 import，下一版发布自愈）——先接
-      # workspace 臂：脚本复制进 workspace 剥源内 import 块成临时 main 包跑
-      # wasm-gc，护住示例与 gateway API 的同步（跑完即删，不入库）。
+      # demo.mbtx 拉 mooncakes 发布包）曾被 0.9.0 的 time_travel→core/abort
+      # 解析病挡住（#374/#402），0.9.1（2026-10-31）已自愈——2026-11-08 本地
+      # 实测 rc=0；smoke 维持 workspace 臂免 registry 抖动。import 块已迁
+      # 文件头 ---- frontmatter（moonc 0.10.20 unfenced_import 弃用警告清墙
+      # ——零克隆第一跑不再见警告块）：此处剥首对 ---- 围栏（含 import 块）
+      # 成临时 main 包跑 wasm-gc，护住示例与 gateway API 的同步（跑完即删，
+      # 不入库）。约束：demo.mbtx 正文禁用 ---- 行（围栏区间匹配）。
       - name: demo.mbtx quickstart smoke (workspace arm)
         if: always()
         run: |
           set -e
           pkg=cmd/demo_mbtx_smoke
           mkdir -p "moonbit/$pkg"
-          sed '/^import {$/,/^}$/d' examples/demo.mbtx > "moonbit/$pkg/main.mbt"
+          sed '/^----$/,/^----$/d' examples/demo.mbtx > "moonbit/$pkg/main.mbt"
           cat > "moonbit/$pkg/moon.pkg" <<'PKGEOF'
           // CI 冒烟临时包（demo.mbtx workspace 臂）——跑完即删，不入库。
           import {

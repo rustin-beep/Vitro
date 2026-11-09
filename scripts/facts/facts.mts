@@ -498,20 +498,28 @@ export function collectMoonbit(root: string, facts: Record<string, Fact>): void 
   // fs/gateway/cli）——moonbit/README 的 `--target native` 全量句机判锚，
   // 多 PR 计数冲突的解法从「双口径实测 ≈10 分钟」降为「改数+闸逼真值」。
   // 独立键独立采集（裸失败不阻断）；MOON_CC 照纪律 11——B3 批（2026-11-02，
-  // 审阅 v2 M37 D-6）平台分叉：Windows 的 `moon test --target native` 自
-  // moon 0.1.20261028 起走 MSVC direct object 路径、`clang` 非 cl 兼容驱动被
-  // **忽略**回落 MSVC（警告原文见 testcount/main.mts runMoonTest 注），须
-  // `clang-cl`；非 Windows 沿用 clang。build 面不受影响。
+  // 审阅 v2 M37 D-6）平台分叉：Windows 的 `moon test --target native` 走
+  // debug 档＝direct-object 新 native 后端（moon 显式 opt_level==Debug 路由，
+  // 官方有意设计）、`clang` 非 cl 兼容驱动被**忽略**整图回落 MSVC（警告原文
+  // 见 testcount/main.mts runMoonTest 注），须 cl 兼容驱动或 MOONBIT_NEW_NATIVE=0；
+  // 非 Windows 沿用 clang。release 档（legacy
+  // GeneratedC 后端）不受影响。
+  // （2026-11-09 勘误：原「build 面不受影响」系采样偏差——分界是 debug/release
+  // 档而非命令面，moon 0.1.20261104 八臂矩阵复核，见 moonbit/AGENTS.md 陷阱 43。）
+  // （2026-11-09 再勘：win32 臂原「裸名 clang-cl」被 moon 静默解析成发现的
+  // cl.exe——0 警告假绿（moon#2480，obj 指纹实锤），实编身份失真；改走
+  // MOONBIT_NEW_NATIVE=0 关直连后端 + 裸 clang，与 Linux/CI 臂同编译器。）
   // #298（2026-10-27）：超时 5min→15min——native 全量实测 ≈10 分钟
   // （#308 批自注），5min 常态超时 ⇒ unavailable ⇒ strict 待采集即红
   // （#298 判定器）会永红；15min 为冷机余量。
   // （原「Go 回退面不含本键」注随 Go 版双轨收口删除——2026-11 审阅 v2 A6 批。）
-  const ccN = process.platform === "win32" ? "clang-cl" : "clang";
-  const howN = `cd moonbit && MOON_CC=${ccN} moon test --target native`;
-  let rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: ccN }, "moon", "test", "--target", "native");
+  const ccN = "clang";
+  const envN = process.platform === "win32" ? { MOON_CC: ccN, MOONBIT_NEW_NATIVE: "0" } : { MOON_CC: ccN };
+  const howN = `cd moonbit && MOON_CC=${ccN}${process.platform === "win32" ? " MOONBIT_NEW_NATIVE=0" : ""} moon test --target native`;
+  let rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, envN, "moon", "test", "--target", "native");
   // 同裸口径：偶发失败先重跑一次（见上方注）
   if (rN.ok && /failed: [1-9]/.test(rN.out)) {
-    rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: ccN }, "moon", "test", "--target", "native");
+    rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, envN, "moon", "test", "--target", "native");
   }
   if (!rN.ok) {
     facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）", howN, "超时或 moon 不可用");
@@ -552,7 +560,7 @@ export function collectMoonbitNativeFromOutput(out: string, code: number, facts:
   const m = /Total tests: (\d+), passed: (\d+), failed: (\d+)/.exec(out);
   if (m === null) {
     facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）",
-      "cd moonbit && MOON_CC=<clang|clang-cl(Windows)> moon test --target native", "未解析到 Total tests 行");
+      "cd moonbit && MOON_CC=clang（Windows 另加 MOONBIT_NEW_NATIVE=0）moon test --target native", "未解析到 Total tests 行");
     return;
   }
   const total = Number.parseInt(m[1]!, 10);
@@ -562,7 +570,7 @@ export function collectMoonbitNativeFromOutput(out: string, code: number, facts:
   if (failed > 0 || code !== 0) {
     const firstFail = out.split("\n").find((l) => l.includes(") failed")) ?? "";
     facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）",
-      "cd moonbit && MOON_CC=<clang|clang-cl(Windows)> moon test --target native",
+      "cd moonbit && MOON_CC=clang（Windows 另加 MOONBIT_NEW_NATIVE=0）moon test --target native",
       `测试失败非计数漂移：total=${total} passed=${passed} failed=${failed} exit=${code}；首败：${firstFail.trim().slice(0, 140)}`);
     return;
   }

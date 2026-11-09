@@ -1,6 +1,6 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-11-08（**字段版本表复核批**——「字段 ↔ 最低版本」表逐条亲解在架 0.9.0/0.9.1 包源码复核：原 10 条「HEAD（未发布）」实已随 **0.9.0** 转正、`vfs.list` 随 **0.9.1**，建表时推定已失步〔0.8.0 时代写的表未随 0.9.0/0.9.1 两版发布连坐〕；配方 A `MOON_CC=clang`→`clang-cl` 勘正（拷出 `.mooncakes` 即独立 module，#117 口径——与快速入门同场景口径对齐）。前一沿革 2026-10-31（**第八轮全库翻新批**——compile 多单元 unity-build 语义补注〔#364：被引用 .c unit 转 vfs-only + 不动点剔除〕+ 源码/输入 UTF-8 解码语义成节〔#363：三臂统一 U+FFFD 替换解码，坏字节源码 E1001 三臂同形〕。前一沿革 2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。更前 2026-10-07 图标语义批〔#27〕、2026-10-06 统一入口批〔#49 批一〕、2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
+> 最后核对日期：2026-11-09（**配方 A 编译器勘正批**——`MOON_CC=clang-cl` 裸名形态被 moon 静默解析成发现的 cl.exe〔0 警告假绿，obj 指纹实锤，moon#2480〕，配方 A 翻案回 `MOON_CC=clang`〔release 面认裸 clang，下游独立 module stub.obj 指纹实锤〕；2026-11-08 的「`clang`→`clang-cl` 勘正」系依 #117 口径误改，本批再勘）。前一沿革 2026-11-08（**字段版本表复核批**——「字段 ↔ 最低版本」表逐条亲解在架 0.9.0/0.9.1 包源码复核：原 10 条「HEAD（未发布）」实已随 **0.9.0** 转正、`vfs.list` 随 **0.9.1**，建表时推定已失步〔0.8.0 时代写的表未随 0.9.0/0.9.1 两版发布连坐〕；配方 A `MOON_CC=clang`→`clang-cl` 勘正（拷出 `.mooncakes` 即独立 module，#117 口径——与快速入门同场景口径对齐）。前一沿革 2026-10-31（**第八轮全库翻新批**——compile 多单元 unity-build 语义补注〔#364：被引用 .c unit 转 vfs-only + 不动点剔除〕+ 源码/输入 UTF-8 解码语义成节〔#363：三臂统一 U+FFFD 替换解码，坏字节源码 E1001 三臂同形〕。前一沿革 2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。更前 2026-10-07 图标语义批〔#27〕、2026-10-06 统一入口批〔#49 批一〕、2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
 > 出口定位：本文档是 CLI **使用指南**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`CLI_PROTOCOL_V1.md`](../../../moonbit/docs/spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。完整出口清单与职责边界见 [出口分档与宿主策略.md](../06-出口与协议/出口分档与宿主策略.md)。
 
 ## 统一入口（推荐——agent / 脚本默认形态）
@@ -31,10 +31,10 @@ cd moonbit && moon build --release --target js cmd/vitro_wasm            # wasm 
 
 - ⚠️ **`moon build .mooncakes/vitro/engine/cmd/vitro` 静默陷阱**：rc=0 但**零产物**（`.mooncakes` 是点目录，moon 静默忽略输入过滤器）——看起来成功、build 目录里什么都没有。不要用。
 - ⚠️ **`moon.mod` 写本地路径依赖**：工具链拒绝（`only supports versioned registry dependencies`）。
-- ✅ **可行配方 A（推荐——要 CLI 判分/批处理）**：把 `.mooncakes/vitro/engine/` 整目录拷出到任意独立目录（如 `tmp/engine-cli/`），在其中 `MOON_CC=clang-cl moon build --release --target native cmd/vitro`——自建模块后构建不受点目录限制；产物路径见下节。
+- ✅ **可行配方 A（推荐——要 CLI 判分/批处理）**：把 `.mooncakes/vitro/engine/` 整目录拷出到任意独立目录（如 `tmp/engine-cli/`），在其中 `MOON_CC=clang moon build --release --target native cmd/vitro`——自建模块后构建不受点目录限制；产物路径见下节。
 - ✅ **可行配方 B（零构建——只要引擎能力）**：不走 CLI，直接以**库**形态消费（`vitro/engine/gateway` 的 `invoke` 单口或 `session` 会话族，配方见《快速入门·下游接入》）；`cmd/serve` 的 NDJSON 语义与 `gateway.invoke` 同源，CLI 能做的库都能做。
 
-> Windows/MSVC 冷态构建分钟级悬崖照旧适用（moon#2254）——配方 A 务必 `MOON_CC=clang-cl`（拷出 `.mooncakes` 即独立 module、走 MSVC 直连目标，裸 `clang` 被 moon 静默忽略回落 MSVC 探测——#117 边界，与《快速入门》「包消费者如何拿到 CLI」节同口径；2026-11-08 勘正，此前本节误写 `clang`）。
+> Windows/MSVC 冷态构建分钟级悬崖照旧适用（moon#2254）——配方 A 务必 `MOON_CC=clang`（release 面实测认 clang，下游独立 module 同——stub.obj 指纹实锤；与《快速入门》「包消费者如何拿到 CLI」节同口径）。**2026-11-09 再勘正**：2026-11-08 依 #117 口径改写的 `MOON_CC=clang-cl` 裸名形态被 moon **静默解析成发现的 cl.exe**（0 警告假绿，[moon#2480](https://github.com/moonbitlang/moon/issues/2480)），本批翻案回 `clang`；debug 档边界见《快速入门》Windows 提示。
 
 ## MoonBit 侧 CLI（agent 主入口）
 

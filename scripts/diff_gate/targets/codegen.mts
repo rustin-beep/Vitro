@@ -309,11 +309,13 @@ let lastVerifyErrors: string[] = [];
 function spawnMoon(ctx: GateContext, fail: Fail): void {
   // MOON_CC（AGENTS §11，moon#2254 冷态悬崖）——2026-11-01 审阅 v2 S05-C3 补；
   // B3 审阅 P2-2：moon run 的 Windows native 直连目标忽略裸 clang（陷阱 43），
-  // 平台分叉——win32 须 cl 兼容驱动 clang-cl，非 Windows 沿用 clang。
+  // 平台分叉。2026-11-09 勘误：win32 原裸名 clang-cl 被 moon 静默解析成发现的
+  // cl.exe（0 警告假绿，moon#2480）——改 MOONBIT_NEW_NATIVE=0 关直连后端 +
+  // 裸 clang（debug 走 legacy 后端 clang 生效），非 Windows 沿用 clang。
   const r = spawnSync(
     "moon",
     ["-C", "moonbit", "run", "--target", "native", DUMP_SUB, "--", ctx.corpus, ctx.workDir],
-    { cwd: ctx.root, encoding: "utf8", timeout: 600_000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, MOON_CC: process.platform === "win32" ? "clang-cl" : "clang" } },
+    { cwd: ctx.root, encoding: "utf8", timeout: 600_000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, MOON_CC: "clang", ...(process.platform === "win32" ? { MOONBIT_NEW_NATIVE: "0" } : {}) } },
   );
   if (r.status !== 0) fail(`moon run ${DUMP_SUB} 执行失败: exit ${String(r.status)}\n${(r.stdout ?? "") + (r.stderr ?? "")}`);
 }

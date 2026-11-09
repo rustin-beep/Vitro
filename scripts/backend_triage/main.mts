@@ -6,7 +6,7 @@
 // 空输出/缺行恒绿突变实锤后补——恰好 10 行、ping 帧、版本行、compile+run
 // 帧全须在位）：
 //
-//   native   moon run --target native   （MOON_CC 平台分叉：win32=clang-cl / 其余 clang——AGENTS 纪律 11 + 陷阱 43）
+//   native   moon run --target native   （MOON_CC 平台分叉：win32=clang+MOONBIT_NEW_NATIVE=0 / 其余 clang——AGENTS 纪律 11 + 陷阱 43；裸名 clang-cl 被静默换成 cl.exe——moon#2480，已勘）
 //   js       moon run --target js       （node）
 //   wasm-gc  moon run --target wasm-gc  （moonrun——moon 工具链自带）
 //
@@ -137,9 +137,12 @@ function runArm(target: string, moonbitDir: string): ArmResult {
   env.PATH = `${nodeDir}${path.delimiter}${env.PATH ?? ""}`;
   if (target === "native") {
     // B3 审阅 P2-2：moon run 的 Windows native 直连目标同样忽略裸 clang（moon
-    // 0.1.20261028 实测同款警告——见 moonbit/AGENTS.md 陷阱 43），须 cl 兼容驱动；
-    // 非 Windows 沿用 clang（纪律 11）。
-    env.MOON_CC = process.platform === "win32" ? "clang-cl" : "clang";
+    // 0.1.20261028 实测同款警告——见 moonbit/AGENTS.md 陷阱 43）；非 Windows
+    // 沿用 clang（纪律 11）。2026-11-09 勘误：win32 原裸名 clang-cl 被 moon
+    // 静默解析成发现的 cl.exe（0 警告假绿，moon#2480）——改 MOONBIT_NEW_NATIVE=0
+    // 关直连后端 + 裸 clang，与 Linux/CI 臂同编译器。
+    env.MOON_CC = "clang";
+    if (process.platform === "win32") env.MOONBIT_NEW_NATIVE = "0";
   }
   const r = spawnSync("moon", ["run", "--target", target, "cmd/backend_triage"], {
     cwd: moonbitDir,

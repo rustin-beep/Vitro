@@ -21,6 +21,8 @@
 3. pub 面收窄：`read_file_to_bytes` / `is_file` / `remove_dir` / `remove_file` 四函数改 priv（本仓消费面为 7 函数）；
 4. 文件头保留原 Apache-2.0 声明并追加来源标注。
 
+上游根目录**无 LICENSE / NOTICE 文件**（许可声明为逐文件 Apache-2.0 头，已原样保留）——§4(a) 许可副本由下方「Apache License 2.0 全文」节承接；§4(d) 无 NOTICE 转载物（2026-11-10 经 GitHub contents API 探测复核）。
+
 上游漂移由 `scripts/moonbit/vendor_drift` 监控（基线 `scripts/moonbit/vendor_baseline.json`，内容哈希口径——比对**上游 main** 与基线，不比本仓 vendored 文件；本地逻辑修复不触该闸）。
 
 ### 本地逻辑修复（Apache-2.0 §4(b) 修改声明；各文件头同步标注）

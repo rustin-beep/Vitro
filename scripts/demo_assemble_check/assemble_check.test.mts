@@ -1,4 +1,4 @@
-// demo_assemble_check 单元面（#273 四件套：node:test）——三条判据的正反面。
+// demo_assemble_check 单元面（#273 四件套：node:test）——四条判据的正反面。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -29,7 +29,7 @@ function sourceFixture(extra: Record<string, string> = {}): string {
 }
 
 test("源目录面：本地 ref 全在（外链不计）", () => {
-  assert.deepEqual(checkAssembly(sourceFixture(), { noTs: false }), { refs: 3 });
+  assert.deepEqual(checkAssembly(sourceFixture(), { noTs: false }), { refs: 3, noticesPkgs: 0, enginePkgs: 0 });
 });
 
 test("缺资源 fail loud（逐项点名）", () => {
@@ -48,12 +48,65 @@ test("源目录面缺入口 src/main.ts = 红", () => {
   assert.throws(() => checkAssembly(dir, { noTs: false }), /缺入口源 src\/main\.ts/);
 });
 
+// 判据 ④ fixture：一个合法包段（`── <name>@<version>`）即过内容非退化断言
+const NOTICES = "── @x/y@1.2.3 ──────\nlicense: MIT\n\nMIT License text\n";
+const ENGINE_NOTICES = "── core@0.10.20 ──────\nlicense: Apache-2.0\n\nApache text\n";
+
 test("发布面 --no-ts：干净产物通过且不要求 src/main.ts", () => {
-  const dir = fixture(HTML, { "cases.js": "", "logo.png": "", "favicon.ico": "" });
-  assert.deepEqual(checkAssembly(dir, { noTs: true }), { refs: 3 });
+  const dir = fixture(HTML, {
+    "cases.js": "",
+    "logo.png": "",
+    "favicon.ico": "",
+    "THIRD-PARTY-NOTICES.txt": NOTICES,
+    "ENGINE-NOTICES.txt": ENGINE_NOTICES,
+  });
+  assert.deepEqual(checkAssembly(dir, { noTs: true }), { refs: 3, noticesPkgs: 1, enginePkgs: 1 });
 });
 
 test("发布面 --no-ts：漏出 .ts 源 = 红", () => {
   const dir = fixture(HTML, { "cases.js": "", "logo.png": "", "favicon.ico": "", "src/x.ts": "" });
   assert.throws(() => checkAssembly(dir, { noTs: true }), /发布面含 TS 源.*src[/\\]x\.ts/);
+});
+
+test("发布面 --no-ts：缺 THIRD-PARTY-NOTICES.txt = 红（判据 ④）", () => {
+  const dir = fixture(HTML, { "cases.js": "", "logo.png": "", "favicon.ico": "" });
+  assert.throws(() => checkAssembly(dir, { noTs: true }), /发布面缺 THIRD-PARTY-NOTICES\.txt/);
+});
+
+test("发布面 --no-ts：notices 0 包段（内容退化）= 红（判据 ④）", () => {
+  const dir = fixture(HTML, {
+    "cases.js": "",
+    "logo.png": "",
+    "favicon.ico": "",
+    "THIRD-PARTY-NOTICES.txt": "Vitro demo — third-party software notices\n(empty)\n",
+    "ENGINE-NOTICES.txt": ENGINE_NOTICES,
+  });
+  assert.throws(() => checkAssembly(dir, { noTs: true }), /内容退化：0 个包段/);
+});
+
+test("发布面 --no-ts：缺 ENGINE-NOTICES.txt = 红（判据 ④ 引擎面）", () => {
+  const dir = fixture(HTML, {
+    "cases.js": "",
+    "logo.png": "",
+    "favicon.ico": "",
+    "THIRD-PARTY-NOTICES.txt": NOTICES,
+  });
+  assert.throws(() => checkAssembly(dir, { noTs: true }), /发布面缺 ENGINE-NOTICES\.txt/);
+});
+
+test("发布面 --no-ts：engine 0 个 core@ 段（内容退化）= 红（判据 ④ 引擎面）", () => {
+  const dir = fixture(HTML, {
+    "cases.js": "",
+    "logo.png": "",
+    "favicon.ico": "",
+    "THIRD-PARTY-NOTICES.txt": NOTICES,
+    "ENGINE-NOTICES.txt": "Vitro engine artifacts\n(no core segment)\n",
+  });
+  assert.throws(() => checkAssembly(dir, { noTs: true }), /0 个 core@ 段/);
+});
+
+test("源目录面不要求 notices（判据 ④ 仅挂发布面）", () => {
+  const r = checkAssembly(sourceFixture(), { noTs: false });
+  assert.equal(r.noticesPkgs, 0);
+  assert.equal(r.enginePkgs, 0);
 });

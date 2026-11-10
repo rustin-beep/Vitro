@@ -367,6 +367,7 @@
     <footer class="vr-foot">
       <p>白箱引擎：内存映射、freed 隔离区、VM 步数、诊断全部来自引擎真实数据（memory.regions / output.delta / error_catalog / trap 帧），非装饰性 mock。</p>
       <p>课程叙述真源：<b>course/**/lesson.md</b>；课目与计数由同一数据源渲染，不在页面里手写。</p>
+      <p>第三方软件：前端打包 CodeMirror / Svelte 等 MIT 许可组件（<a href="./THIRD-PARTY-NOTICES.txt">THIRD-PARTY-NOTICES.txt</a>）；引擎产物内置 MoonBit core 标准库（Apache-2.0，许可与 NOTICE 见 <a href="./ENGINE-NOTICES.txt">ENGINE-NOTICES.txt</a>）；引擎 vendored 代码见 <a href="https://github.com/rustin-beep/Vitro/blob/master/moonbit/THIRD_PARTY.md">moonbit/THIRD_PARTY.md</a>。</p>
     </footer>
     {/if}
   </div>

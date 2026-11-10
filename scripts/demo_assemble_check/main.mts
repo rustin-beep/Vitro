@@ -15,7 +15,14 @@
 //   ② 全部 ref（script/img/app 产物 import 面）逐项存在性断言，缺即红
 //      （外链 http(s)/data: 过滤不查）；
 //   ③ --no-ts（发布面模式）：目录内出现 .ts/.mts 即红——源不随产物发布
-//      （pages.yml 曾 cp -r demo/js 连 .ts 一起上传）。
+//      （pages.yml 曾 cp -r demo/js 连 .ts 一起上传）；
+//   ④ --no-ts（发布面模式）：必须有 THIRD-PARTY-NOTICES.txt（≥1 个包段）与
+//      ENGINE-NOTICES.txt（≥1 个 core@ 段）（2026-11-10 许可合规：vite 产物
+//      全量剥注释，@license/Copyright/MIT 命中 0——前端 MIT「保留版权与许可
+//      文本」义务由 thirdPartyNotices 发射的聚合声明承接；引擎侧 wasm/langpack
+//      内编译进 MoonBit core 标准库（Apache-2.0）随 Pages 分发，§4(a)/(d)
+//      的许可副本与 NOTICE 转载由 engineNotices 发射承接。两断言均先于
+//      对应发射器落地、对旧产物证红（J9 埋雷义务），发射器批转绿）。
 //
 // 用法：node scripts/demo_assemble_check/main.mts <目录> [--no-ts]
 
@@ -25,6 +32,10 @@ import { pathToFileURL } from "node:url";
 
 export interface CheckResult {
   refs: number;
+  /** 判据 ④：发布面 THIRD-PARTY-NOTICES.txt 的包段数（源面恒 0） */
+  noticesPkgs: number;
+  /** 判据 ④：发布面 ENGINE-NOTICES.txt 的 core@ 段数（源面恒 0） */
+  enginePkgs: number;
 }
 
 function die(msg: string): never {
@@ -93,7 +104,32 @@ export function checkAssembly(dir: string, opts: { noTs: boolean }): CheckResult
     if (leaked.length) die(`发布面含 TS 源（cp -r 应排除/发射产物面只留 .js）: ${leaked.join(", ")}`);
   }
 
-  return { refs: refs.size };
+  // ── ④ 发布面第三方许可声明（--no-ts；见头注判据 ④）──────────
+  let noticesPkgs = 0;
+  let enginePkgs = 0;
+  if (opts.noTs) {
+    const noticesPath = path.join(dir, "THIRD-PARTY-NOTICES.txt");
+    if (!fs.existsSync(noticesPath)) {
+      die(`发布面缺 THIRD-PARTY-NOTICES.txt（前端第三方许可声明——vite.config.ts 内联插件 thirdPartyNotices 发射，缺 = 插件被移除或 emit 失败）`);
+    }
+    const notices = fs.readFileSync(noticesPath, "utf8");
+    noticesPkgs = [...notices.matchAll(/^── .+@\d/gm)].length;
+    if (noticesPkgs < 1) {
+      die(`THIRD-PARTY-NOTICES.txt 内容退化：0 个包段（应为 bundle 实际模块表的第三方包清单）——发射方插件逻辑回归`);
+    }
+
+    const enginePath = path.join(dir, "ENGINE-NOTICES.txt");
+    if (!fs.existsSync(enginePath)) {
+      die(`发布面缺 ENGINE-NOTICES.txt（引擎产物内置 MoonBit core 标准库随分发，Apache-2.0 §4(a)/(d) 许可副本+NOTICE 转载——vite.config.ts 内联插件 engineNotices 发射，缺 = 插件被移除或 emit 失败）`);
+    }
+    const engine = fs.readFileSync(enginePath, "utf8");
+    enginePkgs = [...engine.matchAll(/^── core@\d/gm)].length;
+    if (enginePkgs < 1) {
+      die(`ENGINE-NOTICES.txt 内容退化：0 个 core@ 段——发射方插件逻辑回归`);
+    }
+  }
+
+  return { refs: refs.size, noticesPkgs, enginePkgs };
 }
 
 function main(): void {
@@ -102,8 +138,10 @@ function main(): void {
   const dir = args.find((a) => !a.startsWith("--"));
   if (!dir) die("用法: node scripts/demo_assemble_check/main.mts <目录> [--no-ts]");
   try {
-    const { refs } = checkAssembly(dir, { noTs });
-    console.log(`[demo_assemble_check] ${refs} 项本地资源全在${noTs ? "（发布面无 .ts 源）" : ""}: ${dir}`);
+    const { refs, noticesPkgs, enginePkgs } = checkAssembly(dir, { noTs });
+    console.log(
+      `[demo_assemble_check] ${refs} 项本地资源全在${noTs ? `（发布面无 .ts 源，notices 包段 ${noticesPkgs} / engine core@段 ${enginePkgs}）` : ""}: ${dir}`
+    );
   } catch (e) {
     console.error("[demo_assemble_check] " + (e instanceof Error ? e.message : String(e)));
     process.exit(1);

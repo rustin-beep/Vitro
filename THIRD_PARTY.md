@@ -4,9 +4,10 @@
 
 | 范围 | 声明位置 | 内容 |
 |:---|:---|:---|
-| MoonBit 引擎（`moonbit/`） | [moonbit/THIRD_PARTY.md](moonbit/THIRD_PARTY.md) | vendored 代码（moonbitlang/x fs/unicode 子集，Apache-2.0）来源表与本地修改声明（Apache-2.0 §4(b)） |
+| MoonBit 引擎 vendored 代码（`moonbit/`） | [moonbit/THIRD_PARTY.md](moonbit/THIRD_PARTY.md) | vendored 代码（moonbitlang/x fs/unicode 子集，Apache-2.0）来源表与本地修改声明（Apache-2.0 §4(b)） |
 | 浏览器 demo 前端依赖（`demo/`） | 部署产物 `THIRD-PARTY-NOTICES.txt`（[在线页](https://rustin-beep.github.io/Vitro/)页脚有可见链接） | 打包进产物的第三方包（CodeMirror / Svelte runtime 等，MIT）版权与许可全文；vite 构建期由 **bundle 实际模块表**反查生成（`demo/vite.config.ts` 内联插件 `thirdPartyNotices`），发布面存在性由 `scripts/demo_assemble_check` 判据 ④（`--no-ts`）守 |
-| 对拍语料（`corpus/`） | [corpus/README.md](corpus/README.md) | 各目录来源与生成方式（自写 / LLM 生成 / chibicc 移植）；`chibicc_port/` 的上游 MIT 义务在其逐文件头注承接 |
+| MoonBit 标准库 core（随引擎产物分发） | 部署产物 `ENGINE-NOTICES.txt` | core（Apache-2.0, © IDEA）编译进 wasm.wasm / langpack.js 随 Pages 分发——许可全文 + NOTICE 转载（fdlibm / V8 / Go / musl / FreeBSD 归属，Apache-2.0 §4(a)/(d)）；构建期自**构建该产物的同一工具链**（`~/.moon/lib/core`）现场发射（`demo/vite.config.ts` 内联插件 `engineNotices`），版本随构建自洽，同一判据 ④ 守 |
+| 对拍语料（`corpus/`） | [corpus/README.md](corpus/README.md) | 各目录来源与生成方式（自写 / LLM 生成 / chibicc 移植）；`chibicc_port/` 的上游 MIT 义务在其逐文件头注 + 目录内 LICENSE.upstream 全文承接 |
 
 ## npm 依赖口径
 

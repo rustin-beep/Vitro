@@ -4,6 +4,7 @@
 import { defineConfig, type Plugin } from "vite";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { homedir } from "node:os";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 // 虚拟模块：把 cases.js / algorithms.js（经典 script 全局 const，审阅 D-#4
@@ -38,12 +39,12 @@ function demoGlobals(): Plugin {
 // 本插件在 generateBundle 从 bundle **实际模块表**反查 node_modules 第三方
 // 包——不能按 package-lock 的非 dev 口径过滤（devDependencies 里的 svelte
 // 运行时实打实进了产物，2026-11-10 实测 svelte.dev 运行时错误链接 19 处），
-// 逐包拼 LICENSE 全文发射 THIRD-PARTY-NOTICES.txt（页脚链接可见，评委可点）。
-// chunk 头部指针走 output.postBanner（见 config 内注释）。存在性由
-// demo_assemble_check 判据 ④（--no-ts 发布面）守（该断言先于本插件落地、
-// 对旧产物证红——红→绿纪律）。口径纪律：主构建包清单空即 throw（防
-// modules 字段缺失静默产出空声明）、LICENSE/license 字段缺失一律 fail
-// loud、包名排序输出（字节确定性）。
+// 逐包拼 LICENSE 全文发射 THIRD-PARTY-NOTICES.txt（页脚链接可见——MIT
+// 「保留版权与许可文本」义务的承接件）。chunk 头部指针走 output.postBanner
+// （见 config 内注释）。存在性由 demo_assemble_check 判据 ④（--no-ts 发布
+// 面）守（该断言先于本插件落地、对旧产物证红——红→绿纪律）。口径纪律：
+// 主构建包清单空即 throw（防 modules 字段缺失静默产出空声明）、LICENSE/
+// license 字段缺失一律 fail loud、包名排序输出（字节确定性）。
 //
 // 双实例分工（engine.worker 是 vite **worker 子构建**，主构建模块表看不到
 // 其内部模块——主构建 emit、worker 构建 collect，共享 COLLECTED 合并口径）：
@@ -56,6 +57,7 @@ const POST_BANNER =
   "full copyright & permission notices: THIRD-PARTY-NOTICES.txt */";
 function thirdPartyNotices(role: "collect" | "emit"): Plugin {
   const LICENSE_CANDIDATES = ["LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE", "COPYING"];
+  let ssr = false;
   const readLicense = (pkgDir: string, name: string): string => {
     for (const f of LICENSE_CANDIDATES) {
       const p = path.join(pkgDir, f);
@@ -65,7 +67,13 @@ function thirdPartyNotices(role: "collect" | "emit"): Plugin {
   };
   return {
     name: `vitro-third-party-notices-${role}`,
+    // SSR 构建（e08）复用本 config——不发射（dist-e08 是 CI 内部测试产物，
+    // 非分发面；混入只会造误导性清单）。engineNotices 同款守卫。
+    configResolved(c) {
+      ssr = !!c.build?.ssr;
+    },
     generateBundle(_opts, bundle) {
+      if (ssr) return;
       const nmRoot = path.resolve(process.cwd(), "node_modules");
       const ids = new Set<string>();
       for (const out of Object.values(bundle)) {
@@ -130,8 +138,60 @@ function thirdPartyNotices(role: "collect" | "emit"): Plugin {
   };
 }
 
+// 引擎侧许可声明插件（MoonBit core，2026-11-10）：wasm.wasm / langpack.js
+// 由 MoonBit 工具链编译，**core 标准库代码编译进产物随 Pages 分发**——
+// Apache-2.0 §4(a) 要求随附许可副本、§4(d) 要求转载 NOTICE 内容（core 的
+// NOTICE 含 fdlibm(Sun) / V8 / Go / musl(Arm·Rich Felker) / FreeBSD 归属
+// 声明，缺了即违约面；与前端 MIT 不同，Apache 系义务不因无版权头而消失）。
+// 发射器读**构建该产物的同一工具链**的 LICENSE/NOTICE（~/.moon/lib/core）
+// ——版本随构建自洽，比仓内钉快照无陈旧风险；CI（ci.yml demo job /
+// pages.yml）均先 setup-moonbit 后 vite build，路径恒在。文件缺失 fail
+// loud。SSR 构建（e08）复用本 config，守卫跳过发射防 dist-e08 混入。
+function engineNotices(): Plugin {
+  let ssr = false;
+  return {
+    name: "vitro-engine-notices",
+    configResolved(c) {
+      ssr = !!c.build?.ssr;
+    },
+    generateBundle() {
+      if (ssr) return;
+      const coreDir = path.join(homedir(), ".moon", "lib", "core");
+      const p = (f: string): string => path.join(coreDir, f);
+      for (const f of ["LICENSE", "NOTICE", "moon.mod"]) {
+        if (!existsSync(p(f))) {
+          throw new Error(
+            `[engineNotices] 缺 ${p(f)}——MoonBit core 许可/NOTICE 不可读，禁静默缺声明（Apache-2.0 §4(a)/(d)）`
+          );
+        }
+      }
+      const license = readFileSync(p("LICENSE"), "utf8").trim();
+      const notice = readFileSync(p("NOTICE"), "utf8").trim();
+      const ver = readFileSync(p("moon.mod"), "utf8").match(/^version\s*=\s*"([^"]+)"/m)?.[1];
+      if (!ver) throw new Error("[engineNotices] core/moon.mod 无 version 字段——provenance 戳失败，禁静默");
+      const source =
+        "Vitro engine artifacts (wasm.wasm / langpack.js) — MoonBit core runtime notices\n" +
+        "===============================================================================\n\n" +
+        "Generated at build time from the MoonBit toolchain that produced the engine\n" +
+        "artifacts. The MoonBit standard library \"core\" (Apache-2.0) is compiled into\n" +
+        "these artifacts; per Apache-2.0 §4(a)/(d) its license text and NOTICE contents\n" +
+        "(fdlibm / V8 / Go / musl / FreeBSD attributions) follow verbatim.\n" +
+        "Vendored moonbitlang/x fs/unicode subset (Apache-2.0, with modification\n" +
+        "declarations): moonbit/THIRD_PARTY.md —\n" +
+        "https://github.com/rustin-beep/Vitro/blob/master/moonbit/THIRD_PARTY.md\n\n" +
+        `── core@${ver} ──────────────────────────────\n` +
+        "license: Apache-2.0\n" +
+        "copyright: 2026 International Digital Economy Academy (IDEA)\n\n" +
+        `${license}\n\n` +
+        `── core NOTICE ──────────────────────────────\n\n${notice}\n\n`;
+      this.emitFile({ type: "asset", fileName: "ENGINE-NOTICES.txt", source });
+      console.log(`[engineNotices] ENGINE-NOTICES.txt: core@${ver}（Apache-2.0 + NOTICE 全文）`);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [svelte(), demoGlobals(), thirdPartyNotices("emit")],
+  plugins: [svelte(), demoGlobals(), thirdPartyNotices("emit"), engineNotices()],
   worker: {
     plugins: () => [thirdPartyNotices("collect")],
     rollupOptions: { output: { postBanner: POST_BANNER } },

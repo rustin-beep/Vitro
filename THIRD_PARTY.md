@@ -12,3 +12,18 @@
 ## npm 依赖口径
 
 `demo/package-lock.json` 全量 109 包中 93 个为 devDependencies（vite/svelte-check/oxlint 等构建工具链，不随产物分发、无声明义务）；真正打进产物的第三方包以**构建期模块表反查**为准（上表第二行）——lockfile 的 dev 标记不可作口径（`svelte` 在 devDependencies 但其运行时随编译进产物）。
+
+## MoonBit 工具链与原生运行时层（2026-11-10 本机实证）
+
+工具链（moonc/moon，安装器随附总声明 `~/.moon/CREDITS.md`）捆绑再分发三个第三方件：Binaryen（Apache-2.0）、tcc（LGPL-2.1）、simdutf（MIT）；另携带 why3（LGPL-2.1）。对本仓产物的逐项定性：
+
+| 组件 | 是否进入本仓分发物 | 证据与边界 |
+|:---|:---|:---|
+| core 标准库（Apache-2.0 + NOTICE） | **是**（wasm/langpack 编译进产物随 Pages 分发） | `ENGINE-NOTICES.txt` 承接（见上表第三行） |
+| IDEA 原生运行时（libmoonbitrun / bcheck / bt，Apache-2.0） | 仅原生 exe（本仓 CI 防线自用构建，**不发布原生二进制**） | exe 内 `moonbit`/`backtrace` 痕迹命中（符号对拍实测）；若未来分发原生 exe，须随附 Apache-2.0 全文 + core NOTICE（内容同 `ENGINE-NOTICES.txt`） |
+| tcc / libtcc1（LGPL-2.1） | 否 | 仅 tcc 驱动链接（CREDITS「optionally used」）；本仓纪律锁 clang/MSVC 驱动；exe 内 `Bellard`/`__tcc` 痕迹 0 命中 |
+| simdutf（MIT） | 否 | exe 内 simdutf 修饰符号（`_ZN7simdutf…`）0 命中——不随 clang 构建的原生产物分发 |
+| why3（LGPL-2.1） | 否 | `moon prove` 本地工具，以子进程调用、不随产物再分发 |
+| Binaryen / wasm-opt（Apache-2.0） | 否 | 构建期优化器（进程使用，输出无许可义务）；CI 以 pin 版本独立下载，不随产物分发 |
+
+> 口径：符号对拍基于 clang release 构建（纪律 11）的 `cmd/vitro/vitro.exe`（2026-11-10）；原生运行时「不发布」的现行唯一例外 = GitHub Release `perf-cliff-repro-20260926`（内部复现 kit，构建于本节建账之前，已知边界）。

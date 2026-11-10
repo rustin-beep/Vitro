@@ -202,3 +202,5 @@ AI 写出的代码大多"表面正确"；本仓入库的 MoonBit 已超过九万
 ## 许可证
 
 [MIT](LICENSE)
+
+第三方软件与语料来源声明：[THIRD_PARTY.md](THIRD_PARTY.md)（引擎 vendored 代码 / demo 前端依赖 / 对拍语料三处指针）。

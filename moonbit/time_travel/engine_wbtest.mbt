@@ -852,3 +852,363 @@ test "engine_viewport_desync_run_alignment_b7b" {
     assert_eq(r.payloads[k].step_index, 6 + k)
   }
 }
+
+///|
+/// qsort+comparator 程序（#477 红锚共用构造）：主流程压 4 参 + CallHost 52
+///（qsort）+ Ret；cmp 体在 ip 20（*(int*)a - *(int*)b——解引用真比较器，
+/// line 5）。数组 [3,1,2] @0x7000（line 1/2/3 = 主流程行）。
+fn qsort_program() -> Array[@opcode.Instruction] {
+  let code : Array[@opcode.Instruction] = []
+  code.push(instr_at(@opcode.PushConst, 1, 1)) // compar = func idx 1（非 0——0 是「无比较器」哨兵）
+  code.push(instr_at(@opcode.PushConst, 4, 1)) // size = 4
+  code.push(instr_at(@opcode.PushConst, 3, 1)) // nmemb = 3
+  code.push(instr_at(@opcode.PushConst, 0x7000, 1)) // base
+  code.push(instr_at(@opcode.CallHost, 52, 2)) // qsort
+  code.push(instr_at(@opcode.Ret, 0, 3)) // main Ret
+  while code.length() < 20 {
+    code.push(instr_at(@opcode.Nop, 0, 3))
+  }
+  code.push(instr_at(@opcode.LoadLocal, 0, 5)) // *(int*)a
+  code.push(instr_at(@opcode.LoadMem, 0, 5))
+  code.push(instr_at(@opcode.LoadLocal, 4, 5)) // *(int*)b
+  code.push(instr_at(@opcode.LoadMem, 0, 5))
+  code.push(instr_at(@opcode.Sub, 0, 5))
+  code.push(instr_at(@opcode.Ret, 0, 5))
+  code
+}
+
+///|
+/// 锚 #477（INV3a 嵌套帧语义，2026-11-05）：qsort 宿主回调段帧连续——
+/// CallHost qsort 一条指令内部 comparator 经 call_user_function 逐指令
+/// 执行（step_count 随之推进），帧流必须逐步出帧：全流 step_index 严格
+/// +1 无 gap、回调帧（func_name="func_1"——注册号 1 的缺省名）在流中
+/// 可见、排序结果不受影响。
+/// 红锚形态（修前）：CallHost 帧 step=4 → 下一帧 step = 4+回调总步数+1
+/// （gap = 回调指令数——issue #477 白名单 18 例同根因）。
+test "engine_run_batch_host_callback_frame_continuity" {
+  let vm = load_qsort_vm()
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  let idxs : Array[Int32] = []
+  let mut saw_cmp_frame = false
+  while !e.is_finished {
+    guard e.run_batch(vm, src, 8) is Ok(r) else { fail("run_batch 不应 Err") }
+    for p in r.payloads {
+      idxs.push(p.step_index)
+      if p.func_name == "func_1" {
+        saw_cmp_frame = true
+      }
+    }
+  }
+  // 回调段帧在流中可见（教学语义：comparator 指令逐步呈现）
+  assert_true(
+    saw_cmp_frame,
+    msg="回调帧（func_name=func_1）必须出现在帧流",
+  )
+  // 全流 step_index 严格 +1（INV3a——修前在 CallHost 后 gap）
+  assert_true(
+    idxs.length() > 7,
+    msg="帧数须超过主流程 6 步（回调段帧在）",
+  )
+  for k = 0; k < idxs.length(); k = k + 1 {
+    assert_eq(
+      idxs[k],
+      k,
+      msg="step_index 须严格连续（#477 gap 形态：k=\{k} 处断裂）",
+    )
+  }
+  // 排序结果不受嵌套帧影响
+  assert_eq(vm.memory.load_u32(vm.mem_map, 0x7000U), Ok(1U))
+  assert_eq(vm.memory.load_u32(vm.mem_map, 0x7004U), Ok(2U))
+  assert_eq(vm.memory.load_u32(vm.mem_map, 0x7008U), Ok(3U))
+}
+
+///|
+/// qsort 程序装载 helper（#477 锚族共用）：[3,1,2] @0x7000 + comparator
+/// 注册（func idx 1，缺省名 func_1）。步结构实测（#494 审阅 P1 探针）：
+/// 主流程帧 0..4（CallHost 帧在 4）→ 回调段帧 5..22（3 次 comparator ×
+/// 6 指令；每次末帧 10/16/22 为回调 Ret 步、func 空）→ 终帧 23（main
+/// Ret/Finished）——CallHost 完成后 vm.step_count=23、终态 24。
+fn load_qsort_vm() -> @vm.VitroVM {
+  let vm = @vm.VitroVM::new()
+  guard vm.memory.store_u32(vm.mem_map, 0x7000U, 3U) is Ok(_) else {
+    abort("qsort 装载：a0 写入失败")
+  }
+  guard vm.memory.store_u32(vm.mem_map, 0x7004U, 1U) is Ok(_) else {
+    abort("qsort 装载：a1 写入失败")
+  }
+  guard vm.memory.store_u32(vm.mem_map, 0x7008U, 2U) is Ok(_) else {
+    abort("qsort 装载：a2 写入失败")
+  }
+  if !vm.register_function(1, @bytecode.FuncMeta::{
+      ip: 20,
+      arg_count: 2,
+      param_count: 2,
+      local_count: 8,
+      param_sizes: [1, 1],
+      return_type: @ast.Type::Int(false, false),
+      is_variadic: false,
+      local_buffers: [],
+    }) {
+    abort("qsort 装载：comparator 注册失败")
+  }
+  vm.load_program(qsort_program())
+  vm
+}
+
+///|
+/// 锚 #477-b：seek 进回调段——帧号 = 执行前 step_count 口径下，回调内部
+/// 步（gap 区间）seek 必须可得帧（修前 gap 区间无帧，frame_at 落空或
+/// blank 占位——issue 影响面③「seek 到 gap 区间的语义未定义」）。
+/// 注意：本锚走**直返臂**（全量跑完后帧 6 在窗口内、不碰 VM）——重放臂
+/// 的回调段覆盖由锚 #477-c/#477-d 承担（PR #494 审阅 P1）。
+test "engine_seek_into_host_callback_segment" {
+  let vm = load_qsort_vm()
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  // 全量跑完（帧入窗——窗口 2000 足容纳）
+  while !e.is_finished {
+    guard e.run_batch(vm, src, 100) is Ok(_) else {
+      fail("run_batch 不应 Err")
+    }
+  }
+  let total = e.frames.start_step() + e.frames.length()
+  assert_true(total > 12, msg="总步数须含回调段（>12）")
+  // seek 回第 6 步（CallHost 帧之后第一帧 = 回调首指令步——修前 gap 区间）
+  let s = e.seek_to(6, vm, src)
+  assert_true(s.success, msg="seek 到回调内部步应成功")
+  guard s.payload is Some(p) else { fail("回调步帧必须可得") }
+  assert_eq(p.step_index, 6)
+  assert_eq(p.func_name, "func_1", msg="回调段帧 func_name = comparator")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PR #494 审阅 P1 锚族（2026-11-12）：replay_to 的 #477 改动面此前零锚
+// 覆盖（M3 撤观察者挂载 73/73 全绿实证）——#477-b 走直返臂不碰 VM，
+// 重放臂的回调段采集/续跑连续性全在无锚区。本族两条锚补位：
+// #477-c 越窗直达（seek_to 重放臂）+ #477-d 分批+视口对齐（run_batch
+// 对齐路径——审阅探针同形态）。M3 红锚链：撤 replay_to 内 observer
+// 挂载 → #477-c「无法获取目标步的 payload」+ #477-d 窗口回调帧缺失。
+// ─────────────────────────────────────────────────────────────────────
+
+///|
+/// 锚 #477-c（PR #494 审阅 P1）：越窗 seek 直达回调内部步——小窗口滑走
+/// 后 seek(6) 强制走 replay_to 重放臂，断言重放采集的回调帧可得（帧 6
+/// = comparator 指令帧）+ VM 停在整条 CallHost 之后（step_count=23——
+/// 帧可寻址但 VM 状态原子越过 target，审阅 P2 语义，协议 §0/§4.2 登记）。
+test "engine_seek_overwindow_into_callback_replay" {
+  let vm = load_qsort_vm()
+  let e = UnifiedEngine::with_limits(100_000, 8, 0.5)
+  let src = fake_src()
+  // 一批跑完（CallHost 原子完成——batch 边界切不进回调段）
+  guard e.run_batch(vm, src, 30) is Ok(fin) else { fail("run 应 Ok") }
+  assert_true(fin.finished)
+  assert_true(
+    e.frames.start_step() > 6,
+    msg="前置：窗口已滑走（越窗）",
+  )
+  // 越窗 seek(6)：frame_at(6) 落空 → replay_to 重放臂
+  let s = e.seek_to(6, vm, src)
+  assert_true(
+    s.success,
+    msg="越窗 seek 到回调内部步应成功（修前/M3：重放不采回调帧 → 无法获取目标步的 payload）",
+  )
+  guard s.payload is Some(p) else { fail("重放帧必在") }
+  assert_eq(p.step_index, 6)
+  assert_eq(
+    p.func_name,
+    "func_1",
+    msg="重放采集的回调段帧（comparator）",
+  )
+  // 重放窗口连续：帧 5..6 均为回调段帧（窗口 [0..6]）
+  guard e.frames.frame_at(5) is Some(f5) else {
+    fail("回调首帧 5 必在窗")
+  }
+  assert_eq(f5.func_name, "func_1")
+  // P2 语义锚：VM 停在整条 CallHost 之后（23 = 4 主指令 + CallHost 含
+  // 18 回调步；while step_count <= target 只拦「下一条指令」不拦单条
+  // CallHost 内部推进——帧 5..22 可寻址、VM 状态在其后）
+  assert_eq(vm.step_count, 23)
+}
+
+///|
+/// 锚 #477-d（PR #494 审阅 P1，分批+对齐形态）：单批跨过 CallHost 后
+/// seek 回调内部步（直返臂置视口）→ 续跑触发视口对齐重放——断言对齐
+/// 重放采集回调段（窗口 7..21 帧可达且 func_name 正确）+ 续跑帧从
+/// VM 实际位（23）连续推进（每真实步恰投递一次——7..22 已在对齐重放
+/// 中入窗不重投）。修复前红：对齐 replay_to 沿用 seek 的 finish_replay
+/// (target) 把窗口截到 [0..6]，续跑帧 23 push 后窗口成 [0..6,23]——
+/// frame_at(7) 错位返回帧 23（帧号与窗口位置错位）。
+test "engine_viewport_alignment_replays_callback_frames" {
+  let vm = load_qsort_vm()
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  // 分批跑到 mid：一批 5 步跨过 CallHost（VM 推到 23、帧 0..22 已投递）
+  guard e.run_batch(vm, src, 5) is Ok(r1) else { fail("首批应 Ok") }
+  assert_false(r1.finished)
+  assert_eq(vm.step_count, 23, msg="前置：CallHost 原子完成")
+  // seek 回调内部步 6：直返臂（帧在窗）——只移动视口不动 VM
+  let s = e.seek_to(6, vm, src)
+  assert_true(s.success)
+  assert_eq(vm.step_count, 23, msg="直返不动 VM（VM 在视口未来）")
+  // 续跑：触发视口对齐（replay_to(6) 重放对齐）+ 续跑到终态
+  guard e.run_batch(vm, src, 10) is Ok(r2) else { fail("续跑应 Ok") }
+  assert_true(r2.finished)
+  // 续跑首帧 = VM 实际位（P2 语义：VM 停在整条 CallHost 后，续跑从
+  // 23 起——7..22 在对齐重放中入窗，不重投〔每真实步恰投递一次〕）
+  assert_eq(
+    r2.payloads[0].step_index,
+    23,
+    msg="续跑首帧从 VM 实际位 23（7..22 经对齐重放入窗不重投）",
+  )
+  // 对齐重放采集面：窗口内回调段帧可达且身份正确（修复前截窗后
+  // frame_at(7) 错位返回续跑终帧 23——func 空）
+  guard e.frames.frame_at(7) is Some(f7) else {
+    fail("对齐后回调帧 7 必在窗")
+  }
+  assert_eq(
+    f7.func_name,
+    "func_1",
+    msg="帧 7 = comparator 指令帧（修复前错位返回帧 23）",
+  )
+  guard e.frames.frame_at(21) is Some(f21) else {
+    fail("对齐后回调尾帧 21 必在窗")
+  }
+  assert_eq(f21.func_name, "func_1")
+  // 窗口帧号连续（无缺口错位）：0..23 逐帧在窗且 step_index 对位
+  assert_eq(e.frames.start_step(), 0)
+  assert_eq(e.frames.length(), 24)
+  for k = 0; k < 24; k = k + 1 {
+    guard e.frames.frame_at(k) is Some(fk) else { fail("帧 \{k} 必在窗") }
+    assert_eq(
+      fk.step_index,
+      k,
+      msg="窗口位置 \{k} 帧号对位（错位形态：位置 7 持帧 23）",
+    )
+  }
+  assert_eq(vm.step_count, 24, msg="终态步数（main Ret 执行完）")
+}
+
+///|
+/// qsort 程序尾部变体（P3-③ 锚专用）：CallHost 后接 6 条 Nop + Ret——
+/// 回调段（5..22）之后仍有顶层指令（24..30），使重放循环在 CallHost
+/// 跨过 dense_from 边界后还有迭代推进（密采切换点真触发）。
+fn qsort_program_tail() -> Array[@opcode.Instruction] {
+  let code = qsort_program()
+  // 前 5 指令（PushConst×4 + CallHost）原样 + Nop×6 + Ret + 填充至
+  // ip 20 + comparator 段（qsort_program 的 20..25）原样
+  let out : Array[@opcode.Instruction] = []
+  for i = 0; i < 5; i = i + 1 {
+    out.push(code[i])
+  }
+  for _ in 0..<6 {
+    out.push(instr_at(@opcode.Nop, 0, 3))
+  }
+  out.push(instr_at(@opcode.Ret, 0, 3))
+  while out.length() < 20 {
+    out.push(instr_at(@opcode.Nop, 0, 3))
+  }
+  for i = 20; i < 26; i = i + 1 {
+    out.push(code[i])
+  }
+  out
+}
+
+///|
+/// 锚 #494-P3c（PR #494 审阅 P3-③）：matches 非空（全程密采）+ CallHost
+/// 跨 dense_from 边界的越窗 seek——密采切换点不得清窗丢跨界回调帧。
+/// 构造：窗口 8 / target=28 ⇒ dense_from=21；CallHost（宿主步 4）把
+/// 回调帧推到 22（跨过 21）；重放循环在 step=23 触发切换。修复前
+/// reset_to(23) 清窗——帧 21/22（跨界回调帧）丢失、窗口塌缩成
+/// [23..28]（回看 [21..23) 缺帧）；修复后 discard_before(21) 保留
+/// [21..28] 恒满。
+test "engine_seek_dense_switch_keeps_crossboundary_callback_frames" {
+  let vm = @vm.VitroVM::new()
+  guard vm.memory.store_u32(vm.mem_map, 0x7000U, 3U) is Ok(_) else {
+    abort("a0")
+  }
+  guard vm.memory.store_u32(vm.mem_map, 0x7004U, 1U) is Ok(_) else {
+    abort("a1")
+  }
+  guard vm.memory.store_u32(vm.mem_map, 0x7008U, 2U) is Ok(_) else {
+    abort("a2")
+  }
+  if !vm.register_function(1, @bytecode.FuncMeta::{
+      ip: 20,
+      arg_count: 2,
+      param_count: 2,
+      local_count: 8,
+      param_sizes: [1, 1],
+      return_type: @ast.Type::Int(false, false),
+      is_variadic: false,
+      local_buffers: [],
+    }) {
+    abort("comparator 注册失败")
+  }
+  vm.load_program(qsort_program_tail())
+  let e = UnifiedEngine::with_limits(100_000, 8, 0.5)
+  // matches 非空 ⇒ fast_ok=false ⇒ 重放全程密采（跨边界回调帧入窗
+  // 是本锚的触发前提）
+  e.set_algorithm_matches([
+    @protocol.AlgorithmMatch::{
+      name: "bubble_sort",
+      display_name: "冒泡排序",
+      func_name: "main",
+      confidence: 90,
+      suggestion: "观察相邻元素的比较与交换",
+      line: 1,
+      vis_events: [],
+      evidence: "structure",
+    },
+  ])
+  let src = fake_src()
+  guard e.run_batch(vm, src, 40) is Ok(fin) else { fail("run 应 Ok") }
+  assert_true(fin.finished, msg="前置：程序跑完（总步 31）")
+  // 模拟窗口滑走（锚 F 先例通道——reset_to 是越窗 seek 的强制前置
+  // 同款；窗口 8 跑完天然 [23..30]，target=28 在窗内须先滑出）
+  e.frames.reset_to(99)
+  assert_true(e.frames.frame_at(28) is None, msg="前置：target 已越窗")
+  // 越窗 seek(28)：dense_from = 28-8+1 = 21——CallHost 回调段 5..22
+  // 跨过边界，切换点在重放迭代 step=23 触发
+  let s = e.seek_to(28, vm, src)
+  assert_true(s.success, msg="seek 应成功")
+  guard s.payload is Some(p) else { fail("目标帧必在") }
+  assert_eq(p.step_index, 28)
+  // 跨界回调帧保留（修复前 reset_to(23) 清窗 → frame_at(21/22) 落空）
+  guard e.frames.frame_at(21) is Some(f21) else {
+    fail(
+      "跨界回调帧 21 必在窗（修复前被密采切换清窗丢失）",
+    )
+  }
+  assert_eq(f21.func_name, "func_1", msg="帧 21 = comparator 指令帧")
+  assert_true(
+    e.frames.frame_at(22) is Some(_),
+    msg="回调 Ret 帧 22 必在窗",
+  )
+  // 窗口恒满：[dense_from..target]（修复前塌缩 [23..28]）
+  assert_eq(
+    e.frames.start_step(),
+    21,
+    msg="窗口起点 = dense_from（修复前塌缩到 23）",
+  )
+  assert_eq(e.frames.length(), 8, msg="窗口恒满 8 帧")
+}
+
+///|
+/// 锚 #494-P2b（PR #494 审阅 P2）：单条 CallHost 回调帧上限 fail loud
+/// ——小值注入（5 < 回调段 18 帧）⇒ run_batch Err（帧先入窗再报错，
+/// U2#7 同款）+ 文案可辨；默认值（50,000）下同程序正常跑完（既有
+/// 锚 #477 族覆盖）。红锚链：撤上限判定分支 ⇒ Err 不来 ⇒ 本锚红。
+test "engine_run_batch_callback_frame_cap_fail_loud" {
+  let vm = load_qsort_vm()
+  let e = UnifiedEngine::new()
+  e.set_max_callback_frames(5)
+  let src = fake_src()
+  guard e.run_batch(vm, src, 30) is Err(msg) else {
+    fail("回调帧超上限应 Err（fail loud）")
+  }
+  assert_true(msg.contains("回调帧超过上限"))
+  assert_true(msg.contains("5"), msg="文案带配置值")
+  // 帧先入窗再报错（U2#7 同款——Err 前已采帧不丢）
+  assert_true(e.frames.length() > 0, msg="Err 前帧已入窗")
+}

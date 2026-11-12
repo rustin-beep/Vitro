@@ -298,6 +298,27 @@ pub fn FrameWindow::reset_to(self : FrameWindow, step : Int32) -> Unit {
 }
 
 ///|
+/// 裁头到指定步（PR #494 审阅 P3-③，2026-11-12）：丢弃 `step` 之前的
+/// 帧、保留 `[step..]`（与 reset_to 的区别——不清全部：跨 dense 边界的
+/// CallHost 回调帧已入窗时，密采切换须保住它们而非清重建；step ≥ 窗口
+/// 尾 +1 时等价 reset_to(step)——空窗起点对齐）。seek 专用窗口操作面
+/// （reset_to / finish_replay 同族）。
+pub fn FrameWindow::discard_before(self : FrameWindow, step : Int32) -> Unit {
+  if step <= self.start_step {
+    return
+  }
+  let len = self.frames.length()
+  let discard = step - self.start_step
+  let discard = if discard < len { discard } else { len }
+  let mut k = 0
+  while k < discard {
+    ignore(self.frames.pop_front())
+    k = k + 1
+  }
+  self.start_step = self.start_step + discard
+}
+
+///|
 /// 重放收尾窗口（engine.rs:471-485 finish_replay_window 照搬）：只保留
 /// 目标步及其之前 window_size-1 帧——`want_start = max(0, target -
 /// window_size + 1)`；discard 钳到实际长度（坑 ⑥-4：seek 目标远超已有

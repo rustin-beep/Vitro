@@ -225,12 +225,17 @@ test("ST5 证红：首行 payloads 非空", () => {
   assert.ok(inv.includes("INV3a"), "帧序 0,0,1.. 连带破连续（同因红）");
 });
 
-test("ST6 证红：单行 payloads 超 2", () => {
+test("ST6 退役形态锚：回调段多帧行（3 帧连续）不红（#477 案 a）", () => {
   const s = greenStream();
-  s[1] = stepRow(7, [mkFrame({ step_index: 0 }), mkFrame({ step_index: 1, depth: 2 }), mkFrame({ step_index: 2, depth: 1 })]);
-  s.splice(2, 1); // 摘掉原 step1 行保帧序连续，孤立证 ST6
-  const inv = invariantsOf(s);
-  assert.ok(inv.includes("ST6"), `应含 ST6，得 ${JSON.stringify(inv)}`);
+  // 宿主回调段一条 CallHost 指令多帧的发布形态：单行 3 帧（step 0/1/2
+  // 连续、栈深 1→2→2 形态合法）——数量上限已退役，仅 INV3a/INV2b 锁序
+  s[1] = stepRow(7, [mkFrame({ step_index: 0, depth: 1 }), mkFrame({ step_index: 1, depth: 2 }), mkFrame({ step_index: 2, depth: 1 })]);
+  s.splice(2, 2); // 摘掉原 step1/step2 行保帧序与帧数对账
+  s.splice(4, 1);
+  s[4] = JSON.stringify({ type: "summary", frames: 5, finished: true, trapped: false });
+  const r = checkStepStream(s, "t.c");
+  assert.deepEqual(r.violations, [], `回调段多帧行不得因帧数红：${JSON.stringify(r.violations)}`);
+  assert.equal(r.frames, 5);
 });
 
 test("ST7 证红：summary.frames 计数不符", () => {
@@ -263,7 +268,12 @@ test("known_violations.json：条目形态合法（case 正斜杠 + invariant �
   const { loadKnown } = await import("./main.mts");
   const { projectRoot } = await import("../internal/capi.mts");
   const known = loadKnown(projectRoot());
-  assert.ok(known.length > 0, "白名单非空（qsort 族回调跳号 7 条，#477）");
+  // #477 修复闭环（2026-11-05）：INV3a 七条白名单（qsort/bsearch 回调跳号）
+  // 已全数拆除——帧号连续无豁免形态，复发即 RED 无放行通道
+  assert.ok(
+    known.every((k) => k.invariant !== "INV3a"),
+    "INV3a 白名单须为空（#477 案 a 修复后回调段帧连续）",
+  );
   const invariants = new Set([
     "INV1a", "INV1b", "INV1c", "INV2a", "INV2b", "INV2c", "INV3a", "INV4",
     "ST1", "ST2", "ST3", "ST4", "ST5", "ST6", "ST7",

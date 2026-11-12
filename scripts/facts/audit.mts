@@ -809,9 +809,28 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
     if (a.truth !== null) res.truthOf[k] = a.truth;
   }
   // 白名单零命中条目 = 僵尸豁免面（目标行已被改写/删除），check 无条件红。
+  // 判据口径（2026-11-12 run 140 实锤后修正）：以「contains 文本锚是否仍在
+  // 目标文件」判僵尸，不再以「本轮 Suspect 豁免命中」为代理——豁免命中的
+  // 必要条件是 Suspect 判读发生，而 Suspect 判读的必要条件是键真值在场；
+  // 无真值/部分真值环境（docs-quick 薄通道 fresh 检出态无 reports/facts.json，
+  // 本地半采集态 replay 键缺真值）下键行进 pending、结构性不产生 Suspect，
+  // 豁免条目不可能命中，旧口径判僵尸是 100% 误报面（#493 的 replay_assertions
+  // 真值依赖型条目首踩：PR 不触发 docs-quick，合入后 master push 首跑即红）。
+  // 文本锚口径不依赖真值且牙更强：行消失/被改写即红（真值环境与非真值环境
+  // 同构），行还在但只是没进 Suspect（键真值缺席/行改走 drift 桶）不误报。
   for (let i = 0; i < susExempts.length; i++) {
     const e = susExempts[i]!;
-    if (!exemptHit[i]) {
+    if (exemptHit[i]) continue;
+    let text = "";
+    try {
+      text = fs.readFileSync(path.join(root, ...e.path.split("/")), "utf8");
+    } catch {
+      // 文件在 loadSuspectExemptions 已验存在；此处读失败属 IO 异常态，
+      // 保守判僵尸让 check 红（fail loud 而非静默放过）。
+      res.staleSuspectExempts.push(`${e.path}（contains=${goQuote(e.contains)}, reason=${e.reason}）`);
+      continue;
+    }
+    if (!text.includes(e.contains)) {
       res.staleSuspectExempts.push(`${e.path}（contains=${goQuote(e.contains)}, reason=${e.reason}）`);
     }
   }

@@ -271,6 +271,11 @@
 - **等待输入态零重复投递（B7b）**：scanf 等待步 ip/步数双回退语义下，`step.next` 于等待态返回空批 + `waiting_input:true`（等待帧已在首个 waiting 批一次投递——经 serve 发布缓冲滞后一帧形态投出；旧形态每批重新 collect 同号帧滚动重发）。`input.feed` 清等待位后续跑正常。
 - **`breakpoints.set` 参数域 fail loud**：缺 `lines` / 非数组 / 元素非整数一律 `param_err`（`expected:"lines:int[]"`）——静默当空 = 一次手滑清空断点并恢复运行，不再是被接受的形态；空数组仍是**显式**清空（两层恢复语义不变，serve 出口明示的恢复手段）。
 
+**#477 CallHost 原子性补遗（PR #494 审阅 P2，2026-11-12）**——seek/对齐到宿主回调段内部步时的两点语义定约（判据 = 帧可寻址与 VM 状态可分——重放循环以真实步号驱动只能在「下一条指令」边界拦截，单条 `CallHost` 内部的 N 步不可中断）：
+
+- **帧可寻址、VM 状态停在整条 CallHost 之后**：seek 到回调段内部步（如 qsort 第 k 次 comparator 的第 j 条指令）时，目标帧经重放采集可得（§0 步号行嵌套帧语义），但重放退出后 VM 停在**整条 CallHost 执行完**的状态（`step_count` = CallHost 宿主步 + 1 + 回调总步数，越过 target）；`step.next` 续跑从 VM 实际位起（非 target+1）——`[target+1..VM 实际位)` 的帧已在重放中入窗（恰投递一次，不重发），消费方经 `payload.get` 可取。回调内中断点（VM 状态停在 target 的真对齐）为未来工作，未实现前以本条定约为准。
+- **对齐重放保留连续窗口**：视口对齐（§4.2 直返后续跑的自动重放）路径的重放窗口**不以视口截断**——保留至 VM 实际位的连续帧（与 seek 越窗臂的「窗口以 target 为尾」契约分叉）：对齐语义是「帧流从视口后继连续推进」，截断会使续跑首帧与窗口尾之间出现缺口（帧号与窗口位置错位，`frame_cache` 消费方取错帧）。
+
 ### 4.3 seek 后各视图的一致性
 
 seek 到第 N 步后，`local_vars` / `call_stack` / `array_snapshots` / `pointer_snapshots` / `heatmap_count` 均以**第 N 步的快照**为准（而非"当前最新状态"）。消费方据此重绘所有视图，不需要自行回退状态。

@@ -53,6 +53,9 @@ pub struct UnifiedEngine {
   /// 算法步骤推断上下文（批四号接线——matches 编排层 compile 时注入，
   /// 三状态随帧演化；跨包只读，写经 set_algorithm_matches）。
   algo : AlgoInferCtx
+  /// 单条 CallHost 回调帧上限（P2-b，2026-11-12；默认 MAX_HOST_CALLBACK_
+  /// FRAMES——会话级配置写入口 set_max_callback_frames，锚经小值注入）。
+  mut max_callback_frames : Int32
 }
 
 ///|
@@ -80,6 +83,7 @@ pub fn UnifiedEngine::with_max_steps(max_steps : Int32) -> UnifiedEngine {
     saw_trap: false,
     viewport_step: None,
     algo: AlgoInferCtx::new(),
+    max_callback_frames: MAX_HOST_CALLBACK_FRAMES,
   }
 }
 
@@ -146,6 +150,19 @@ pub fn UnifiedEngine::set_max_steps(self : UnifiedEngine, n : Int32) -> Unit {
     abort("UnifiedEngine::set_max_steps: n 须 > 0，得到 \{n}")
   }
   self.max_steps = n
+}
+
+///|
+/// 单条 CallHost 回调帧上限的会话级配置（P2-b——教学长回调放宽/锚经
+/// 小值注入证红；语义与默认值见 MAX_HOST_CALLBACK_FRAMES 头注）。
+pub fn UnifiedEngine::set_max_callback_frames(
+  self : UnifiedEngine,
+  n : Int32,
+) -> Unit {
+  guard n > 0 else {
+    abort("UnifiedEngine::set_max_callback_frames: n 须 > 0，得到 \{n}")
+  }
+  self.max_callback_frames = n
 }
 
 ///|
@@ -263,7 +280,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
   // trap——结构性不可达）fail loud Err；对齐到达终态（视口恰在终帧）
   // 转空批 finished。
   if self.viewport_step is Some(vp) && !self.saw_trap && vm.step_count > vp + 1 {
-    let aligned = self.replay_to(vp, vm, src)
+    let aligned = self.replay_to(vp, vm, src, align=true)
     self.viewport_step = None
     if !aligned.success {
       return Err(
@@ -380,6 +397,17 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             ),
           )
         }
+        // P2-b：单条 CallHost 回调帧上限（fail loud——见常量头注；flush
+        // 前判定长度，帧先入窗再报错）。回调内的 Paused/Finished 被
+        // call_user_function 吞掉不上抛 ⇒ 只有本分支有非空 cb 缓冲。
+        if cb_frames.length() >= self.max_callback_frames {
+          vm.set_host_step_observer(None)
+          flush_cb()
+          self.frames.push_batch(payloads)
+          return Err(
+            "单条宿主调用（qsort/bsearch）的回调帧超过上限（\{self.max_callback_frames} 帧）——教学引擎的帧缓冲面向小规模演示设计，请减小数组规模或简化比较器。",
+          )
+        }
         flush_cb()
       }
       Paused => {
@@ -461,17 +489,28 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             collect(vm, src, 0UL, step, self.algo, code_line=Some(line)),
           )
         }
+        // trap 帧序收口（PR #494 审阅 P3-④，2026-11-12）：CallHost 中途
+        // trap 时 cb 缓冲里已有已执行段的回调帧——先记 trap 帧下标再
+        // 冲刷（帧序 = trap 帧〔step〕→ 回调帧〔step+1..〕递增；它们
+        // 是该回调段仅有的可观测记录，不随 trap 丢弃）。现行语义下
+        // CallHost 自身 trap 仅 qsort write_back 失败一条路径，而该路径
+        // 要求「重排段 read_block 全成功 + write_block 失败」——同一
+        // 检查链（check_access）下结构性不可达，此处为防御性收口（若
+        // 未来 host 写通道语义分化即生效）。
+        let trap_idx = payloads.length() - 1
+        flush_cb()
         // M14 根因提示（S8 analysis 批，engine.rs:202-210 装配结构同形
         // ——输出面分叉见上分叉登记①：oracle 回滚后取 error 恒空串）：
-        // 全历史 = 窗口帧 + 本批帧（含刚收集的 trap 帧），对 trap 帧装配
-        // hint。get_line 闭包注入源码查询（Rust session.source_line_at 的
-        // Provider 形态——诊断域零 session 依赖）
-        let trap_idx = payloads.length() - 1
+        // 全历史 = 窗口帧 + 本批帧（含刚收集的 trap 帧 + 回调帧），对
+        // trap 帧装配 hint（显式索引——flush 后 trap 帧不再居尾）。get_line
+        // 闭包注入源码查询（Rust session.source_line_at 的 Provider 形态
+        // ——诊断域零 session 依赖）
         if trap_idx >= 0 {
           let history = self.frames.slice(
             self.frames.start_step(),
             self.frames.start_step() + self.frames.length(),
           )
+          let win_len = history.length()
           for p in payloads {
             history.push(p)
           }
@@ -481,7 +520,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
               None => ""
             }
           }
-          match analyze_trap(history, history.length() - 1, msg, get_line) {
+          match analyze_trap(history, win_len + trap_idx, msg, get_line) {
             Some(hint) => {
               let tp = payloads[trap_idx]
               payloads[trap_idx] = { ..tp, root_cause_hint: Some(hint), }
@@ -560,6 +599,15 @@ fn UnifiedEngine::rollback_before_trap(
 const FAST_SAVE_STRIDE : Int32 = 25
 
 ///|
+/// 单条 CallHost（qsort/bsearch）的回调帧观察上限（PR #494 审阅 P2-b，
+/// 2026-11-12）：fail loud——超限 Err 终止（帧先入窗再报错，U2#7 同款），
+/// **不做静默截断/降采样**（帧号 gap 违反 INV3a 全流连续不变量——防线
+/// 白名单已全拆无放行通道）。量级依据：CI 语料集单 CallHost 帧量 ~几十
+///（baseline qsort n=3/6）；n=200 qsort 实测 12,769 帧放行、n=800 形态
+///（~6×10^4 帧、js 壳 OOM）拦截——教学引擎帧缓冲面向小规模演示设计。
+const MAX_HOST_CALLBACK_FRAMES : Int32 = 50_000
+
+///|
 /// Seek 到指定步（engine.rs:267-407 seek_to 照搬——越窗五步契约见协议
 /// STEP_PAYLOAD_SCHEMA §4.2）。
 pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
@@ -613,6 +661,7 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
   target : Int32,
   vm : @vm.VitroVM,
   src : P,
+  align~ : Bool = false,
 ) -> @protocol.SeekResult {
   // 第 1 步：取最近检查点（增量快照在此重建为全量）；无 → 失败。
   // P2-1（PR #342 审阅处置）：带回看窗口下限取锚——恰命中锚点时
@@ -707,8 +756,28 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
         if !fast && !dense_aligned && dense_from > cp && step >= dense_from {
           // 快道→密采切换：窗口起点对齐密采首步（快道零推帧；不对齐
           // 会让 push_or_replace_at 的缺口占位把整段快道距离放大成
-          // O(距离) 空帧分配——blank_payload 缺口防御分支）
-          self.frames.reset_to(step)
+          // O(距离) 空帧分配——blank_payload 缺口防御分支）。
+          // **切换形态二分（PR #494 审阅 P3-③，2026-11-12）**：
+          // ① 窗口尾已越过 dense_from（matches 非空全程密采 + CallHost
+          // 跨步把回调帧推过边界）→ **裁头**到 dense_from（保留跨界
+          // 回调帧——它们属于最终窗口 [dense_from..target]；reset_to
+          // (step) 清窗会把它们一并丢掉，finish_replay 后窗口塌缩成
+          // [step..target]、回看 [dense_from..step) 缺帧——target 落
+          // 回调段时 frame_at(target) 直接落空）；
+          // ② 窗口尾未达 dense_from（纯快道形态：fast 段零推帧、窗口
+          // 空）→ reset_to(step)（dense_from 处无帧，对齐 dense_from
+          // 反而触发 O(距离) blank 填充——原注释警告的形态）。
+          let len = self.frames.length()
+          let tail = if len > 0 {
+            self.frames.start_step() + len - 1
+          } else {
+            -1
+          }
+          if tail >= dense_from {
+            self.frames.discard_before(dense_from)
+          } else {
+            self.frames.reset_to(step)
+          }
           dense_aligned = true
         }
         // 审阅 P2-4（2026-10-07）：seek 重放帧同源化（循环顶步进前
@@ -718,10 +787,18 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
         // step——整条 CallHost 指令的帧要么全采要么全跳：用回调内
         // 步号 s 判定会让跨 fast/dense 边界的 CallHost 前段跳后段采，
         // 未对齐的窗口被密采回调帧触发 O(距离) blank 填充）
+        // #477：宿主回调段帧随重放采集（密采判定跟**宿主指令步号**
+        // step——整条 CallHost 指令的帧要么全采要么全跳：用回调内
+        // 步号 s 判定会让跨 fast/dense 边界的 CallHost 前段跳后段采，
+        // 未对齐的窗口被密采回调帧触发 O(距离) blank 填充）。
+        // seek 形态限 s <= target（重放只为 target 服务；CallHost 单条
+        // 推 N 帧越过 target，[target+1..] 推入窗会在小窗口形态触发
+        // 逐帧 trim 把 target 段裁出——锚 #477-c 实锤）；align 形态
+        // 全推（窗口连续到 VM 实际位——对齐语义续跑帧不缺口）
         vm.set_host_step_observer(
           Some(fn(v : @vm.VitroVM, s : Int32) {
             ignore(s)
-            if !(fast_ok && step < dense_from) {
+            if !(fast_ok && step < dense_from) && (align || s <= target) {
               let l2 = v.get_current_line()
               self.frames.push_or_replace_at(
                 s,
@@ -796,7 +873,9 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
               code_line=Some(seek_line),
             )
             self.frames.push_or_replace_at(step, payload)
-            self.frames.finish_replay(target)
+            if !align {
+              self.frames.finish_replay(target)
+            }
             // #430（M31 A-2 证据三）：重放到达终态（Finished）时终态
             // 标志须置位——旧形态漏置（头部复位后无人置回），后续
             // step.next 在已终结 VM 上空转 collect 幽灵帧（step_index
@@ -829,7 +908,10 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
         vm.set_host_step_observer(None)
       }
       // 第 5 步：窗口重置——只保留目标步及其之前 window_size-1 帧
-      self.frames.finish_replay(target)
+      //（align 形态跳过：对齐重放保留到 VM 实际位的连续窗口）
+      if !align {
+        self.frames.finish_replay(target)
+      }
       match self.frames.frame_at(target) {
         Some(p) => return { success: true, payload: Some(p), error: None, }
         None =>

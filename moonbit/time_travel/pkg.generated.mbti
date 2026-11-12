@@ -52,6 +52,7 @@ pub struct FrameWindow {
   trim_ratio : Double
 }
 pub fn FrameWindow::clear(Self) -> Unit
+pub fn FrameWindow::discard_before(Self, Int32) -> Unit
 pub fn FrameWindow::finish_replay(Self, Int32) -> Unit
 pub fn FrameWindow::frame_at(Self, Int32) -> @protocol.StepPayload?
 pub fn FrameWindow::is_empty(Self) -> Bool
@@ -79,6 +80,7 @@ pub struct UnifiedEngine {
   mut saw_trap : Bool
   mut viewport_step : Int32?
   algo : AlgoInferCtx
+  mut max_callback_frames : Int32
 }
 pub fn UnifiedEngine::cancel(Self) -> Unit
 pub fn UnifiedEngine::get_max_steps(Self) -> Int32
@@ -90,6 +92,7 @@ pub fn UnifiedEngine::reset(Self) -> Unit
 pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(Self, @vm.VitroVM, P, Int32, every? : Int32) -> Result[@protocol.AutoStepResult, String]
 pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(Self, Int32, @vm.VitroVM, P) -> @protocol.SeekResult
 pub fn UnifiedEngine::set_algorithm_matches(Self, Array[@protocol.AlgorithmMatch]) -> Unit
+pub fn UnifiedEngine::set_max_callback_frames(Self, Int32) -> Unit
 pub fn UnifiedEngine::set_max_steps(Self, Int32) -> Unit
 pub fn UnifiedEngine::unpause(Self) -> Unit
 pub fn UnifiedEngine::with_limits(Int32, Int32, Double) -> Self

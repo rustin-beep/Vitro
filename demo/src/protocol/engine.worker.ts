@@ -108,7 +108,11 @@ async function drainSteps(cap: number): Promise<{ frames: StepPayload[]; stopped
   let batch;
   do {
     batch = must<StepNextResult>(invoke({ method: "step.next", params: {} }));
-    if (batch.payloads) frames.push(...batch.payloads);
+    // 循环逐帧入列（PR #494 审阅 P2：spread 在单批 ~10^5 帧时 RangeError
+    // ——CallHost qsort 嵌套帧语义下单批可承载整个回调段，n≳2000 白屏）
+    if (batch.payloads) {
+      for (const p of batch.payloads) frames.push(p);
+    }
     if (batch.waiting_input) { stopped = "程序等待输入（scanf）——在下方输入框喂入续跑"; break; }
     // paused = 引擎推进到断点行的批次暂停（breakpoints.set 语义）——停采
     // 但**保留已采帧**：回放条可走到暂停点观察现场（旧栈同文案）

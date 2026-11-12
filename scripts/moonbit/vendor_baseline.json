@@ -1,6 +1,6 @@
 {
-  "_generated_by": "手工基线刷新 2026-11-05（raw 域名本机不可达，经 GitHub contents API base64 逐字节还原，blackbox_test.mbt 锚校准与 raw 通道逐位一致；同款产物=--update-baseline）",
-  "as_of": "2026-11-05",
+  "_generated_by": "node scripts/moonbit/vendor_drift/main.mts --update-baseline",
+  "as_of": "2026-11-12",
   "repo": "moonbitlang/x",
   "ref": "main",
   "upstream_version": "0.5.7",
@@ -13,8 +13,8 @@
     },
     {
       "path": "fs/fs_native.mbt",
-      "sha256": "b8b62d1656f57549cb17d7d068f4077133e6d085cbfc5a4e1c185fb909de9b73",
-      "vendored": "moonbit/fs/fs_native.mbt"
+      "sha256": "4b04f96cdaa195472eb731e5783262fc1a7043b3eb0def4b97e76e5e3e824b8b",
+      "vendored": "moonbit/fs/fs_native.mbt（2026-11-11 上游 #360 改 FFI 签名：file_open_ffi +mode/create/append/permission/sync、read/write +position、file_length→legacy——vitro 0.5.5 形态 FFI 面自洽，不跟进）"
     },
     {
       "path": "fs/fs_native.c",
@@ -23,8 +23,8 @@
     },
     {
       "path": "fs/file_native.c",
-      "sha256": "317cc65089c3d1dd9d270ed32e764ca7694c8aba0280ef5756fa2a0ac592ab75",
-      "vendored": "（未同步——上游 0.5.7+ 新载体：native IO 实现自 fs_native.c 迁此；vitRO 暂留 0.5.5 形态，跟进批待排）"
+      "sha256": "5c99de5cb3eb25e2ae184494de5f9a53246e1e1f16ad831f0539a7441e7a186a",
+      "vendored": "（未同步——上游 0.5.7+ 新载体：native IO 实现自 fs_native.c 迁此；2026-11-11 #360 又改：positioned IO/mode/sync + file_length→file_size；vitro 暂留 0.5.5 形态，跟进批待排）"
     },
     {
       "path": "fs/blackbox_test.mbt",

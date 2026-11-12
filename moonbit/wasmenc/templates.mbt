@@ -1367,7 +1367,7 @@ pub fn template_spec(op : @opcode.OpCode) -> TemplateSpec {
         -1,
         -1,
         [OpI32, CtxI32(HostArgvPtr), Fixed(WCall(0))],
-        "import env.vitro_host_call(route_id,argv_ptr)->i64（H2 单一 ABI——函数索引 0 约定）+返回值压栈",
+        "import env.vitro_host_call(route_id,argv_ptr)->i64（H2 单一 ABI——函数索引 0 约定，import 段批 1c 铺设：装载约定单源见 module.mbt 头注）+返回值压栈",
       )
     Ret =>
       seq(

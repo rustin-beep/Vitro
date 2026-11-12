@@ -85,10 +85,14 @@ fn build_exact_entries() -> Array[ExactEntry] {
 }
 
 ///|
-/// 盲折叠匹配表（进程内单次构建——153 码表穷举 256 值的产物，幂等）。
+/// 盲折叠匹配表（**每次调用重建**——256 值穷举 from_u8 + Exact/Composed
+/// 收表，~134 条 entry；PR #495 审阅 P3 勘正：原注「进程内单次构建」
+/// 与实现不符——MoonBit 无 lazy 全局可变惯用形态，直构是当前唯一解）。
+/// **性能登记（批 1c 留意）**：`fold_instrs` 每次 fold 调本函数一次，
+/// 长产物装载为 O(指令数 × 134 entry × 模板长)——装载期一次性动作可
+/// 接受；批 1c 接线 CompileOutput 全量装载若现热点，再引入调用方一次
+/// 构建后复用的传参形态（勿改本函数签名语义——穷举单源不动）。
 fn exact_entries() -> Array[ExactEntry] {
-  // MoonBit 无 lazy 全局可变惯用形态：匹配表构建 ~256 次表查
-  //（微秒级），折叠为装载期一次性动作，直构即可
   build_exact_entries()
 }
 
@@ -177,9 +181,12 @@ fn seq_item_match(
 
 ///|
 /// 模板在 WInstr 流 pos 处匹配：成功返回 (operand, 消费指令数)。
-/// operand 还原规则：**首个还原槽生效**（OpI32/OpBase/F64Of/I64Of——
-/// 现表模板每条至多一个还原槽；无还原槽的模板（StepEvent/TrapBounds/
-/// Dup/Swap 纯固定序列）operand=0 占位，真实 operand 由组表侧车携带。
+/// operand 还原规则（PR #495 审阅 P3 对齐实现）：**最后一个还原槽生效**
+/// （Seq 内逐槽赋值覆盖——OpI32/OpBase/F64Of/I64Of 均可还原，多槽时取
+/// 末值；现表模板每条至多一个还原槽故与「首个生效」等价，批 1c 若引入
+/// 多还原槽模板须显式裁定取哪槽）。无还原槽的模板（StepEvent/
+/// TrapBounds/Dup/Swap 纯固定序列）operand=0 占位，真实 operand 由组表
+/// 侧车携带。
 fn pat_match_at(
   pat : ExactPat,
   instrs : Array[WInstr],

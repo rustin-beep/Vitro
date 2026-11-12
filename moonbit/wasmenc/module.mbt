@@ -1,16 +1,26 @@
 ///|
 /// wasm 模块段结构编码（L0 机械件）——探针 `ModuleBuilder` 的 MoonBit
-/// 直译（type/memory/global/export/code/data 最小段集；import/table/elem
-/// 按设计单 §2.1 子集边界不用，start/datacount 同）。
+/// 直译（type/memory/global/export/code/data 最小段集；table/elem 按
+/// 设计单 §2.1 子集边界不用，start/datacount 同）。
 ///
-/// 段序按 wasm 二进制规范固定：magic+version → type(1) → function(3) →
+/// **import 段预留（PR #495 审阅 P3 勘正——与 templates.mbt 统一）**：
+/// 本文件的段原语面不含 import 段（1a 往返不消费），但 CallHost 模板
+/// 发射 `call 0`（templates.mbt）依赖装载约定 **函数索引 0 =
+/// `env.vitro_host_call(route_id, argv_ptr) -> i64`**（H2 单一 ABI）——
+/// 该索引只在模块铺了 import 段（env.vitro_host_call 为唯一 import、
+/// 排在 function 段之前）时才成立。批 1c 组装完整模块时**必须**按此
+/// 约定铺设 import 段（wasm 索引空间：import 函数先于本模块函数编号），
+/// 否则 `call 0` 落到首个本地函数——装载约定两文件以此注为准。
+///
+/// 段序按 wasm 二进制规范固定：magic+version → type(1) → **import(2)
+/// 〔批 1c 起——env.vitro_host_call @ 函数索引 0〕** → function(3) →
 /// memory(5) → global(6) → export(7) → code(10) → data(11)。段 id+uleb
 /// 长度前缀；vec 元素 uleb 计数前缀。
 ///
 /// **批 1a 职责边界**：本文件只做段结构的字节组装与解析往返（模块级闭环
 /// 测试消费）；完整 dispatch-loop 模块组装（入口 main(start_ip)、$steps/
-/// $pc/$fb global 约定、data 段铺设）是批 1b/1c 的发射器职责——段原语
-/// 先在位。
+/// $pc/$fb global 约定、data 段铺设、import 段铺设）是批 1b/1c 的发射器
+/// 职责——段原语先在位。
 
 ///|
 /// 函数体（locals 声明 + 指令序列 + 结尾 end）。

@@ -112,6 +112,9 @@ pub(all) enum VerifyError {
   TemplateMismatch(Int32, @opcode.OpCode, Int32)
   /// 组表引导裁决：组 gip 的模板消费指令数 ≠ 组表声明边界
   BoundaryMismatch(Int32, @opcode.OpCode, Int32, Int32)
+  /// 组表引导裁决：组 gip 首偏移 ≠ 前组结束偏移（组间空洞/重叠——
+  /// 侧车丢组或重排的检出形态；携带 gip + 期待偏移 + 组表实际声明偏移）
+  GroupGap(Int32, Int32, Int32)
   /// 组表引导裁决：全部组消费后仍有尾随指令（组表未覆盖整段字节）
   TrailingInstrs(Int32, Int32)
   /// 组表声明了 Reserved 态组（零发射保留——装载即拒载）
@@ -153,7 +156,10 @@ pub fn verify_group_table(
 /// operand 比对口径：**还原槽生效才比对**（OpI32/OpBase/F64Of/I64Of 还原
 /// operand 与组表声明一致——发射折叠不同步的检出锚）；无还原槽的模板
 /// （StepEvent/TrapBounds/Dup/Swap/C 类上下文槽）operand 由侧车自证，
-/// 不比对（op + 边界已裁决身份）。
+/// 不比对（op + 边界已裁决身份）。**组间连续性（PR #495 审阅 P2）**：
+/// 逐组断言 `instr_offset == 前组 offset+len`（首组 == 0）——空洞/重叠
+/// 即 GroupGap 拒载，与末组收尾（TrailingInstrs）共同封死「组表未覆盖
+/// 整段字节」的静默面。
 pub fn verify_fold_with_table(
   table : GroupTable,
   bytes : Array[Byte],
@@ -164,7 +170,14 @@ pub fn verify_fold_with_table(
     Err(e) => return Err(FoldFailed(fold_decode_err(bytes, e)))
   }
   let out : Array[FoldedGroup] = []
+  // 连续性游标（PR #495 审阅 P2）：首组须起于 0，其后每组首偏移 ==
+  // 前组 offset+len——组间空洞/重叠（侧车丢组或重排）装载即拒载，
+  // 与末组收尾检查共同保证「组表覆盖整段字节」无盲区
+  let mut expected_offset = 0
   for g in table.groups {
+    if g.instr_offset != expected_offset {
+      return Err(GroupGap(g.gip, expected_offset, g.instr_offset))
+    }
     let spec = template_spec(g.op)
     if spec.state is Reserved {
       return Err(ReservedGroup(g.gip, g.op))
@@ -186,16 +199,11 @@ pub fn verify_fold_with_table(
       }
       None => return Err(TemplateMismatch(g.gip, g.op, g.instr_offset))
     }
+    expected_offset = g.instr_offset + g.instr_len
   }
   // 全组消费 = 整段覆盖（尾随指令 = 组表不完整——装载拒载）
-  let consumed = if table.groups.length() > 0 {
-    let last = table.groups[table.groups.length() - 1]
-    last.instr_offset + last.instr_len
-  } else {
-    0
-  }
-  if consumed != instrs.length() {
-    return Err(TrailingInstrs(consumed, instrs.length()))
+  if expected_offset != instrs.length() {
+    return Err(TrailingInstrs(expected_offset, instrs.length()))
   }
   Ok(out)
 }

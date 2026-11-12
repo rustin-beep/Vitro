@@ -676,6 +676,58 @@ test "grouptable_verify_protocol" {
 }
 
 ///|
+/// **组间空洞拒载锚（PR #495 审阅 P2）**：组表只声明组 0（offset 0）
+/// 与组 1（offset 2），中间指令（offset 1 的 i32.const 2）无人覆盖——
+/// 修复前只查「末组 offset+len == 指令总数」，此形态（侧车丢组/重排的
+/// 漏检面——正是「身份=侧车给定」最需防的形态）静默 Ok。修复后逐组
+/// 断言 `instr_offset == 前组 offset+len`（首组须 0），空洞即 GroupGap
+/// 拒载。红→绿：先于连续断言实现入库证红（Ok 放行即失败）。
+test "verify_group_gap_rejects" {
+  let ctx = @wasmenc.EmitCtx::empty()
+  // 三指令流：i32.const 1 / i32.const 2 / drop（审阅探针同款）
+  let bytes : Array[Byte] = []
+  for op in [(@opcode.PushConst, 1), (@opcode.PushConst, 2), (@opcode.Pop, 0)] {
+    match @wasmenc.emit_group_bytes(op.0, op.1, ctx) {
+      Ok(chunk) =>
+        for b in chunk {
+          bytes.push(b)
+        }
+      Err(_) => fail("发射失败")
+    }
+  }
+  // 组表跳过 offset 1：组 0 = PushConst(1)@0 len 1，组 1 = Pop@2 len 1
+  let table = @wasmenc.GroupTable::new()
+  table.groups.push({
+    gip: 0,
+    op: @opcode.PushConst,
+    operand: 1,
+    instr_offset: 0,
+    instr_len: 1,
+    loc_line: 1,
+    loc_column: 1,
+    loc_file_id: 0,
+  })
+  table.groups.push({
+    gip: 1,
+    op: @opcode.Pop,
+    operand: 0,
+    instr_offset: 2,
+    instr_len: 1,
+    loc_line: 1,
+    loc_column: 1,
+    loc_file_id: 0,
+  })
+  match @wasmenc.verify_fold_with_table(table, bytes, ctx) {
+    Ok(_) =>
+      fail(
+        "组间空洞未检出——offset 1 指令无人覆盖仍放行（连续性断言缺位）",
+      )
+    Err(@wasmenc.GroupGap(1, 1, 2)) => () // 组 1 期待偏移 1、实声 2 ✓
+    Err(_) => fail("形态分叉：应 GroupGap(1, 1, 2)")
+  }
+}
+
+///|
 /// 模块段结构往返（模块级闭环）：A 类序列封装最小模块 → code 段解析
 /// 提取指令 → 与原序列一致（段编码/解析的机检闭环；wabt 外部验证见
 /// 批报告——批 1c 接 CI 闸）。

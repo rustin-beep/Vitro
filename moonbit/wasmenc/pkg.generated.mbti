@@ -267,6 +267,7 @@ pub(all) enum VerifyError {
   FoldFailed(FoldError)
   TemplateMismatch(Int32, @opcode.OpCode, Int32)
   BoundaryMismatch(Int32, @opcode.OpCode, Int32, Int32)
+  GroupGap(Int32, Int32, Int32)
   TrailingInstrs(Int32, Int32)
   ReservedGroup(Int32, @opcode.OpCode)
 }

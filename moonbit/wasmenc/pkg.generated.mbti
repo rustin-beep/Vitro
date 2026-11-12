@@ -8,6 +8,30 @@ import {
 }
 
 // Values
+pub const G_FB : Int32 = 1
+
+pub const G_PC : Int32 = 0
+
+pub const G_RET : Int32 = 4
+
+pub const G_RV : Int32 = 5
+
+pub const G_SPT : Int32 = 3
+
+pub const G_STEPS : Int32 = 2
+
+pub const L_A : Int32 = 1
+
+pub const L_N : Int32 = 2
+
+pub const L_T64 : Int32 = 3
+
+pub const L_TF : Int32 = 4
+
+pub const L_TF32 : Int32 = 5
+
+pub const L_V : Int32 = 0
+
 pub const WT_F32 : Byte = 0x7D
 
 pub const WT_F64 : Byte = 0x7C
@@ -26,9 +50,9 @@ pub fn emit_group_bytes(@opcode.OpCode, Int32, EmitCtx) -> Result[Array[Byte], E
 
 pub fn emit_groups(Array[(@opcode.OpCode, Int32)], EmitCtx) -> Result[Array[Byte], EmitError]
 
-pub fn fold_bytes(Array[Byte]) -> Result[Array[FoldedGroup], FoldError]
+pub fn fold_bytes(Array[Byte], EmitCtx) -> Result[Array[FoldedGroup], FoldError]
 
-pub fn fold_instrs(Array[WInstr]) -> Result[Array[FoldedGroup], FoldError]
+pub fn fold_instrs(Array[WInstr], EmitCtx) -> Result[Array[FoldedGroup], FoldError]
 
 pub fn parse_first_code_body(Array[Byte]) -> Result[Array[WInstr], ModuleParseError]
 
@@ -42,7 +66,9 @@ pub fn uleb_decode(Array[Byte], Int32) -> Result[(UInt64, Int32), LebError]
 
 pub fn uleb_encode(UInt64) -> Array[Byte]
 
-pub fn verify_group_table(GroupTable, Array[Byte]) -> Result[Unit, VerifyError]
+pub fn verify_fold_with_table(GroupTable, Array[Byte], EmitCtx) -> Result[Array[FoldedGroup], VerifyError]
+
+pub fn verify_group_table(GroupTable, Array[Byte], EmitCtx) -> Result[Unit, VerifyError]
 
 pub fn winstr_decode(Array[Byte], Int32) -> Result[(WInstr, Int32), DecodeError]
 
@@ -55,6 +81,17 @@ pub fn winstr_encode_all(Array[WInstr]) -> Array[Byte]
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
+pub(all) enum CtxSlot {
+  Argc
+  ArgvAddr
+  FallthroughPc
+  HostArgvPtr
+}
+pub fn CtxSlot::equal(Self, Self) -> Bool
+pub fn CtxSlot::not_equal(Self, Self) -> Bool
+pub fn CtxSlot::to_repr(Self) -> @debug.Repr
+
 #derive(@debug.Debug)
 pub(all) enum DecodeError {
   UnknownOpcode(Byte)
@@ -67,6 +104,11 @@ pub fn DecodeError::to_repr(Self) -> @debug.Repr
 pub(all) struct EmitCtx {
   f64_constants : Array[Double]
   i64_constants : Array[Int64]
+  argc : Int32
+  argv_addr : Int32
+  fallthrough_pc : Int32
+  host_argv_ptr : Int32
+  symbol_sizes : Array[Int32]
 }
 pub fn EmitCtx::empty() -> Self
 pub fn EmitCtx::equal(Self, Self) -> Bool
@@ -83,6 +125,7 @@ pub(all) enum ExactPat {
   Instr(WInstr)
   I32Slot
   F32Slot
+  Seq(Array[SeqItem])
 }
 pub fn ExactPat::equal(Self, Self) -> Bool
 pub fn ExactPat::not_equal(Self, Self) -> Bool
@@ -92,6 +135,7 @@ pub fn ExactPat::to_repr(Self) -> @debug.Repr
 pub(all) enum FoldError {
   Decode(Int32, DecodeError)
   NoTemplate(Int32)
+  TableShapeConflict(Int32, @opcode.OpCode, @opcode.OpCode)
 }
 pub fn FoldError::to_repr(Self) -> @debug.Repr
 
@@ -191,6 +235,21 @@ pub(all) enum ModuleParseError {
 pub fn ModuleParseError::to_repr(Self) -> @debug.Repr
 
 #derive(Eq, @debug.Debug)
+pub(all) enum SeqItem {
+  Fixed(WInstr)
+  OpI32
+  OpBase(Int32)
+  F64Of
+  I64Of
+  CtxI32(CtxSlot)
+  SymSize
+  BrAny
+}
+pub fn SeqItem::equal(Self, Self) -> Bool
+pub fn SeqItem::not_equal(Self, Self) -> Bool
+pub fn SeqItem::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
 pub(all) struct TemplateSpec {
   state : FoldState
   pops : Int32
@@ -206,6 +265,11 @@ pub(all) enum VerifyError {
   GroupCountMismatch(Int32, Int32)
   GroupMismatch(Int32, @opcode.OpCode, @opcode.OpCode, Int32, Int32)
   FoldFailed(FoldError)
+  TemplateMismatch(Int32, @opcode.OpCode, Int32)
+  BoundaryMismatch(Int32, @opcode.OpCode, Int32, Int32)
+  GroupGap(Int32, Int32, Int32)
+  TrailingInstrs(Int32, Int32)
+  ReservedGroup(Int32, @opcode.OpCode)
 }
 
 #derive(Compare, Eq, @debug.Debug)
@@ -218,11 +282,23 @@ pub(all) enum WInstr {
   WBr(Int32)
   WBrIf(Int32)
   WDrop
+  WCall(Int32)
   WLocalGet(Int32)
   WLocalSet(Int32)
   WLocalTee(Int32)
   WGlobalGet(Int32)
   WGlobalSet(Int32)
+  WI32Load
+  WI64Load
+  WF32Load
+  WF64Load
+  WI32Load8S
+  WI32Load8U
+  WI32Store
+  WI64Store
+  WF32Store
+  WF64Store
+  WI32Store8
   WI32Const(Int32)
   WI64Const(Int64)
   WF32Const(Float)
@@ -252,6 +328,9 @@ pub(all) enum WInstr {
   WI32Shl
   WI32ShrS
   WI32ShrU
+  WI64Shl
+  WI64ShrS
+  WI64ShrU
   WI64Eq
   WI64Ne
   WI64LtS
@@ -310,6 +389,9 @@ pub(all) enum WInstr {
   WI32TruncSatF64S
   WI64TruncSatF64S
   WI64TruncSatF64U
+  WI64ReinterpretF64
+  WMemoryCopy
+  WMemoryFill
 }
 pub fn WInstr::compare(Self, Self) -> Int32
 pub fn WInstr::equal(Self, Self) -> Bool

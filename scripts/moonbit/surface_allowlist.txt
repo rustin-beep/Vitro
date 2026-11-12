@@ -86,3 +86,18 @@ vitro/engine/wasmenc uleb_encode
 vitro/engine/wasmenc winstr_decode
 vitro/engine/wasmenc winstr_decode_all
 vitro/engine/wasmenc winstr_encode_all
+# REHOST 批 1b（2026-11-05）：装载约定槽常量六全局（G_PC/G_FB/G_STEPS/
+# G_SPT/G_RET/G_RV）+ 六局部（L_V/L_A/L_N/L_T64/L_TF/L_TF32）——模块段
+# 结构契约（批 1c codegen 接线与 wabt 证人的组装依据，当下无跨包消费方）
+vitro/engine/wasmenc G_FB
+vitro/engine/wasmenc G_PC
+vitro/engine/wasmenc G_RET
+vitro/engine/wasmenc G_RV
+vitro/engine/wasmenc G_SPT
+vitro/engine/wasmenc G_STEPS
+vitro/engine/wasmenc L_A
+vitro/engine/wasmenc L_N
+vitro/engine/wasmenc L_T64
+vitro/engine/wasmenc L_TF
+vitro/engine/wasmenc L_TF32
+vitro/engine/wasmenc L_V

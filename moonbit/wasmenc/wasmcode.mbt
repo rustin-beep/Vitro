@@ -3,14 +3,17 @@
 ///
 /// 覆盖面 = A 类（完全一致直映）84 条（批 1a 基线 83 + CastD2UQ）opcode 映射到的全部
 /// wasm 指令 + 模块级闭环所需最小控制流（block/loop/br/end/unreachable）
-/// + 批 1b 预留的变量族（local/global——编码解码先在，模板批 1b 接线）。
+/// + 变量族（local/global）+ **批 1b 扩面**：访存族（i32/i64/f32/f64 的
+/// load/store 全宽度 + 1 字节粒度——自然对齐 + 静态 offset=0 形态，地址
+/// 全动态在栈上）/ i64 移位族 / i64.reinterpret_f64 / memory.copy·fill
+/// （bulk-memory，wasm 2.0 基线）/ call（CallHost 的 H2 import 面）。
 /// **不在面内的指令解码即 `UnknownOpcode`**——折叠侧 fail loud 的
 /// 「非本发射器产物」判据（探针 2 [三]：库外指令/同型未实现指令拒载）。
 ///
-/// 码位以 wasm MVP + sign-extension-ops + nontrapping trunc（均并入
-/// wasm 2.0 基线）为准；`wasmenc_wbtest` 的 spec 码位断言锚定发射/折叠
-/// 共享枚举的自洽盲区（码位写错往返仍绿——双实现税的最低成本防线），
-/// 批 1a 开发期另经探针工程 wabt 外部验证（报告 §外部证人）。
+/// 码位以 wasm MVP + sign-extension-ops + nontrapping trunc + bulk-memory
+/// （均并入 wasm 2.0 基线）为准；`wasmenc_wbtest` 的 spec 码位断言锚定
+/// 发射/折叠共享枚举的自洽盲区（码位写错往返仍绿——双实现税的最低成本
+/// 防线），批 1a/1b 开发期另经探针工程 wabt 外部验证（报告 §外部证人）。
 #derive(Eq, Compare, Debug)
 pub(all) enum WInstr {
   // ── 控制流（模块级闭环最小集；C 类 dispatch-loop 模板批 1b/1c）──
@@ -23,12 +26,28 @@ pub(all) enum WInstr {
   WBrIf(Int32)
   // ── 参数 ──
   WDrop
+  // ── 调用（CallHost 的 H2 单一 ABI 面：批 1b 约定函数索引 0 =
+  // `env.vitro_host_call(route_id, argv_ptr) -> i64` import）──
+  WCall(Int32)
   // ── 变量（批 1b 预留：Dup/Swap 暂存重排、$steps/$pc/$fb 专用槽）──
   WLocalGet(Int32)
   WLocalSet(Int32)
   WLocalTee(Int32)
   WGlobalGet(Int32)
   WGlobalSet(Int32)
+  // ── 访存（批 1b：自然对齐 + 静态 offset=0——地址全动态在栈上，
+  // NULL 区检查由模板序列显式发射，上界=16 页 memory 白送）──
+  WI32Load
+  WI64Load
+  WF32Load
+  WF64Load
+  WI32Load8S
+  WI32Load8U
+  WI32Store
+  WI64Store
+  WF32Store
+  WF64Store
+  WI32Store8
   // ── 常量 ──
   WI32Const(Int32) // sleb 立即数（i32 域）
   WI64Const(Int64) // sleb 立即数（i64 域）
@@ -61,6 +80,10 @@ pub(all) enum WInstr {
   WI32Shl
   WI32ShrS
   WI32ShrU
+  // i64 移位族（批 1b：ShlQ/ShrQ/LShrQ 域检查模板的域内指令）
+  WI64Shl
+  WI64ShrS
+  WI64ShrU
   // ── i64 数值 ──
   WI64Eq
   WI64Ne
@@ -123,6 +146,11 @@ pub(all) enum WInstr {
   WI32TruncSatF64S // CastD2I
   WI64TruncSatF64S // CastD2Q
   WI64TruncSatF64U // CastD2UQ（#471 饱和无符号——负→0/≥2^64→MAX，随 #485 连坐）
+  WI64ReinterpretF64 // SplitD 首步（位拆——f64 位模式直转 i64）
+  // ── 批量内存（批 1b：Memcpy/Memset——wasm 2.0 bulk-memory 基线；
+  // memory.copy 为 memmove 语义，与现役临时缓冲实现等价〔O3 亲读对账〕）──
+  WMemoryCopy
+  WMemoryFill
 }
 
 ///|
@@ -229,6 +257,12 @@ fn winstr_encode_into(instr : WInstr, out : Array[Byte]) -> Unit {
       }
     }
     WDrop => pushOp(0x1A, out)
+    WCall(idx) => {
+      pushOp(0x10, out)
+      for b in uleb_encode(idx.to_uint64()) {
+        out.push(b)
+      }
+    }
     WLocalGet(idx) => {
       pushOp(0x20, out)
       for b in uleb_encode(idx.to_uint64()) {
@@ -265,6 +299,19 @@ fn winstr_encode_into(instr : WInstr, out : Array[Byte]) -> Unit {
         out.push(b)
       }
     }
+    // 访存族（批 1b）：自然对齐 uleb + 静态 offset=0——两立即数形态
+    // （align = log2(访问宽度)：load8/store8=0 / i32·f32=2 / i64·f64=3）
+    WI32Load => mem_access(0x28, 2, out)
+    WI64Load => mem_access(0x29, 3, out)
+    WF32Load => mem_access(0x2A, 2, out)
+    WF64Load => mem_access(0x2B, 3, out)
+    WI32Load8S => mem_access(0x2C, 0, out)
+    WI32Load8U => mem_access(0x2D, 0, out)
+    WI32Store => mem_access(0x36, 2, out)
+    WI64Store => mem_access(0x37, 3, out)
+    WF32Store => mem_access(0x38, 2, out)
+    WF64Store => mem_access(0x39, 3, out)
+    WI32Store8 => mem_access(0x3A, 0, out)
     WI64Const(v) => {
       pushOp(0x42, out)
       for b in sleb_encode(v) {
@@ -308,6 +355,10 @@ fn winstr_encode_into(instr : WInstr, out : Array[Byte]) -> Unit {
     WI32Shl => pushOp(0x74, out)
     WI32ShrS => pushOp(0x75, out)
     WI32ShrU => pushOp(0x76, out)
+    // i64 移位（0x86-0x88）
+    WI64Shl => pushOp(0x86, out)
+    WI64ShrS => pushOp(0x87, out)
+    WI64ShrU => pushOp(0x88, out)
     WI32Extend8S => pushOp(0xC0, out)
     // i64 比较/算术（0x51-0x5A / 0x7C-0x85）
     WI64Eq => pushOp(0x51, out)
@@ -371,7 +422,33 @@ fn winstr_encode_into(instr : WInstr, out : Array[Byte]) -> Unit {
     WI32TruncSatF64S => trunc_sat(0x02, out)
     WI64TruncSatF64S => trunc_sat(0x06, out)
     WI64TruncSatF64U => trunc_sat(0x07, out)
+    WI64ReinterpretF64 => pushOp(0xBD, out)
+    // bulk-memory（0xFC 前缀子码 0x0A/0x0B + 两 memory 索引 0x00）
+    WMemoryCopy => bulk_mem(0x0A, out)
+    WMemoryFill => bulk_mem(0x0B, out)
   }
+}
+
+///|
+/// 访存指令编码（opcode + 对齐 uleb + 静态 offset=0 uleb）。
+fn mem_access(op : Int32, align : Int32, out : Array[Byte]) -> Unit {
+  out.push(op.to_byte())
+  for b in uleb_encode(align.to_uint64()) {
+    out.push(b)
+  }
+  out.push((0x00).to_byte())
+}
+
+///|
+/// bulk-memory 前缀编码（0xFC + 子码 uleb + dst/src memidx 各 0x00——
+/// 单 memory 模块两索引恒 0）。
+fn bulk_mem(sub : Int32, out : Array[Byte]) -> Unit {
+  out.push((0xFC).to_byte())
+  for b in uleb_encode(sub.to_uint64()) {
+    out.push(b)
+  }
+  out.push((0x00).to_byte())
+  out.push((0x00).to_byte())
 }
 
 ///|
@@ -420,6 +497,19 @@ pub(all) enum DecodeError {
 pub extend DecodeError with Debug::{to_repr}
 
 ///|
+/// uleb 解码并收窄 i32（uleb 值域=索引/长度（< 2^31 实域），低 32 位
+/// 位模式收窄等价截断）——winstr_decode/mem_decode 共用。
+fn ulebAt(
+  bytes : Array[Byte],
+  at : Int32,
+) -> Result[(Int32, Int32), DecodeError] {
+  match uleb_decode(bytes, at) {
+    Ok((v, n)) => Ok((v.to_int(), n))
+    Err(e) => Err(BadOperand(e))
+  }
+}
+
+///|
 /// 单指令解码：`bytes[pos..]` 视角 → (指令, 消费字节数)。
 /// 面内全部 opcode 可解（含模板未接线面——折叠器先认识字节才能给出
 /// 「同型未实现指令」的准确 fail loud 信息，探针 2 [三] 形态）。
@@ -432,16 +522,6 @@ pub fn winstr_decode(
   }
   let op = bytes[pos]
   let p = pos + 1
-  fn ulebAt(
-    bytes : Array[Byte],
-    at : Int32,
-  ) -> Result[(Int32, Int32), DecodeError] {
-    match uleb_decode(bytes, at) {
-      // uleb 值域=索引/长度（< 2^31 实域），低 32 位位模式收窄等价截断
-      Ok((v, n)) => Ok((v.to_int(), n))
-      Err(e) => Err(BadOperand(e))
-    }
-  }
   fn slebI32(
     bytes : Array[Byte],
     at : Int32,
@@ -481,6 +561,11 @@ pub fn winstr_decode(
         Err(e) => Err(e)
       }
     0x1A => Ok((WDrop, 1))
+    0x10 =>
+      match ulebAt(bytes, p) {
+        Ok((idx, n)) => Ok((WCall(idx), 1 + n))
+        Err(e) => Err(e)
+      }
     0x20 =>
       match ulebAt(bytes, p) {
         Ok((idx, n)) => Ok((WLocalGet(idx), 1 + n))
@@ -529,6 +614,19 @@ pub fn winstr_decode(
       Ok((WF64Const(f64_from_le_bytes(bytes, p)), 9))
     }
     0x45 => Ok((WI32Eqz, 1))
+    // 访存族（批 1b）：解码只认「自然对齐 + offset 0」的发射器形态——
+    // 其他对齐/静态 offset 变体属面外（非本发射器产物），拒载
+    0x28 => mem_decode(bytes, p, 2, WI32Load, op)
+    0x29 => mem_decode(bytes, p, 3, WI64Load, op)
+    0x2A => mem_decode(bytes, p, 2, WF32Load, op)
+    0x2B => mem_decode(bytes, p, 3, WF64Load, op)
+    0x2C => mem_decode(bytes, p, 0, WI32Load8S, op)
+    0x2D => mem_decode(bytes, p, 0, WI32Load8U, op)
+    0x36 => mem_decode(bytes, p, 2, WI32Store, op)
+    0x37 => mem_decode(bytes, p, 3, WI64Store, op)
+    0x38 => mem_decode(bytes, p, 2, WF32Store, op)
+    0x39 => mem_decode(bytes, p, 3, WF64Store, op)
+    0x3A => mem_decode(bytes, p, 0, WI32Store8, op)
     0x46 => Ok((WI32Eq, 1))
     0x47 => Ok((WI32Ne, 1))
     0x48 => Ok((WI32LtS, 1))
@@ -575,6 +673,9 @@ pub fn winstr_decode(
     0x74 => Ok((WI32Shl, 1))
     0x75 => Ok((WI32ShrS, 1))
     0x76 => Ok((WI32ShrU, 1))
+    0x86 => Ok((WI64Shl, 1))
+    0x87 => Ok((WI64ShrS, 1))
+    0x88 => Ok((WI64ShrU, 1))
     0x7C => Ok((WI64Add, 1))
     0x7D => Ok((WI64Sub, 1))
     0x7E => Ok((WI64Mul, 1))
@@ -608,8 +709,10 @@ pub fn winstr_decode(
     0xB5 => Ok((WF32ConvertI64U, 1))
     0xBB => Ok((WF64PromoteF32, 1))
     0xC0 => Ok((WI32Extend8S, 1))
+    0xBD => Ok((WI64ReinterpretF64, 1))
     0xFC =>
-      // trunc_sat 前缀族（子码 0..7）
+      // 前缀族：trunc_sat（子码 0..7）+ bulk-memory（子码 0x0A/0x0B，
+      // 后随两 memidx uleb 恒 0——面外变体拒载）
       match ulebAt(bytes, p) {
         Ok((sub, sn)) =>
           match sub {
@@ -617,11 +720,57 @@ pub fn winstr_decode(
             0x02 => Ok((WI32TruncSatF64S, 1 + sn))
             0x06 => Ok((WI64TruncSatF64S, 1 + sn))
             0x07 => Ok((WI64TruncSatF64U, 1 + sn))
+            0x0A => bulk_decode(bytes, p + sn, 1 + sn + 2, WMemoryCopy, op)
+            0x0B => bulk_decode(bytes, p + sn, 1 + sn + 2, WMemoryFill, op)
             _ => Err(UnknownOpcode(op))
           }
         Err(e) => Err(e)
       }
     _ => Err(UnknownOpcode(op))
+  }
+}
+
+///|
+/// 访存指令解码：align uleb 必须等于自然对齐值、offset uleb 必须为 0——
+/// 「本发射器形态」的字节级判据（其他变体 = 非本发射器产物）。
+fn mem_decode(
+  bytes : Array[Byte],
+  p : Int32,
+  natural_align : Int32,
+  instr : WInstr,
+  op : Byte,
+) -> Result[(WInstr, Int32), DecodeError] {
+  match ulebAt(bytes, p) {
+    Ok((align, an)) =>
+      if align == natural_align {
+        match ulebAt(bytes, p + an) {
+          Ok((0, on)) => Ok((instr, 1 + an + on))
+          Ok(_) => Err(UnknownOpcode(op))
+          Err(e) => Err(e)
+        }
+      } else {
+        Err(UnknownOpcode(op))
+      }
+    Err(e) => Err(e)
+  }
+}
+
+///|
+/// bulk-memory 解码：子码后两 memidx uleb 必须恒 0（单 memory 模块）。
+/// `at` = memidx[0] 位置；`total` = 指令总消费（opcode + 子码 uleb + 2）。
+fn bulk_decode(
+  bytes : Array[Byte],
+  at : Int32,
+  total : Int32,
+  instr : WInstr,
+  op : Byte,
+) -> Result[(WInstr, Int32), DecodeError] {
+  if at + 1 < bytes.length() &&
+    bytes[at] == (0x00).to_byte() &&
+    bytes[at + 1] == (0x00).to_byte() {
+    Ok((instr, total))
+  } else {
+    Err(UnknownOpcode(op))
   }
 }
 

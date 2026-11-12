@@ -1209,7 +1209,7 @@
     },
     {
       "code": 3092,
-      "icon": "tag",
+      "icon": "shadow",
       "title": "struct/union/enum 共享 tag 命名空间冲突",
       "explanation": "C 语言里 struct、union、enum 的标签（tag）共用同一个命名空间：同一个名字不能既是 union 又是 struct。比如先写了 union A 再写 struct A，编译器会认为这是对同一个 tag 的两种矛盾用法。修复方法：给其中一个换名字（如 union A 与 struct AData），或者确认你引用的确实是同一种类型。",
       "common_causes": [
@@ -1220,7 +1220,7 @@
     },
     {
       "code": 3093,
-      "icon": "flow",
+      "icon": "switch-clause",
       "title": "标签重复定义",
       "explanation": "同一个函数里出现了两个同名标签（label）。goto 跳转目标由标签名唯一确定，重复定义会让 goto 不知道跳到哪一处。修复方法：删掉多余的标签，或者给其中一个改名。",
       "common_causes": [
@@ -1231,7 +1231,7 @@
     },
     {
       "code": 3094,
-      "icon": "uninitialized",
+      "icon": "uninit-read",
       "title": "变量在自身初始化器中被读取",
       "explanation": "形如 int x = x; 的声明：右边的 x 读取发生在 x 初始化完成之前，值是未定义的（C 标准里是未定义行为）。clang 的 -Wuninitialized 对同样的写法也会给出警告。常见于手误（想引用外部同名变量或另一个变量），也可能是作用域理解偏差。",
       "common_causes": [
@@ -1242,7 +1242,7 @@
     },
     {
       "code": 3095,
-      "icon": "array",
+      "icon": "array-size",
       "title": "数组 designator 索引越界",
       "explanation": "指定初始化器（designated initializer）的方括号索引超出了数组大小，例如 int a[3] = {[9] = 1};——a 只有下标 0..2。编译器无法在越界位置存放初始值。修复方法：把索引改到数组范围内，或扩大数组大小。",
       "common_causes": [
@@ -1253,7 +1253,7 @@
     },
     {
       "code": 3096,
-      "icon": "constant",
+      "icon": "case-const",
       "title": "数组 designator 索引不是编译期常量",
       "explanation": "指定初始化器的方括号索引必须是编译期常量表达式，例如 int a[3] = {[n] = 2}; 里的 n 是变量——编译器在编译时无法确定初始值放在哪个位置。修复方法：使用字面量、enum 常量或 const 表达式；如果确实需要运行期决定位置，应改用赋值语句而不是初始化器。",
       "common_causes": [

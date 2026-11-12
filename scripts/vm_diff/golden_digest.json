@@ -3692,6 +3692,18 @@
       "stdout_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
+    "gap/printf_hexfloat_a_dialect.c": {
+      "src_sha": "bd202812",
+      "exit_code": 0,
+      "stdout_sha": "2868804018e551db",
+      "memory_sha": "43e4cabc6782b0c9"
+    },
+    "gap/printf_n_writeback_ucrt.c": {
+      "src_sha": "36a80339",
+      "exit_code": 0,
+      "stdout_sha": "efaed59d50f552a9",
+      "memory_sha": "7023f1d1ba23c1f2"
+    },
     "gap/printf_scanf_type_mismatch.c": {
       "src_sha": "6fb1cda5",
       "exit_code": 0,

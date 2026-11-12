@@ -504,10 +504,6 @@
     {
       "name": "E3096_DesignatorIndexNotConstant",
       "code": 3096
-    },
-    {
-      "name": "E3091_StepLimit",
-      "code": 3091
     }
   ]
 }

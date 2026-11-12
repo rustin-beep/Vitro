@@ -313,19 +313,3 @@ fn read_input_or_reason(path : String) -> Result[String, String] {
   )
 }
 
-///|
-/// 码元字典序排序（陷阱 #29：内置 String 比较是长度优先序，禁用于排序）。
-/// 四 dump 壳同义复制件——修改须与其余三家同步。
-fn sort_files_lex(files : Array[String]) -> Unit {
-  let mut i = 1
-  while i < files.length() {
-    let k = files[i]
-    let mut j = i - 1
-    while j >= 0 && @util.str_cmp(files[j], k) > 0 {
-      files[j + 1] = files[j]
-      j -= 1
-    }
-    files[j + 1] = k
-    i += 1
-  }
-}

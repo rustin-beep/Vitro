@@ -284,6 +284,7 @@
         "logical_and_var.c": "d48c431d",
         "logical_not.c": "6a9f88bf",
         "logical_not_var.c": "1fef2e19",
+        "logical_not_zero_domain.c": "971abc85",
         "logical_or.c": "32643640",
         "logical_or_var.c": "70fec8ac",
         "long_long.c": "9aa10d56",
@@ -378,6 +379,9 @@
         "print_int_user_redefine_bad.c": "794a7c6a",
         "printf_char.c": "af37cd32",
         "printf_flags.c": "7db9bc67",
+        "printf_g17_normalize.c": "065fe0bd",
+        "printf_g17_subnormal.c": "447ef45f",
+        "printf_nan_case_family.c": "649e102c",
         "printf_percent_fold.c": "b6cb4e3b",
         "printf_retval.c": "4659d3b4",
         "printf_star_family.c": "6c4cf6f8",
@@ -450,6 +454,9 @@
         "sscanf_scanset.c": "5050f21f",
         "sscanf_struct_member_addr.c": "e73214b2",
         "static_assert_sizeof.c": "eaff46b4",
+        "static_fold_promo_sign.c": "33f537b4",
+        "static_fold_shortcircuit_saturate.c": "bdfee670",
+        "static_fold_unsigned_domain.c": "dfe911fe",
         "static_forward_func.c": "e82fdca6",
         "static_forward_global.c": "8fd6e158",
         "static_global_basic.c": "6e2264cf",
@@ -475,6 +482,7 @@
         "strcat_empty.c": "fba688cf",
         "strcat_function.c": "64d863aa",
         "strcpy_retval_chain.c": "e642bd01",
+        "string_escape_exact_fit.c": "feb8ba30",
         "string_escape_latin1_bytes.c": "6dd916a7",
         "string_escape_nul_term.c": "5b6a628b",
         "string_escape_octal_hex.c": "9dda4d23",
@@ -1431,6 +1439,9 @@
         "logical_not_var.c": {
           "result_sha": "560061fbdb1fd5da"
         },
+        "logical_not_zero_domain.c": {
+          "result_sha": "73cfd55c5751c51b"
+        },
         "logical_or.c": {
           "result_sha": "c31368c883061d65"
         },
@@ -1718,6 +1729,15 @@
         "printf_flags.c": {
           "result_sha": "61c7f513b6b73c67"
         },
+        "printf_g17_normalize.c": {
+          "result_sha": "225798db98bdb580"
+        },
+        "printf_g17_subnormal.c": {
+          "result_sha": "d1e529a6e68f8e6e"
+        },
+        "printf_nan_case_family.c": {
+          "result_sha": "f9531b69314933e6"
+        },
         "printf_percent_fold.c": {
           "result_sha": "a79a3055eda315bf"
         },
@@ -1935,6 +1955,15 @@
         "static_assert_sizeof.c": {
           "result_sha": "c443b6f24cbc9aa9"
         },
+        "static_fold_promo_sign.c": {
+          "result_sha": "e9c4ea0890423786"
+        },
+        "static_fold_shortcircuit_saturate.c": {
+          "result_sha": "2a65d72534a11f75"
+        },
+        "static_fold_unsigned_domain.c": {
+          "result_sha": "26bed89b2c9bb153"
+        },
         "static_forward_func.c": {
           "fail": true,
           "fail_stage": "type"
@@ -2011,6 +2040,9 @@
         },
         "strcpy_retval_chain.c": {
           "result_sha": "58f462c8236aeb23"
+        },
+        "string_escape_exact_fit.c": {
+          "result_sha": "25fc08ab648658a3"
         },
         "string_escape_latin1_bytes.c": {
           "result_sha": "f384a36b1bbd54ca"
@@ -2294,6 +2326,7 @@
         "arith_compound_incdec.c": "04012a35",
         "arith_int_compare.c": "9fdccb0a",
         "arith_ptr_diff_expr.c": "b1ab977a",
+        "cast_ll_float_roundtrip.c": "82e3e915",
         "cast_truncate_signedness.c": "d17c8704",
         "commonsym_tentative.c": "420b932e",
         "complit_local.c": "d763a8ee",
@@ -2305,6 +2338,7 @@
         "control_switch.c": "416918f5",
         "float_compare_arith.c": "47a45441",
         "float_conv_matrix.c": "35731106",
+        "float_not_judge.c": "1d9a3594",
         "function_call_basic.c": "0a8c685e",
         "function_many_args.c": "5b42a12e",
         "function_struct_pass_ret.c": "bca8f314",
@@ -2313,6 +2347,7 @@
         "initializer_globals.c": "71163b3c",
         "initializer_locals.c": "33a644b9",
         "literal_int_domain.c": "10802419",
+        "literal_shift_i64.c": "593c453a",
         "macro_conditional.c": "21f69813",
         "macro_define_args.c": "a4e220a2",
         "pointer_array_basic.c": "12852aa8",
@@ -2342,8 +2377,11 @@
         "arith_ptr_diff_expr.c": {
           "result_sha": "e7990e7f5387e070"
         },
+        "cast_ll_float_roundtrip.c": {
+          "result_sha": "d3c85b4f5f8c901f"
+        },
         "cast_truncate_signedness.c": {
-          "result_sha": "91bee1025dfe1173"
+          "result_sha": "0d581d86f5f68031"
         },
         "commonsym_tentative.c": {
           "result_sha": "a173d09e156179cd"
@@ -2375,6 +2413,9 @@
         "float_conv_matrix.c": {
           "result_sha": "632f2c7622581514"
         },
+        "float_not_judge.c": {
+          "result_sha": "dac8bc88aa8ee2e0"
+        },
         "function_call_basic.c": {
           "result_sha": "16706b15b91e5e46"
         },
@@ -2398,6 +2439,9 @@
         },
         "literal_int_domain.c": {
           "result_sha": "f572711bd746ed4c"
+        },
+        "literal_shift_i64.c": {
+          "result_sha": "64010a04c4533b47"
         },
         "macro_conditional.c": {
           "result_sha": "b6523f4845b04cfc"
@@ -2511,6 +2555,8 @@
         "keyword_compat.c": "ce1212f3",
         "loop_var_shadow.c": "67d2073f",
         "p2d_parser_preproc_batch.c": "f629bffd",
+        "printf_hexfloat_a_dialect.c": "bd202812",
+        "printf_n_writeback_ucrt.c": "36a80339",
         "printf_scanf_type_mismatch.c": "6fb1cda5",
         "scanf_0x_retval.c": "182a1281",
         "sizeof_array_param.c": "34ee7a7e",
@@ -2564,6 +2610,12 @@
         "p2d_parser_preproc_batch.c": {
           "fail": true,
           "fail_stage": "lex"
+        },
+        "printf_hexfloat_a_dialect.c": {
+          "result_sha": "1f2d9fe9692cd19e"
+        },
+        "printf_n_writeback_ucrt.c": {
+          "result_sha": "e5fbb2eff358e7fa"
         },
         "printf_scanf_type_mismatch.c": {
           "result_sha": "dc466b18d737320f"

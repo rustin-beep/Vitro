@@ -819,3 +819,35 @@ vitro/engine/proofs/arith_mirror vitro/engine/arith OpGt
 vitro/engine/proofs/arith_mirror vitro/engine/arith OpLe
 vitro/engine/proofs/arith_mirror vitro/engine/arith OpLt
 vitro/engine/proofs/arith_mirror vitro/engine/arith OpNe
+
+# REHOST 批 1a（2026-11-05）：wasmenc 新叶包（153 码表 wasm 子集发射/折叠骨架）消费边
+vitro/engine/wasmenc vitro/engine/opcode Add
+vitro/engine/wasmenc vitro/engine/opcode And
+vitro/engine/wasmenc vitro/engine/opcode BitNot
+vitro/engine/wasmenc vitro/engine/opcode BitNotQ
+vitro/engine/wasmenc vitro/engine/opcode BitXor
+vitro/engine/wasmenc vitro/engine/opcode Call
+vitro/engine/wasmenc vitro/engine/opcode CallHost
+vitro/engine/wasmenc vitro/engine/opcode CallPtr
+vitro/engine/wasmenc vitro/engine/opcode CallVar
+vitro/engine/wasmenc vitro/engine/opcode Jump
+vitro/engine/wasmenc vitro/engine/opcode JumpIfNotZero
+vitro/engine/wasmenc vitro/engine/opcode JumpIfZero
+vitro/engine/wasmenc vitro/engine/opcode Not
+vitro/engine/wasmenc vitro/engine/opcode OpCode
+vitro/engine/wasmenc vitro/engine/opcode Pop
+vitro/engine/wasmenc vitro/engine/opcode PushArgc
+vitro/engine/wasmenc vitro/engine/opcode PushArgv
+vitro/engine/wasmenc vitro/engine/opcode PushConst
+vitro/engine/wasmenc vitro/engine/opcode PushConstF
+vitro/engine/wasmenc vitro/engine/opcode PushConstQ
+vitro/engine/wasmenc vitro/engine/opcode Ret
+vitro/engine/wasmenc vitro/engine/opcode RetVoid
+vitro/engine/wasmenc vitro/engine/opcode Shl
+vitro/engine/wasmenc vitro/engine/opcode TruncByte
+vitro/engine/wasmenc vitro/engine/opcode UAdd
+vitro/engine/wasmenc vitro/engine/opcode UDiv
+vitro/engine/wasmenc vitro/engine/opcode USub
+vitro/engine/wasmenc vitro/engine/source SourceLoc
+vitro/engine/wasmenc vitro/engine/util i64_to_i32_bits
+vitro/engine/wasmenc vitro/engine/util utf8_bytes

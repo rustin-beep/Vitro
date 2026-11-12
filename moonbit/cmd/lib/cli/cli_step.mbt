@@ -120,13 +120,11 @@ pub fn step(
   let compile_params = (channel.compile_params)(file, src)
   let comp = inv("compile", compile_params)
   if comp.contains("\"ok\":false") {
-    // 诊断在 compile 帧——json 模式 type:diag 包装透传 stdout（SWEEP1
-    // #444，2026-11-05：与 run/compile 的 {"type":"diag","frame":…} 同形
-    // ——消费面按 type 统一分派，失败帧不再需要「行内 ok:false 自明」的
-    // 特判；注：step 正常流的 step.next 帧本就无 type〔spec §6 既有契约〕，
-    // 本变更的价值在失败帧可被 type 路由，不在「全流统一 type」——PR #488
-    // 审阅 P3-3 勘正）；文本模式走 stderr（#129 通道分立：stdout 只
-    // 承载程序输出）
+    // 诊断在 compile 帧——json 模式 type:diag 包装出 stdout（#444 协议面
+    // 收口，2026-11-12：旧裸帧直出是三子命令中唯一不包装的，事件流消费方
+    // 按 type 分派须对 step 失败行特判；现与 frame_pipeline 的 run/compile
+    // --json 同形）；文本模式走 stderr（#129 通道分立：stdout 只承载
+    // 程序输出）
     if json_mode {
       out_line(write_stdout, "{\"type\":\"diag\",\"frame\":\{comp}}")
     } else {

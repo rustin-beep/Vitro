@@ -15,7 +15,7 @@ moon run cmd/dump_compile -- <corpus_dir|file.c> <out_dir> [--library]
 
 - 构建：`MOON_CC=clang moon build --target native cmd/dump_tokens cmd/dump_ast cmd/dump_typeck cmd/dump_compile`（clang 口径见根 AGENTS 纪律 11）。
 - 输入：单 `.c` 文件或语料目录（目录模式按字典序处理全部 `*.c`）；自定义 include 的 VFS 自动收集同目录 `.h`（`tokenize_with_vfs` + `base_dir`——目录级收集一次共享）。
-- **用法错 rc 契约（#230 起，2026-10-27）**：缺参 / 模式非法 / 参数过多 / 输出目录与语料目录相同 ⇒ stdout 一行原因（用法行或具体原因）+ **rc=4**（与 `vitro` 总入口用法错同口径，#215）；旧形态（未捕获 `Failure` 的 PanicError 栈 + rc=127）已退役。
+- **用法错 rc 契约（#230 起，2026-10-27）**：缺参 / 模式非法 / 参数过多 / 输出目录与语料目录相同 ⇒ stdout 一行原因（用法行或具体原因）+ **rc=4**（与 `vitro` 总入口用法错同口径，#215）；旧形态（未捕获 `Failure` 的 PanicError 栈 + rc=127）已退役。**输入不可读（#445 C1 连坐补登，2026-11-12）**：不存在/无权限/目录占位 ⇒ 同款一行原因（`输入不可读：<path>（<errno 文案>）`）+ rc=4——#230 治理此前只覆盖用法错面，读文件面（主循环裸调 `read_file_to_string`）至本批收口（旧同走 PanicError 栈 + rc=127）。
 - 处理成功 ⇒ stdout 汇总行（`dump_<name>: N 个输入 -> <out_dir>`）+ rc=0。
 
 ## 1. 文件名规则（两族约定，勿混）

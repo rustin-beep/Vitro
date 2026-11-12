@@ -186,7 +186,8 @@ test "stmt_goto_label_closure" {
   )
   assert_eq(errs2.length(), 1)
   assert_true(errs2[0].code == 3071)
-  // 重复 label → E3001
+  // 重复 label → E3093（M09-C1，#433 批 B9 三批：独立码——旧借 E3001
+  // 变量重定义码 fix_suggestion 张冠李戴）
   let lab = @ast.Stmt::Label(
     "dup",
     @ast.Stmt::Expr(@ast.Expr::Literal(0, loc, @ast.Type::int()), loc),
@@ -197,7 +198,7 @@ test "stmt_goto_label_closure" {
     empty_prog([main_of(@ast.Stmt::Block([lab, lab], loc))]),
   )
   assert_eq(errs3.length(), 1)
-  assert_true(errs3[0].code == 3001)
+  assert_true(errs3[0].code == 3093)
 }
 
 ///|

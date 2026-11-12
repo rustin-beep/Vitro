@@ -37,6 +37,7 @@ pub struct TypeChecker {
   mut char_narrow_suppress : Bool
   func_labels : Map[String, @source.SourceLoc]
   pending_gotos : Array[(String, @source.SourceLoc)]
+  mut file_boundaries : Array[(Int32, Int32, String)]
   errors : Array[TypeError]
   warnings : Array[TypeError]
   hints : Array[TypeError]
@@ -63,6 +64,7 @@ pub fn TypeChecker::report_error(Self, String, @source.SourceLoc, @diag.ErrorCod
 pub fn TypeChecker::report_hint(Self, String, @source.SourceLoc, @diag.ErrorCode) -> Unit
 pub fn TypeChecker::report_warning(Self, String, @source.SourceLoc, @diag.ErrorCode) -> Unit
 pub fn TypeChecker::resolve_expr_type(Self, @ast.Expr) -> (@ast.Type, @ast.Expr)
+pub fn TypeChecker::set_file_boundaries(Self, Array[(Int32, Int32, String)]) -> Unit
 pub fn TypeChecker::update_var_type(Self, String, @ast.Type) -> Unit
 pub fn TypeChecker::visit_call(Self, String, Array[@ast.Expr], @source.SourceLoc) -> @ast.Type
 

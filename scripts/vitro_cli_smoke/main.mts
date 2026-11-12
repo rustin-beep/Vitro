@@ -1046,6 +1046,43 @@ export function runMain(argv: readonly string[]): number {
     }
   }
 
+  // B 组附 10（#444，2026-11-12）：step --json 失败路径三臂同形 + type:diag
+  // 帧形态锚——修前 step compile 失败帧裸直出（{"id":…} 无 type），是三子
+  // 命令 NDJSON 事件流中唯一不包装的（run/compile --json 均为
+  // {"type":"diag","frame":…}）；本锚与**预期前缀字面量**比对（帧形态断言，
+  // 非仅臂间互比——三臂同裸帧时互比不红）+ 三臂互比（cli_step 改动面
+  // 三份产物的行为指纹）。filename 域**严格互比**（gateway 统一 POSIX
+  // 规范化后三臂同形——#444 批后续小修：修前 wasm 臂 files 通道裸名 vs
+  // 直连臂路径原文，曾以显式归一遮差，规范化落地后归一退役）。
+  {
+    const relWarn = toSlash(path.relative(repoRoot, warnC));
+    const outs: string[] = [];
+    for (const a of [
+      { label: "js", argv: [nodeBin, jsEntry, "step", relWarn, "--json"] },
+      { label: "wasm", argv: [nodeBin, shell, "step", relWarn, "--json"] },
+      { label: "native", argv: [nativeExe, "step", relWarn, "--json"] },
+    ]) {
+      const r = runOut(a.argv[0] ?? "", a.argv.slice(1));
+      if (r.rc !== 1) {
+        fatalf(`B[step json diag] ${a.label}: rc=${r.rc} want 1（compile 失败）`);
+      }
+      const firstLine = r.out.split("\n")[0] ?? "";
+      if (!firstLine.startsWith('{"type":"diag","frame":{"id":')) {
+        fatalf(`B[step json diag] ${a.label}: compile 失败首帧非 type:diag 包装（#444 修前形态回潮）: ${firstLine.slice(0, 120)}`);
+      }
+      if (!firstLine.includes('"filename":"' + relWarn + '"')) {
+        fatalf(`B[step json diag] ${a.label}: 诊断 filename 非调用方路径形态（gateway POSIX 规范化回潮/裸名残留）: ${firstLine.slice(0, 160)}`);
+      }
+      outs.push(stripBackendLine(r.out));
+    }
+    const [j = "", w = "", n = ""] = outs;
+    if (j !== n || w !== n) {
+      fatalf(`B[step json diag] 三臂不同形\n--- js ---\n${j.slice(0, 200)}\n--- wasm ---\n${w.slice(0, 200)}\n--- native ---\n${n.slice(0, 200)}`);
+    } else {
+      process.stdout.write(`ok  B[step json diag] 三臂 compile 失败帧 type:diag 同形 + filename 路径同形（#444）\n`);
+    }
+  }
+
   // B 组附 1：note 去重语义锚（审阅 P3-1）——note 通道语义不在 vm_diff /
   // clang_direct 比对面，apply_reply 全量同文本去重此前零闸。
   {

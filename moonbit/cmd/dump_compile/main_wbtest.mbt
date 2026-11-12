@@ -1,7 +1,10 @@
 // #378/#380 锚：目录段函数 + VFS 键拼装的根级 POSIX 全链路。
 // dump 包 native-only——裸 moon test 静默跳过本文件，
-// 验证口径 `MOON_CC=clang-cl moon test --target native -p dump_compile`（Windows——
-// test 面须 cl 兼容驱动，裸 clang 被忽略回落 MSVC，M37 D-6；Linux 用 clang）。
+// 验证口径 `MOONBIT_NEW_NATIVE=0 MOON_CC=clang moon test --target native -p dump_compile`（Windows——
+// test 面是 debug 档——direct-object 新后端忽略裸 clang 回落 MSVC，且裸名
+// clang-cl 会被静默解析成发现的 cl.exe（moon#2480 零警告假绿）——故总闸
+// MOONBIT_NEW_NATIVE=0 回 legacy 后端让 clang 生效（陷阱 43 勘正 2026-11-12；
+// Linux/CI 用裸 clang）。
 
 ///|
 /// #378：唯一分隔符在 0 位 = POSIX 根级文件（"/x.c"），目录段须返回
@@ -89,38 +92,40 @@ test "norm_path 同义路径归一（out==target 门禁不裸比）" {
 }
 
 ///|
-/// #445 C1 锚（SWEEP1 批，2026-11-05）：输入不可读的退出决策文案——修前
-/// main 主循环裸 `@fs.read_file_to_string` 无 catch，不存在路径走未捕获
-/// raise 的 PanicError 栈 + rc=127（M36b P4 实测）；修后一行原因 + rc=4
-///（与用法错同档）。本锚锁纯函数文案面（c_exit 进程 rc 面由
-/// scripts/vitro_cli_smoke D 组子进程锚承担——wbtest 不能调 exit）。
-test "unreadable_reason 一行原因文案（#445 C1）" {
-  inspect(
-    unreadable_reason("nope.c", @fs.IOError("no such file or directory")),
-    content="输入不可读：nope.c（no such file or directory）",
-  )
-  inspect(
-    unreadable_reason("d/锁.c", @fs.IOError("permission denied")),
-    content="输入不可读：d/锁.c（permission denied）",
-  )
+/// #445 C1 红→绿锚（2026-11-12）：不可读输入 → Err(原因行)——main 侧
+/// println + c_exit(4)。修前形态：主循环裸调 \@fs.read_file_to_string，
+/// 不存在路径走未捕获 IOError 的 PanicError 栈 + rc=127（native exe 实测，
+/// #230 治理在 dump 族读文件面落空）；进程级 rc=4 断言由 exe 实测面承担
+/// （wbtest 同进程——c_exit 杀测试进程，不直接跑 main）。
+test "i445_c1_read_input_or_reason_不可读与可读两态" {
+  match read_input_or_reason("tmp_i445_definitely_missing_zz9q.c") {
+    Ok(_) => fail("不可读输入必须 Err（#445 C1）")
+    Err(reason) =>
+      inspect(reason.has_prefix("输入不可读："), content="true")
+  }
+  // Ok 态不在此锚（native 测试 cwd 非包目录——moon.pkg 相对路径实测 Err，
+  // 无从构造免清理的可读探针；fs pub 面无 remove）；回归面由 exe 实测真实
+  // 语料全覆盖（Ok 路径是主路径，任何回归即 dump 产物全空）。
 }
 
 ///|
-/// #445 B2 锚（SWEEP1 批，2026-11-05）：目录模式字典序排序——内置
-/// String sort 是**长度优先序**（陷阱 #29：定向形态内置序 `a.c < b.c <
-/// aa.c < ab.c`，短者恒先；corpus 1176 文件名探针内置序 vs 字典序逐位
-/// 全异），四壳统一 str_cmp 字典序与 codegen_diff 的 Go sort.Strings
-/// 对齐。修前 ast/typeck/tokens 三家用内置 sort（序全异——注释还自称
-/// 跨实现排序一致性声明失实——对照对象已随删区退役）。
-/// 锁面注记（PR #488 审阅 P3-3）：本锚只锁 helper 函数语义；main 调用点
-/// （files.sort() 回退形态）由 twin_fingerprint 的 dumpGuardsFingerprint 锁
-/// （谓词扫 main 函数体——sort:builtin 回退实测 exit 1 拦截，勿以为无锁）。
-test "sort_files_lex 字典序（长度优先分叉对 + 非 ASCII）" {
-  let files : Array[String] = ["b.c", "aa.c", "ab.c", "a.c"]
+/// #445 B2 锚（2026-11-12）：处理序 = 码元字典序（sort_files_lex）。内置
+/// String 序是长度优先 + 等长码元序（util 包探针实测 cmp("e2_x.c","e10_y.c")
+/// = -1 而字典序应 +1——e2_x.c 被排到 e10_y.c 前面），语料文件名域两序
+/// 必然分叉；本批 ast/typeck/tokens 三家自内置 files.sort() 迁入（compile
+/// 既有），四壳处理序统一为字典序（与 codegen_diff 的 Go sort.Strings 字节
+/// 字典序对齐——ASCII 域等价；非 ASCII 键域码元序 vs 字节序仍可能分叉，
+/// 语料域全 ASCII）。
+test "i445_b2_sort_files_lex_字典序含非_ascii" {
+  let files : Array[String] = [
+    "e10_y.c", "中文.c", "e2_x.c", "ab.c", "a.c", "aa.c",
+  ]
   sort_files_lex(files)
-  inspect(files.join(","), content="a.c,aa.c,ab.c,b.c")
-  // 非 ASCII 键域：按码元字典序（a < 中 U+4E2D < 图 U+56FE）
-  let names : Array[String] = ["图.c", "arr.c", "中.c"]
-  sort_files_lex(names)
-  inspect(names.join(","), content="arr.c,中.c,图.c")
+  inspect(files.length(), content="6")
+  inspect(files[0], content="a.c")
+  inspect(files[1], content="aa.c")
+  inspect(files[2], content="ab.c")
+  inspect(files[3], content="e10_y.c")
+  inspect(files[4], content="e2_x.c")
+  inspect(files[5], content="中文.c")
 }

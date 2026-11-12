@@ -132,7 +132,15 @@ pub fn Type::subscript_type(self : Type) -> Type {
   match self {
     Array(element, _, dims, is_const, is_vla, vla_dims) =>
       if dims.length() <= 1 {
-        element
+        // M05-A1（#433 批 B9 三批，2026-11-12）：一维下标传导 const 位
+        //——与多维分支同口径（旧裸返 element 令 `const int a[3]` 的
+        // `a[0]` 类型丢 const，typeof 路径泄漏成可写误收；赋值路径
+        // E3049 专项检查此前恰好补偿）
+        if is_const {
+          element.set_const(true)
+        } else {
+          element
+        }
       } else {
         let new_dims : Array[Int32] = []
         for i in 1..<dims.length() {
@@ -249,10 +257,14 @@ fn compute_type_size_impl(
       elem_count * elem_size
     }
     Struct(name, _) => {
-      if visiting.contains(name) {
+      // M05-A5（#433 批 B9 三批，2026-11-12）：visiting 键带 tag 种类
+      // 前缀——合法 C 内 tag 唯一不可达（typeck E3092 先拦），键前缀化
+      // 令 tag 冲突残留形态（struct A{union A u;}）不误判 0 尺寸
+      let key = "s:" + name
+      if visiting.contains(key) {
         return 0 // 循环包含：防无限递归（真诊断在 typeck E3072）
       }
-      ignore(visiting.add(name))
+      ignore(visiting.add(key))
       let size = match struct_defs.get(name) {
         Some(fields) => {
           let mut sum = 0
@@ -270,14 +282,16 @@ fn compute_type_size_impl(
         None => 0
       }
       // Rust 同款"退出时 remove"：visiting 是当前展开路径，兄弟字段共享
-      visiting.remove(name)
+      visiting.remove(key)
       size
     }
     Union(name, _) => {
-      if visiting.contains(name) {
+      // M05-A5：同 Struct——键带种类前缀
+      let key = "u:" + name
+      if visiting.contains(key) {
         return 0
       }
-      ignore(visiting.add(name))
+      ignore(visiting.add(key))
       let size = match union_defs.get(name) {
         Some(fields) => {
           let mut mx = 0
@@ -297,7 +311,7 @@ fn compute_type_size_impl(
         }
         None => 0
       }
-      visiting.remove(name)
+      visiting.remove(key)
       size
     }
     Class(name, _) =>

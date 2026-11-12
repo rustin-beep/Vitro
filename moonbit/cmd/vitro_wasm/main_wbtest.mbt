@@ -100,3 +100,25 @@ test "issue377_collect_walk_registry_e2e" {
   collect_walk("main.c", "main.c", fs3["main.c"], e3, s3, read=mem_read(fs3))
   inspect(keys_of(e3), content="[main.c, sub/a.h, top.h]")
 }
+
+///|
+/// #444 后续小修锚（2026-11-12）：wasm_compile_params 主文件登记名 =
+/// 调用方路径原文（旧 basename——CLI wasm 臂诊断 filename 丢目录段的
+/// 根源；gateway 侧 posix_name 统一规范化后三臂 filename 同形，壳层不折
+/// 只透传）。三臂同形的进程级断言在 cli_smoke B 组附 10。
+test "i444_wasm_compile_params_主键路径原文" {
+  // 正斜杠路径：首条目 filename = 路径原文（修前 basename "y.c"）
+  let params = wasm_compile_params("tmp/x/y.c", "int main(){return 0;}\n")
+  assert_true(
+    params.contains("\"filename\":\"tmp/x/y.c\""),
+    msg="主文件登记名=路径原文（修前 basename 丢目录段）",
+  )
+  // 反斜杠原文同样透传（规范化归 gateway 单点——壳层不折；json_escape
+  // 双写：params 文本内两字符 \\\\ 实为单个反斜杠的 JSON 转义——contains
+  // 目标须按「解析后两字符反斜杠」写，即四写转义 \\\\
+  let params2 = wasm_compile_params("tmp\\x\\y.c", "int main(){return 0;}\n")
+  assert_true(
+    params2.contains("\"filename\":\"tmp\\\\x\\\\y.c\""),
+    msg="反斜杠原文透传（壳层零折叠）",
+  )
+}

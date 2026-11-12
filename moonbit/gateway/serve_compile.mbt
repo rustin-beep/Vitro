@@ -499,6 +499,12 @@ fn serve_compile_pipeline(
   // 必然失败，半解析程序不生成。
   // ── 3. TypeChecker（errors/warnings/hints 三段 severity 0/1/2）──
   let tc = @typeck.TypeChecker::new()
+  // M09-A5（#433 批 B9 三批，2026-11-12）：拼接文件边界直通——W3085
+  // 前向序判据的文件门（跨文件拼接序行号不可比；parser 不写
+  // FuncDecl.source_file，AST 层文件信息唯此一路）
+  tc.set_file_boundaries(
+    ranges.map(r => (r.start_line, r.end_line, r.filename)),
+  )
   let (typed, type_errors, type_warnings, type_hints) = tc.check(program)
   // #350 审阅 P1-1（2026-10-28）：语法错在场时，typeck 补报面过滤
   // **非法定位**诊断（line < 1——E3001 零位置族 L0:0 / E3003 负行号
@@ -683,8 +689,10 @@ fn serve_compile_frame(
   match json_field(params, "files") {
     Array(files) =>
       for f in files {
+        // filename POSIX 规范化单点（#444 后续小修，2026-11-12）——诊断
+        // filename/vfs 键三名同源，详见 gateway.mbt posix_name 头注
         let filename = match json_field(f, "filename").as_string() {
-          Some(n) => n
+          Some(n) => posix_name(n)
           None => "main.c"
         }
         let source = match json_field(f, "source").as_string() {
@@ -697,7 +705,7 @@ fn serve_compile_frame(
       match json_field(params, "source").as_string() {
         Some(source) => {
           let filename = match json_field(params, "filename").as_string() {
-            Some(n) => n
+            Some(n) => posix_name(n)
             None => "main.c"
           }
           units.push({ filename, source, })

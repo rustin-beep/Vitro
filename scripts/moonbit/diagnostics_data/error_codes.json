@@ -481,6 +481,33 @@
       "name": "W3085_ImplicitFuncDecl",
       "code": 3085
     },
-    {"name": "W3090_ConstIntOverflow", "code": 3090}
+    {
+      "name": "W3090_ConstIntOverflow",
+      "code": 3090
+    },
+    {
+      "name": "E3092_TagKindMismatch",
+      "code": 3092
+    },
+    {
+      "name": "E3093_LabelRedeclared",
+      "code": 3093
+    },
+    {
+      "name": "W3094_SelfInitReference",
+      "code": 3094
+    },
+    {
+      "name": "E3095_DesignatorIndexOutOfBounds",
+      "code": 3095
+    },
+    {
+      "name": "E3096_DesignatorIndexNotConstant",
+      "code": 3096
+    },
+    {
+      "name": "E3091_StepLimit",
+      "code": 3091
+    }
   ]
 }

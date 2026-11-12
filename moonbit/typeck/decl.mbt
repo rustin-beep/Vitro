@@ -45,12 +45,16 @@ fn TypeChecker::visit_func_decl(
   self.enter_scope()
   for p in node.params {
     self.current_func_params.add(p.name)
+    // M09-C2（#433 批 B9 三批，2026-11-12）：补 loc~——修前缺省落
+    // SourceLoc(0,0)，`void f(int x){ int x=200; }` 的 E3001 报 0:0
+    //（clang 给 1:21 精确位置）
     self.declare_var(
       p.name,
       p.ty,
       is_global=false,
       is_extern=false,
       is_static=false,
+      loc=p.loc,
     )
   }
   let new_body : @ast.Stmt? = match node.body {
@@ -494,10 +498,13 @@ fn TypeChecker::dispatch_stmt(
     }
     Label(label, stmt, loc) => {
       if self.func_labels.contains(label) {
+        // M09-C1（#433 批 B9 三批，2026-11-12）：独立码 E3093——修前借
+        // E3001_VarRedeclared（文案对但 fix_suggestion 面向变量场景
+        // 张冠李戴）
         self.report_error(
           "标签 '\{label}' 重复定义",
           loc,
-          E3001_VarRedeclared,
+          E3093_LabelRedeclared,
         )
       } else {
         self.func_labels.set(label, loc)
@@ -608,6 +615,22 @@ fn TypeChecker::process_var_decl(
   is_static~ : Bool,
   is_register~ : Bool = false,
 ) -> (@ast.Type, @ast.Expr?) {
+  // M09-C4（#433 批 B9 三批，2026-11-12）：`int x = x;` 自引用值读取
+  // 零提示——predeclared 机制（#75）使其静默通过（clang -Wuninitialized
+  // 对自身初始化中值读取给警，UB）。裸 Identifier 同名形态报 W3094；
+  // sizeof/&/外部同名变量等合法面不误伤（本函数语境=块内局部声明，
+  // 全局 globals 走 check 主流程不经此）。
+  match init {
+    Some(@ast.Expr::Identifier(init_name, _, _)) =>
+      if init_name == name {
+        self.report_warning(
+          "变量 '\{name}' 在自身的初始化器中被读取——读取发生在初始化完成前，值未定义（是否想引用外部同名变量？）",
+          loc,
+          W3094_SelfInitReference,
+        )
+      }
+    _ => ()
+  }
   ignore(name)
   // Auto type deduction（#233 清源，2026-10-25）：Type::Auto 仅 cpp_mode
   // parser 构造（C 模式下 auto 是存储类直接吞掉——parser/type_.mbt），
@@ -616,23 +639,31 @@ fn TypeChecker::process_var_decl(
   let var_type_1 : @ast.Type = var_type
   // resolve_template_id：C++ 模板实例化（剔除登记，S9）
   // typeof type deduction
+  // M05-A3（#433 批 B9 三批，2026-11-12）：定型一律取 **typeof 操作数**
+  // 类型（C23 语义——`char c; typeof(c) x = 300;` 的 x 是 char、
+  // sizeof(x)=1，clang c2x 实测）；修前 Some(init) 分支用初始化器类型
+  // 推导（auto 式）令 x 定型 int（sizeof 4，js+native 双臂实锤）。
+  // init 不再参与定型，只走后续赋值兼容检查（四分支照旧）。嵌套形态
+  //（Pointer(Typeof)/Array(Typeof)）取树内首个 Typeof 操作数。
   let var_type_2 : @ast.Type = if type_has_typeof(var_type_1) {
-    match init {
-      Some(init_expr) => {
-        let (deduced, _) = self.resolve_expr_type(init_expr)
-        resolve_typeof_in_type(var_type_1, deduced)
+    let deduced : @ast.Type = match first_typeof_operand(var_type_1) {
+      Some(operand) => {
+        // 需要临时取出表达式来推断类型（resolve 改写丢弃——Typeof
+        // 节点内的 expr 不更新，Rust 同形）
+        let (d, _) = self.resolve_expr_type(operand)
+        d
       }
       None =>
-        match var_type_1 {
-          Typeof(expr, _, _) => {
-            // 需要临时取出表达式来推断类型（resolve 改写丢弃——Typeof
-            // 节点内的 expr 不更新，Rust 同形）
-            let (deduced, _) = self.resolve_expr_type(expr)
-            resolve_typeof_in_type(var_type_1, deduced)
+        // 理论不可达（type_has_typeof 已过滤）；fail-safe 退化旧行为
+        match init {
+          Some(init_expr) => {
+            let (d, _) = self.resolve_expr_type(init_expr)
+            d
           }
-          _ => resolve_typeof_in_type(var_type_1, @ast.Type::int())
+          None => @ast.Type::int()
         }
     }
+    resolve_typeof_in_type(var_type_1, deduced)
   } else {
     var_type_1
   }
@@ -805,9 +836,17 @@ fn TypeChecker::check_user_func(
       //——同文件近似）——clang C99 起默认 error，教学口径 warning 提示
       // 补原型（static 形态已有 E3058 error 在下面分支）。PR #344 审阅
       // P2-1（2026-10-28）：列级判定（同行形态连 W3085 都不给的漏报
-      // 收口）
-      if loc.line < sym.first_decl_line ||
-        (loc.line == sym.first_decl_line && loc.column < sym.first_decl_col) {
+      // 收口）。#433 批 B9 三批（2026-11-12，M09-A5）：补文件门——
+      // 跨文件拼接序行号不可比（文案「第 N 行才声明」指向另一文件，
+      // 用户无法在拼接语境修复）；门按 file_boundaries 判「两行号同
+      // 文件」（gateway 拼接层直通；空表 = 单文件语境恒过，行为与旧
+      // 判据一致——parser 不写 FuncDecl.source_file，按符号 source_file
+      // 判恒同值不可用，见 TypeChecker.file_boundaries 头注）
+      if self.file_of_line(loc.line) == self.file_of_line(sym.first_decl_line) &&
+        (
+          loc.line < sym.first_decl_line ||
+          (loc.line == sym.first_decl_line && loc.column < sym.first_decl_col)
+        ) {
         self.report_warning(
           "函数 '\{name}' 在声明之前被调用（第 \{sym.first_decl_line} 行才声明）——C99 起隐式函数声明已废弃，请补前置原型",
           loc,
@@ -1004,6 +1043,20 @@ fn type_has_typeof(ty : @ast.Type) -> Bool {
 }
 
 ///|
+/// 取类型树内首个 Typeof 节点的操作数（M05-A3，#433 批 B9 三批
+/// 2026-11-12）：typeof 定型的 replacement 来源——`typeof(c) x = 300;`
+/// 取 c 的类型而非 init 的。嵌套形态（Pointer(Typeof)/Array(Typeof)）
+/// 深取首个；树内多个 Typeof 罕见（教学子集不建模），首个性足够。
+fn first_typeof_operand(ty : @ast.Type) -> @ast.Expr? {
+  match ty {
+    Typeof(expr, _, _) => Some(expr)
+    Pointer(pointee, _) => first_typeof_operand(pointee)
+    Array(element, _, _, _, _, _) => first_typeof_operand(element)
+    _ => None
+  }
+}
+
+///|
 /// C23 typeof_unqual：剥离**顶层**限定符（const/volatile 语义在教学
 /// 子集仅建模 is_const）；嵌套层保持不变——typeof_unqual 与 typeof 的
 /// 唯一区别。
@@ -1021,7 +1074,11 @@ fn resolve_typeof_in_type(ty : @ast.Type, replacement : @ast.Type) -> @ast.Type 
       if unqual {
         t = strip_top_level_qualifiers(t)
       }
-      t.set_const(is_const)
+      // M05-A2（#433 批 B9 三批，2026-11-12）：OR 合并——Typeof 节点自身
+      // 无 const 标记时不清掉操作数传导的 const（修前覆写令
+      // `typeof(const 数组元素)` 丢 const 误收）；unqual 分支 strip 后
+      // is_const()=false，OR 不改 typeof_unqual 语义
+      t.set_const(is_const || t.is_const())
     }
     Pointer(pointee, is_const) =>
       Pointer(resolve_typeof_in_type(pointee, replacement), is_const)

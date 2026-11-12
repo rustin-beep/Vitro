@@ -127,6 +127,54 @@ impl @token.SourceProvider for HostIncludeProvider with fn read(
 }
 
 ///|
+/// unit 登记名的 POSIX 规范化（#444 后续小修，2026-11-12）：折 `\`→`/`、
+/// 丢 `.`/空段、`..` 回退一层——compile 装配单点调用，**诊断 filename /
+/// file_ranges.filename / vfs 表键三名同源**（修前 vfs 键折叠而诊断
+/// filename 原文透传，同一 unit 两名：Windows 反斜杠路径下
+/// `tmp\x\y.c`（诊断）vs `tmp/x/y.c`（键）分立；wasm 臂 files 通道裸名
+/// 与直连臂路径原文的三臂 filename 分叉也在本点收口——壳层只传原文，
+/// 形态归一全责在此）。与 vitro_wasm 的 normalize_rel / lexer internal 的
+/// normalize_path 同语义复制件（cmd 层互不可 import 的既有架构；裸名
+/// 域规范化不变——demo 工作区 files 零影响）。
+fn posix_name(p : String) -> String {
+  let unified = if p.contains("\\") {
+    let mut u = p
+    while u.contains("\\") {
+      u = u.replace(old="\\", new="/")
+    }
+    u
+  } else {
+    p
+  }
+  // 绝对前缀保留（lexer normalize_path 同语义——resolver.mbt：p[0]=='/'
+  // → "/" 前缀还原；#373 根级主文件 "/main.c" 的 base_dir="/" 候选链依赖
+  // 此——首版丢根段致 include_wbtest root_level 双锚红，勘正 2026-11-12）
+  let abs = unified.length() > 0 && unified[0] == '/'
+  let parts : Array[String] = []
+  for seg in unified.split("/") {
+    let s : String = seg.to_owned()
+    if s == ".." {
+      if parts.length() > 0 {
+        ignore(parts.pop())
+      }
+    } else if s != "." && s != "" {
+      parts.push(s)
+    }
+  }
+  let b = StringBuilder()
+  if abs {
+    b.write_char('/')
+  }
+  for i, seg in parts {
+    if i > 0 {
+      b.write_char('/')
+    }
+    b.write_string(seg)
+  }
+  b.to_string()
+}
+
+///|
 /// quote-include 词法入口（宿主形态经注册状态分叉——见 include_reader）。
 fn lex_full_source(
   full_source : String,

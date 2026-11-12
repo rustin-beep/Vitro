@@ -26,6 +26,8 @@
 /// 用法错（缺参/参数过多/输出目录与语料目录相同）= 原因行 + rc=4
 ///（#230 治理，2026-10-27——旧走未捕获 Failure 的 PanicError 栈 +
 /// rc=127）。
+/// 输入不可读（不存在/无权限）= 原因行 + rc=4（#445 C1，2026-11-12——
+/// #230 治理在 dump 族读文件面的收尾，详见 dump_ast 头注）。
 extern "C" fn c_exit(code : Int32) -> Unit = "exit"
 
 ///|
@@ -91,11 +93,18 @@ fn main raise {
     files.push(target)
   }
   for path in files {
-    // #445 C1（SWEEP1 批，2026-11-05）：输入不可读 fail loud——一行原因 +
-    // rc=4（与用法错同档；#230 治理收尾：旧走未捕获 raise 的 PanicError 栈
-    // + rc=127，对脚本与 IDE 都是噪声）。目录模式此面不可达（文件名来自
-    // read_dir 快照、collect_files 侧已 catch），单文件模式 typo 路径直达
-    let src = read_source_or_exit(path)
+    // 不可读输入 = 原因行 + rc=4（#445 C1，2026-11-12：#230 治理在 dump 族
+    // 读文件面的收尾——用法错门禁（下方）是本包 2026-09-21 起既有形态，
+    // 但主循环裸调 read_file_to_string 同样走未捕获 IOError 的 PanicError
+    // 栈 + rc=127，本批补齐对齐）
+    let src = match read_input_or_reason(path) {
+      Ok(s) => s
+      Err(reason) => {
+        println(reason)
+        c_exit(4)
+        abort("unreachable：c_exit 已退出")
+      }
+    }
     let stem = basename_keep_ext(path)
     // BUG-C 修复（2026-10-05，S9 修复批批一后继）：目录模式补 base_dir——
     // VFS 键带目录前缀而解析走裸名，quote-include 恒 miss → include 族
@@ -346,4 +355,16 @@ fn sort_files_lex(files : Array[String]) -> Unit {
     files[j + 1] = k
     i += 1
   }
+}
+
+///|
+/// 输入读取单点出口（#445 C1，2026-11-12）：不可读输入（不存在/无权限/
+/// 目录形态）→ Err(原因行文案)，main 侧 println + c_exit(4)——与用法错
+/// 门禁同构（#230 治理面）。四 dump 壳同义复制件——修改须与其余三家同步。
+fn read_input_or_reason(path : String) -> Result[String, String] {
+  Ok(
+    @fs.read_file_to_string(path) catch {
+      IOError(msg) => return Err("输入不可读：\{path}（\{msg}）")
+    },
+  )
 }

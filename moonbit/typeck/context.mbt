@@ -214,10 +214,13 @@ pub fn TypeChecker::declare_var(
         })
         return
       }
-      // O3 登记债照搬：重复声明诊断位置写死零
+      // O3 登记债清偿（M09-C2，#433 批 B9 三批 2026-11-12）：重复声明
+      // 诊断位置旧照搬 Rust 写死 0:0——`void f(int x){ int x=200; }` 的
+      // E3001 报 0:0（clang 给精确位置）；改用 declare_var 的 loc~
+      //（调用方已全量透传：参数 p.loc / VarDecl loc）
       self.report_error(
         "变量 '\{name}' 已在此作用域中声明",
-        @source.SourceLoc::new(0, 0),
+        loc,
         E3001_VarRedeclared,
       )
     }

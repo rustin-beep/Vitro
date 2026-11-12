@@ -613,11 +613,20 @@ fn TypeChecker::validate_nested_init_list(
           // \xff 计 1，W3008 判定与实际装载需求一致
           let str_len = value.length()
           if str_len + 1 > dims[0] {
-            self.report_warning(
-              "字符串字面量长度超过数组大小",
-              loc,
-              W3008_StringTooLong,
-            )
+            // M09-C6：恰满/真超长两态文案（与一维主轨同源）
+            if str_len == dims[0] {
+              self.report_warning(
+                "字符串字面量恰好填满数组（\{str_len} 字节 = char[\{dims[0]}]），末尾 '\\0' 将被截断——字符串没有终止符",
+                loc,
+                W3008_StringTooLong,
+              )
+            } else {
+              self.report_warning(
+                "字符串字面量长度超过数组大小",
+                loc,
+                W3008_StringTooLong,
+              )
+            }
           }
           (true, init)
         } else {
@@ -786,6 +795,34 @@ pub fn TypeChecker::check_array_initializer(
                   loc,
                   E3039_ArrayIndexType,
                 )
+              } else if !is_int_constant_expr(idx_expr) {
+                // M09-A8（#433 批 B9 三批，2026-11-12）：常量性补查——
+                // C11 §6.7.9 designator 索引须为整型常量表达式（clang
+                // "expression is not an integer constant expression"）；
+                // 修前 typeck 零诊断漏到 codegen 兜底归类「内部错误」
+                // 无教学 fix。判据复用 case 标签的 is_int_constant_expr
+                //（字面量/一元/常量二元；#define 宏预处理已展开）。
+                self.report_error(
+                  "数组 designator 索引必须是编译期常量表达式，不能使用变量 '\{expr_name_of(idx_expr)}'",
+                  loc,
+                  E3096_DesignatorIndexNotConstant,
+                )
+              } else {
+                // M09-A8：值域补查（clang "array designator index exceeds
+                // array bounds"）——常量索引 ≥ 数组尺寸即越界
+                match self.const_eval(idx_expr) {
+                  Some(CI(v, _)) => {
+                    let size = arr_type.array_size()
+                    if size > 0 && v >= size.to_int64() {
+                      self.report_error(
+                        "数组 designator 索引 \{v} 超出数组边界（大小 \{size}）",
+                        loc,
+                        E3095_DesignatorIndexOutOfBounds,
+                      )
+                    }
+                  }
+                  _ => ()
+                }
               }
               let (e_type, new_value) = self.resolve_expr_type(elem.value)
               // W0-4：同普通列表路径的 char 窄化豁免
@@ -902,11 +939,25 @@ pub fn TypeChecker::check_array_initializer(
           _ => (arr_type, init)
         }
       } else if str_len + 1 > arr_type.array_size() {
-        self.report_warning(
-          "字符串字面量长度超过数组大小",
-          loc,
-          W3008_StringTooLong,
-        )
+        // M09-C6（#433 批 B9 三批，2026-11-12）：恰满（str_len == size）
+        // 与真超长（str_len > size）文案两态——恰满不是「超长」，是末尾
+        // '\0' 没地方放（gcc15/clang21+ 新警告族
+        // -Wunterminated-string-initialization 的判据形态；本机 clang 22
+        // 默认档恰满零警、vitro 教学口径保留 W 级提示）
+        let size = arr_type.array_size()
+        if str_len == size {
+          self.report_warning(
+            "字符串字面量恰好填满数组（\{str_len} 字节 = char[\{size}]），末尾 '\\0' 将被截断——字符串没有终止符",
+            loc,
+            W3008_StringTooLong,
+          )
+        } else {
+          self.report_warning(
+            "字符串字面量长度超过数组大小",
+            loc,
+            W3008_StringTooLong,
+          )
+        }
         (arr_type, init)
       } else {
         (arr_type, init)

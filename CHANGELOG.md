@@ -62,6 +62,40 @@
 - 零行为自证：wasmenc 仍为纯增量叶包（零现役消费方），digest/golden 零
   触碰；全仓 moon test 1401/1401 裸口径全绿；ci_checklist/surface/
   pkg_deps/mbti_sync/source_hygiene 全绿。
+### feat(corpus): #437 修复后入库批——审阅红锚随 B 轮翻面解冻 10 份 + chibicc 修复解锁回收 3 份 + 方言面 2 份入 gap（2026-11-12）
+
+- **review_after_fix 27 份暂存锚三方预检定态**（Win clang 22.1.4 × vitro js+native 双臂）：
+  20 GREEN + 7 仍红。查重甄别后 8 份有增量形态入 `corpus/baseline/`（其余 12 份与 B 轮
+  各修复批随批入库语料形态重复——B1×2/Z16-Z18、B2×3/Z19-Z21/Z1-Z4、B4×2/P5-P8、B5×2/
+  S1·S5、B6×1/E1-E3·E8、#471 cast、#427 vprintf 各自已被 `char_global_*`、
+  `compound_assign_fp_rhs`、`logic_judge_zero`、`p427_printf_missing_arms`、
+  `scanf_c_width`、`ungetc_eof_noop`、`string_escape_latin1_bytes`、
+  `ll_float_casts_domain` 覆盖，不重复入桶）；5 份仍红维持暂存（B10 EOF 族×4 +
+  Z22 Duff——对应修复未落地）。
+- **baseline +8**（翻面批号与速查表行入头注）：`logical_not_zero_domain`（Z5/Z6 Not
+  判零域，#425）、`static_fold_promo_sign`（Z12-Z14 Shl/BitNot/Neg 定型提升，#426）、
+  `static_fold_shortcircuit_saturate`（Z7 短路 + Z11 饱和，#426）、
+  `static_fold_unsigned_domain`（Z8-Z10 无符号域除法 + 静态=运行期对照，#426）、
+  `printf_g17_normalize`（G1-G4 规格化，G2/G4 增量格，#427）、`printf_g17_subnormal`
+  （G5-G7 次正规，G6 增量格，#427）、`printf_nan_case_family`（G8-G10 NaN 族——
+  m21_printf_inf_nan 头注预告的修复后入库面，#427）、`string_escape_exact_fit`
+  （E5-E7 局部/二维恰满计长，#429）。
+- **gap +2 + known_direct 登记**：`printf_hexfloat_a_dialect`（P3/P4——%a/%A 十六进制
+  小数位数实现定义域：UCRT 13 位全印 vs glibc 最短真值间自分歧，Vitro 择 glibc，
+  digest 470eb6b4）、`printf_n_writeback_ucrt`（P1——Win UCRT 出厂禁 %n 整程 fail-fast
+  崩 rc=0xC0000409，真值采 WSL gcc，digest 40b2dac5）。
+- **chibicc_port +3**（B 轮修复解锁的行级剔除面回收，探针 T1-T11 三方对拍定档）：
+  `float_not_judge`（float.c:83-86 ! 浮点判零，#425）、`cast_ll_float_roundtrip`
+  （cast.c:54-55 LL→F→LL 往返，#471）、`literal_shift_i64`（literal.c:39-47 64 位移位
+  族 LLP64 口径改写 ULL 形态）；仍红 8 主题（char 返回窄化/_Bool 参数归一/_Bool 转换
+  归一/_Alignof 无符号/'\x80' 符号性/标量复合字面量/union 写广播/先定义后暂定）登
+  CHIBICC_ASSESSMENT 台账候批。
+- **连坐**：C 真值速查表 B4 面 21 行连坐标 ✐（G1-G10/P1-P8/S7——as_of 刷 2026-11-12）；
+  perf_budget 分解式 823→868 亲跑校数；五家 digest 重冻 + fuzz 判定域增量 + facts
+  `--run --strict`；known_direct 16→18 条。
+- **s7_vprintf_stack_underflow 翻面实证**（速查表 S7 行连坐）：vprintf %s len≥4 栈
+  下溢已随 #427 codegen CallVar word 计数修复消失（三方一致），形态由
+  p427_printf_missing_arms.c t1 段锁定。
 
 ### fix(engine): #446/#447/#448/#471/#465 收口扫除批二——引擎散件五单（2026-11-05）
 

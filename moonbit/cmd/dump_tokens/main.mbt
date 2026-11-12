@@ -10,14 +10,13 @@
 /// 产物名 `<name>.l1.tsv` / `<name>.l2.tsv`（stem **去扩展名**——两段式
 /// basename_no_ext，裸名与带目录同果；与 ast/typeck/compile 三家「stem 含
 /// .c」的 F11 口径不同，系本工具既定契约，B3 批 basename 正名面不含此处）。
-///
-/// **api 面单源验证缺口（#445 C5，SWEEP1 批 2026-11-05 登记，裁定不做
-/// gateway 方法）**：`api dump-tokens` / `tokens.dump` / `lex.dump` 均未知
-/// 方法——L1/L2 TSV 仓内无第二通道可对拍（单源验证只剩 @lexer 包内测试）。
-/// 裁定不补 gateway 方法（「四 dump 都有 api 对拍面」不对齐）：tokens TSV
-/// 是差分驱动内部格式（Go 消费、列序随驱动契约走），非下游面——进 gateway
-/// 方法表反而把内部格式升格成协议承诺面（api_help 再生 + 方法数五处连坐
-/// 的维护成本无收益背书）。
+/// 输入不可读（不存在/无权限）= 原因行 + rc=4（#445 C1，2026-11-12——
+/// #230 治理在 dump 族读文件面的收尾，详见 dump_ast 头注）。
+/// **api 对拍面缺口声明（#445 C5，2026-11-12）**：dump 族中本工具无 gateway
+/// api 对拍方法（api help 的 dump 族 = ast/codegen/memory/symbols/typeck
+/// 五个，无 tokens.dump）——L1/L2 TSV 是差分驱动内部格式而非下游面，单源
+/// 验证只剩 @lexer 包内测试（dump_raw_tsv/dump_lex_tsv 锚），**有意不补**
+/// api 方法（补齐须协议面 +1 + api_help 再生 + 方法数连坐五处）。
 extern "C" fn c_exit(code : Int32) -> Unit = "exit"
 
 ///|
@@ -67,20 +66,26 @@ fn main raise {
         files.push("\{target}/\{name}")
       }
     }
-    // 字典序排序（#445 B2，SWEEP1 批 2026-11-05：R1b W1-3 行为债清偿——
-    // 三家连坐迁 dump_compile 的 sort_files_lex 口径；内置 String sort 是
-    // 长度优先序〔陷阱 #29，ASCII 域亦分叉——探针 corpus 1176 文件名逐位
-    // 全异〕，旧注释「与 Rust 侧 sort 对齐」失实已删）
+    // 码元字典序（#445 B2，2026-11-12：自内置 files.sort() 迁入——内置序是
+    // 长度优先 + 等长码元序（util 探针实测 cmp("e2_x.c","e10_y.c")=-1 而字典
+    // 序应 +1）；旧注「行为债登记 R1b W1-3 待修」就此销案——四壳处理序
+    // 同形（与 compile 壳 sort_files_lex 统一））
     sort_files_lex(files)
   } else {
     files.push(target)
   }
   for path in files {
-    // #445 C1（SWEEP1 批，2026-11-05）：输入不可读 fail loud——一行原因 +
-    // rc=4（与用法错同档；#230 治理收尾：旧走未捕获 raise 的 PanicError 栈
-    // + rc=127，对脚本与 IDE 都是噪声）。目录模式此面不可达（文件名来自
-    // read_dir 快照、collect_files 侧已 catch），单文件模式 typo 路径直达
-    let src = read_source_or_exit(path)
+    // 不可读输入 = 原因行 + rc=4（#445 C1，2026-11-12：#230 治理收口——旧
+    // 裸调 read_file_to_string，不存在路径走未捕获 IOError 的 PanicError 栈
+    // + rc=127，差分驱动传错路径时拿栈噪声而非一行原因）
+    let src = match read_input_or_reason(path) {
+      Ok(s) => s
+      Err(reason) => {
+        println(reason)
+        c_exit(4)
+        abort("unreachable：c_exit 已退出")
+      }
+    }
     let stem = basename_no_ext(path)
     if want_raw {
       let r = @lexer.tokenize_raw(src)
@@ -282,5 +287,34 @@ fn vfs_join(dir : String, name : String) -> String {
     "/" + name
   } else {
     "\{dir}/\{name}"
+  }
+}
+
+///|
+/// 输入读取单点出口（#445 C1，2026-11-12）：不可读输入（不存在/无权限/
+/// 目录形态）→ Err(原因行文案)，main 侧 println + c_exit(4)——与用法错
+/// 门禁同构（#230 治理面）。四 dump 壳同义复制件——修改须与其余三家同步。
+fn read_input_or_reason(path : String) -> Result[String, String] {
+  Ok(
+    @fs.read_file_to_string(path) catch {
+      IOError(msg) => return Err("输入不可读：\{path}（\{msg}）")
+    },
+  )
+}
+
+///|
+/// 码元字典序排序（陷阱 #29：内置 String 比较是长度优先序，禁用于排序）。
+/// 四 dump 壳同义复制件——修改须与其余三家同步。
+fn sort_files_lex(files : Array[String]) -> Unit {
+  let mut i = 1
+  while i < files.length() {
+    let k = files[i]
+    let mut j = i - 1
+    while j >= 0 && @util.str_cmp(files[j], k) > 0 {
+      files[j + 1] = files[j]
+      j -= 1
+    }
+    files[j + 1] = k
+    i += 1
   }
 }

@@ -226,3 +226,116 @@ test "parity_div_ull_emits_udivq" {
     msg="不应发射 DivQ（符号语义 2^63 域错值——病 34 形态回潮即红）",
   )
 }
+
+///|
+/// PR #487 审阅 P3-5：m08_consistency 双上下文锚手写指令序列所涉 opcode
+/// 的发射面补齐——`-1LL < 1ULL` → **ULtQ**（64 位无符号比较域；g4 变体
+/// 锚 `m08c_g4_ull_cmp_domain` 的发射面）。若 codegen 域判定漂移改发
+/// 有符号 LtQ，本锚红（vm 侧手写序列不会红——vm_diff golden 兜底前的
+/// 第一道）。
+test "parity_cmp_ll_ull_emits_ultq" {
+  let ll = @ast.Type::long_long()
+  let ull = @ast.Type::LongLong(true, false)
+  let prog = minimal_program_with_return(
+    @ast.Expr::Binary(
+      @ast.BinaryOp::Lt,
+      @ast.Expr::LongLiteral(-1L, loc(3), ll),
+      @ast.Expr::LongLiteral(1L, loc(3), ull),
+      loc(3),
+      ll,
+    ),
+  )
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(prog)
+  assert_eq(errors.length(), 0)
+  let ops = main_body_ops(output.unwrap())
+  assert_true(
+    ops.exists(op => op is @opcode.OpCode::ULtQ),
+    msg="-1LL<1ULL 期望 ULtQ（ULL 参与升 64 位无符号比较域）",
+  )
+  assert_false(
+    ops.exists(op => op is @opcode.OpCode::LtQ),
+    msg="不应发射有符号 LtQ（2^63 域错判形态回潮即红）",
+  )
+}
+
+///|
+/// P3-5：`1LL << 2u` → **ShlQ**（Q 族左移——移位边界锚
+/// `m08c_shl_boundary_62_and_64` 的发射面；Shr 已有 parity 锚，Shl 补位）。
+test "parity_shl_ll_emits_shlq" {
+  let ll = @ast.Type::long_long()
+  let prog = minimal_program_with_return(
+    @ast.Expr::Binary(
+      @ast.BinaryOp::Shl,
+      @ast.Expr::LongLiteral(1L, loc(3), ll),
+      @ast.Expr::Literal(2, loc(3), @ast.Type::unsigned_int()),
+      loc(3),
+      ll,
+    ),
+  )
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(prog)
+  assert_eq(errors.length(), 0)
+  let ops = main_body_ops(output.unwrap())
+  assert_true(
+    ops.exists(op => op is @opcode.OpCode::ShlQ),
+    msg="1LL<<2u 期望 ShlQ（64 位左移）",
+  )
+  assert_false(
+    ops.exists(op => op is @opcode.OpCode::Shl),
+    msg="不应发射 32 位 Shl（LL 域不降级）",
+  )
+}
+
+///|
+/// P3-5：`LLONG_MAX + 1LL` → **AddQ**（I64 回绕格锚
+/// `m08c_llong_max_plus1_wrap` 的发射面；i32 Add 的 trap 面已有既有锚，
+/// Q 族回绕加的发射在此锁）。
+test "parity_add_ll_emits_addq" {
+  let ll = @ast.Type::long_long()
+  let prog = minimal_program_with_return(
+    @ast.Expr::Binary(
+      @ast.BinaryOp::Add,
+      @ast.Expr::LongLiteral(9223372036854775807L, loc(3), ll),
+      @ast.Expr::LongLiteral(1L, loc(3), ll),
+      loc(3),
+      ll,
+    ),
+  )
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(prog)
+  assert_eq(errors.length(), 0)
+  let ops = main_body_ops(output.unwrap())
+  assert_true(
+    ops.exists(op => op is @opcode.OpCode::AddQ),
+    msg="LLONG_MAX+1LL 期望 AddQ（Q 族回绕，与 i32 trap 分口径）",
+  )
+  assert_false(
+    ops.exists(op => op is @opcode.OpCode::Add),
+    msg="不应发射 32 位 Add（LL 域不降级为 i32 trap 口径）",
+  )
+}
+
+///|
+/// P3-5：`(int)<double 常量>` → **CastD2I**（f2i 饱和锚
+/// `m08c_f2i_saturate_1e300` 的发射面——1e10 与 1e300 同饱和格，锚定
+/// opcode 族非具体值；本构造绕过 typeck 折叠直喂 codegen，Cast 臂真实发射）。
+test "parity_cast_double_int_emits_castd2i" {
+  let d = @ast.Type::double()
+  let prog = minimal_program_with_return(
+    @ast.Expr::Cast(
+      @ast.Expr::FloatLiteral(10000000000.0, loc(3), d),
+      @ast.Type::int(),
+      loc(3),
+      @ast.Type::int(),
+    ),
+  )
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(prog)
+  assert_eq(errors.length(), 0)
+  let ops = main_body_ops(output.unwrap())
+  assert_true(
+    ops.exists(op => op is @opcode.OpCode::CastD2I),
+    msg="(int)1e10 期望 CastD2I（f64→i32 饱和转换）",
+  )
+}

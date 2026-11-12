@@ -16,8 +16,9 @@ import { loadSuspectExemptions } from "./audit.mts";
 import type { Fact, FactsDoc } from "./facts.mts";
 
 // suspectExemptFixture：在 TempDir 下同时铺 suspect_exemptions.json（可为
-// 空表）与夹具文档，跑 auditDocs 返回结果。
-function suspectExemptFixture(line: string, exempts: string): AuditResult {
+// 空表）与夹具文档，跑 auditDocs 返回结果。truth=null 表示零真值
+// （facts 空表）——模拟 docs-quick 薄通道 fresh 检出态（无 reports/facts.json）。
+function suspectExemptFixture(line: string, exempts: string, truth: number | null = 683, key = "shadow_c_cases"): AuditResult {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "facts-sx-"));
   const p = path.join(root, "docs", "current", "01-定位与路线", "夹具.md");
   fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -25,11 +26,12 @@ function suspectExemptFixture(line: string, exempts: string): AuditResult {
   fs.mkdirSync(path.join(root, "scripts", "facts"), { recursive: true });
   fs.writeFileSync(path.join(root, "scripts", "facts", "suspect_exemptions.json"), exempts);
   const fact: Fact = {
-    value: 683, unit: "", source: "", provenance: "", as_of: "", status: "ok", note: "", how_to_get: "",
+    value: 0, unit: "", source: "", provenance: "", as_of: "", status: "ok", note: "", how_to_get: "",
   };
+  if (truth !== null) fact.value = truth;
   const doc: FactsDoc = {
     schema: "vitro.facts.v1", generated_at: "", git: { rev: "", branch: "", dirty: false },
-    facts: { shadow_c_cases: fact },
+    facts: truth !== null ? { [key]: fact } : {},
   };
   return auditDocs(root, doc);
 }
@@ -106,4 +108,39 @@ test("suspect 豁免：不得弱化判定本身", () => {
   const res = suspectExemptFixture(SUSPECT_LINE, "[]\n");
   const a = findAudit(res, "shadow_c_cases")!;
   assert.equal(a.suspect.length, 1, "基准：该行必进 suspect（豁免机制不得改变判定本身）");
+});
+
+// 5：零真值环境（docs-quick 薄通道 fresh 检出态，无 reports/facts.json）——
+// suspect 判读结构性不发生（键无真值行进 pending），豁免条目不可能命中，
+// 零命中不得判僵尸（2026-11-12 run 140 实锤：#493 真值依赖型豁免条目
+// 〔replay_assertions〕在薄通道必误报红——PR 不触发 docs-quick，合入后
+// master push 首跑即红）。复刻 #493 真实形态：行内「回放」关键词 +
+// exec_step.mbt:95-100 源码行号被误抓进回放断言数值域（20-200）。
+const REPLAY_LINE = `**VisEvent 高频成本实测方案**（任务书点名）：基线**不进载体**（run 态零消费方已实证，\`exec_step.mbt:95-100\`）。若未来产品需要「快路径过程回放」（长跑算法动画加速），实测方案=**块粒度 vis 锚 import**（\`env.vitro_vis(line, extra0, extra1)\` 仅在含 vis 登记行的基块首插入；预期量级：vis 行密度典型 ≤1/10 块，跨界开销参照 W4 host-call 51ns/次——推断 <5% 长跑耗时）。启用条件与实测脚本列入 §6-6 期 3，**本设计批不实测**（纯设计纪律）。`;
+
+test("suspect 豁免：零真值环境零命中不判僵尸（薄通道让位）", () => {
+  const res = suspectExemptFixture(REPLAY_LINE, `[{
+		"path": "docs/current/01-定位与路线/夹具.md",
+		"contains": "exec_step.mbt:95-100",
+		"reason": "测试锚：零真值下不应判僵尸"
+	}]`, null, "replay_assertions");
+  const a = findAudit(res, "replay_assertions")!;
+  assert.ok(a.suspect.length === 0 && a.pending.length === 1,
+    `零真值下该行应进 pending 而非 suspect：suspect=${a.suspect.length} pending=${a.pending.length}`);
+  assert.equal(res.staleSuspectExempts.length, 0,
+    `零真值环境豁免零命中不得判僵尸（薄通道让位）：got ${res.staleSuspectExempts.length}`);
+});
+
+// 5b：对照锚——同一行有真值（61）时该行必进 suspect 且豁免命中（证明
+// 第 5 路的绿不是「行没被抓」的假绿——真值在场时判读与豁免照常工作）。
+test("suspect 豁免：真值在场时同款条目命中（对照锚）", () => {
+  const res = suspectExemptFixture(REPLAY_LINE, `[{
+		"path": "docs/current/01-定位与路线/夹具.md",
+		"contains": "exec_step.mbt:95-100",
+		"reason": "测试锚：有真值时命中"
+	}]`, 61, "replay_assertions");
+  const a = findAudit(res, "replay_assertions")!;
+  assert.ok(a.suspect.length === 0 && a.suspectExempted.length === 1 && a.pending.length === 0,
+    `有真值时该行应进 suspect 且被豁免命中：suspect=${a.suspect.length} exempted=${a.suspectExempted.length} pending=${a.pending.length}`);
+  assert.equal(res.staleSuspectExempts.length, 0);
 });

@@ -131,7 +131,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/run && cd .
 node scripts/clang_direct/main.mts
 ```
 
-> **Windows 提示**：`moon build --target native` 默认走 MSVC `cl` 链接后端，本仓实测病态慢（首跑 ~223s / 热态稳定 87–97s / 持续负载可漂至 180s 级——moon#2254 自述口径）；设 `MOON_CC=clang` 后全量约 17s（[moonbitlang/moon#2254](https://github.com/moonbitlang/moon/issues/2254)）。该配方是**本仓 workspace 语境**——下游独立项目的 MSVC 直连目标会忽略 `clang` 并回落 MSVC 探测，须设 `MOON_CC=clang-cl` 才生效（#117）。
+> **Windows 提示**：`moon build --target native` 默认走 MSVC `cl` 链接后端，本仓实测病态慢（首跑 ~223s / 热态稳定 87–97s / 持续负载可漂至 180s 级——moon#2254 自述口径）；**release 构建一律设 `MOON_CC=clang`**，全量约 17s（[moonbitlang/moon#2254](https://github.com/moonbitlang/moon/issues/2254)；下游独立项目实测同生效，stub.obj 指纹实锤）。**档位边界（2026-11-09 勘正，#117 原口径失真；[moon#2480](https://github.com/moonbitlang/moon/issues/2480)）**：分界按优化档非 workspace/下游——**debug 档（`moon run/test --target native` 默认档）忽略裸名 clang**（警告回落 MSVC），要 clang 须 `MOONBIT_NEW_NATIVE=0 MOON_CC=clang` 或**完整路径** clang-cl；**裸名 `clang-cl`/`clang-cl.exe` 被静默解析成发现的 cl.exe**（0 警告假绿），勿用。详见[《快速入门》Windows 提示](docs/current/02-构建与上手/快速入门.md)。
 
 完整上手流程见 [`docs/current/02-构建与上手/快速入门.md`](docs/current/02-构建与上手/快速入门.md)，构建细节见 [`docs/current/02-构建与上手/构建指南.md`](docs/current/02-构建与上手/构建指南.md)，CLI 命令手册见 [`docs/current/02-构建与上手/CLI使用手册.md`](docs/current/02-构建与上手/CLI使用手册.md)。
 

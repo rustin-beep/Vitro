@@ -75,7 +75,7 @@
 | 3 | 步数超限（trap 形态按步数事实判——`vm.step_count >= vm.max_steps`） |
 | 4 | 用法/IO 错（文件不存在、参数不合法、未知子命令；**未收拢命令**（`dump-*`/`serve`）的分派提示也归此类——命令名合法但本入口不承载，属用法指导非执行错误。**IO 码位细分登记（DX P4，2026-10-11）**：`run -i` 输入文件不可读、`--dump-memory` 写盘失败、api 未知方法名预检均落此码——fail loud 文案 + rc=4，不再静默吞/误归协议内失败） |
 
-历史注：Rust oracle CLI 的 trap 退出码 = 1（与编译错混淆）——本表为 mb 侧有意规范化（#37 超越项）。**步数超限判定口径（2026-10-04 审阅 P3 统一）**：`run` 文本 = 引擎事实（`vm.step_count >= vm.max_steps`）；`run --json` = 帧结构位（`steps_executed` 恰等 max_steps——实测超限到达即停）；`step` = trap_message 的引擎固定文案前缀「程序执行步数超过限制」（帧无结构化步数位——该文案是引擎格式字符串，变更连坐 cli_step 判定）。
+历史注：Rust oracle CLI 的 trap 退出码 = 1（与编译错混淆）——本表为 mb 侧有意规范化（#37 超越项）。**步数超限判定口径（SWEEP1 #443 C4 起统一为 trap_code 码位 E3091——vm 超限 trap 立码进 diag 码表 E3091_StepLimit；`run` 文本/json 两模式 = run 帧 `trap_code=="E3091"` 一处字段比对，替旧「`steps_executed` 恰等 max_steps」数值巧合判定〔cap 达成即 step-limit 的引擎预算语义遮蔽——divide-zero 恰在 cap 步发生即误报，锚 sweep1_443_c4 两模式〕）；`step` = trap_message 的引擎固定文案前缀「程序执行步数达到预算上限」（step.next 帧八字段冻结面无 trap_code——文案是引擎模板字符串〔teaching/assets/trap_messages_gen.mbt 的 step-limit 模板〕，变更连坐 cli_step 判定与 cli_wbtest m35_a2 锚）。**
 
 ## 3. `run` 命令
 
@@ -131,8 +131,8 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 | 命令 | 事件 |
 |---|---|
 | `run --json` | `{"type":"diag",...}` → `{"type":"run",...}` → `{"type":"stdout",...}` → `{"type":"stderr",...}` → `{"type":"note",...}`（stderr 帧：stderr 通道 delta——病 15 批 C 补 2026-10-10，此前整段丢失；note 通道：完成附注+泄漏报告——二轮审 P2 补） |
-| `compile --json` | `<compile 帧>` 单行直透（含 `fix_suggestion` 七元组 + `algorithm_matches`〔teaching detect wire 出口——2026-10-04 补，#36 最小路径〕——比文本形态富。识别判据 = 函数名关键词或典型结构特征二选一〔#104 登记〕：非典型命名且结构特征不足时为空数组，非缺陷） |
-| `step --json` | `<step.next 完整响应帧 {id,ok,result}>` × N + `{"type":"summary",…}` |
+| `compile --json` | `{"type":"diag","frame":<compile 帧>}` 单帧（B3 批 a4e91c29 起包装——本表旧「`<compile 帧>` 单行直透」表述未连坐，SWEEP1 #444 批勘正；帧含 `fix_suggestion` 七元组 + `algorithm_matches`〔teaching detect wire 出口——2026-10-04 补，#36 最小路径〕——比文本形态富。识别判据 = 函数名关键词或典型结构特征二选一〔#104 登记〕：非典型命名且结构特征不足时为空数组，非缺陷） |
+| `step --json` | compile 失败：`{"type":"diag","frame":<compile 帧>}` 单帧收口 rc=1（SWEEP1 #444：修前三子命令中 step 唯一裸帧直出无 type——事件流其余行均有 type，消费面按 type 分派易漏；run 帧协议错〔外层 ok:false〕同形态收口 rc=1——#443 D2）；正常流：`<step.next 完整响应帧 {id,ok,result}>` × N + `{"type":"stdout","frame":…}` + `{"type":"summary",…}` |
 
 `<帧>` = gateway 协议响应（`{id, ok, result…}`）**单源引用**——帧内字段语义一律见 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md) 与 gateway 协议文档，本规格不重复定义。
 
@@ -146,7 +146,7 @@ Rust oracle 为 flag 形态（`-o`/`--raw`）；mb 为位置参数（`dump_token
 
 ## 8. 版本与演进
 
-- v1 冻结面：标记行前缀**十种**（§1 白名单表**单源**——本计数为两表行数之和〔九种引擎标记行 + 一种壳层标注行，#322 补登 2026-10-28〕，加前缀须两处连坐；历史四次「补登不跟账」：NOTE〔10-04〕/STDERR〔10-10〕/FIX〔10-11，第三次同形且漏进 §1 表致下游剥离器漏剥实锤，#114 补录〕/`[vitro] backend=`〔10-28，#322——长期在产未入表第四次同形〕）/ 退出码五值 / `--json` 事件 type 三种 + summary；
+- v1 冻结面：标记行前缀**十种**（§1 白名单表**单源**——本计数为两表行数之和〔九种引擎标记行 + 一种壳层标注行，#322 补登 2026-10-28〕，加前缀须两处连坐；历史四次「补登不跟账」：NOTE〔10-04〕/STDERR〔10-10〕/FIX〔10-11，第三次同形且漏进 §1 表致下游剥离器漏剥实锤，#114 补录〕/`[vitro] backend=`〔10-28，#322——长期在产未入表第四次同形〕）/ 退出码五值 / `--json` 事件 type 五种（diag/run/stdout/stderr/note——§6 表**单源**；历史计数句「三种」为 stderr/note 追加前的旧值未跟账，SWEEP1 #444 批勘正；step 的 diag 可达形态同批补全）+ summary；
 - **output.delta 帧字段追加（DX ③，2026-10-11）**：`truncated_bytes`（int，环形丢弃累计——16MB/8MB 预算触顶丢最旧的显式位，0=完整；按 stream 通道分域，display=两通道之和）。消费方判「输出不完整」不再依赖可被再丢的截断注记。
 - 演进纪律：只增不改（新前缀、新事件 type、新子命令走追加；语义变更需版本化）；
 - 历史分叉登记：Rust oracle CLI 与本协议的差异（trap 退出码 / dump 语法 / step 形态）随 Rust 退役自然消失。

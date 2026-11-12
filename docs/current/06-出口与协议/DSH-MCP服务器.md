@@ -42,7 +42,7 @@ DeepSeek Harness（DSH）插件的 **MCP server 核心**——stdio JSON-RPC 2.0
 
 ## 验收与登记
 
-- 白盒：`mcp/mcp_wbtest.mbt` 22 条（js/wasm-gc/native 三 target 全绿——**裸 moon test 含 mcp**，现值裸 1376；注入必红断言实验〔时点基线 1239〕变 1238/1 failed；mcp 挂 +wasm 随 gateway B3 口径入裸计数；含 PR #457 审阅 v2 批 P2×4 + P3-② 锚）。- 黑盒：`scripts/moonbit/mcp_smoke/accept.mts`（2026-11-04 收编入仓并挂 CI——原 D:/tmp 仓外件销案；27 断言 CI + PNG 预览断言仅本地）；CI 产物闸 = `scripts/moonbit/mcp_smoke`（18 断言，含 #468/#469 语法门与驱动对拍）。- 登记：pkg_deps L9 / surface 边表 10 条 / mbti_sync 豁免（同 gateway 病：canonical backend=wasm 而包不含 wasm）/ testcount 双 README（裸 1222→1275 / native 1271→1324，mcp 22 条 js/native 双域——as_of 2026-11-04 本地全量实测）。
+- 白盒：`mcp/mcp_wbtest.mbt` 22 条（js/wasm-gc/native 三 target 全绿——**裸 moon test 含 mcp**，现值裸 1379；注入必红断言实验〔时点基线 1239〕变 1238/1 failed；mcp 挂 +wasm 随 gateway B3 口径入裸计数；含 PR #457 审阅 v2 批 P2×4 + P3-② 锚）。- 黑盒：`scripts/moonbit/mcp_smoke/accept.mts`（2026-11-04 收编入仓并挂 CI——原 D:/tmp 仓外件销案；27 断言 CI + PNG 预览断言仅本地）；CI 产物闸 = `scripts/moonbit/mcp_smoke`（18 断言，含 #468/#469 语法门与驱动对拍）。- 登记：pkg_deps L9 / surface 边表 10 条 / mbti_sync 豁免（同 gateway 病：canonical backend=wasm 而包不含 wasm）/ testcount 双 README（裸 1222→1275 / native 1271→1324，mcp 22 条 js/native 双域——as_of 2026-11-04 本地全量实测）。
 
 ## 待拍板
 

@@ -2,6 +2,8 @@
 
 Vitro **StepPayload 协议**（schema v0.1，冻结锚 `10591ad`）的 TypeScript 类型定义。
 
+**冻结面范围（#449 ③，2026-11-05）：StepPayload 族 only**——serve 信封（`step.next` 响应外层的 AutoStepResult 族 8 类型）不在 TS 面，消费方信封字段只能 `any` 自管；（`package.json` 的 `_generated` 注记仅为生成物标记，不含信封范围语义——PR #488 审阅 P3-3 勘正。）
+
 **本包的类型不是手写的**——由 `scripts/gen_protocol_ts` 从权威 MoonBit 源（`moonbit/protocol/types.mbt`）生成，
 并与 `moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` **双向对账**。手抄就是又一处分叉温床。
 

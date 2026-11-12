@@ -335,6 +335,11 @@ test "exec_max_steps_fuse" {
   assert_true(
     vm.error.contains("[step-limit] 程序执行步数达到预算上限"),
   )
+  // SWEEP1 #443 C4（PR #488 审阅 P3-2）：E3091 发射端锚——码位单源在此，
+  // cli 侧 rc=3 判定（STEP_LIMIT_TRAP_CODE）与 error_catalog 卡片全靠它。
+  // 摘掉 exec_step 超限臂的 code="E3091" 修前全绿（vm 108 / cli 29），
+  // 唯一拦截面是 vitro_cli_smoke A 组三臂——发射端零单元锚
+  assert_eq(vm.trap_code, "E3091")
 }
 
 ///|

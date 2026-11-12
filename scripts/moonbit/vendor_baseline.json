@@ -1,10 +1,10 @@
 {
-  "_generated_by": "node scripts/moonbit/vendor_drift/main.mts --update-baseline",
+  "_generated_by": "手工基线刷新 2026-11-12（raw 域名 node fetch 不可达、curl 可达，逐字节直拉；吸收上游 7792f4eb 2026-11-11「feat(fs): add synchronous file APIs for Native and Wasm (#360)」——fs_native.mbt / file_native.c 两文件哈希更新，version 仍 0.5.7 未 bump 再证内容哈希主口径；同款产物=--update-baseline）",
   "as_of": "2026-11-12",
   "repo": "moonbitlang/x",
   "ref": "main",
   "upstream_version": "0.5.7",
-  "version_note": "辅助口径仅报告不判红：2026-09-27 实证上游内容漂移而 version 未 bump（fs_native.mbt 的 unicode→core/utf8 迁移）——内容哈希是唯一主口径",
+  "version_note": "辅助口径仅报告不判红：2026-09-27 实证上游内容漂移而 version 未 bump（fs_native.mbt 的 unicode→core/utf8 迁移）；2026-11-11 #360 同款（同步文件 API 进 main，version 仍 0.5.7）——内容哈希是唯一主口径",
   "files": [
     {
       "path": "fs/fs.mbt",
@@ -14,7 +14,7 @@
     {
       "path": "fs/fs_native.mbt",
       "sha256": "4b04f96cdaa195472eb731e5783262fc1a7043b3eb0def4b97e76e5e3e824b8b",
-      "vendored": "moonbit/fs/fs_native.mbt（2026-11-11 上游 #360 改 FFI 签名：file_open_ffi +mode/create/append/permission/sync、read/write +position、file_length→legacy——vitro 0.5.5 形态 FFI 面自洽，不跟进）"
+      "vendored": "moonbit/fs/fs_native.mbt（上游 2026-11-11 #360 加同步文件 API 声明面——vendored 0.5.5 形态未含，跟进批待排）"
     },
     {
       "path": "fs/fs_native.c",
@@ -24,7 +24,7 @@
     {
       "path": "fs/file_native.c",
       "sha256": "5c99de5cb3eb25e2ae184494de5f9a53246e1e1f16ad831f0539a7441e7a186a",
-      "vendored": "（未同步——上游 0.5.7+ 新载体：native IO 实现自 fs_native.c 迁此；2026-11-11 #360 又改：positioned IO/mode/sync + file_length→file_size；vitro 暂留 0.5.5 形态，跟进批待排）"
+      "vendored": "（未同步——上游 0.5.7+ 新载体：native IO 实现自 fs_native.c 迁此，2026-11-11 #360 再加同步 API 实现体；vitRO 暂留 0.5.5 形态，跟进批待排）"
     },
     {
       "path": "fs/blackbox_test.mbt",

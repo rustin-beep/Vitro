@@ -14,23 +14,29 @@ fn noop_write(_b : Bytes) -> Unit {
 
 ///|
 fn fake_channel() -> EngineChannel {
+  // method-aware 最小桩：编译过 + run finished + step.next finished。
+  // invoke 与 invoke_parsed 对同一方法回同一帧（SWEEP1 #443 B2：step 文本
+  // 模式 output.delta 消费改走 invoke_parsed——恒 None 桩会让结构化路径
+  // 恒落空臂；旧「桩必须带 delta 字段」注释随 decode_delta_stdout 删除
+  // 一并退役——缺字段现在是 0 字节收口而非负索引 panic）
+  let frame_of = fn(line : String) -> String {
+    if line.contains("\"method\":\"compile\"") {
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[]}}"
+    } else if line.contains("\"method\":\"run\"") {
+      "{\"id\":1,\"ok\":true,\"result\":{\"status\":\"finished\",\"return_value\":0}}"
+    } else if line.contains("\"method\":\"step.next\"") {
+      "{\"id\":1,\"ok\":true,\"result\":{\"finished\":true}}"
+    } else if line.contains("\"method\":\"output.delta\"") {
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\"}}"
+    } else {
+      "{\"id\":1,\"ok\":true,\"result\":{}}"
+    }
+  }
   {
-    invoke: fn(line : String) -> String {
-      // method-aware 最小桩：编译过 + run finished + step.next finished
-      if line.contains("\"method\":\"compile\"") {
-        "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[]}}"
-      } else if line.contains("\"method\":\"run\"") {
-        "{\"id\":1,\"ok\":true,\"result\":{\"status\":\"finished\",\"return_value\":0}}"
-      } else if line.contains("\"method\":\"step.next\"") {
-        "{\"id\":1,\"ok\":true,\"result\":{\"finished\":true}}"
-      } else if line.contains("\"method\":\"output.delta\"") {
-        // decode_delta_stdout 对缺失 delta 字段是负索引崩——桩必须带字段
-        "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\"}}"
-      } else {
-        "{\"id\":1,\"ok\":true,\"result\":{}}"
-      }
+    invoke: fn(line : String) -> String { frame_of(line) },
+    invoke_parsed: fn(line : String) -> Json? {
+      Some(@util.json_parse(frame_of(line)) catch { _ => Json::number(0) })
     },
-    invoke_parsed: fn(_line : String) -> Json? { None },
     reset: fn() { () },
     set_clock: fn(_c) { () },
     set_include_reader: fn(_r) { () },
@@ -539,6 +545,315 @@ test "m35_a2_step_rc3_step_limit_文案匹配" {
 }
 
 ///|
+/// SWEEP1 批（#443/#444，2026-11-05）：step/frame 路径可定制桩——invoke
+/// 与 invoke_parsed 对同一方法回同一帧（raw 直出与结构化消费两条路同源，
+/// 区别于旧 fake_channel 的 invoke_parsed 恒 None 形态）。
+fn sweep_step_channel(
+  compile_frame : String,
+  run_frame : String,
+  step_next_frame : String,
+  delta_frame : String,
+) -> EngineChannel {
+  let frame_of = fn(line : String) -> String {
+    if line.contains("\"method\":\"compile\"") {
+      compile_frame
+    } else if line.contains("\"method\":\"run\"") {
+      run_frame
+    } else if line.contains("\"method\":\"step.next\"") {
+      step_next_frame
+    } else if line.contains("\"method\":\"output.delta\"") {
+      delta_frame
+    } else {
+      "{\"id\":1,\"ok\":true,\"result\":{}}"
+    }
+  }
+  {
+    invoke: fn(line : String) -> String { frame_of(line) },
+    invoke_parsed: fn(line : String) -> Json? {
+      Some(@util.json_parse(frame_of(line)) catch { _ => Json::number(0) })
+    },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(file : String, src : String) -> String {
+      "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
+    },
+  }
+}
+
+///|
+/// SWEEP1 常用帧文本（sweep 锚共用）。
+fn sweep_ok_compile_frame() -> String {
+  "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[],\"preprocessor_trace\":[]}}"
+}
+
+///|
+fn sweep_finished_stepnext_frame() -> String {
+  "{\"id\":1,\"ok\":true,\"result\":{\"payloads\":[],\"finished\":true,\"trapped\":false,\"waiting_input\":false,\"paused\":false,\"current_line\":0,\"trap_message\":null,\"cache_start_step\":0}}"
+}
+
+///|
+/// #444 红→绿锚：step --json 的 compile 失败帧须 type:diag 包装——修前
+/// 裸帧直出（三子命令中 step 唯一不包装。注：step 正常流的 step.next 帧
+/// 本就无 type〔spec §6 既有契约〕，价值在失败帧可被 type 统一分派、不在
+/// 「全流统一 type」——PR #488 审阅 P3-3 勘正，勿再引用「其余行均有
+/// type」旧论据）。帧字节三臂对拍由 vitro_cli_smoke 承担。
+test "sweep1_444_step_json_compile_fail_diag_帧包装" {
+  let captured : Array[Bytes] = []
+  let rc = step(
+    ["-", "--json"],
+    () => b"int main() { syntax error",
+    fn(b : Bytes) { captured.push(b) },
+    channel=sweep_step_channel(
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":false,\"diagnostics\":[{\"code\":\"E3004\",\"severity\":\"error\",\"line\":1,\"column\":9,\"message\":\"x\"}]}}",
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"trap_code\":\"\",\"waiting_input\":false,\"steps_executed\":1,\"output_truncated\":false}}",
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
+    ),
+  )
+  assert_eq(rc, 1, msg="编译失败 rc=1")
+  assert_true(captured.length() >= 1, msg="diag 帧须落注入通道")
+  let text = @util.utf8_text_partial(captured[0])
+  assert_true(
+    text.contains("\"type\":\"diag\""),
+    msg="首帧 type:diag 包装（修前红：裸帧直出无 type 字段）",
+  )
+  assert_true(text.contains("E3004"), msg="诊断码随帧透出")
+}
+
+///|
+/// #443 D1 红→绿锚：output.delta 帧缺 delta 字段——修前 decode_delta_stdout
+/// 定位失败 start=-1 进 cs[-1] 负索引 panic（旧桩注释「桩必须带字段」自证）；
+/// 修后结构化路径 jfield 缺字段回空串 → 0 字节正常收口。协议面内不可达
+///（output.delta 恒带 delta），防御缺口随 B2 收口消灭。
+test "sweep1_443_d1_delta缺字段_文本模式不崩" {
+  let captured : Array[Bytes] = []
+  let rc = step(
+    ["-"],
+    () => b"int main(){return 0;}",
+    fn(b : Bytes) { captured.push(b) },
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"trap_code\":\"\",\"waiting_input\":false,\"steps_executed\":1,\"output_truncated\":false}}",
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"cursor\":0,\"total\":0}}",
+    ),
+  )
+  assert_eq(
+    rc,
+    0,
+    msg="缺 delta 字段属协议破损但非致命——0 字节收口 rc=0（修前 panic）",
+  )
+  assert_true(
+    captured.length() == 0,
+    msg="delta 缺字段 → stdout 零写出",
+  )
+}
+
+///|
+/// #443 B2 等价锚：step 文本模式 stdout 字节直写——结构化路径（json_parse
+/// 转义还原 + latin1_to_bytes 折回）与被删的 72 行手扫 decode_delta_stdout
+/// 逐字节等价（含 \n 转义还原与 Latin-1 高位字节 ≥0x80 形态）。修前后均
+/// 须绿（重构回归保护；红锚在 D1 锚）。
+test "sweep1_443_b2_step文本stdout字节直写" {
+  let captured : Array[Bytes] = []
+  let rc = step(
+    ["-"],
+    () => b"int main(){return 0;}",
+    fn(b : Bytes) { captured.push(b) },
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"trap_code\":\"\",\"waiting_input\":false,\"steps_executed\":1,\"output_truncated\":false}}",
+      sweep_finished_stepnext_frame(),
+      // delta 值 = "ab\ncé"（é=U+00E9，Latin-1 折回域）——JSON 文本形态
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"ab\\nc\u00e9\",\"cursor\":0,\"total\":5,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
+    ),
+  )
+  assert_eq(rc, 0, msg="正常结束 rc=0")
+  assert_true(captured.length() == 1, msg="stdout 恰一次写出")
+  // 期望字节：61 62 0A 63 E9（\n 转义还原 + 高位字节低 8 位折回）
+  let want : Array[Byte] = [
+    'a'.to_int().to_byte(),
+    'b'.to_int().to_byte(),
+    '\n'.to_int().to_byte(),
+    'c'.to_int().to_byte(),
+    '\u{00E9}'.to_int().to_byte(),
+  ]
+  let got = captured[0]
+  assert_true(
+    got.length() == want.length(),
+    msg="字节数 \{got.length()}==\{want.length()}",
+  )
+  let mut all_eq = true
+  for i, b in want {
+    if got[i] != b {
+      all_eq = false
+    }
+  }
+  assert_true(all_eq, msg="逐字节等价（含 \\n 还原与 0xE9 折回）")
+}
+
+///|
+/// #443 D2 红→绿锚①：run 帧外层 ok:false（协议错帧——{id,ok:false,error}
+/// 无 result）早退——修前 ignore(inv("run")) 吞帧照常推进（桩 finished →
+/// rc=0），错误静默。注意内层 result.ok:false（trap 帧合法中间态）不得
+/// 误判——判定走结构化 jfield 外层位。
+test "sweep1_443_d2_run帧外层ok_false_早退" {
+  let rc = step(
+    ["-"],
+    () => b"int main(){return 0;}",
+    fn(_b : Bytes) { () },
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      "{\"id\":1,\"ok\":false,\"error\":{\"kind\":\"state\",\"message\":\"会话态错（桩形态）\"}}",
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\"}}",
+    ),
+  )
+  assert_eq(
+    rc,
+    1,
+    msg="run 协议错帧须早退 rc=1（修前 ignore 吞帧照常跑 rc=0）",
+  )
+}
+
+///|
+/// #443 D2 锚②（批次上限兜底）：step.next 帧流无三态终止（协议破损形态）
+/// ——修前 while running 永真挂起（构造自证：桩帧不含 finished/trapped/
+/// waiting_input 任一标记，旧循环无出口），修后批次上限（max_steps+16）
+/// fail loud 终止 rc=1。max_steps=100 → 上限 116 批。
+test "sweep1_443_d2_stepnext无三态_批次上限终止" {
+  let rc = step(
+    ["-", "--max-steps", "100"],
+    () => b"int main(){return 0;}",
+    fn(_b : Bytes) { () },
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"trap_code\":\"\",\"waiting_input\":false,\"steps_executed\":1,\"output_truncated\":false}}",
+      "{\"id\":1,\"ok\":true,\"result\":{\"payloads\":[]}}",
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\"}}",
+    ),
+  )
+  assert_eq(
+    rc,
+    1,
+    msg="无三态帧流须批次上限终止 rc=1（修前挂起——错误帧无三标记时 while 永真）",
+  )
+}
+
+///|
+/// #443 C4 红→绿锚（文本模式）：run rc=3 判定改 trap_code 码位——修前
+/// `steps_executed==ms_cap` 数值巧合被引擎预算语义遮蔽（cap 达成即
+/// step-limit），两形态翻红：① trap_code=step-limit 但 steps≠cap → 修前
+/// 恒 rc=2；② divide-zero 恰在 cap 步 → 修前 contains 数值巧合误报 rc=3。
+fn sweep_run_trap_frame(trap_code : String, steps : Int32) -> String {
+  "{\"id\":1,\"ok\":true,\"result\":{\"ok\":false,\"status\":\"trap\",\"return_value\":0,\"trap\":\"[stub] trap\",\"trap_code\":\"\{trap_code}\",\"waiting_input\":false,\"steps_executed\":\{steps},\"output_truncated\":false}}"
+}
+
+///|
+test "sweep1_443_c4_run文本rc3_trap_code判定" {
+  // ① trap_code=E3091（step-limit 码位）+ steps=819 ≠ cap 820 → rc=3
+  //（修前红：数值巧合不成立恒 rc=2）
+  let rc3 = frame_pipeline(
+    "int main(){for(;;){}}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(_b : Bytes) { () },
+    false,
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      sweep_run_trap_frame("E3091", 819),
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
+    ),
+    max_steps_override=Some(820),
+  )
+  assert_eq(
+    rc3,
+    3,
+    msg="trap_code=step-limit 码位 → rc=3（修前 steps≠cap 恒 rc=2）",
+  )
+  // ② trap_code=E3088（divide-zero）+ steps=820 == cap → rc=2
+  //（修前红：contains(\"steps_executed\":820) 数值巧合误报 rc=3）
+  let rc2 = frame_pipeline(
+    "int main(){int a=1,b=0;return a/b;}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(_b : Bytes) { () },
+    false,
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      sweep_run_trap_frame("E3088", 820),
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
+    ),
+    max_steps_override=Some(820),
+  )
+  assert_eq(
+    rc2,
+    2,
+    msg="divide-zero 在 cap 步仍 rc=2（修前数值巧合误报 rc=3）",
+  )
+}
+
+///|
+/// #443 C4 红→绿锚（json 模式）：同判定源切换——修前 json 模式对帧文本
+/// contains 子串匹配（两处 contains 的数值前缀误配面被 cap 遮蔽），修后
+/// 结构化 trap_code 一处字段比对。
+test "sweep1_443_c4_run_json_rc3_trap_code判定" {
+  let rc3 = frame_pipeline(
+    "int main(){for(;;){}}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(_b : Bytes) { () },
+    true,
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      sweep_run_trap_frame("E3091", 819),
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
+    ),
+    max_steps_override=Some(820),
+  )
+  assert_eq(
+    rc3,
+    3,
+    msg="json 模式 trap_code=step-limit → rc=3（修前 contains steps≠cap 恒 rc=2）",
+  )
+  let rc2 = frame_pipeline(
+    "int main(){int a=1,b=0;return a/b;}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(_b : Bytes) { () },
+    true,
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      sweep_run_trap_frame("E3088", 820),
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
+    ),
+    max_steps_override=Some(820),
+  )
+  assert_eq(
+    rc2,
+    2,
+    msg="json 模式 divide-zero 撞 cap 步仍 rc=2（修前子串误报 rc=3）",
+  )
+}
+
+///|
 /// B3 批 M35 A1 红→绿锚（2026-11-02）：api 子命令旗标 fail loud——修前解析
 /// 循环无未知旗标分支：前置形态 `api --xyz ping` 旗标静默吞、正常执行 rc=0
 ///（病 87 形态——用户以为旗标生效，零信号最危险）；尾随形态 `api ping --bogus`
@@ -584,4 +899,75 @@ test "m35_a1_api_未知旗标_fail_loud" {
     0,
     msg="--batch 仍为合法旗标",
   )
+}
+
+///|
+/// PR #488 审阅 P3-1 红→绿锚（SWEEP1 处置批，2026-11-05）：run 子命令对
+/// run 帧外层 ok:false（协议错帧）静默 rc=0——#443 D2 只修了 step 的同族面，
+/// frame_pipeline 两模式仍吞（json 分支解析失败回 0 + 文本分支 result 缺失
+/// 走 EXIT 0）。修前四形态实测全 rc=0；修后两模式 rc=1 + fail loud 行。
+test "sweep1_p31_run帧外层ok_false_两模式_rc1" {
+  // ① json 模式：run 帧外层 ok:false → rc=1
+  let jout : Array[Bytes] = []
+  let rc_j = frame_pipeline(
+    "int main(){return 0;}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(b : Bytes) { jout.push(b) },
+    true,
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      "{\"id\":1,\"ok\":false,\"error\":{\"kind\":\"state\",\"message\":\"协议错（桩）\"}}",
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
+    ),
+  )
+  assert_eq(
+    rc_j,
+    1,
+    msg="json 模式 run 协议错帧须 rc=1（修前 rc=0 吞帧）",
+  )
+  // ② 文本模式：同帧 → rc=1
+  let rc_t = frame_pipeline(
+    "int main(){return 0;}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(_b : Bytes) { () },
+    false,
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      "{\"id\":1,\"ok\":false,\"error\":{\"kind\":\"state\",\"message\":\"协议错（桩）\"}}",
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
+    ),
+  )
+  assert_eq(
+    rc_t,
+    1,
+    msg="文本模式 run 协议错帧须 rc=1（修前 rc=0 吞帧）",
+  )
+  // ③ json 模式对照：正常 run 帧（外层 ok:true）不受影响 rc=0
+  let rc_ok = frame_pipeline(
+    "int main(){return 0;}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(_b : Bytes) { () },
+    true,
+    channel=sweep_step_channel(
+      sweep_ok_compile_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"trap_code\":\"\",\"waiting_input\":false,\"steps_executed\":1,\"output_truncated\":false}}",
+      sweep_finished_stepnext_frame(),
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
+    ),
+  )
+  assert_eq(rc_ok, 0, msg="正常帧不受影响（回归面）")
 }

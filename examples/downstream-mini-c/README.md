@@ -62,7 +62,7 @@ E3004 教学卡片 / 案例 3 scanf 读预给定 stdin 得 `got 21, doubled=42`�
 | `InputState::from_stdin_text(text, batch)` | `batch=true` 流耗尽即 EOF（scanf 返回 -1）——headless 正解；`false` 流耗尽回退 Waiting 等 `input.feed`（gateway 会话语义，库直连无 feed 通道勿用） |
 | `lexer.tokenize(src, cpp_mode~)` | 缺省 false = C 域；C++ 子集语法要显式 true |
 | `TypeChecker::check(program)` → 四元组 | `(lowered, errors, warnings, hints)`——**后续 codegen 必须喂返回的 lowered 树**（函数式重建，值进值出），hints 是非错非警的教学提示 |
-| `vm.output.join(OutputKind::Stdout)` → `Bytes` | 输出面是字节保真（`putchar(200)` 落 1 字节 0xC8），文本化用引擎自带 `@util.utf8_text_partial`（非法序列折 U+FFFD、截断尾部宽容）——不必自写 bytes→String |
+| `vm.output.join(OutputKind::Stdout)` → `Bytes` | 输出面是字节保真（`putchar(200)` 落 1 字节 0xC8），文本化用引擎自带 `@util.utf8_text_partial`（非法序列折 U+FFFD、截断尾部宽容）——不必自写 bytes→String |；**下一版起可直接 `vm.output.join_text(OutputKind::Stdout)`**（#449 一等出口，本示例 pin 0.9.1 暂用两段式） |
 | `@util.json_escape(s)` | 拼 NDJSON 请求时源码进 JSON 字符串域的转义单源（RFC 8259 全量控制字符）——不必手写 |
 
 ## 去哪找签名

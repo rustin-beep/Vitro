@@ -159,6 +159,7 @@ pub(all) enum ErrorCode {
   E3088_DivideZero
   E3089_FunctionDeclaredNotDefined
   W3090_ConstIntOverflow
+  E3091_StepLimit
 }
 pub fn ErrorCode::all() -> Array[Self]
 pub fn ErrorCode::catalog(Self) -> CatalogEntry?

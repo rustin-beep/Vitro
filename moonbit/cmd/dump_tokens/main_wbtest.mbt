@@ -84,3 +84,40 @@ test "norm_path 同义路径归一（out==target 门禁不裸比）" {
   assert_true(norm_path("corpus") == norm_path("./corpus/"))
   assert_true(norm_path("corpus") != norm_path("corpus_out"))
 }
+
+///|
+/// #445 C1 锚（SWEEP1 批，2026-11-05）：输入不可读的退出决策文案——修前
+/// main 主循环裸 `@fs.read_file_to_string` 无 catch，不存在路径走未捕获
+/// raise 的 PanicError 栈 + rc=127（M36b P4 实测）；修后一行原因 + rc=4
+///（与用法错同档）。本锚锁纯函数文案面（c_exit 进程 rc 面由
+/// scripts/vitro_cli_smoke D 组子进程锚承担——wbtest 不能调 exit）。
+test "unreadable_reason 一行原因文案（#445 C1）" {
+  inspect(
+    unreadable_reason("nope.c", @fs.IOError("no such file or directory")),
+    content="输入不可读：nope.c（no such file or directory）",
+  )
+  inspect(
+    unreadable_reason("d/锁.c", @fs.IOError("permission denied")),
+    content="输入不可读：d/锁.c（permission denied）",
+  )
+}
+
+///|
+/// #445 B2 锚（SWEEP1 批，2026-11-05）：目录模式字典序排序——内置
+/// String sort 是**长度优先序**（陷阱 #29：定向形态内置序 `a.c < b.c <
+/// aa.c < ab.c`，短者恒先；corpus 1176 文件名探针内置序 vs 字典序逐位
+/// 全异），四壳统一 str_cmp 字典序与 codegen_diff 的 Go sort.Strings
+/// 对齐。修前 ast/typeck/tokens 三家用内置 sort（序全异——注释还自称
+/// 跨实现排序一致性声明失实——对照对象已随删区退役）。
+/// 锁面注记（PR #488 审阅 P3-3）：本锚只锁 helper 函数语义；main 调用点
+/// （files.sort() 回退形态）由 twin_fingerprint 的 dumpGuardsFingerprint 锁
+/// （谓词扫 main 函数体——sort:builtin 回退实测 exit 1 拦截，勿以为无锁）。
+test "sort_files_lex 字典序（长度优先分叉对 + 非 ASCII）" {
+  let files : Array[String] = ["b.c", "aa.c", "ab.c", "a.c"]
+  sort_files_lex(files)
+  inspect(files.join(","), content="a.c,aa.c,ab.c,b.c")
+  // 非 ASCII 键域：按码元字典序（a < 中 U+4E2D < 图 U+56FE）
+  let names : Array[String] = ["图.c", "arr.c", "中.c"]
+  sort_files_lex(names)
+  inspect(names.join(","), content="arr.c,中.c,图.c")
+}

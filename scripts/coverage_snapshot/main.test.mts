@@ -126,9 +126,10 @@ test("真实基线在场且首采数字对账（R5g 互证锚）", () => {
   assert.ok(Object.keys(b.packages).length >= 25, "逐包面完整（29 包口径）");
   // codegen 19.0% 与 R5g 报告 §1.3 小数点后一位互证（审阅 v2 已知最大薄区，B 轮修复标的地）
   assert.deepEqual(b.packages["codegen"], { covered: 824, total: 4326 });
-  // 测量域白名单（P3-1）：cmd 前缀 + 三具名，恰等 46−29=17 差集
+  // 测量域白名单（P3-1）：cmd 前缀 + 两具名，恰等 46−30=16 差集
+  // （gateway 条目 2026-11-12 删——moonc 0.10.20 起进产物测量域变僵尸，见 main.mts 注）
   assert.deepEqual(b.missing_packages.prefix, ["cmd"]);
-  assert.deepEqual([...Object.keys(b.missing_packages.exact)].sort(), ["gateway", "gateway/wasm", "teaching/langpack"]);
+  assert.deepEqual([...Object.keys(b.missing_packages.exact)].sort(), ["gateway/wasm", "teaching/langpack"]);
 });
 
 test("--from 端到端：fixture 趋势产出 + rc=0（vs 真实基线，全部「包消失/新增」形态亦不判红）；未知参数 exit 2", () => {

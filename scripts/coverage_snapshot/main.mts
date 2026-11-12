@@ -41,16 +41,17 @@ export const DEFAULT_OUT = "tmp/coverage_snapshot";
 /**
  * 测量域缺席白名单（审阅 P3-1；写基线时随 --update-baseline 落 baseline.json，
  * 趋势轮用它做差集断言——单源 = 基线文件，本常量只是首采/重锚时的初值）。
- * 实测口径（2026-11-03，46 磁盘包 − 29 产物包 = 17）：
+ * 实测口径（2026-11-12，46 磁盘包 − 30 产物包 = 16）：
  * cmd/* 14 个 executable 差分工具层（不进 moon test 默认 wasm 轮裸单测域）
- * + gateway（library 本体无 wbtest/黑盒测试文件，实现行不进 wasm 轮 trace）
  * + gateway/wasm、teaching/langpack（foreign_library 出口壳，零测试面）。
+ * 注：gateway 曾以「实现行不进 wasm 轮 trace」登记（2026-11-03 口径 46−29=17），
+ * moonc 0.10.20 起其实现行进产物测量域 → 条目变僵尸（本地复现 zombie-whitelist
+ * 红实录），2026-11-12 删除。
  * 新包加入后差集断言红 = 知情登记（或补测量行后条目自然失效须删——僵尸形态同红）。
  */
 export const MISSING_PACKAGES: Baseline["missing_packages"] = {
   prefix: ["cmd"],
   exact: {
-    gateway: "library 本体无 wbtest/黑盒测试文件——实现行不进默认 wasm 轮 trace",
     "gateway/wasm": "foreign_library 出口壳（#export_name 转发，零测试面）",
     "teaching/langpack": "foreign_library 出口壳（js 目标，零测试面）",
   },

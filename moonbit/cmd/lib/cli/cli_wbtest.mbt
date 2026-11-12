@@ -852,7 +852,6 @@ test "sweep1_443_c4_run_json_rc3_trap_code判定" {
     msg="json 模式 divide-zero 撞 cap 步仍 rc=2（修前子串误报 rc=3）",
   )
 }
-}
 
 ///|
 /// WASI 期 0（2026-11-05，设计单 §3.1/§5.2 期 0 行）：script 子命令
@@ -886,15 +885,35 @@ test "script_parse_args_文件位后零解析全透传" {
 test "script_parse_args_前置旗标_fail_loud" {
   // python 惯例（实测 --bogus）：解释器选项位（文件位之前）的未知旗标
   // 报错不静默——script 零解释器选项，文件位前任何 `-` 前缀参数（非
-  // `-` stdin 占位）= 用法错 rc=4（病 87 族防线：零信号最危险）
+  // `-` stdin 占位、非 `--` 终止符）= 用法错 rc=4（病 87 族防线：零信号
+  // 最危险）
   let sa = parse_script_args(["--json", "x.c"])
   inspect(sa.unknown_flag is Some("--json"), content="true")
   inspect(sa.file, content="")
-  // `-` 单独 = stdin 源占位（run 同品类；python `-` 同形）
+  // `-` 单独 = stdin 源占位（run 同品类；python `-` 同形）；argv 长度前置
+  // 断言先行——空数组下 inspect(argv[0]) 是越界 panic 不是断言失败（#492
+  // 审阅 P3-4：突变注入须以断言红收场）
   let sb = parse_script_args(["-", "a"])
   inspect(sb.file, content="-")
+  inspect(sb.argv.length(), content="1")
   inspect(sb.argv[0], content="a")
   inspect(sb.unknown_flag is None, content="true")
+  // `--` 文件位前 = 选项终止符（#492 审阅 P3-1；python 3.14 实测：
+  // `python -- x.py a b` → sys.argv=['x.py','a','b']——终止符吃掉、其后
+  // 参数零旗标解析无条件落文件位，含 `-` 前缀文件名）
+  let sd = parse_script_args(["--", "x.c", "a"])
+  inspect(sd.file, content="x.c")
+  inspect(sd.argv.length(), content="1")
+  inspect(sd.argv[0], content="a")
+  inspect(sd.unknown_flag is None, content="true")
+  // 终止符后 `-` 前缀文件名不落 unknown_flag（python `-- --bogus` 把
+  // `--bogus` 当脚本名同形）
+  let se = parse_script_args(["--", "-w.c"])
+  inspect(se.file, content="-w.c")
+  inspect(se.unknown_flag is None, content="true")
+  // 只有 `--` 无文件位 = 主体缺文件 rc=4
+  let sf = parse_script_args(["--"])
+  inspect(sf.file, content="")
   // 空参 = 缺文件位（主体 rc=4）
   let sc = parse_script_args([])
   inspect(sc.file, content="")
@@ -924,6 +943,15 @@ test "script_strip_shebang_等长空行_行号零偏移" {
   let s5 = strip_shebang("int main(){return 0;}")
   inspect(s5, content="int main(){return 0;}")
   inspect(strip_shebang(""), content="")
+  // 非 BMP 首行（#492 审阅 P2-1 红锚）：🚀 = 1 Char 但 2 code unit（UTF-16
+  // 代理对）——首行长度与空格数必须按 **code unit** 口径（7 cu）；码点
+  // 口径偏移偏小会把切点落进首行尾部（实测 `n` 残留 + 总长缩 1）
+  let s6 = strip_shebang("#!🚀bin\nint main(){return 0;}\n")
+  inspect(s6.length(), content="30") // 7 空格 + \n + 21 + \n（总长不变）
+  let s6l = s6.split("\n").to_array()
+  inspect(s6l[0], content="       ") // 首行 = 7 空格（code unit 口径）
+  inspect(s6l[1], content="int main(){return 0;}")
+  inspect(s6.contains("bin"), content="false") // 首行内容必须全灭
 }
 
 ///|
@@ -1004,7 +1032,11 @@ test "script_exit_code_透传与0xFF折叠" {
 
 ///|
 test "script_框架错路径不透传" {
-  // 编译错 rc=1 / 用法错 rc=4 不受 exit 透传影响（框架码位语义同 run）
+  // 编译错 rc=1 / 用法错 rc=4 不受 exit 透传影响（框架码位语义同 run）。
+  // 覆盖登记（#492 审阅 P3-4）：trap(2)/步数超限(3) 路径**不补锚**——框架
+  // 码 2/3 与 `& 0xFF` 折叠域数值恒等（C return 2 也得 rc=2），rc 位不可
+  // 区分，锚无判别力；区分出口是 stderr 标记行（// TRAP vs // EXIT），
+  // smoke B[script] 端到端已覆盖标记行形态
   let rc1 = script(
     ["-"],
     fn() { 0UL },

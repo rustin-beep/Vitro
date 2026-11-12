@@ -42,7 +42,8 @@
     "run",
     "compile",
     "step",
-    "api"
+    "api",
+    "script"
   ],
   "matrix": {
     "run|unknown_flag": {
@@ -81,6 +82,14 @@
         "ping",
         "zz-extra"
       ]
+    },
+    "script|unknown_flag": {
+      "want": 4,
+      "issue": "#492 WASI 期 0 script 批纳入对称面（审阅 P3-3）：前置旗标 fail loud rc=4——文案「文件位前不接受旗标」（FAIL_LOUD_RE 已扩）"
+    },
+    "script|extra_positional": {
+      "want": 0,
+      "reason": "契约豁免：script 的多余位置参数 = C argv 全透传（spec §4.6 argv 收口——文件位后零解析，python 惯例）——不是缺口，禁改 rc"
     }
   }
 }

@@ -153,7 +153,7 @@
       "sync": "四份逐字节同步（改一份须连坐全部——本闸 copies 判定机判红线）+ serve_stdio.c 的 ensure_binary_mode/handler 段人工连坐（文件名不同锁不到，见 concept #391 注记）",
       "consumers": [
         "moonbit/cmd/run",
-        "moonbit/cmd/vitro（run/compile/step/api 子命令）",
+        "moonbit/cmd/vitro（run/compile/step/api/script 子命令）",
         "moonbit/cmd/compile（--json diag 帧出口，B3 批起）",
         "moonbit/cmd/lib/cli（write_stdout 注入消费）"
       ],

@@ -5,7 +5,10 @@
 //
 //   ① argv 收口：文件位后**零解析全透传**（python/node 惯例——2026-11-05
 //      本机 python 3.14 实测：argv.py 下 `-- -i --json a` 全部原样进
-//      sys.argv，`--` 无特殊语义）。与 run 的分叉 = run 在文件位后仍解析
+//      sys.argv，`--` 无特殊语义；文件位**前**的 `--` 单独出现 = 选项终
+//      止符——2026-11-12 复测 `python -- x.py a b` → argv=['x.py','a','b']
+//      吃掉终止符、其后零旗标解析，#492 审阅 P3-1）。与 run 的分叉 = run
+//      在文件位后仍解析
 //      `-i`/`--json` 且吃掉 `--`（教学 CLI 面向学生、旗标显式）；script
 //      面向脚本作者、文件位即边界——旗标形参数是脚本的 argv 不是 vitro 的。
 //      文件位**之前**的 `-` 前缀参数（非 `-` 占位）= 用法错 rc=4（python
@@ -40,14 +43,26 @@ pub(all) struct ScriptArgs {
 ///|
 /// 解析 script 参数（args = 已剥子命令名）。首个非 `-` 前缀参数（或 `-`
 /// 占位）= 源文件位；其后全部参数原样进 argv（含旗标形与 `--` 字面量）
-/// ——透传域零解析（python 惯例）。
+/// ——透传域零解析（python 惯例）。文件位**之前**的 `--` 单独出现 = 选项
+/// 终止符（python 惯例：`python -- x.py` 的 `--` 被吃掉、其后参数零旗标
+/// 解析无条件落文件位，含 `-` 前缀文件名——#492 审阅 P3-1，python 3.14
+/// 实测锚）。
 pub fn parse_script_args(args : Array[String]) -> ScriptArgs {
   let sa : ScriptArgs = { file: "", argv: [], unknown_flag: None, }
+  let mut opt_terminated = false // 文件位前已见 `--`（选项终止符）
   for a in args {
     if sa.file == "" {
+      if opt_terminated {
+        // 终止符后：零旗标解析，无条件落文件位（python `-- --bogus` 把
+        // `--bogus` 当脚本名同形）
+        sa.file = a
+        continue
+      }
       // 文件位之前的解释器选项位：script 零选项，`-` 前缀一律 fail loud
-      //（`-` 单独 = stdin 源占位，run 同品类）
-      if !a.has_prefix("-") || a == "-" {
+      //（`-` 单独 = stdin 源占位，run 同品类；`--` 单独 = 终止符非旗标）
+      if a == "--" {
+        opt_terminated = true
+      } else if !a.has_prefix("-") || a == "-" {
         sa.file = a
       } else {
         sa.unknown_flag = Some(a)
@@ -62,19 +77,23 @@ pub fn parse_script_args(args : Array[String]) -> ScriptArgs {
 
 ///|
 /// shebang 剥行（script 态专属）：源码以 `#!` 开头时，首行（到首个 `\n`
-/// 为止，不含 `\n`——CRLF 源的 `\r` 一并）替换为**等长空格**。行号/行数
-/// 零偏移（python 惯例：`#!` 行忽略但行号照常计数）；无 `#!` 前缀原样
-/// 返回（`#include` 等预处理合法域不受染）。BOM 前置源 `#!` 不在位 0，
-/// 不剥（lexer 现状对 BOM 的处理照旧，无新面）。
+/// 为止，不含 `\n`——CRLF 源的 `\r` 一并）替换为**等长空格**（code unit
+/// 口径——首行含非 BMP 字符时 UTF-16 代理对 1 Char 占 2 code unit，空格
+/// 数与切点偏移必须同按 code unit 计，否则切点落进首行尾部、尾字符残留
+/// 进编译面，#492 审阅 P2-1）。行号/行数零偏移（python 惯例：`#!` 行忽略
+/// 但行号照常计数）；无 `#!` 前缀原样返回（`#include` 等预处理合法域不
+/// 受染）。BOM 前置源 `#!` 不在位 0，不剥（lexer 现状对 BOM 的处理照旧，
+/// 无新面）。
 pub fn strip_shebang(src : String) -> String {
   if !src.has_prefix("#!") {
     return src
   }
-  // 首行长度 = 首个换行符偏移（无换行 = 全串）
-  let cs = src.to_array()
-  let mut nl = cs.length()
-  for i = 0; i < cs.length(); i = i + 1 {
-    if cs[i] == '\n' {
+  // 首行长度 = 首个换行符的 code unit 偏移（无换行 = 全串）——code_unit_at
+  // 与 String 切片同口径（码点口径的 to_array 在非 BMP 首行偏移偏小）
+  let n = src.length()
+  let mut nl = n
+  for i = 0; i < n; i = i + 1 {
+    if src.code_unit_at(i).to_int() == '\n'.to_int() {
       nl = i
       break
     }
@@ -83,7 +102,7 @@ pub fn strip_shebang(src : String) -> String {
   for i = 0; i < nl; i = i + 1 {
     b.write_char(' ')
   }
-  if nl < cs.length() {
+  if nl < n {
     b.write_string(src[nl:].to_owned())
   }
   b.to_string()

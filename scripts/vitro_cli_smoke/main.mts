@@ -4,7 +4,7 @@
 //
 // 断言三组：
 //
-//	A. 壳四子命令 rc 契约（CLI_PROTOCOL_V1 五值表的壳侧覆盖面）；
+//	A. 壳子命令 rc 契约（CLI_PROTOCOL_V1 五值表的壳侧覆盖面——run/compile/step/api 五值域 + B[script] 段的透传域）；
 //	B. **三臂同形对拍**——launcher 默认臂（wasm 壳）vs native exe vs js 臂跑同一
 //	   用例，**语义层** = stdout/stderr CRLF 归一后逐行一致（三臂消费同一
 //	   gateway/引擎语义：note 通道 UTF-8、trap 文本同源、标记行协议同构，
@@ -689,6 +689,11 @@ export function runMain(argv: readonly string[]): number {
     );
     const shebangErrC = path.join(tmpDir, "script_shebang_err.c");
     fs.writeFileSync(shebangErrC, '#!/usr/bin/env vitro script\nint main(){ int x = ; return 0; }\n');
+    // 非 BMP 首行（#492 审阅 P2-1 端到端红锚）：🚀 = 1 Char 2 code unit（UTF-16
+    // 代理对）——剥行偏移须按 code unit 口径，码点口径会把切点落进首行尾部、
+    // 残留字符进编译面（实测 E2005 1:30 找到 t）
+    const shebangEmojiC = path.join(tmpDir, "script_shebang_emoji.c");
+    fs.writeFileSync(shebangEmojiC, '#!/usr/bin/env vitro 🚀 script\nint main(){ printf("emoji-ok\\n"); return 0; }\n');
     const arms = [
       { label: "wasm", exe: nodeBin, pre: [shell] },
       { label: "native", exe: nativeExe, pre: [] as string[] },
@@ -751,6 +756,10 @@ export function runMain(argv: readonly string[]): number {
         if (!re.err.includes(" 2:")) {
           fatalf(`B[script shebang] ${a.label}: 诊断行号未保持原始行号（期望 2:N——python 惯例不减一）: ${JSON.stringify(headBytes(re.err, 160))}`);
         }
+        const rem = armRun(a, ["script", rel(shebangEmojiC)]);
+        if (rem.rc !== 0 || !rem.out.includes("emoji-ok")) {
+          fatalf(`B[script shebang] ${a.label}: 非 BMP 首行 rc=${rem.rc} 输出 ${JSON.stringify(rem.out)} stderr=${JSON.stringify(headBytes(rem.err, 160))}（剥行 code unit 口径断——🚀 2 cu 1 Char，码点口径残留字符进编译面，#492 审阅 P2-1）`);
+        }
       }
       const rr = armRun(arms[1] ?? { label: "native", exe: nativeExe, pre: [] }, ["run", rel(shebangC)]);
       if (rr.rc !== 0) {
@@ -766,6 +775,10 @@ export function runMain(argv: readonly string[]): number {
       if (!r.out.includes("piped")) fatalf(`B[script 管道] ${a.label}: stdout 缺程序输出: ${JSON.stringify(r.out)}`);
       const r4 = armRun(a, ["script", "--json", "x.c"]);
       if (r4.rc !== 4 || r4.out !== "") fatalf(`B[script 管道] ${a.label}: 前置旗标 rc=${r4.rc} stdout=${JSON.stringify(r4.out)}（须 rc=4 且 stdout 恒空——附 4 不变式连坐）`);
+      // `--` 文件位前 = 选项终止符（#492 审阅 P3-1——python `-- x.py` 同形：
+      // 吃掉终止符、其后零旗标解析，exit 透传照常）
+      const rt = armRun(a, ["script", "--", rel(exit42C)]);
+      if (rt.rc !== 42) fatalf(`B[script 管道] ${a.label}: -- 终止符 rc=${rt.rc} ≠ 42（#492 审阅 P3-1——python -- x.py 同形）stderr=${JSON.stringify(headBytes(rt.err, 100))}`);
     }
     process.stdout.write("ok  B[script 管道] script - 源码走 stdin + rc 透传 + 前置旗标 rc=4（三臂）\n");
   }

@@ -10,7 +10,7 @@
 
 ///|
 /// quote-include 的文件系统读取注册（幂等——gateway 全局槽，重复设置
-/// 同语义 reader 无害；四入口 run/compile/step/api 首行各调一次）。
+/// 同语义 reader 无害；五入口 run/compile/step/api/script 首行各调一次）。
 /// 未注册时 gateway 侧词法走 vfs 空表 → quote-include 恒 E1021。
 fn ensure_include_reader(channel : EngineChannel) -> Unit {
   (channel.set_include_reader)(fn(path : String) -> String? {

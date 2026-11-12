@@ -94,7 +94,7 @@ moonbit/                   MoonBit 活跃区（vitro/engine workspace）——�
 ├── memory/ host/ vm/      运行时（1MB 内存状态机 / 110 host 路由 / 执行器 + 快照）
 ├── protocol/ session/ gateway/ 协议冻结层、会话与 wasm-gc 单出口（StepPayload 契约 + 词汇表 / 会话状态 / gateway 4 导出 + wasm 薄壳）
 ├── time_travel/ teaching/ steps/ diagnostics/ 时间旅行与教学智能（检查点 + FrameWindow / 43 算法族识别推断 / 教学诊断七元组）
-└── cmd/                   差分对拍工具 ×4（dump_tokens / dump_ast / dump_typeck / dump_compile）+ cmd/run 端到端 runner + cmd/serve JSON-lines 出口 + `vitro` 总入口（run/compile/step/api 四子命令，#37 CLI 出口总账）
+└── cmd/                   差分对拍工具 ×4（dump_tokens / dump_ast / dump_typeck / dump_compile）+ cmd/run 端到端 runner + cmd/serve JSON-lines 出口 + `vitro` 总入口（run/compile/step/api/script 五子命令，#37 总账 + #492 script）
 corpus/                    C 语料（baseline / knr / leetcode / gap / cpp / llm_multifile / llm_scale 等；Clang golden 与 e2e 驱动的输入，原 native/tests/cases 迁入）
 templates/                 算法模板源（source.c + meta.yaml；待社区前端或 wasm 出口认领）
 scripts/                   防线驱动与工具脚本（.mts 为主 · 存量 Go 触达即迁 #273；clang_direct Clang 直拍、五差分 golden 对拍、facts 对账、gen_diag / gen_svg 生成器；清单见 docs/current/02-构建与上手/脚本总清单与必跑防线.md）

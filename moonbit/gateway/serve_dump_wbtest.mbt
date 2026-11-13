@@ -83,13 +83,24 @@ test "serve_dump_symbols_table" {
 ///|
 test "serve_dump_missing_source_protocol_error" {
   let s = @session.Session::new()
-  for m in ["ast.dump", "typeck.dump", "symbols.dump"] {
+  for m in ["ast.dump", "symbols.dump"] {
     let (r, _) = serve_handle(s, "{\"id\":1,\"method\":\"\{m}\"}")
     assert_true(r.contains("\"kind\":\"protocol\""))
     assert_true(r.contains("需要 params.source"))
     // #68 连坐：expected 字段存在断言（dump 族形状 = source:string）
     assert_true(r.contains("\"expected\":\"source:string\""))
   }
+  // typeck.dump 的参数面扩为 files|source 二选一（DEF-1 2026-11-13）——
+  // 空参数报错文案与 expected 形状连坐更新（对齐 compile 的双通道形态）
+  let (r2, _) = serve_handle(s, "{\"id\":1,\"method\":\"typeck.dump\"}")
+  assert_true(r2.contains("\"kind\":\"protocol\""))
+  assert_true(r2.contains("需要 params.files"))
+  assert_true(r2.contains("或 params.source"))
+  assert_true(
+    r2.contains(
+      "\"expected\":\"files:[{filename?,source}] | source:string[,filename:string]\"",
+    ),
+  )
 }
 
 ///|

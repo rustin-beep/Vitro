@@ -1006,3 +1006,47 @@ test "mcp_render_diag_card_deliverable" {
     msg="诊断卡 html_path 在响应体（可交付）",
   )
 }
+
+///|
+/// 锚（DEF-1 修复）：files 工程 quote-include（#include "util.h"）形态
+/// overview 不得静默空——旧形态 overview_json 只把主文件原文喂
+/// typeck.dump（mcp 层 Entry 不存 files + gateway typeck.dump 无 files
+/// 面），空 vfs 下 E1021 → typed_ast:null → funcs 静默空、零报错；
+/// compile_ok 却为 true（compile 通道 vfs 完整）——「编译成功但 overview
+/// 空」的静默失真形态。
+test "mcp_files_quote_include_overview_nonempty" {
+  let clock : Ref[Double] = Ref(0.0)
+  let rendered : Ref[Json] = Ref(Json::null())
+  let srv = Server::new(host=fake_host(clock, Some(rendered)))
+  ignore(call(srv, "initialize", 1))
+  let utilh = ob()
+    .s("filename", "util.h")
+    .s("source", "int twice(int x);")
+    .done()
+  let utilc = ob()
+    .s("filename", "util.c")
+    .s("source", "#include \"util.h\"\nint twice(int x){return x*2;}")
+    .done()
+  let mainf = ob()
+    .s("filename", "main.c")
+    .s("source", "#include \"util.h\"\nint main(){return twice(21);}")
+    .done()
+  let opened = tool_body(
+    tool_call(
+      srv,
+      1,
+      "session_open",
+      ob().a("files", [utilh, utilc, mainf]).done(),
+    ),
+  )
+  assert_eq(
+    jbool(jget(opened, "compile_ok")),
+    Some(true),
+    msg="前置：quote-include 工程编译成功（compile 通道 vfs 完整）",
+  )
+  let fns = jarr(jget(jget(opened, "overview"), "functions"))
+  assert_true(
+    fns.length() >= 2,
+    msg="overview 函数表含跨文件定义（旧形态 quote-include 下静默空）",
+  )
+}

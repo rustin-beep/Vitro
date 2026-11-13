@@ -17,6 +17,7 @@ pub struct Entry {
   mut seq : Int32
   title : String
   source : String
+  files : Array[@json.Json]
   argv : Array[String]
   mut compile_result : @json.Json
   frames : Array[Frame]

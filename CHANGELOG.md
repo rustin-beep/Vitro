@@ -62,6 +62,42 @@
 - 零行为自证：wasmenc 仍为纯增量叶包（零现役消费方），digest/golden 零
   触碰；全仓 moon test 1401/1401 裸口径全绿；ci_checklist/surface/
   pkg_deps/mbti_sync/source_hygiene 全绿。
+### fix(engine+cli+mcp): 只测不修轮三案红→绿——seek 清 paused · step 帧级 rc 传导 · overview files 面（2026-11-13）
+
+- **time_travel replay_to 清 is_paused**（暂停死锁）：越窗重放复位 finished/
+  trapped/last_trap_message 三态唯独漏 is_paused——暂停态引擎 seek 后批循环
+  闸门永久吞批（step.next 空批 + paused:true 死锁，唯一逃生门 =
+  breakpoints.set []）；VM 层「重放命中即时解除」在引擎层无对应（不对称实
+  锤）。修 = replay_to 补清；直返臂（窗口内 seek）不清（视口移动不动执行控
+  制开关，与终态粘性 M31 A-2 同侧语义）。锚 `engine_seek_overwindow_clears_engine_paused`（红→绿）。
+- **cli step 帧级 ok:false → rc=1 即时传导**（对齐 api 两层判据先例
+  §4.5）：step.next 主循环只匹配三态标记，无标记错误帧落 batch_cap 兜底
+  空转（cap = max_steps+16 次调用后以「协议破损」文案 rc=1——归因变形；
+  默认预算十万次）。修 = 三态后补 `contains "\"ok\":false"` → 即时 rc=1
+  （合法 trap 帧外层 ok:true 不含该子串，rc=2/3 语义不变）。消费方核查
+  （2026-11-13 变基后全量）：无任何依赖「失败帧 rc=0」者；step_invariant
+  rc∈{0,1,2,3} 白名单已含 1、红绿走帧解析，变更透明。协议 §5 补登传导条
+  款（追加非改值——1 在 api 已兼「帧含失败」）。锚
+  `stepnext帧级okfalse_即时rc1传导`（调用计数断言：1 次 ≠ 旧 cap 次空转）。
+- **mcp overview files 面（DEF-1「编译成功但 overview 静默空」）**：files
+  工程的 overview 只把主文件原文喂 typeck.dump（Entry 不存 files +
+  gateway typeck.dump 无 files 面）→ quote-include 工程空 vfs E1021 →
+  typed_ast:null → functions 静默空而 compile_ok=true。修 = gateway
+  typeck.dump 增 files 参数（装配逻辑抽 `assemble_units` 单源——头文件
+  过滤+拼接+vfs 注入+#364 不动点，compile 管线与 dump 共用、抽取零行为
+  变更）；mcp Entry 留存 files、overview files 面产出即拼接坐标**不叠
+  offset**（双重偏移由 PR #457 P2-2 既有锚拦下）。锚
+  `mcp_files_quote_include_overview_nonempty`（红→绿）。
+- **连坐**：CLI_PROTOCOL_V1 §5 step 退出码传导句 + §3 run `--max-steps`
+  补登（实现面 #133 起存在、语法行一直漏登）；pre-push prove 门判据双通道
+  （stdout 三形态 + proof.json `failures[].result` 全 no-prover 形态 →
+  infra 红不阻断——J9 实锤：本机 why3 全灭期旧钩子误判 goal 红阻断
+  push）；moonbit/AGENTS.md 陷阱 46 入册；codegen codegen_skeleton
+  digest 补冻 12 例（PR #504 两轮「基线族连坐重冻」均漏第七节）；
+  perf_budget note 勘正 568/868 → 574/874（git ls-tree 三时点实证原数
+  少数 6）；facts 重采与文档连坐（根 README/快速入门/标准库防线
+  1422→1440；moonbit/README 裸数 1419→1440、native 1484→1511——
+  rebase 62193ec3 后真值）。
 ### feat(corpus): #437 修复后入库批——审阅红锚随 B 轮翻面解冻 10 份 + chibicc 修复解锁回收 3 份 + 方言面 2 份入 gap（2026-11-12）
 
 - **review_after_fix 27 份暂存锚三方预检定态**（Win clang 22.1.4 × vitro js+native 双臂）：
@@ -91,7 +127,7 @@
   归一/_Alignof 无符号/'\x80' 符号性/标量复合字面量/union 写广播/先定义后暂定）登
   CHIBICC_ASSESSMENT 台账候批。
 - **连坐**：C 真值速查表 B4 面 21 行连坐标 ✐（G1-G10/P1-P8/S7——as_of 刷 2026-11-12）；
-  perf_budget 分解式 823→868 亲跑校数；五家 digest 重冻 + fuzz 判定域增量 + facts
+  perf_budget 分解式 823→874 亲跑校数（原记 868 系少数 6，2026-11-13 rebase 后复核勘正）；五家 digest 重冻 + fuzz 判定域增量 + facts
   `--run --strict`；known_direct 16→18 条。
 - **s7_vprintf_stack_underflow 翻面实证**（速查表 S7 行连坐）：vprintf %s len≥4 栈
   下溢已随 #427 codegen CallVar word 计数修复消失（三方一致），形态由

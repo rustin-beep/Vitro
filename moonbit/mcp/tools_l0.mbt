@@ -145,13 +145,36 @@ fn overview_json(e : Entry, source : String) -> Json {
     }
   }
   let funcs : Array[(String, Int32)] = []
-  match entry_call(e, "typeck.dump", ob().s("source", source).done()) {
+  // DEF-1（2026-11-13）：files 工程喂 files 面（gateway typeck.dump 与
+  // compile 同款装配——vfs 注入 + 拼接），单文件形态维持 source 原语义。
+  // 修前恒喂主文件原文：quote-include 工程空 vfs → E1021 → typed_ast:
+  // null → funcs 静默空（而 compile_ok=true——静默失真形态）。
+  let dump_params = if e.files.length() > 0 {
+    ob().a("files", e.files).done()
+  } else {
+    ob().s("source", source).done()
+  }
+  // files 面（DEF-1）：typeck.dump 与 compile 同款装配（assemble_units
+  // 拼接），funcs 行号已是拼接流绝对坐标——**不再叠加 offset**（叠加
+  // = 双重偏移，PR #457 P2-2 锚「main 行 = 4」实锤）。单文件面 dump 产
+  // 出单文件坐标，offset=0 语义不变。
+  let files_face = e.files.length() > 0
+  match entry_call(e, "typeck.dump", dump_params) {
     Ok(r) =>
       for f in jarr(jget(jget(r, "typed_ast"), "funcs")) {
         let line = jint_or(jget(jget(f, "loc"), "line"), 0)
         let has_body = !jis_null(jget(f, "body"))
         if line > 0 && has_body {
-          funcs.push((jstr_or(jget(f, "name"), ""), line + offset))
+          funcs.push(
+            (
+              jstr_or(jget(f, "name"), ""),
+              if files_face {
+                line
+              } else {
+                line + offset
+              },
+            ),
+          )
         }
       }
     Err(_) => ()
@@ -203,6 +226,7 @@ fn Server::tool_session_open(
     seq: 0,
     title: jstr_or(jget(args, "title"), ""),
     source: source_display,
+    files,
     argv,
     compile_result: Json::null(),
     frames: [],
@@ -261,6 +285,7 @@ fn Server::tool_diagnose(self : Server, args : Json, now : Double) -> ToolOut {
     seq: 0,
     title: "",
     source,
+    files: [],
     argv: [],
     compile_result: Json::null(),
     frames: [],
@@ -381,6 +406,7 @@ fn Server::tool_animate(self : Server, args : Json, now : Double) -> ToolOut {
     seq: 0,
     title: "",
     source,
+    files: [],
     argv: [],
     compile_result: Json::null(),
     frames: [],

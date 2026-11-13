@@ -82,10 +82,11 @@
 ## 3. `run` 命令
 
 ```
-vitro run <file.c> [-i <input.in>] [--dump-memory <out.bin>] [-- <argv...>] [--json]
+vitro run <file.c> [-i <input.in>] [--max-steps N] [--dump-memory <out.bin>] [-- <argv...>] [--json]
 ```
 
 - `-i`：stdin 注入文件（batch 模式——输入耗尽即 EOF 不交互，`while(scanf...)!=EOF` 习语不挂起；`--json` 模式下等效实现 = waiting_input 时 `input.feed` 续跑后重拉输出——2026-10-04 修正：初版静默丢弃，agent 得空输出 + rc=0 的静默错误）；
+- `--max-steps N`：步数预算墙（**#133 止血包**——教学刚需：死循环程序在预算处截断、步数超限 trap 语义可达；不传 = 不设键走 serve 引擎默认预算，显式键覆盖 preset 同款语义。**补登 2026-11-13**：旗标自 #133 起在实现面（cli_run）存在，本节语法行一直漏登——step 子命令同款旗标 §5 已在册，run/step 两节自此对齐）；
 - `--`：其后全部透传给 C 程序 argv（`argv[0]` = 源文件路径，C 惯例）；**首个裸位置参数后的其余位置参数同样进 argv**（Rust vitro_cli :1010「未识别位置参数视为传给 main 的 argv」口径——2026-10-04 修正：初版取最后一个位置参数，分叉未登记）；
 - `-`（文件位）：源码从进程 stdin 读（UTF-8）——**全命令通用**（run/compile/step；Rust `read_source` 同品类，B2）；
 - `--dump-memory`：**`--json` 模式下不适用**（gateway 协议无 1MB 映像导出面——同时给出两旗标按 dump-memory 忽略处理）；
@@ -137,7 +138,8 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 - `--max-steps` 经 config.set 传导至 step 族引擎预算（**2026-10-04 性能实测 Blocker 1 修正**：原引擎恒 UnifiedEngine::new() 默认 100_000——参数完全无效且 engine<vm 错配时预算到顶返回**假 finished**〔程序 35% 即报正常结束〕；修正后消费会话 config，到顶走 vm 层步数超限 trap 真语义）；默认 100_000；
 - 默认 `--summary`：帧数 / 终态（`finished` / `trap` / `waiting_input/截断`）/ trap 死因文案；
 - `--json`：每批 `step.next` 的 result JSON 一行（NDJSON——帧数组嵌行内，字段语义见 StepPayload schema）+ 末行 `{"type":"summary","frames":N,"finished":B,"trapped":B}` 收口；compile 失败时首行 `{"type":"diag","frame":<compile 帧>}` 后即收（**#444，2026-11-12**：旧裸帧直出是三子命令中唯一不包装的，现与 run/compile --json 同形——type 白名单无新增，diag 已在册；`step.next` 帧保持裸帧直出〔§6 表〕）；
-- 执行序列：compile → run → step.begin → step.next（**run 先行**注入算法检测 matches——缺则帧的 `algorithm_step`/`vis_events` 恒空，demo 通道同坑实证）。
+- 执行序列：compile → run → step.begin → step.next（**run 先行**注入算法检测 matches——缺则帧的 `algorithm_step`/`vis_events` 恒空，demo 通道同坑实证）；
+- 退出码帧级传导（**2026-11-13 补登**，对齐 §4.5 api 两层判据先例）：step.next 帧**无三态标记**（finished/trapped/waiting_input）而含 `ok:false`（协议级错帧）→ **即时 rc=1**——旧形态落批次上限兜底空转（cap=max_steps+16 次调用后以「协议破损」文案 rc=1，归因变形；默认预算下十万次空转）。合法 trap 帧（外层 `ok:true` + `result.trapped:true`）不含该子串、三态判断在前，rc=2/3 语义不变——属**追加传导条款**非五值域变更（1 在 api 已兼「帧含失败」，step 对齐）。
 
 ## 6. `--json` 事件流约定
 

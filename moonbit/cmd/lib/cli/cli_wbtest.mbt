@@ -1226,3 +1226,45 @@ test "i444_step_json_diag_帧包装" {
     msg="文本模式 stdout 恒空（诊断走 stderr——#129 通道分立）",
   )
 }
+
+///|
+/// 锚（step 帧级失败 rc 传导）：step.next 帧含 ok:false（外层协议错，无
+/// 三态标记）须即时 rc=1——对齐 api 子命令两层判据先例（cli_api 对
+/// "\"ok\":false" 子串拦 → rc=1，协议 §4.5）。旧形态：主循环只匹配三态
+/// 标记，错误帧落 batch_cap 兜底空转（--max-steps 1 → 17 次调用后以
+/// 「协议破损」文案 rc=1——归因变形 + 空转；默认 max_steps=100000 则
+/// 十万次）。修后首帧即传导。
+test "stepnext帧级okfalse_即时rc1传导" {
+  let inner = sweep_step_channel(
+    sweep_ok_compile_frame(),
+    "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"trap_code\":\"\",\"waiting_input\":false,\"steps_executed\":1,\"output_truncated\":false}}",
+    "{\"id\":1,\"ok\":false,\"error\":\"session 失效（注入形态）\"}",
+    "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\"}}",
+  )
+  let calls : Array[Int32] = [0]
+  let ch : EngineChannel = {
+    invoke: fn(line : String) -> String {
+      if line.contains("\"method\":\"step.next\"") {
+        calls[0] = calls[0] + 1
+      }
+      (inner.invoke)(line)
+    },
+    invoke_parsed: inner.invoke_parsed,
+    reset: inner.reset,
+    set_clock: inner.set_clock,
+    set_include_reader: inner.set_include_reader,
+    compile_params: inner.compile_params,
+  }
+  let rc = step(
+    ["-", "--max-steps", "1"],
+    () => b"int main(){return 0;}",
+    fn(_b : Bytes) { () },
+    channel=ch,
+  )
+  assert_eq(rc, 1, msg="帧级 ok:false 须 rc=1")
+  assert_eq(
+    calls[0],
+    1,
+    msg="帧级失败须首帧即传导（旧形态空转至 batch_cap=17 次后误报协议破损）",
+  )
+}

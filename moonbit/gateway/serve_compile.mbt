@@ -75,6 +75,86 @@ fn merge_units(
 }
 
 ///|
+/// 多单元装配词法单源（2026-11-13 DEF-1 批抽取，原内联于
+/// serve_compile_pipeline——迁移非改写，行为零变更；锚 = compile 全链
+/// 测试 + include_wbtest 的 issue364r2 双锚）：头文件过滤 + merge_units
+/// 拼接 + vfs 全量注入 + #364 不动点剔除。消费方 = serve_compile_pipeline
+/// 与 serve_typeck_dump_frame（files 面）。
+///
+/// 头文件 unit（`.h` 后缀）不进拼接：C 语义里头文件不被"编译"，仅经
+/// #include 展开（vfs 全量注入在 lex_full_source）。拼接 + include 展开
+/// 各一份 = 双重定义面（打开本地文件夹批 2026-10-05：浏览器工作区把
+/// .h 与 .c 一并送 compile.files 的形态）
+///
+/// #364（2026-10-29）：**被 include 展开命中的 `.c` unit 同样不进拼接**
+/// ——拼接 + 展开各一份对 .c 目标同样是双重定义面（wasm 臂 collect_walk
+/// 把 include 目标登记为独立编译单元、浏览器工作区全量送 files，两形态
+/// 实测 E3003）。展开命中集以词法真实决策为准（LexResult.included_files
+/// ——注释剥离与 #if 跳过之后的实际拼接；行级预扫描会与真实展开分叉：
+/// 块注释内的 #include 不展开却会被误剔 ⇒ 静默丢码；块注释/#if 0 两
+/// 形态的钉死锚见 include_wbtest 的 issue364r2 双锚。不动点重 lex：
+/// 命中即剔出拼接集（vfs 仍全量注入，include 照常拉入）再跑；每轮至少
+/// 剔一个 unit，≤ 单元数收敛（命中形态典型一轮即收敛——剔除只减文本
+/// 不新增展开；二轮属防御性，代价 = 多一次全量 lex）；单文件/无互引
+/// 形态首轮空集零额外开销。
+fn assemble_units(
+  units : Array[@session.CompileUnit],
+) -> (
+  String,
+  Array[@session.FileRange],
+  Array[(Int32, Int32, String)],
+  String,
+  @token.LexResult,
+) {
+  let mut compile_units : Array[@session.CompileUnit] = []
+  for u in units {
+    if !is_header_unit(u.filename) {
+      compile_units.push(u)
+    }
+  }
+  let mut full_source = ""
+  let mut ranges : Array[@session.FileRange] = []
+  let mut merged_spans : Array[(Int32, Int32, String)] = []
+  let mut main_name = "main.c"
+  let mut lexed : @token.LexResult? = None
+  while true {
+    let (fs, rs) = merge_units(compile_units)
+    full_source = fs
+    ranges = rs
+    merged_spans = []
+    for r in rs {
+      merged_spans.push((r.start_line, r.end_line, r.filename))
+    }
+    main_name = "main.c"
+    for u in compile_units {
+      if !u.filename.is_empty() {
+        main_name = u.filename
+        break
+      }
+    }
+    let lx = lex_full_source(full_source, units, main_name~, merged_spans~)
+    lexed = Some(lx)
+    let kept : Array[@session.CompileUnit] = []
+    let mut hit = false
+    for u in compile_units {
+      if lx.included_files.contains(unit_vfs_key(u.filename)) {
+        hit = true
+      } else {
+        kept.push(u)
+      }
+    }
+    if !hit || kept.is_empty() {
+      break
+    }
+    compile_units = kept
+  }
+  guard lexed is Some(lx_final) else {
+    abort("unreachable：不动点至少跑一轮")
+  }
+  (full_source, ranges, merged_spans, main_name, lx_final)
+}
+
+///|
 /// 全局行号 → 文件名（Rust resolve_filename 照搬；未命中 None）。
 fn resolve_filename(
   line : Int32,
@@ -355,69 +435,12 @@ fn serve_compile_pipeline(
   st.compiled = false
   st.file_ranges = []
   st.preprocessor_trace = []
-  // ── 合并（file_ranges 生产者）──
-  // 头文件 unit（`.h` 后缀）不进拼接：C 语义里头文件不被"编译"，仅经
-  // #include 展开（vfs 全量注入在 lex_full_source）。拼接 + include 展开
-  // 各一份 = 双重定义面（打开本地文件夹批 2026-10-05：浏览器工作区把
-  // .h 与 .c 一并送 compile.files 的形态）
-  //
-  // #364（2026-10-29）：**被 include 展开命中的 `.c` unit 同样不进拼接**
-  // ——拼接 + 展开各一份对 .c 目标同样是双重定义面（wasm 臂 collect_walk
-  // 把 include 目标登记为独立编译单元、浏览器工作区全量送 files，两形态
-  // 实测 E3003）。展开命中集以词法真实决策为准（LexResult.included_files
-  // ——注释剥离与 #if 跳过之后的实际拼接；行级预扫描会与真实展开分叉：
-  // 块注释内的 #include 不展开却会被误剔 ⇒ 静默丢码；块注释/#if 0 两
-  // 形态的钉死锚见 include_wbtest 的 issue364r2 双锚。不动点重 lex：
-  // 命中即剔出拼接集（vfs 仍全量注入，include 照常拉入）再跑；每轮至少
-  // 剔一个 unit，≤ 单元数收敛（命中形态典型一轮即收敛——剔除只减文本
-  // 不新增展开；二轮属防御性，代价 = 多一次全量 lex）；单文件/无互引
-  // 形态首轮空集零额外开销。
-  let mut compile_units : Array[@session.CompileUnit] = []
-  for u in units {
-    if !is_header_unit(u.filename) {
-      compile_units.push(u)
-    }
-  }
-  let mut full_source = ""
-  let mut ranges : Array[@session.FileRange] = []
-  let mut merged_spans : Array[(Int32, Int32, String)] = []
-  let mut main_name = "main.c"
-  let mut lexed : @token.LexResult? = None
-  while true {
-    let (fs, rs) = merge_units(compile_units)
-    full_source = fs
-    ranges = rs
-    merged_spans = []
-    for r in rs {
-      merged_spans.push((r.start_line, r.end_line, r.filename))
-    }
-    main_name = "main.c"
-    for u in compile_units {
-      if !u.filename.is_empty() {
-        main_name = u.filename
-        break
-      }
-    }
-    let lx = lex_full_source(full_source, units, main_name~, merged_spans~)
-    lexed = Some(lx)
-    let kept : Array[@session.CompileUnit] = []
-    let mut hit = false
-    for u in compile_units {
-      if lx.included_files.contains(unit_vfs_key(u.filename)) {
-        hit = true
-      } else {
-        kept.push(u)
-      }
-    }
-    if !hit || kept.is_empty() {
-      break
-    }
-    compile_units = kept
-  }
-  guard lexed is Some(lx_final) else {
-    abort("unreachable：不动点至少跑一轮")
-  }
-  let lexed = lx_final
+  // ── 合并（file_ranges 生产者）──装配词法已抽 assemble_units 单源
+  //（2026-11-13 DEF-1：typeck.dump 的 files 面共用同款装配——头文件
+  // 过滤 + 拼接 + vfs 注入 + #364 不动点，语义注释随迁至该函数头）。
+  let (full_source, ranges, merged_spans, main_name, lexed) = assemble_units(
+    units,
+  )
   st.file_ranges = ranges
   // fix 生成用的行表（Rust push_diagnostics 外层 source.lines() 同形）
   let source_lines = @diagnostics.split_lines(full_source)

@@ -292,18 +292,6 @@ fn unreadable_reason(path : String, e : @fs.IOError) -> String {
 }
 
 ///|
-/// 主循环输入源读取（#445 C1 fail loud 收口）。
-fn read_source_or_exit(path : String) -> String {
-  @fs.read_file_to_string(path) catch {
-    e => {
-      println(unreadable_reason(path, e))
-      c_exit(4)
-      ""
-    }
-  }
-}
-
-///|
 fn collect_files(dir : String, vfs : Map[String, String]) -> Unit raise {
   for name in @fs.read_dir(dir) {
     let full = vfs_join(dir, name)

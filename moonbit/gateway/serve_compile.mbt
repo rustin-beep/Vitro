@@ -710,6 +710,8 @@ fn units_from_params(
   match json_field(params, "files") {
     Array(files) =>
       for f in files {
+        // filename POSIX 规范化单点（#444 后续小修，2026-11-12）——诊断
+        // filename/vfs 键三名同源，详见 gateway.mbt posix_name 头注
         let filename = match json_field(f, "filename").as_string() {
           Some(n) => posix_name(n)
           None => "main.c"

@@ -49,7 +49,7 @@ function cli(args: string[]): { out: string; err: string; rc: number } {
 test("e2e：-check 与白名单/边表双向对账一致（真实全仓）", () => {
   const r = cli(["-check"]);
   assert.equal(r.rc, 0, r.err + r.out);
-  assert.match(r.out, /moonbit_surface: check OK（可收清单与白名单一致 \+ 消费边与边清单一致）/);
+  assert.match(r.out, /moonbit_surface: check OK（可收清单与白名单一致 \+ 消费边与边清单一致 \+ 零重复行）/);
 });
 
 test("e2e：默认模式同强度（列收面 + 同一 OK 行），且不因缺 -check 而放松", () => {

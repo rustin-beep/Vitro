@@ -238,18 +238,6 @@ fn unreadable_reason(path : String, e : @fs.IOError) -> String {
 }
 
 ///|
-/// 主循环输入源读取（#445 C1 fail loud 收口）。
-fn read_source_or_exit(path : String) -> String {
-  @fs.read_file_to_string(path) catch {
-    e => {
-      println(unreadable_reason(path, e))
-      c_exit(4)
-      ""
-    }
-  }
-}
-
-///|
 /// 字典序排序（内置 String sort 是**长度优先序**——陷阱 #29；SWEEP1
 /// #445 B2 探针实锤：ASCII 域亦分叉〔corpus 1176 文件名内置序 vs 字典序
 /// 逐位全异，定向样本 `b.c < aa.c`——长度优先铁证〕，非「非 ASCII 域才

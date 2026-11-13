@@ -509,9 +509,30 @@ function mainFlow(argv: readonly string[]): number {
   }
   // 第二面闸：跨包消费边对账（两面证据全收集后统一红）
   const edgeBad = checkEdges(usedEdges);
-  if (bad > 0 || edgeBad > 0) fatal(`对账不符（无主 ${bad} + 边 ${edgeBad}）`);
-  process.stdout.write("moonbit_surface: check OK（可收清单与白名单一致 + 消费边与边清单一致）\n");
+  // P3-2（PR #504 审阅处置，2026-11-13）：边清单重复行检测——文本级重复
+  //（`sort | uniq -d` 口径）此前不判，本批 rebase 文本合并曾引入 3 条
+  // 重复边 + 存量 1 条，闸全绿假阴性。
+  const dupBad = dupEdgeLines();
+  if (bad > 0 || edgeBad > 0 || dupBad > 0) {
+    fatal(`对账不符（无主 ${bad} + 边 ${edgeBad} + 重复边 ${dupBad}）`);
+  }
+  process.stdout.write("moonbit_surface: check OK（可收清单与白名单一致 + 消费边与边清单一致 + 零重复行）\n");
   return 0;
+}
+
+/** P3-2：边清单文本级重复行计数（逐条打印，`sort|uniq -d` 等价口径）。 */
+function dupEdgeLines(): number {
+  const text = fs.readFileSync("../scripts/moonbit/surface_edges.txt", "utf8");
+  const seen = new Set<string>();
+  const dups = new Set<string>();
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (line === "" || line.startsWith("#")) continue;
+    if (seen.has(line)) dups.add(line);
+    seen.add(line);
+  }
+  for (const d of dups) process.stdout.write(`重复边: ${d}\n`);
+  return dups.size;
 }
 
 /** sort.Strings + 去连续重复（Go 版 `[:0]` 原地去重等价）。 */

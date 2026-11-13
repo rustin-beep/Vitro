@@ -55,6 +55,7 @@
         "cmd/dump_ast/main.mbt",
         "cmd/dump_compile/main.mbt",
         "cmd/dump_typeck/main.mbt",
+        "cmd/dump_wasm/main.mbt",
         "gateway/serve_compile_wbtest.mbt"
       ],
       "note": "ast 版（json_emit 家族成员）——审阅 v2 M06 三臂分叉案的共享层函数"

@@ -1,5 +1,68 @@
 ## [Unreleased]
 
+### feat(bytecode+wasmenc): REHOST 批 1c 主体——发射全链路接线 + 全语料产物闸（cmd/dump_wasm + scripts/wasmenc_emitgate，2026-11-13）
+
+- **bytecode 投影层**（`wasm_project.mbt`，L6→L0 新边 wasmenc）：`wasm_triples`
+  （code→组三元组直投影）+ `wasm_emit_ctx`（EmitCtx 装配：常量池直填 /
+  symbol_sizes 逐符号 `compute_type_size` / host_argv_ptr=global_data_end 4
+  对齐〔H2 参数窗口约定地址〕/ argc·argv·fallthrough 填 0 近似——批 2 基块
+  划分器与装载协议精化点逐项登记于头注）+ `build_wasm_product`（组表+字节
+  一体，`wasmenc.build_group_table` 单源驱动；失败定位循环补 gip）。白盒
+  4 锚：保序透传 / ctx 装配口径 / Ok 路径装载核对双通道（**盲折叠对含 C 类
+  组产物按设计拒载的边界显式锁死**）/ Reserved 拒载定位。
+- **cmd/dump_wasm**（native only，dump_compile 先例形态）：管线复用 +
+  发射 + `verify_fold_with_table` 装载核对内建，JSONL stdout（ok 行携
+  groups/bytes/hex；emit/verify 失败行携 gip/op/kind 定位——产物闸判红
+  主体）。**零扰动设计**：不碰 CompileOutput schema、dump_compile 的 A 级
+  14 键面与 CLI 协议——legacy code 字段照发，wasm 面按需消费（批 2 run 态
+  装载接线时再升 schema 增量字段双发）。
+- **产物闸** `scripts/wasmenc_emitgate`（.mts 四件套，设计单 §3.2 批 1
+  验收面①③落地）：ensureFresh 新鲜度门禁构建 dump_wasm → 9 语料目录
+  批跑 → 三级判定（编译成功例 100% 发射 + 装载核对全过 + **hex 指令区拼
+  证人壳过 wabt readWasm 解码级〔结构〕验证**——段结构固定 type ()->()/
+  memory {16,16}/6 globals 装载约定/locals 4 runs；审阅 P1-2 勘正：
+  readWasm 只解码不校验类型/栈，真类型验证在 watcheck 模板级〔parseWat
+  编译=类型检查〕——两级组合，拼接级真 validate 随批 2 模块组装升级）；编译期失败例计数不判红
+  （lex/parse/type/gen 属 codegen_diff 既有防线域——负例语料编译失败是
+  预期）；禁译表 deferred.json 首版空。**基线：902 ok / 47 编译期 / 0 红**（含 #486 B10 新增 5 语料，rebase 后复测）。
+  CI 接线 bookkeeping slice；过程实锤一枚：`../` 前缀路径形态下 e2_include
+  族 8 例 include 链失败（518 vs 526 ok）——dump_compile 同款既有面（登记
+  不修，非本批范围），emitgate 用绝对路径口径。
+- 铁律 1 零扰动实证：**codegen_diff golden 560/560 逐位一致**（schema/dump
+  零改动的机制论证 + 实跑双证）；全仓 moon test **1405/1405**；watcheck
+  回归 40 文件/157 组次/覆盖 150/150 原样绿；ci_checklist（活行 70）/
+  surface（新边 28 + 白名单 1 登记）/ pkg_deps（52 包）/ mbti_sync /
+  editorconfig / source_hygiene 全绿。
+
+### test(wasmenc+scripts): REHOST 批 1c-前置——wat 逐字节对拍证人入 CI + memory.fill 规范修复 + .wat 小单元全量覆盖对账（2026-11-13）
+
+- **wat 逐字节对拍证人**（`scripts/wasmenc_watcheck/`，40 wat 文件 / 157 组次
+  全 PASS）：cases/*.wat 手写样例经 **wabt**（npm 钉版 1.0.39）编译的函数体
+  指令字节 ↔ wasmenc 单源发射器扁平字节（witness_dump 现场跑打印行）
+  **逐字节恒等**——码位/编码形态（sleb/uleb 最短性、对齐立即数、f64 小端）
+  的 node 侧第三方证人，比 wasm-validate 内容级更强（同一指令序列两编码器
+  分歧即红）；CI 接线 bookkeeping slice（npm ci + main.mts，wabt 入
+  scripts/package.json + lockfile），.mts 四件套齐（tsc/oxlint/node:test
+  6 锚含逐组定位与尾部锚两新锚）。
+- **memory.fill 单 memidx 规范修复**（批 1b 分支实锤、master 遗留）：fill
+  只操作一个 memory——曾多发一个 0x00（validate 不拦的字节错位面，多余
+  字节被验证器当下一条指令解析）；编码（bulk_fill）/解码（bulk_decode
+  参数化 n_idx：copy=2/fill=1）/码位锚三处连坐，旧 4 字节产物装载即拒载。
+- **witness_dump 扩全量**（67→150 行）：B/C 63 + 双形态 3（常量池第二索引
+  PushConstD(1)/PushConstQ(0) + 负字面量 TrapBounds(-3)）+ **A 类全量 84
+  条**（含 CastD2UQ）——watcheck 的 dump 侧真源从样本面升全量。
+- **.wat 小单元逐条化 + 全量覆盖对账**（本批核心补强）：对拍改**逐组切片**
+  断言（失败精确到组名+组内偏移，不再只报文件级首异偏移）；新增**覆盖对账**
+  ——witness dump 150 条（147 可发射 + 双形态 3）须逐条被 wat 小单元覆盖，
+  新增可发射 opcode 不配用例即红 / 删条目不撤用例即红（J9 证红：临时抽
+  PushArgv 组即报 4 条缺失）。**对账首跑抓到批 1b「147 全量」声明的存量
+  漏网 3 条**（Not/UDiv/UMod 从未入 cases，靠重复组次凑数）——已补
+  （a_core3.wat +Not、a_i32_arith.wat +UDiv/UMod），终态 40 文件 / 157
+  组次 / 覆盖 150/150。
+- 零行为自证：wasmenc 仍为纯增量叶包（零现役消费方），digest/golden 零
+  触碰；全仓 moon test 1401/1401 裸口径全绿；ci_checklist/surface/
+  pkg_deps/mbti_sync/source_hygiene 全绿。
+
 ### fix(engine): #446/#447/#448/#471/#465 收口扫除批二——引擎散件五单（2026-11-05）
 
 - **#471 浮点→无符号整型域内转换四路径单源治本**（C11 6.3.1.4 定义行为被饱和

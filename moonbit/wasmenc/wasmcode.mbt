@@ -423,9 +423,12 @@ fn winstr_encode_into(instr : WInstr, out : Array[Byte]) -> Unit {
     WI64TruncSatF64S => trunc_sat(0x06, out)
     WI64TruncSatF64U => trunc_sat(0x07, out)
     WI64ReinterpretF64 => pushOp(0xBD, out)
-    // bulk-memory（0xFC 前缀子码 0x0A/0x0B + 两 memory 索引 0x00）
+    // bulk-memory（0xFC 前缀子码）：copy=0x0A 双 memidx（dst/src）、
+    // fill=0x0B 单 memidx（规范形态——fill 只操作一个 memory；watcheck
+    // 逐字节对拍实锤本处曾多发一个 0x00：validate 不拦的字节错位面，
+    // 多余 0x00 被验证器当下一条指令解析）
     WMemoryCopy => bulk_mem(0x0A, out)
-    WMemoryFill => bulk_mem(0x0B, out)
+    WMemoryFill => bulk_fill(0x0B, out)
   }
 }
 
@@ -440,14 +443,25 @@ fn mem_access(op : Int32, align : Int32, out : Array[Byte]) -> Unit {
 }
 
 ///|
-/// bulk-memory 前缀编码（0xFC + 子码 uleb + dst/src memidx 各 0x00——
-/// 单 memory 模块两索引恒 0）。
+/// bulk-memory copy 前缀编码（0xFC + 子码 uleb + dst/src memidx 各 0x00
+/// ——单 memory 模块两索引恒 0）。
 fn bulk_mem(sub : Int32, out : Array[Byte]) -> Unit {
   out.push((0xFC).to_byte())
   for b in uleb_encode(sub.to_uint64()) {
     out.push(b)
   }
   out.push((0x00).to_byte())
+  out.push((0x00).to_byte())
+}
+
+///|
+/// bulk-memory fill 前缀编码（0xFC + 子码 uleb + 单 memidx 0x00——
+/// 规范形态 fill 只操作一个 memory，单索引）。
+fn bulk_fill(sub : Int32, out : Array[Byte]) -> Unit {
+  out.push((0xFC).to_byte())
+  for b in uleb_encode(sub.to_uint64()) {
+    out.push(b)
+  }
   out.push((0x00).to_byte())
 }
 
@@ -711,8 +725,8 @@ pub fn winstr_decode(
     0xC0 => Ok((WI32Extend8S, 1))
     0xBD => Ok((WI64ReinterpretF64, 1))
     0xFC =>
-      // 前缀族：trunc_sat（子码 0..7）+ bulk-memory（子码 0x0A/0x0B，
-      // 后随两 memidx uleb 恒 0——面外变体拒载）
+      // 前缀族：trunc_sat（子码 0..7）+ bulk-memory（子码 0x0A 双 memidx/
+      // 0x0B 单 memidx，恒 0——面外变体拒载）
       match ulebAt(bytes, p) {
         Ok((sub, sn)) =>
           match sub {
@@ -720,8 +734,8 @@ pub fn winstr_decode(
             0x02 => Ok((WI32TruncSatF64S, 1 + sn))
             0x06 => Ok((WI64TruncSatF64S, 1 + sn))
             0x07 => Ok((WI64TruncSatF64U, 1 + sn))
-            0x0A => bulk_decode(bytes, p + sn, 1 + sn + 2, WMemoryCopy, op)
-            0x0B => bulk_decode(bytes, p + sn, 1 + sn + 2, WMemoryFill, op)
+            0x0A => bulk_decode(bytes, p + sn, 1 + sn + 2, 2, WMemoryCopy, op)
+            0x0B => bulk_decode(bytes, p + sn, 1 + sn + 1, 1, WMemoryFill, op)
             _ => Err(UnknownOpcode(op))
           }
         Err(e) => Err(e)
@@ -756,22 +770,28 @@ fn mem_decode(
 }
 
 ///|
-/// bulk-memory 解码：子码后两 memidx uleb 必须恒 0（单 memory 模块）。
-/// `at` = memidx[0] 位置；`total` = 指令总消费（opcode + 子码 uleb + 2）。
+/// bulk-memory 解码：子码后 memidx uleb 各恒 0（单 memory 模块）。
+/// `at` = memidx[0] 位置；`total` = 指令总消费；`n_idx` = memidx 数
+///（copy=2 / fill=1——规范形态）。
 fn bulk_decode(
   bytes : Array[Byte],
   at : Int32,
   total : Int32,
+  n_idx : Int32,
   instr : WInstr,
   op : Byte,
 ) -> Result[(WInstr, Int32), DecodeError] {
-  if at + 1 < bytes.length() &&
-    bytes[at] == (0x00).to_byte() &&
-    bytes[at + 1] == (0x00).to_byte() {
-    Ok((instr, total))
-  } else {
-    Err(UnknownOpcode(op))
+  if at + n_idx > bytes.length() {
+    return Err(UnknownOpcode(op))
   }
+  let mut k = 0
+  while k < n_idx {
+    if bytes[at + k] != (0x00).to_byte() {
+      return Err(UnknownOpcode(op))
+    }
+    k = k + 1
+  }
+  Ok((instr, total))
 }
 
 ///|

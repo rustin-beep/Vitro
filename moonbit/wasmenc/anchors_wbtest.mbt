@@ -153,9 +153,11 @@ test "wasm_opcode_spec_anchor" {
     (WI64ShrS, [0x87]),
     (WI64ShrU, [0x88]),
     (WI64ReinterpretF64, [0xBD]),
-    // bulk-memory（0xFC + 子码 0x0A/0x0B + 两 memidx 0x00）
+    // bulk-memory（0xFC + 子码：copy=0x0A 双 memidx / fill=0x0B 单 memidx——
+    // 规范形态，fill 多余 0x00 曾被验证器当下一条指令吞掉〔validate 不拦
+    // 的字节错位面，watcheck 逐字节对拍实锤〕）
     (WMemoryCopy, [0xFC, 0x0A, 0x00, 0x00]),
-    (WMemoryFill, [0xFC, 0x0B, 0x00, 0x00]),
+    (WMemoryFill, [0xFC, 0x0B, 0x00]),
     // call（0x10 + uleb——import 0 = env.vitro_host_call 约定）
     (WCall(0), [0x10, 0x00]),
   ]

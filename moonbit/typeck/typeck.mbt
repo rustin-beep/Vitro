@@ -261,27 +261,73 @@ pub fn TypeChecker::check(
     self.check_duplicate_member_names(u, "联合体")
   }
   // M05-A4（#433 批 B9 三批，2026-11-12）：tag 命名空间冲突检查（C11
-  // §6.2.3——struct/union/enum 共享 tag 名；clang "use of 'A' with tag
+  // §6.2.3——struct/union 共享 tag 名；clang "use of 'A' with tag
   // type that does not match previous declaration" error）。两轮注册
   // 完成后交叉查对方表（注册顺序 structs→unions，循环内单侧查漏另一
   // 序——`union A{}; struct A{};` 与 `struct A{}; union A{};` 双形态
   // 均收）；前向条目同查（`union A; struct A;` clang 同报）。
+  // P2-2（PR #504 审阅处置，2026-11-13）：双报收敛为源序单报——只报
+  // 后出现侧（clang 口径 error 落后声明；修前两循环各报一条，且先侧
+  // 消息方向倒置——1:8「已用作 union」指向的恰是先写的 struct）。
+  // P2-3 连坐：文案收窄 struct/union（enum 不进 ProgramNode 七集合——
+  // enum+struct 同名面挂账独立缺陷，勿在文案里声称已覆盖）。
+  let union_loc_of = fn(name : String) -> @source.SourceLoc? {
+    for u in program.unions {
+      if u.name == name {
+        return Some(u.loc)
+      }
+    }
+    None
+  }
   for s in program.structs {
     if self.unions.contains(s.name) {
-      self.report_error(
-        "tag '\{s.name}' 已用作 union，不能再用作 struct（C11 §6.2.3：struct/union/enum 共享 tag 命名空间）",
-        s.loc,
-        E3092_TagKindMismatch,
-      )
+      match union_loc_of(s.name) {
+        Some(uloc) =>
+          // 仅 struct 侧后出现才在此报（先侧由 union 循环裁决）
+          if s.loc.line > uloc.line ||
+            (s.loc.line == uloc.line && s.loc.column > uloc.column) {
+            self.report_error(
+              "tag '\{s.name}' 已用作 union，不能再用作 struct（C11 §6.2.3：struct/union 共享 tag 命名空间）",
+              s.loc,
+              E3092_TagKindMismatch,
+            )
+          }
+        None =>
+          self.report_error(
+            "tag '\{s.name}' 已用作 union，不能再用作 struct（C11 §6.2.3：struct/union 共享 tag 命名空间）",
+            s.loc,
+            E3092_TagKindMismatch,
+          )
+      }
     }
   }
   for u in program.unions {
     if self.structs.contains(u.name) {
-      self.report_error(
-        "tag '\{u.name}' 已用作 struct，不能再用作 union（C11 §6.2.3：struct/union/enum 共享 tag 命名空间）",
-        u.loc,
-        E3092_TagKindMismatch,
-      )
+      let mut sloc : @source.SourceLoc? = None
+      for s in program.structs {
+        if s.name == u.name {
+          sloc = Some(s.loc)
+          break
+        }
+      }
+      match sloc {
+        Some(sl) =>
+          // 同 loc 双声明（wbtest 常见构造）兜底报 union 侧——恰一条
+          if u.loc.line > sl.line ||
+            (u.loc.line == sl.line && u.loc.column >= sl.column) {
+            self.report_error(
+              "tag '\{u.name}' 已用作 struct，不能再用作 union（C11 §6.2.3：struct/union 共享 tag 命名空间）",
+              u.loc,
+              E3092_TagKindMismatch,
+            )
+          }
+        None =>
+          self.report_error(
+            "tag '\{u.name}' 已用作 struct，不能再用作 union（C11 §6.2.3：struct/union 共享 tag 命名空间）",
+            u.loc,
+            E3092_TagKindMismatch,
+          )
+      }
     }
   }
   // T-P0-8：struct/union 值成员循环包含检测（学生写链表节点漏 `*` 的

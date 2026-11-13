@@ -2061,6 +2061,10 @@ jobs:
       #   只能进扫描。J9：删任一 host_clock_stub.c 的 stdlib.h → 四份当步
       #   红（malloc:56 隐式声明，WSL clang 21 实证同形态）。
       - name: C stub strict-declaration scan (moonbit/cmd .c set — #500)
+        # P3-6（PR #504 审阅处置）边界声明：本步只对 ubuntu 宿主有牙——
+        # Windows 宿主下 windows.h 头链仍供给 malloc 声明（删 stdlib.h 照
+        # 绿假阴性），Windows 本地复跑不能当 J9 证据；J9 证红须 Linux 分支
+        # （-U_WIN32 模拟或 WSL，#500 批实录见 PR 描述）。
         run: |
           set -e
           cd moonbit

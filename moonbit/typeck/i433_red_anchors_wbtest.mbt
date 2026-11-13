@@ -1017,3 +1017,134 @@ test "m09_red_w3008_exact_fit_wording" {
     msg="真超长文案照旧「超过数组大小」",
   )
 }
+
+///|
+/// 红锚 P2-2（PR #504 审阅处置，2026-11-13）：同名 tag 冲突**源序单报**——
+/// clang 口径 error 只落后声明侧；修前两循环各报一条（双报）且先侧消息
+/// 方向倒置（1:8「已用作 union」指向的恰是先写的 struct）。
+test "p22_tag_conflict_source_order_single_report" {
+  let s_loc = @source.SourceLoc::new(1, 1)
+  let u_loc = @source.SourceLoc::new(2, 1)
+  let s_decl : @ast.StructDecl = {
+    loc: s_loc,
+    name: "A",
+    fields: [{ ty: @ast.Type::int(), name: "x", }],
+    is_forward: false,
+  }
+  let u_decl : @ast.StructDecl = {
+    loc: u_loc,
+    name: "A",
+    fields: [{ ty: @ast.Type::int(), name: "y", }],
+    is_forward: false,
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({
+    structs: [s_decl],
+    unions: [u_decl],
+    globals: [],
+    funcs: [],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  let e3092 = errs.filter(e => e.code == 3092)
+  assert_eq(
+    e3092.length(),
+    1,
+    msg="E3092 须源序单报（只落后声明侧；实得 \{e3092.length()} 条：\{errs.map(e => e.code.to_string() + "@" + e.line.to_string()).join(",")}）",
+  )
+  assert_eq(
+    e3092[0].line,
+    2,
+    msg="报错位置须落后声明（union 侧 line 2；实得 line \{e3092[0].line}——方向倒置是 P2-2 缺陷形态）",
+  )
+  assert_true(
+    e3092[0].message.contains("已用作 struct"),
+    msg="后侧 union 撞先侧 struct——消息方向须「已用作 struct」",
+  )
+}
+
+///|
+/// 红锚 P3-1（PR #504 审阅处置，2026-11-13）：null pointer constant 判据
+/// 全形态——qsort compar 位传 1-1 / (int)0（整型常量表达式==0，C11
+/// §6.7.9）应与字面量 0 同零诊断；修前只认裸字面量 0，此两形态假阳
+/// E3029（clang 仅 -Wnon-literal-null-conversion 提示级）。
+test "p31_null_const_expr_1_minus_1_and_cast_zero_pass" {
+  let loc = @source.SourceLoc::new(3, 3)
+  let mk = fn(compar : @ast.Expr) -> Array[TypeError] {
+    let arr_decl : @ast.Stmt = @ast.Stmt::VarDecl(
+      @ast.Type::array_of(@ast.Type::int(), [2]),
+      "arr",
+      None,
+      [],
+      false,
+      false,
+      loc,
+    )
+    let qsort_call : @ast.Stmt = @ast.Stmt::Expr(
+      @ast.Expr::CallPtr(
+        @ast.Expr::Identifier("qsort", loc, @ast.Type::void_type()),
+        [
+          @ast.Expr::Identifier("arr", loc, @ast.Type::void_type()),
+          @ast.Expr::Literal(2, loc, @ast.Type::int()),
+          @ast.Expr::Literal(4, loc, @ast.Type::int()),
+          compar,
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+      loc,
+    )
+    let main : @ast.FuncDecl = {
+      ..Default::default(),
+      loc,
+      return_type: @ast.Type::int(),
+      name: "main",
+      params: [],
+      body: Some(@ast.Stmt::Block([arr_decl, qsort_call], loc)),
+      source_file: "t.c",
+    }
+    let tc = TypeChecker::new()
+    let (_, errs, _, _) = tc.check({
+      structs: [],
+      unions: [],
+      globals: [],
+      funcs: [main],
+      classes: [],
+      templates: [],
+      template_instantiations: [],
+    })
+    errs
+  }
+  // ① 1-1：整型常量表达式==0——零诊断（修前 E3029 假阳）
+  let e1 = mk(
+    @ast.Expr::Binary(
+      Sub,
+      @ast.Expr::Literal(1, loc, @ast.Type::int()),
+      @ast.Expr::Literal(1, loc, @ast.Type::int()),
+      loc,
+      @ast.Type::int(),
+    ),
+  )
+  let e1c = e1.map(e => e.code.to_string()).join(",")
+  assert_eq(
+    e1.filter(e => e.code == 3029).length(),
+    0,
+    msg="qsort compar 位 1-1（常量表达式==0）应零诊断（C11 §6.7.9；实得 \{e1c}",
+  )
+  // ② (int)0：cast 形态同零诊断
+  let e2 = mk(
+    @ast.Expr::Cast(
+      @ast.Expr::Literal(0, loc, @ast.Type::int()),
+      @ast.Type::int(),
+      loc,
+      @ast.Type::int(),
+    ),
+  )
+  let e2c = e2.map(e => e.code.to_string()).join(",")
+  assert_eq(
+    e2.filter(e => e.code == 3029).length(),
+    0,
+    msg="qsort compar 位 (int)0 应零诊断（实得 \{e2c}",
+  )
+}

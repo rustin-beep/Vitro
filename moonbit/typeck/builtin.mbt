@@ -536,15 +536,22 @@ fn TypeChecker::builtin_check_ptr_or_null(
   note : String,
   loc : @source.SourceLoc,
 ) -> Unit {
-  // resolve 前取原始 Expr 判 0 字面量（resolve 可能包隐式 cast）
-  let is_zero_literal = args[idx] is @ast.Expr::Literal(0, _, _)
+  // resolve 前取原始 Expr 判（resolve 可能包隐式 cast）。P3-1（PR #504
+  // 审阅处置，2026-11-13）：判据自「裸字面量 0」放宽为「整型常量表达式
+  // 且求值==0」（C11 §6.7.9 null pointer constant 全形态——`1-1`/
+  // `(int)0`/`0u`/`0L` 同一 C 语义类四写法口径统一，共享算术核
+  // const_eval 单源；修前 1-1/(int)0 假阳 E3029 而 0u/0L 放行）。
+  let is_null_const = match self.const_eval(args[idx]) {
+    Some(CI(0, _)) => true
+    _ => false
+  }
   let (t, new_arg) = self.resolve_expr_type(args[idx])
   args[idx] = new_arg
   let kind = t.kind()
   if kind is TK_Pointer {
     return
   }
-  if kind is TK_Int && is_zero_literal {
+  if kind is TK_Int && is_null_const {
     return
   }
   self.report_error(note, loc, E3029_BuiltInArgType)

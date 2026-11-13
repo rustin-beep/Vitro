@@ -370,7 +370,8 @@
       "explanation": "用于初始化的字符串长度超过了数组声明的大小。注意字符串末尾还有一个隐含的 \\0 终止符。",
       "common_causes": [
         "char s[5] = \"hello\"（需要至少 6 个字节）"
-      ]
+      ],
+      "fix_suggestion": "字符串长度与数组声明不匹配：真超长时增大数组或缩短字符串；恰好填满（如 char s[3]=\"abc\"）虽合法但末尾没有 '\u0000' 终止符，strlen/printf 等会越界读——建议数组大小 = 字符数 + 1"
     },
     {
       "code": 3009,
@@ -1210,8 +1211,8 @@
     {
       "code": 3092,
       "icon": "shadow",
-      "title": "struct/union/enum 共享 tag 命名空间冲突",
-      "explanation": "C 语言里 struct、union、enum 的标签（tag）共用同一个命名空间：同一个名字不能既是 union 又是 struct。比如先写了 union A 再写 struct A，编译器会认为这是对同一个 tag 的两种矛盾用法。修复方法：给其中一个换名字（如 union A 与 struct AData），或者确认你引用的确实是同一种类型。",
+      "title": "struct/union 共享 tag 命名空间冲突",
+      "explanation": "C 语言里 struct 和 union 的标签（tag）共用同一个命名空间：同一个名字不能既是 union 又是 struct。比如先写了 union A 再写 struct A，编译器会认为这是对同一个 tag 的两种矛盾用法。修复方法：给其中一个换名字（如 union A 与 struct AData），或者确认你引用的确实是同一种类型。",
       "common_causes": [
         "先定义 union A 又定义 struct A（或反过来）",
         "复制代码片段时连 tag 名一起复制，与既有类型撞名",

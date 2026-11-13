@@ -5,7 +5,7 @@
 > 归属：CLI 出口（`moonbit/cmd/*`——四薄壳 + `cmd/lib/cli` 逻辑层 + `cmd/vitro` 总入口）
 > 消费者：agent / shell 脚本 / 仓库防线（vm_diff、clang_direct 的标记行剥离器）/ 任何第三方
 > 关联规格：[`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md)——`--json` 模式的帧语义**引用不重复定义**（帧 = gateway 协议单源）
-> 最后核对日期：2026-10-15（**#112 成文批**——§6 补「通道字节语义总则」（delta 逐字节 Latin-1/游标按字节，从 §1 文本面提升为协议级并覆盖 serve/api/--json 三出口）+ §1 加总则指引句。协议行为零变更，纯定性成文）
+> 最后核对日期：2026-11-05（**WASI 期 0 script 批**——§4.6 新增 `script` 子命令（argv 收口/shebang 剥行/exit 透传——python 实测惯例锚）+ §2 补 script 退出码例外段 + §0/§8 子命令面连坐。沿革：2026-10-31〔#207/#319/#394——§1 stdout 原样直写与边界换行〕← 2026-10-15〔#112 成文批——§6 通道字节语义总则 + §1 总则指引句〕；更早见各节内注）
 
 本文档是 CLI 的**输出契约**：消费方按此解析，无需了解 MoonBit 内部。协议变更纪律与 StepPayload 同源：**标记行前缀与退出码语义只增不改**；新前缀/新事件 type 走追加。
 
@@ -17,7 +17,7 @@
 
 | 形态 | 入口 | 用途 |
 |---|---|---|
-| 总入口单 exe | `vitro <cmd> [args]`（`moonbit/_build/native/release/build/cmd/vitro/`） | agent 主入口（run/compile/step/api 四子命令） |
+| 总入口单 exe | `vitro <cmd> [args]`（`moonbit/_build/native/release/build/cmd/vitro/`） | agent 主入口（run/compile/step/api/script 五子命令） |
 | 独立 exe | `cmd/run`、`cmd/compile`、`cmd/step`（薄壳，行为与总入口同名子命令**逐字节一致**） | 防线调用面（vm_diff/clang_direct 硬编码 run.exe 路径） |
 | 交互面 | `cmd/serve`（stdio NDJSON 会话协议——**不在本规格**，见 gateway 协议） | 长会话/断点交互/input.feed |
 | dump 族 | `cmd/dump_{tokens,ast,typeck,compile}`（位置参数形态，**有意保留**——语法分叉登记 #37 B3） | 静态产物 |
@@ -75,6 +75,8 @@
 | 3 | 步数超限（trap 形态按步数事实判——`vm.step_count >= vm.max_steps`） |
 | 4 | 用法/IO 错（文件不存在、参数不合法、未知子命令；**未收拢命令**（`dump-*`/`serve`）的分派提示也归此类——命令名合法但本入口不承载，属用法指导非执行错误。**IO 码位细分登记（DX P4，2026-10-11）**：`run -i` 输入文件不可读、`--dump-memory` 写盘失败、api 未知方法名预检均落此码——fail loud 文案 + rc=4，不再静默吞/误归协议内失败） |
 
+**script 子命令例外（WASI 期 0，2026-11-05 追加——新子命令走 §8 追加纪律）**：上表五值是 run/compile/step/api 的退出码域；`script` 的**正常结束退出码 = C 返回值 `& 0xFF` 真实透传**（域 0..255——POSIX 惯例，python `sys.exit` 同款：256→0、42→42，2026-11-05 本机实测锚）。框架错路径仍落 1/2/3/4（编译错/trap/步数超限/用法 IO 错）——**与透传域同码位重叠是接受形态**（python/node 同款：脚本进程 rc 域与解释器错误码共享），歧义区分走 stderr 标记行（`// EXIT N` = 程序返回、`// TRAP` = 引擎受检终止、`// COMPILE-ERROR` = 编译失败）。
+
 历史注：Rust oracle CLI 的 trap 退出码 = 1（与编译错混淆）——本表为 mb 侧有意规范化（#37 超越项）。**步数超限判定口径（SWEEP1 #443 C4 起统一为 trap_code 码位 E3091——vm 超限 trap 立码进 diag 码表 E3091_StepLimit；`run` 文本/json 两模式 = run 帧 `trap_code=="E3091"` 一处字段比对，替旧「`steps_executed` 恰等 max_steps」数值巧合判定〔cap 达成即 step-limit 的引擎预算语义遮蔽——divide-zero 恰在 cap 步发生即误报，锚 sweep1_443_c4 两模式〕）；`step` = trap_message 的引擎固定文案前缀「程序执行步数达到预算上限」（step.next 帧八字段冻结面无 trap_code——文案是引擎模板字符串〔teaching/assets/trap_messages_gen.mbt 的 step-limit 模板〕，变更连坐 cli_step 判定与 cli_wbtest m35_a2 锚）。**
 
 ## 3. `run` 命令
@@ -113,6 +115,19 @@ vitro api <method> [params-json]
 - **`api help [method]`（#67，2026-10-11）**：离线可发现性出口——`help` 是方法位保留字（不进 invoke、不起会话）：无 method 打印全方法清单、有 method 打印单方法详情（params 形状 = `serve_param_err` 的 `expected` 字段同源，#68 词汇表）；数据 = `scripts/gen_api_help` 生成表（权威源 dispatch + serve_param_err，`-check` 幂等锁——禁手抄），三臂同表（`cmd/lib/cli/api_help_gen.mbt` 单产物——main.js 退役批 2026-10-16 起）由 vitro_cli_smoke 对拍锁；rc：0=清单/详情 / 4=未知方法（用法错文案走 stderr——§1「rc=4 路径 stdout 恒为空」不变式，#215 连坐勘误 2026-10-23）；`--batch` 与 `help` 并用 = rc=4；
 - 例：`vitro api ping` / `vitro api compile '{"source":"int main(){return 0;}"}'` / `vitro api ast.dump '{"source":"…"}'` / `vitro api help compile`。
 
+## 4.6 `script` 命令（WASI 期 0，2026-11-05——C 脚本直跑骨架，零 WASI 面）
+
+```
+vitro script <file.c | -> [argv...]
+```
+
+- **定位**：run 态的脚本化包装（全速执行、帧管线复用——VisEvent/帧流零参与）+ 三件脚本体验收口（设计单《WASI拓展面——能力授权制与C脚本裁判形态》期 0 行，O5 拍板落位 = cli 扩子命令，三臂壳分派表同构连坐）；WASI 级 2 起（stdin/stdout 直通）见该设计单期 1+，本命令骨架期不含；
+- **argv 收口（python/node 惯例，2026-11-05 python 3.14 本机实测对齐）**：首个非 `-` 前缀参数（或 `-` 占位）= 源文件位；**其后全部参数原样透传给 C 程序 argv**（含 `-i`/`--json` 等旗标形与 `--` 字面量——透传域零解析、`--` 无特殊语义，python `sys.argv` 同款）；文件位**之前**的 `-` 前缀参数 = 用法错 rc=4（script 零解释器选项；python `--bogus` 报错同形）；文件位**之前的 `--` 单独出现 = 选项终止符**（#492 审阅 P3-1，2026-11-12 python 3.14 实测：`python -- x.py a b` → sys.argv=['x.py','a','b']——终止符吃掉、其后参数零旗标解析无条件落文件位，含 `-` 前缀文件名）；
+- **shebang 剥行（script 态专属）**：源码首行 `#!` 剥离——实现 = 首行替换**等长空格**（换行符保留），行号/行数零偏移（python 惯例：`#!` 行忽略但行号照常计数，实测 err.py 第 2 行错报 `line 2`）；无 `#!` 前缀原样（`#include` 等预处理合法域不受染）。**run 态现状登记（2026-11-05 实测，修正设计单 §3.1 推断档）**：vitro 预处理器对 `#!` 行宽容静默通过（rc=0 无告警）——run 态不剥、行为依赖该宽容路径；script 剥行 = 显式确定性（不依赖隐式宽容）；
+- **exit code 透传**：正常结束进程 rc = C 返回值 `& 0xFF`（§2 script 例外段）；`// EXIT N` 标记行照打（ret≠0，观测通道）；
+- **骨架期边界**：不支持 `--json`/`-i`/`--dump-memory`/`--max-steps`/`--realtime`（零旗标面——文件位后零解析的直接推论；这些旗标形进 C argv）；程序 stdin 输入面未开（Batch EOF 语义——fd_read 直通属 WASI 期 1 级 2）；`-` 源码走进程 stdin（`argv[0]` = `-`，python `-` 同品类）；
+- 退出码：正常 = `ret & 0xFF`；框架错 1/2/3/4 同 run（§2）。
+
 ## 5. `step` 命令（有意分叉登记：Rust `step` 是交互 REPL，mb 是一次性——交互面归 serve）
 
 ```
@@ -146,7 +161,7 @@ Rust oracle 为 flag 形态（`-o`/`--raw`）；mb 为位置参数（`dump_token
 
 ## 8. 版本与演进
 
-- v1 冻结面：标记行前缀**十种**（§1 白名单表**单源**——本计数为两表行数之和〔九种引擎标记行 + 一种壳层标注行，#322 补登 2026-10-28〕，加前缀须两处连坐；历史四次「补登不跟账」：NOTE〔10-04〕/STDERR〔10-10〕/FIX〔10-11，第三次同形且漏进 §1 表致下游剥离器漏剥实锤，#114 补录〕/`[vitro] backend=`〔10-28，#322——长期在产未入表第四次同形〕）/ 退出码五值 / `--json` 事件 type 五种（diag/run/stdout/stderr/note——§6 表**单源**；历史计数句「三种」为 stderr/note 追加前的旧值未跟账，SWEEP1 #444 批勘正；step 的 diag 可达形态同批补全）+ summary；
+- v1 冻结面：标记行前缀**十种**（§1 白名单表**单源**——本计数为两表行数之和〔九种引擎标记行 + 一种壳层标注行，#322 补登 2026-10-28〕，加前缀须两处连坐；历史四次「补登不跟账」：NOTE〔10-04〕/STDERR〔10-10〕/FIX〔10-11，第三次同形且漏进 §1 表致下游剥离器漏剥实锤，#114 补录〕/`[vitro] backend=`〔10-28，#322——长期在产未入表第四次同形〕）/ 退出码五值 / `--json` 事件 type 五种（diag/run/stdout/stderr/note——§6 表**单源**；历史计数句「三种」为 stderr/note 追加前的旧值未跟账，SWEEP1 #444 批勘正；step 的 diag 可达形态同批补全）+ summary；**子命令追加**：`script`（2026-11-05，WASI 期 0——退出码域例外见 §2 script 段：正常结束 = C 返回值 `& 0xFF` 透传，非五值域；标记行前缀零新增〔复用既有十种〕）；
 - **output.delta 帧字段追加（DX ③，2026-10-11）**：`truncated_bytes`（int，环形丢弃累计——16MB/8MB 预算触顶丢最旧的显式位，0=完整；按 stream 通道分域，display=两通道之和）。消费方判「输出不完整」不再依赖可被再丢的截断注记。
 - 演进纪律：只增不改（新前缀、新事件 type、新子命令走追加；语义变更需版本化）；
 - 历史分叉登记：Rust oracle CLI 与本协议的差异（trap 退出码 / dump 语法 / step 形态）随 Rust 退役自然消失。

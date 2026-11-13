@@ -48,6 +48,15 @@ fn main {
         write_stdout=js_write_stdout,
         channel=@engine_direct.direct_channel(),
       )
+    "script" =>
+      // WASI 期 0（2026-11-05）：与 cmd/vitro 分派表整表同构连坐
+      @cli.script(
+        rest,
+        js_clock_millis,
+        js_read_stdin,
+        js_write_stdout,
+        channel=@engine_direct.direct_channel(),
+      )
     "serve" | "dump-tokens" | "dump-ast" | "dump-typeck" | "dump-compile" => {
       // #215：rc=4 用法错语境的指引走 stderr（stdout 恒空不变式）
       @cli.usage_err(

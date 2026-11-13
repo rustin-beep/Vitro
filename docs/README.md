@@ -96,7 +96,7 @@
 | [`current/02-构建与上手/快速入门.md`](current/02-构建与上手/快速入门.md) | 快速入门：下游接入（moon add 配方，#115）/ 命令行 / JSON-lines 会话 / wasm-gc 出口（原 `QUICKSTART.md`） |
 | [`current/02-构建与上手/构建指南.md`](current/02-构建与上手/构建指南.md) | 构建指南：引擎、三臂 CLI（js/native/wasm）、测试防线与排障（原 `BUILD.md`；脚本清单已拆分至下方专册） |
 | [`current/02-构建与上手/脚本总清单与必跑防线.md`](current/02-构建与上手/脚本总清单与必跑防线.md) | **脚本总清单与必跑防线（2026-09-22 建册）**：`scripts/` 全量脚本入册（CI 门禁驱动 / 差分对拍 / 探针 / 生成器 / Python 残留处置）；CI 门禁全表与**本地提交前按改动区域的必跑矩阵**；用法权威源=各脚本头注，本册为一级索引与入册义务 |
-| [`current/02-构建与上手/CLI使用手册.md`](current/02-构建与上手/CLI使用手册.md) | CLI 使用指南：**统一入口 launcher `scripts/bin/vitro`（缺省 js 臂，`--backend js|native|wasm` 三臂选边，#49+三后端批）** + MoonBit 侧 `vitro` 总入口（run/compile/step/api 四子命令）+ serve 会话方法面与**「字段 ↔ 最低版本」表**（#116；Rust `vitro_cli` 章节已随删区整体退役）（协议契约单源在 [`moonbit/docs/spec/CLI_PROTOCOL_V1.md`](../moonbit/docs/spec/CLI_PROTOCOL_V1.md)）（原 `VITRO_CLI.md`） |
+| [`current/02-构建与上手/CLI使用手册.md`](current/02-构建与上手/CLI使用手册.md) | CLI 使用指南：**统一入口 launcher `scripts/bin/vitro`（缺省 js 臂，`--backend js|native|wasm` 三臂选边，#49+三后端批）** + MoonBit 侧 `vitro` 总入口（run/compile/step/api/script 五子命令——#492 script 批起）+ serve 会话方法面与**「字段 ↔ 最低版本」表**（#116；Rust `vitro_cli` 章节已随删区整体退役）（协议契约单源在 [`moonbit/docs/spec/CLI_PROTOCOL_V1.md`](../moonbit/docs/spec/CLI_PROTOCOL_V1.md)）（原 `VITRO_CLI.md`） |
 
 #### 语言子集规范（行为契约）
 

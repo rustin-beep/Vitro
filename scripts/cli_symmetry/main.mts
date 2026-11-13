@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// cli_symmetry：CLI 四子命令参数面对称性冒烟闸（审阅 v2 批 A7 / R1a 处方 R5，2026-11-02）。
+// cli_symmetry：CLI 五子命令参数面对称性冒烟闸（审阅 v2 批 A7 / R1a 处方 R5，2026-11-02；#492 审阅 P3-3 起 script 纳入断言面）。
 //
 // 背景（R1a ④ M5「子命令族门禁不对称」形态）：病 87 批给 run 补了未知旗标 fail loud、
-// compile/step 跟进（残留⑤/⑦式清单打补丁），**四子命令修了三家漏 api**——`vitro api
+// compile/step 跟进（残留⑤/⑦式清单打补丁），**四家修了三家漏 api**（script 2026-11-05 才建面）——`vitro api
 // --zz-bogus help` 未知旗标被静默吞（rc=0，用户以为生效）；`api help ping zz-extra`
 // 多余位置参数同吞（F4 三形态实测 2026-11-02）。参数面单源 CLI_PROTOCOL_V1 的
 // 「fail loud」条目此前零逐命令可执行断言。本闸对 run/compile/step/api × 三臂
@@ -110,10 +110,10 @@ export function probeCell(
   return results;
 }
 
-/** fail loud 文案字样（审阅 P2-1 收窄，2026-11-02）：对齐四子命令实际输出——run「未知旗标或缺值」/
- * compile「未知旗标或多余参数」/ step「未知旗标：」「多余位置参数」/ api「用法错: …」。
+/** fail loud 文案字样（审阅 P2-1 收窄，2026-11-02）：对齐各子命令实际输出——run「未知旗标或缺值」/
+ * compile「未知旗标或多余参数」/ step「未知旗标：」「多余位置参数」/ api「用法错: …」/ script「文件位前不接受旗标」「源文件不可读」（#492 P3-3 纳入）。
  * 旧形态含裸「用法」过宽（正常 usage 输出也算命中，两臂哑失败可被第三臂的正常 usage 掩盖）。 */
-const FAIL_LOUD_RE = /未知旗标|多余位置参数|多余参数|用法错/;
+const FAIL_LOUD_RE = /未知旗标|多余位置参数|多余参数|用法错|文件位前不接受旗标|源文件不可读/;
 
 /** 全判据：三臂一致 + 与声明一致 + rc4 须有 fail loud 文案 + 声明引用有效。 */
 export function verdict(rd: RulesDoc, cells: Record<string, ArmResult[]>): { ok: boolean; issues: string[] } {
@@ -255,7 +255,7 @@ export function main(argv: string[]): number {
     const { ok, issues } = verdict(rd, cells);
     for (const s of issues) process.stdout.write(`  ${s}\n`);
     if (ok) {
-      process.stdout.write("cli_symmetry: PASS（四子命令 × 两探针 × 三臂：臂间一致、与声明一致、rc4 均有 fail loud 文案）\n");
+      process.stdout.write("cli_symmetry: PASS（五子命令 × 两探针 × 三臂：臂间一致、与声明一致、rc4 均有 fail loud 文案）\n");
       return 0;
     }
     process.stdout.write("cli_symmetry: FAIL——CLI 参数面已分叉（详见上方）\n");

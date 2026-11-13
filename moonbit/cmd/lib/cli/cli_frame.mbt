@@ -160,6 +160,9 @@ fn frame_pipeline(
   channel~ : EngineChannel,
   max_steps_override~ : Int32? = None,
   realtime~ : Bool = false,
+  exit_passthrough~ : Bool = false, // script 态（WASI 期 0，2026-11-05）：
+  // 正常结束时进程 rc = C 返回值 & 0xFF 透传（python sys.exit 惯例）；
+  // run 态缺省 false 恒 return 0——防线五值表零扰动
 ) -> Int32 {
   // #133 止血包：--max-steps 覆盖值（缺省 10M）——config.set 下发与
   // rc=3 步数超限判定（两处）同源此值
@@ -395,6 +398,13 @@ fn frame_pipeline(
   let ret = jint(jfield(run_result, "return_value"))
   if ret != 0 {
     say("// EXIT \{ret}")
+  }
+  // WASI 期 0（script 态，2026-11-05）：exit code 真实透传——C 返回值
+  // & 0xFF 落进程 rc（POSIX 惯例；python sys.exit(256)→0 实测锚）。
+  // `// EXIT N` 标记行照打（观测通道——rc 与框架码 {1,2,3,4} 同码位重叠
+  // 时〔C return 2 vs trap 2〕的区分出口）。run 态（缺省 false）恒 0。
+  if exit_passthrough {
+    return ret & 0xFF
   }
   0
 }

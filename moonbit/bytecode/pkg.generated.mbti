@@ -6,6 +6,7 @@ import {
   "vitro/engine/ast",
   "vitro/engine/opcode",
   "vitro/engine/source",
+  "vitro/engine/wasmenc",
 }
 
 // Values
@@ -39,6 +40,8 @@ pub fn align4(UInt32) -> UInt32
 
 pub fn argv_region_footprint(Int32, Array[String]) -> UInt32
 
+pub fn build_wasm_product(CompileOutput) -> Result[WasmProduct, WasmProjectError]
+
 pub fn builtin_name_union() -> Array[String]
 
 pub let bytecode_libc_all_funcs : Array[String]
@@ -66,6 +69,10 @@ pub fn shadowed_host_names() -> Array[String]
 pub fn verify_compile_output(CompileOutput, Bool) -> Array[VerifyViolation]
 
 pub fn verify_violations_json(Array[VerifyViolation]) -> String
+
+pub fn wasm_emit_ctx(CompileOutput) -> @wasmenc.EmitCtx
+
+pub fn wasm_triples(CompileOutput) -> Array[(@opcode.OpCode, Int32, @source.SourceLoc)]
 
 // Errors
 
@@ -142,6 +149,21 @@ pub(all) struct VerifyViolation {
 pub fn VerifyViolation::equal(Self, Self) -> Bool
 pub fn VerifyViolation::not_equal(Self, Self) -> Bool
 pub fn VerifyViolation::to_repr(Self) -> @debug.Repr
+
+#derive(@debug.Debug)
+pub(all) struct WasmProduct {
+  table : @wasmenc.GroupTable
+  bytes : Array[Byte]
+}
+pub fn WasmProduct::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum WasmProjectError {
+  EmitFailed(Int32, String, String)
+}
+pub fn WasmProjectError::equal(Self, Self) -> Bool
+pub fn WasmProjectError::not_equal(Self, Self) -> Bool
+pub fn WasmProjectError::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

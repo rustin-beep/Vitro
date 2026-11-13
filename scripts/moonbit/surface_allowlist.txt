@@ -101,3 +101,6 @@ vitro/engine/wasmenc L_T64
 vitro/engine/wasmenc L_TF
 vitro/engine/wasmenc L_TF32
 vitro/engine/wasmenc L_V
+# REHOST 批 1c（2026-11-13）：bytecode 投影层 wasm_triples（code→组三元组
+# 直投影——build_wasm_product 内部消费；跨包消费方批 2 装载协议接线时补边）
+vitro/engine/bytecode wasm_triples

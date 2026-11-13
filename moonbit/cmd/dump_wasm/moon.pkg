@@ -1,0 +1,21 @@
+// REHOST 批 1c 出口（native only）：wasm 载体产物全量 dump——管线复用
+// dump_compile 形态（Lexer→Parser→TypeChecker→BytecodeGen）+ bytecode 投影层
+// （build_wasm_product）+ wasmenc 装载核对（verify_fold_with_table），JSONL
+// stdout 供产物闸 scripts/wasmenc_emitgate 消费。零扰动：不碰 schema/dump/CLI。
+import {
+  "vitro/engine/ast",
+  "vitro/engine/bytecode",
+  "vitro/engine/codegen",
+  "vitro/engine/lexer",
+  "vitro/engine/parser",
+  "vitro/engine/typeck",
+  "vitro/engine/fs",
+  "vitro/engine/util",
+  "vitro/engine/wasmenc",
+  "moonbitlang/core/env",
+  "vitro/engine/teaching/content_data",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

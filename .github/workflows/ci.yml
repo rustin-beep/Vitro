@@ -1156,6 +1156,39 @@ jobs:
             exit 1
           fi
 
+      - name: wasmenc watcheck (wat ↔ vitro flat bytes crosscheck)
+        if: matrix.slice == 'bookkeeping'
+        # REHOST 批 1c（2026-11-13）：cases/*.wat 手写样例经 wabt（npm
+        # 依赖钉版 1.0.39，scripts/package.json + lockfile 锁定）编译的
+        # 函数体指令字节 ↔ wasmenc 单源发射器扁平字节（witness_dump 打印
+        # 行——moon test -p wasmenc 现场跑）**逐字节恒等对拍**——码位/
+        # 编码形态（sleb/uleb 最短性、对齐立即数、f64 小端）的 node 侧第
+        # 三方证人，比 wasm-validate 内容级更强（同一指令序列两编码器分
+        # 歧即红；批 1b 曾借此实锤 memory.fill 多发 0x00 的 validate 不拦
+        # 字节错位）。逐组切片定位 + **覆盖对账**（witness dump 150 条
+        # = 147 可发射 + 双形态 3，全量须有 wat 小单元——新增 opcode 不配
+        # 用例即红；本对账首跑抓到批 1b 全量声明漏网 Not/UDiv/UMod 三条）。
+        shell: bash
+        run: |
+          cd scripts && npm ci --no-audit --no-fund
+          cd .. && node scripts/wasmenc_watcheck/main.mts
+
+      - name: wasmenc emitgate (corpus emission + verify + wabt binary validation)
+        if: matrix.slice == 'bookkeeping'
+        # REHOST 批 1c 主体（2026-11-13）：全语料「154 码表 → wasm 子集」
+        # 发射产物闸（设计单 §3.2 批 1 验收面①③）——cmd/dump_wasm
+        # （ensureFresh 新鲜度门禁构建）逐语料目录批跑，三级判定：
+        # ①编译成功例 100% 可发射（emit 失败=禁译面，deferred.json 按
+        # 「目录/文件」登记豁免，首版空）；②装载核对（组表引导裁决）
+        # 全过；③hex 指令区拼证人壳过 wabt readBinary 二进制验证
+        # （「发射字节=合法 wasm」）。编译期失败例（lex/parse/type/gen）
+        # 计数不判红——负例语料属 codegen_diff 既有防线域。基线：9 目录
+        # 902 ok / 47 编译期 / 0 红（2026-11-13，含 #486 B10 新增 5 语料）。
+        shell: bash
+        run: |
+          cd scripts && npm ci --no-audit --no-fund
+          cd .. && node scripts/wasmenc_emitgate/main.mts
+
       - name: Build serve.exe (debug native) for facts replay/serve_smoke collectors
         if: matrix.slice == 'bookkeeping'
         # 审阅 v2 A6 批（2026-11）S01-A2 连坐：replay/serve_smoke 两键移出

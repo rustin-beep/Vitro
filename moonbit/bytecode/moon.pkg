@@ -5,6 +5,7 @@ import {
   "moonbitlang/core/encoding/utf8",
   "vitro/engine/ast",
   "vitro/engine/opcode",
+  "vitro/engine/wasmenc",
   "vitro/engine/source",
   "vitro/engine/util",
 }

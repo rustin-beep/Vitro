@@ -172,7 +172,9 @@ function collectCaseDirs(root: string, facts: Record<string, Fact>): void {
   // 不是用例。曾按"非目录文件"计数，knr 的 29 个 .in、baseline 的 4 个 .h
   // 全被计入（knr 报 110 而实际 69 个 .c）——事实台账失真。
   for (const m of [
-    { key: "cpp_e2e_cases", sub: "cpp", ext: ".cpp" },
+    // cpp_e2e_cases 键退役（C1 卫生批 2026-11-13）：corpus/cpp 83 例全仓零
+    // 消费（CI/防线零引用），键名「e2e」虚指对拍面——退役进 audit
+    // RETIRED_KEYS；桶本体原地保留（deferred 标注见 corpus/cpp/README.md）。
     { key: "c_e2e_baseline_cases", sub: "baseline", ext: ".c" },
     { key: "c_e2e_gap_cases", sub: "gap", ext: ".c" },
     { key: "c_e2e_knr_cases", sub: "knr", ext: ".c" },
@@ -569,6 +571,57 @@ export function collectMoonbit(root: string, facts: Record<string, Fact>): void 
   collectMoonbitNativeFromOutput(rN.out, rN.code, facts);
 }
 
+// collectMoonbitCheckWarnings（B3 台账机制，2026-11-13）：moon check
+// --target all 的独立 warning 条数——手册「余额 34」硬数字失真（master
+// 实测 98；两轮评审各时点 80/98，批合入不清 warning 的活性缺口）后的
+// 止涨机制：计数入 facts + 台账文档裸数字声明对账（涨=漂移红=须归因
+// 清点入 docs/current/07-质量与裁定/moon-check-warning台账.md）。
+// 计数口径（实测踩坑，J9 锚双埋雷）：同一 warning 两行呈现——码行
+// `Warning: [NNNN]` + 块内助记行 `Warning (name)`——只计助记形（裸
+// grep 'Warning' 双计 196 vs 真值 98）；无 Finished 行（SIGPIPE/截断
+// 形态，工具陷阱 9 同族）与 code≠0（类型红输出计数非同口径面）均
+// unavailable 不采。
+export function collectMoonbitCheckWarnings(root: string, facts: Record<string, Fact>): void {
+  const how = "cd moonbit && moon check --target all";
+  const r = runCmd(path.join(root, "moonbit"), 10 * 60_000, "moon", "check", "--target", "all");
+  if (!r.ok) {
+    facts["moonbit_check_warnings"] = unavail("条", "moonbit/（moon check --target all）", how, "超时或 moon 不可用");
+  } else {
+    collectMoonbitCheckWarningsFromOutput(r.out, r.code, facts);
+  }
+}
+
+export function collectMoonbitCheckWarningsFromOutput(out: string, code: number, facts: Record<string, Fact>): void {
+  const how = "cd moonbit && moon check --target all";
+  if (code !== 0 || !out.includes("Finished")) {
+    facts["moonbit_check_warnings"] = unavail("条", "moonbit/（moon check --target all）", how,
+      code !== 0 ? "check 失败（类型红）——计数非同口径面不采" : "无 Finished 行——输出截断形态，计数是毒数字");
+    return;
+  }
+  const m = out.match(/Warning \(\w+\)/g);
+  const n = m === null ? 0 : m.length;
+  // PR #511 审阅 P3-3：Finished 行总数互证——moonc 自报 `(N warnings, E
+  // errors)` 是权威总数，与助记计数不等 = 输出形态漂移（防格式变化静默
+  // 少计/归零），fail loud 不采。零 warning 形态可能不带 warnings 字段——
+  // 此时仅在助记计数 > 0 才判漂移（有 warning 却无总数自报即异常）。
+  const fm = /\((\d+) warnings?, \d+ errors?\)/.exec(out);
+  if (fm !== null) {
+    const reported = Number.parseInt(fm[1]!, 10);
+    if (reported !== n) {
+      facts["moonbit_check_warnings"] = unavail("条", "moonbit/（moon check --target all）", how,
+        `Finished 自报 ${reported} warnings ≠ 助记计数 ${n}——输出形态漂移，须人工核口径`);
+      return;
+    }
+  } else if (n > 0) {
+    facts["moonbit_check_warnings"] = unavail("条", "moonbit/（moon check --target all）", how,
+      `助记计数 ${n} 但 Finished 行无 warnings 自报——零 warning 形态与漂移不可辨，须人工核`);
+    return;
+  }
+  const f = okFact(n, "条", "moonbit/（moon check --target all，助记形计数 + Finished 互证）", "run", nowISO());
+  f.note = "moon check warning 台账键（B3 止涨机制）——增减须归因入台账文档（docs/current/07-质量与裁定/moon-check-warning台账.md）";
+  facts["moonbit_check_warnings"] = f;
+}
+
 export function collectMoonbitFromOutput(out: string, code: number, facts: Record<string, Fact>): void {
   const m = /Total tests: (\d+), passed: (\d+), failed: (\d+)/.exec(out);
   if (m === null) {
@@ -776,6 +829,7 @@ export const RUN_KEYS = [
   "moonbit_parser_diff_samples",
   "moonbit_test_passed_native",
   "moonbit_coverage_uncovered_lines",
+  "moonbit_check_warnings",
 ];
 
 // markRetiredFacts：Rust 退役键统一 unavailable（工序④删区批 2026-10-05）。
@@ -812,6 +866,8 @@ export function collectAll(
     collectMoonbit(root, facts);
     collectMoonbitLexerDiff(root, facts);
     collectMoonbitParserDiff(root, facts);
+    // B3 台账机制（2026-11-13）：warning 计数与测试计数同采集档（--run）
+    collectMoonbitCheckWarnings(root, facts);
   } else {
     facts["replay_assertions"] = unavail("条", "scripts/replay/replay_s1_s5.mts", "--run",
       "需 --run 才执行");
@@ -828,6 +884,9 @@ export function collectAll(
     facts["moonbit_lexer_diff_tsv"] = unavail("个", "scripts/diff_gate（lexer 臂）", "--run",
       "需 --run 才执行");
     facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/diff_gate（parser 臂）", "--run",
+      "需 --run 才执行");
+    // B3：占位与 RUN_KEYS 对称（#298 病族——缺占位=沿用跳过=落盘丢键假绿）
+    facts["moonbit_check_warnings"] = unavail("条", "moonbit/（moon check --target all）", "--run",
       "需 --run 才执行");
   }
   if (cargoLog !== "") {

@@ -306,6 +306,15 @@ fn Scanner::char_literal(self : Scanner, start : Int32) -> @token.Token {
     self.err("字符字面量未闭合", E1002_UnterminatedString)
     valid = false
   }
+  // #510（2026-11-13）：C11 §6.4.4.4——字符常量值 = 执行字符集成员经 char
+  // 转换后的 int。vitro char 目标语义 = signed char（x86 clang 基准，与
+  // char 变量路径及 W3053 typeck 判定同源）——值 128..255（高位八进制/十六
+  // 进制转义、源高位字节）须符号化：'\377'→-1、'\200'→-128。旧形态零扩展
+  //（255/128），与自家 char 变量路径内部不一致
+  //（clang 22 实测 -1/-128/-56，双臂复现）。
+  if valid && value > 127 {
+    value = value - 256
+  }
   // Rust 口径：col 反推基准 = 源切片（含引号），text 字段 = 数值（valid 时）
   let span = slice_string(self.bytes, start, self.pos)
   if valid {

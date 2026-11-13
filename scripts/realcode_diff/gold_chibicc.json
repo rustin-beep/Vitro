@@ -1,526 +1,527 @@
 {
-  "_meta": {
-    "as_of": "2026-11-04",
-    "buckets": {
-      "both_green": 0,
-      "clang_red": 21,
-      "vitro_red": 20
-    },
-    "gcc_buckets": {
-      "both_green": 16,
-      "both_red": 20,
-      "divergence": 4,
-      "rescued": 1
-    },
-    "note": "金样本签名清单,零源码文本。E1021×2 豁免;#278/#343 重冻;2026-10-29 全量重冻(#213/#344/#346,E3001 族 22 处);2026-11-04 #459 重冻(W3053 误报 13+1 条消失,零连坐)。",
-    "repo": "chibicc@RunThem/chibicc-repo",
-    "source_commit": "b9c1f0311709dbc0aab7ff4501f920f30444ae1b",
-    "source_fork": "https://github.com/RunThem/chibicc-repo",
-    "total": 41
+ "_meta": {
+  "as_of": "2026-11-13",
+  "buckets": {
+   "both_green": 0,
+   "clang_red": 21,
+   "vitro_red": 20
   },
-  "files": {
-    "alignof.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 406,
-      "vitro_warns": 0,
-      "codes": {
-        "E2003": 1,
-        "E2005": 371,
-        "E2007": 10,
-        "E3001": 19,
-        "E3002": 1,
-        "E3037": 1,
-        "E3082": 3
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "alloca.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "arith.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 1911,
-      "vitro_warns": 61,
-      "codes": {
-        "E2003": 1,
-        "E2005": 1867,
-        "E2007": 2,
-        "E3001": 10,
-        "E3037": 1,
-        "E3054": 12,
-        "E3067": 5,
-        "E3075": 12,
-        "E3076": 1,
-        "W1019": 61
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "asm.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "atomic.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "attribute.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 477,
-      "vitro_warns": 1,
-      "codes": {
-        "E2003": 1,
-        "E2005": 418,
-        "E2006": 1,
-        "E2007": 41,
-        "E3001": 7,
-        "E3003": 7,
-        "E3037": 1,
-        "E3042": 1,
-        "W1019": 1
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "bitfield.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "builtin.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "cast.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 371,
-      "vitro_warns": 6,
-      "codes": {
-        "E2003": 1,
-        "E2005": 349,
-        "E2007": 2,
-        "E3001": 17,
-        "E3037": 1,
-        "E3076": 1,
-        "W1019": 6
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "commonsym.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 1,
-      "vitro_warns": 0,
-      "codes": {
-        "E3003": 1
-      },
-      "layer": "typeck",
-      "run": ""
-    },
-    "compat.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "complit.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 139,
-      "vitro_warns": 1,
-      "codes": {
-        "E2003": 1,
-        "E2005": 135,
-        "E2007": 2,
-        "E3037": 1,
-        "W1019": 1
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "const.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "constexpr.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "control.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "decl.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 190,
-      "vitro_warns": 3,
-      "codes": {
-        "E2003": 1,
-        "E2005": 183,
-        "E2007": 2,
-        "E3001": 3,
-        "E3037": 1,
-        "W1019": 3
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "enum.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 248,
-      "vitro_warns": 9,
-      "codes": {
-        "E2003": 1,
-        "E2005": 244,
-        "E2007": 2,
-        "E3037": 1,
-        "W1019": 9
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "extern.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 4,
-      "vitro_warns": 0,
-      "codes": {
-        "E2003": 2,
-        "E2005": 2
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "float.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 1,
-      "vitro_warns": 28,
-      "codes": {
-        "E3003": 1,
-        "W3053": 28
-      },
-      "layer": "typeck",
-      "run": ""
-    },
-    "function.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "generic.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "initializer.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "line.c": {
-      "clang_ok": false,
-      "gcc_ok": true,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "literal.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "macro.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "offsetof.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 1,
-      "vitro_warns": 0,
-      "codes": {
-        "E3003": 1
-      },
-      "layer": "typeck",
-      "run": ""
-    },
-    "pointer.c": {
-      "clang_ok": true,
-      "gcc_ok": false,
-      "vitro_errs": 905,
-      "vitro_warns": 32,
-      "codes": {
-        "E2003": 1,
-        "E2005": 891,
-        "E2007": 2,
-        "E3001": 6,
-        "E3037": 1,
-        "E3067": 4,
-        "W1019": 32
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "pragma-once.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "sizeof.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "stdhdr.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 2,
-      "vitro_warns": 0,
-      "codes": {
-        "E1021": 2
-      },
-      "layer": "lex",
-      "run": ""
-    },
-    "string.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 65,
-      "vitro_warns": 0,
-      "codes": {
-        "E2005": 20,
-        "E2007": 20,
-        "E3037": 20,
-        "E3040": 5
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "struct.c": {
-      "clang_ok": true,
-      "gcc_ok": false,
-      "vitro_errs": 2164,
-      "vitro_warns": 60,
-      "codes": {
-        "E2003": 1,
-        "E2005": 2038,
-        "E2007": 2,
-        "E3001": 69,
-        "E3002": 19,
-        "E3004": 4,
-        "E3037": 1,
-        "E3067": 23,
-        "E3075": 6,
-        "E3077": 1,
-        "W1019": 60
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "tls.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "typedef.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "typeof.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "unicode.c": {
-      "clang_ok": false,
-      "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
-    },
-    "union.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 417,
-      "vitro_warns": 16,
-      "codes": {
-        "E2003": 1,
-        "E2005": 400,
-        "E2007": 2,
-        "E3001": 13,
-        "E3037": 1,
-        "W1019": 16
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "usualconv.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 164,
-      "vitro_warns": 4,
-      "codes": {
-        "E2003": 1,
-        "E2005": 150,
-        "E2007": 2,
-        "E3001": 4,
-        "E3016": 2,
-        "E3037": 1,
-        "E3054": 2,
-        "E3075": 2,
-        "W1019": 4
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "varargs.c": {
-      "clang_ok": true,
-      "gcc_ok": true,
-      "vitro_errs": 19,
-      "vitro_warns": 2,
-      "codes": {
-        "E2003": 1,
-        "E2005": 15,
-        "E2007": 2,
-        "E3037": 1,
-        "W3052": 1,
-        "W3053": 1
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "variable.c": {
-      "clang_ok": true,
-      "gcc_ok": false,
-      "vitro_errs": 991,
-      "vitro_warns": 25,
-      "codes": {
-        "E2003": 1,
-        "E2005": 964,
-        "E2007": 2,
-        "E3001": 20,
-        "E3037": 1,
-        "E3067": 2,
-        "E3075": 1,
-        "W1019": 25
-      },
-      "layer": "parse",
-      "run": ""
-    },
-    "vla.c": {
-      "clang_ok": true,
-      "gcc_ok": false,
-      "vitro_errs": 657,
-      "vitro_warns": 26,
-      "codes": {
-        "E2003": 1,
-        "E2005": 639,
-        "E2007": 2,
-        "E3001": 13,
-        "E3037": 1,
-        "E3067": 1,
-        "W1019": 26
-      },
-      "layer": "parse",
-      "run": ""
-    }
+  "gcc_buckets": {
+   "both_green": 16,
+   "both_red": 20,
+   "divergence": 4,
+   "rescued": 1
+  },
+  "note": "2026-11-13 SWEEP2 重冻：M09-C2（E3001 兜底 loc 0:0→精确位）揭开块退出残留 28 条既有误报（vla 等 statement-expr 语料——0:0 时代被无效位置丢弃掩盖，深修挂账）；W3053 char 域豁免扩大（DATE 语料 6 条）",
+  "repo": "TheAlgorithms/C",
+  "source_commit": "e5dad3f",
+  "source_fork": "https://github.com/rustin-beep/C",
+  "total": 41
+ },
+ "files": {
+  "alignof.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 406,
+   "vitro_warns": 0,
+   "codes": {
+    "E2003": 1,
+    "E2005": 371,
+    "E2007": 10,
+    "E3001": 19,
+    "E3002": 1,
+    "E3037": 1,
+    "E3082": 3
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "alloca.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "arith.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 1976,
+   "vitro_warns": 61,
+   "codes": {
+    "E2003": 1,
+    "E2005": 1867,
+    "E2007": 2,
+    "E3001": 75,
+    "E3037": 1,
+    "E3054": 12,
+    "E3067": 5,
+    "E3075": 12,
+    "E3076": 1,
+    "W1019": 61
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "asm.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "atomic.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "attribute.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 477,
+   "vitro_warns": 1,
+   "codes": {
+    "E2003": 1,
+    "E2005": 418,
+    "E2006": 1,
+    "E2007": 41,
+    "E3001": 7,
+    "E3003": 7,
+    "E3037": 1,
+    "E3042": 1,
+    "W1019": 1
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "bitfield.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "builtin.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "cast.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 375,
+   "vitro_warns": 6,
+   "codes": {
+    "E2003": 1,
+    "E2005": 349,
+    "E2007": 2,
+    "E3001": 21,
+    "E3037": 1,
+    "E3076": 1,
+    "W1019": 6
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "commonsym.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 1,
+   "vitro_warns": 0,
+   "codes": {
+    "E3003": 1
+   },
+   "layer": "typeck",
+   "run": ""
+  },
+  "compat.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "complit.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 139,
+   "vitro_warns": 1,
+   "codes": {
+    "E2003": 1,
+    "E2005": 135,
+    "E2007": 2,
+    "E3037": 1,
+    "W1019": 1
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "const.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "constexpr.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "control.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "decl.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 192,
+   "vitro_warns": 3,
+   "codes": {
+    "E2003": 1,
+    "E2005": 183,
+    "E2007": 2,
+    "E3001": 5,
+    "E3037": 1,
+    "W1019": 3
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "enum.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 277,
+   "vitro_warns": 9,
+   "codes": {
+    "E2003": 1,
+    "E2005": 244,
+    "E2007": 2,
+    "E3001": 29,
+    "E3037": 1,
+    "W1019": 9
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "extern.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 4,
+   "vitro_warns": 0,
+   "codes": {
+    "E2003": 2,
+    "E2005": 2
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "float.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 1,
+   "vitro_warns": 28,
+   "codes": {
+    "E3003": 1,
+    "W3053": 28
+   },
+   "layer": "typeck",
+   "run": ""
+  },
+  "function.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "generic.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "initializer.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "line.c": {
+   "clang_ok": false,
+   "gcc_ok": true,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "literal.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "macro.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "offsetof.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 1,
+   "vitro_warns": 0,
+   "codes": {
+    "E3003": 1
+   },
+   "layer": "typeck",
+   "run": ""
+  },
+  "pointer.c": {
+   "clang_ok": true,
+   "gcc_ok": false,
+   "vitro_errs": 933,
+   "vitro_warns": 32,
+   "codes": {
+    "E2003": 1,
+    "E2005": 891,
+    "E2007": 2,
+    "E3001": 34,
+    "E3037": 1,
+    "E3067": 4,
+    "W1019": 32
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "pragma-once.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "sizeof.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "stdhdr.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 2,
+   "vitro_warns": 0,
+   "codes": {
+    "E1021": 2
+   },
+   "layer": "lex",
+   "run": ""
+  },
+  "string.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 65,
+   "vitro_warns": 0,
+   "codes": {
+    "E2005": 20,
+    "E2007": 20,
+    "E3037": 20,
+    "E3040": 5
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "struct.c": {
+   "clang_ok": true,
+   "gcc_ok": false,
+   "vitro_errs": 2194,
+   "vitro_warns": 60,
+   "codes": {
+    "E2003": 1,
+    "E2005": 2038,
+    "E2007": 2,
+    "E3001": 99,
+    "E3002": 19,
+    "E3004": 4,
+    "E3037": 1,
+    "E3067": 23,
+    "E3075": 6,
+    "E3077": 1,
+    "W1019": 60
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "tls.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "typedef.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "typeof.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "unicode.c": {
+   "clang_ok": false,
+   "gcc_ok": false,
+   "vitro_errs": 0,
+   "vitro_warns": 0,
+   "codes": {},
+   "layer": "",
+   "run": ""
+  },
+  "union.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 420,
+   "vitro_warns": 16,
+   "codes": {
+    "E2003": 1,
+    "E2005": 400,
+    "E2007": 2,
+    "E3001": 16,
+    "E3037": 1,
+    "W1019": 16
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "usualconv.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 165,
+   "vitro_warns": 4,
+   "codes": {
+    "E2003": 1,
+    "E2005": 150,
+    "E2007": 2,
+    "E3001": 5,
+    "E3016": 2,
+    "E3037": 1,
+    "E3054": 2,
+    "E3075": 2,
+    "W1019": 4
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "varargs.c": {
+   "clang_ok": true,
+   "gcc_ok": true,
+   "vitro_errs": 19,
+   "vitro_warns": 2,
+   "codes": {
+    "E2003": 1,
+    "E2005": 15,
+    "E2007": 2,
+    "E3037": 1,
+    "W3052": 1,
+    "W3053": 1
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "variable.c": {
+   "clang_ok": true,
+   "gcc_ok": false,
+   "vitro_errs": 1010,
+   "vitro_warns": 25,
+   "codes": {
+    "E2003": 1,
+    "E2005": 964,
+    "E2007": 2,
+    "E3001": 39,
+    "E3037": 1,
+    "E3067": 2,
+    "E3075": 1,
+    "W1019": 25
+   },
+   "layer": "parse",
+   "run": ""
+  },
+  "vla.c": {
+   "clang_ok": true,
+   "gcc_ok": false,
+   "vitro_errs": 685,
+   "vitro_warns": 26,
+   "codes": {
+    "E2003": 1,
+    "E2005": 639,
+    "E2007": 2,
+    "E3001": 41,
+    "E3037": 1,
+    "E3067": 1,
+    "W1019": 26
+   },
+   "layer": "parse",
+   "run": ""
   }
+ }
 }

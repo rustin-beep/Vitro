@@ -301,4 +301,3 @@ fn read_input_or_reason(path : String) -> Result[String, String] {
     },
   )
 }
-

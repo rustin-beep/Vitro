@@ -104,8 +104,11 @@ pub fn load_libc_artifact() -> LibcArtifact {
 }
 
 ///|
-/// setup 组装（12 步照搬 `compile_pipeline.rs:243-372`）：
-/// reset → 装载 libc → 用户 Jump 重定位（operand += libc_code_len）→
+/// setup 组装（12 步照搬 `compile_pipeline.rs:243-372`` + **REHOST 批 2b
+/// 第 0 步装载往返**）：
+/// reset → **〔flag on〕wasm 往返装载（发射→折叠→恒等断言→重建 code
+/// 驱动；失败回退 legacy——设计单 §3.2 批 2 feature flag 回退点〕** →
+/// 装载 libc → 用户 Jump 重定位（operand += libc_code_len）→
 /// 合并 code → 注册 libc 函数（固定索引）→ 注册用户函数（IP 偏移）→
 /// globals 初始化（libc 先、用户后——同地址后写覆盖）→ 常量池合并 →
 /// max_steps **不设**（会话配置）→ 符号表 → vis 行 → 字符串写入 →
@@ -116,20 +119,53 @@ pub fn load_libc_artifact() -> LibcArtifact {
 /// issue #29 #4 接线 2026-10-04）——vm 不 import protocol（L7→L8 禁止），
 /// 故收 (line, ty, ctx) 三元组而非 AlgorithmMatch（oracle compile_pipeline
 /// 在 engine 层做同款投影，分层同构）。
+///
+/// `wasm_rehost`（批 2b，默认 false）：run 态装载走 wasm 载体往返
+/// （`@bytecode.rehost_round_trip`——step 态调用方不传恒 legacy）。
+/// **返回值 = 往返状态串**（调用方塞 run 帧/标记行，双跑对拍闸消费）：
+/// `""` = flag 未开 / `"ok groups=N"` = 往返装载成功（执行消费折叠重建
+/// 产物）/ `"fallback <reason>"` = 装载失败回退 legacy（过渡期设计单
+/// 形态——fail loud 归对拍闸：wasm 臂标记非 ok 即红）。
 pub fn VitroVM::setup_from_output(
   self : VitroVM,
   output : @bytecode.CompileOutput,
   argc : Int32,
   argv : Array[String],
   vis_lines : Array[(Int32, Int32, String)],
-) -> Unit {
+  wasm_rehost~ : Bool = false,
+) -> String {
   self.reset()
+  // ── 0. REHOST 批 2b：wasm 载体装载往返（flag on 时）──
+  // 往返产物与 output.code 逐位恒等（rehost_round_trip 内断言）——后续
+  // 12 步消费 base_code，语义与 legacy 同构（「只换载体不换执行」的
+  // 装载形态：取指层消费折叠重建的组操作）。
+  let mut rehost_status = ""
+  let base_code : Array[@opcode.Instruction] = if wasm_rehost {
+    match @bytecode.rehost_round_trip(output) {
+      Ok(roundtripped) => {
+        rehost_status = "ok groups=\{roundtripped.length()}"
+        roundtripped
+      }
+      Err(reason) => {
+        // 装载失败回退 legacy（设计单批 2 回退点）——状态串携带原因，
+        // 对拍闸判「非 ok 即红」而非静默
+        rehost_status = "fallback \{reason}"
+        let c : Array[@opcode.Instruction] = []
+        for ins in output.code {
+          c.push(ins)
+        }
+        c
+      }
+    }
+  } else {
+    output.code
+  }
   // ── 1. 装载 libc ──
   let libc = load_libc_artifact()
   let libc_code_len = libc.code.length()
   // ── 2. 用户 Jump 重定位 ──
   let user_code : Array[@opcode.Instruction] = []
-  for instr in output.code {
+  for instr in base_code {
     match instr.op {
       Jump | JumpIfZero | JumpIfNotZero => {
         let rel = @opcode.Instruction::new(
@@ -223,6 +259,7 @@ pub fn VitroVM::setup_from_output(
   self.ip = libc_code_len
   // ── 12. argv ──
   self.setup_argv(argc, argv, output.global_data_end)
+  rehost_status
 }
 
 ///|

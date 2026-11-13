@@ -259,7 +259,7 @@ pub fn VitroVM::set_max_steps(Self, Int32) -> Unit
 pub fn VitroVM::set_symbols(Self, Array[@bytecode.Symbol]) -> Unit
 pub fn VitroVM::set_vis_event_lines(Self, Array[(Int32, Int32, String)]) -> Unit
 pub fn VitroVM::setup_argv(Self, Int32, Array[String], UInt32) -> Unit
-pub fn VitroVM::setup_from_output(Self, @bytecode.CompileOutput, Int32, Array[String], Array[(Int32, Int32, String)]) -> Unit
+pub fn VitroVM::setup_from_output(Self, @bytecode.CompileOutput, Int32, Array[String], Array[(Int32, Int32, String)], wasm_rehost? : Bool) -> String
 pub fn VitroVM::snapshot(Self) -> VMSnapshot
 pub fn VitroVM::snapshot_incremental(Self, Int32) -> VMSnapshot
 pub fn VitroVM::step(Self) -> StepResult

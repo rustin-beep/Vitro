@@ -145,3 +145,100 @@ test "build_wasm_product Reserved 拒载定位（EmitFailed 携 gip）" {
     }
   }
 }
+
+///|
+/// REHOST 批 2b 装载往返锚：code → 发射 → 折叠 → 重建 → 恒等——
+/// C 类组（Jump/Call/Ret 侧车身份）+ 多档 loc（侧车 loc 重建面）全覆盖。
+test "rehost_round_trip 恒等往返" {
+  let base = mk_wasm_output()
+  // 多档 loc + file_id（侧车 loc 重建的消费面——恒一档测不出重建错位）
+  let code : Array[@opcode.Instruction] = []
+  let locs = [
+    @source.SourceLoc::with_file(1, 1, 0),
+    @source.SourceLoc::with_file(2, 5, 0),
+    @source.SourceLoc::with_file(3, 9, 0),
+    @source.SourceLoc::with_file(7, 2, 1),
+    @source.SourceLoc::with_file(8, 4, 1),
+  ]
+  let ops : Array[@opcode.OpCode] = [Jump, PushConst, Ret, Call, Ret]
+  let operands : Array[Int32] = [3, 42, 0, 1089, 0]
+  for i = 0; i < 5; i = i + 1 {
+    code.push(@opcode.Instruction::new(ops[i], operands[i], locs[i]))
+  }
+  let o : CompileOutput = { ..base, code, }
+  match rehost_round_trip(o) {
+    Ok(roundtripped) => {
+      assert_eq(roundtripped.length(), 5, msg="往返组数")
+      for i = 0; i < 5; i = i + 1 {
+        let got = roundtripped[i]
+        assert_eq(got.op, ops[i], msg="组 \{i} op 恒等")
+        assert_eq(got.operand, operands[i], msg="组 \{i} operand 恒等")
+        assert_eq(
+          got.loc.line,
+          locs[i].line,
+          msg="组 \{i} loc.line 侧车重建",
+        )
+        assert_eq(
+          got.loc.column,
+          locs[i].column,
+          msg="组 \{i} loc.column 侧车重建",
+        )
+        assert_eq(
+          got.loc.file_id,
+          locs[i].file_id,
+          msg="组 \{i} loc.file_id 侧车重建",
+        )
+      }
+    }
+    Err(reason) => fail("往返失败：\{reason}")
+  }
+}
+
+///|
+/// 禁译面拒载锚（Reserved 组在用户 code 内 = 发射失败形态）。
+test "rehost_round_trip Reserved 拒载" {
+  let base = mk_wasm_output()
+  let bad_code : Array[@opcode.Instruction] = [
+    @opcode.Instruction::new(
+      @opcode.OpCode::Strlen,
+      0,
+      @source.SourceLoc::new(1, 1),
+    ),
+  ]
+  let o : CompileOutput = { ..base, code: bad_code, }
+  match rehost_round_trip(o) {
+    Ok(_) => fail("Reserved 组不该往返成功")
+    Err(reason) =>
+      assert_true(
+        reason.contains("emit-failed"),
+        msg="emit-failed 形态（实得 \{reason}）",
+      )
+  }
+}
+
+///|
+/// 纯 A/B 产物盲折叠双裁决锚（PR #512 审阅 P2-1②）：无 C 类歧义组的
+/// 产物在引导裁决之外追加**不依赖侧车身份**的盲折叠终裁（贪心独立分组
+/// + op/operand 逐组比对）——两路互证。含 C 类产物（`rehost_round_trip
+/// 恒等往返` 锚的 Jump/Call/Ret 样例）保持引导裁决单道（歧义组身份由
+/// 侧车给定是设计形态）。
+test "rehost_round_trip 纯 A/B 产物盲折叠双裁决" {
+  let base = mk_wasm_output()
+  // 纯 A 类两组：PushConst 42; Pop——无控制流/C 类，盲折叠可独立分组
+  let code : Array[@opcode.Instruction] = [
+    @opcode.Instruction::new(PushConst, 42, @source.SourceLoc::new(1, 1)),
+    @opcode.Instruction::new(Pop, 0, @source.SourceLoc::new(2, 3)),
+  ]
+  let o : CompileOutput = { ..base, code, }
+  match rehost_round_trip(o) {
+    Ok(roundtripped) => {
+      assert_eq(roundtripped.length(), 2, msg="纯 A/B 双裁决组数")
+      assert_eq(
+        roundtripped[0].operand,
+        42,
+        msg="还原槽 operand 经盲折叠互证",
+      )
+    }
+    Err(reason) => fail("纯 A/B 往返不该失败：\{reason}")
+  }
+}

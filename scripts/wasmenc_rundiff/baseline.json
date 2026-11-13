@@ -1,0 +1,12 @@
+{
+  "_comment": "ok 基线下限（emitgate baseline.json 同款形态——双跑一致数下跌即红，增长不红；改本文件随批提交）。九目录 as_of 2026-11-13 rebase 基 0db534ec 复跑：959 例 = 917 双跑一致（#511 语料卫生 +2 后） + 42 编译期（首发基 ece3955a 为 944/902——PR #512 审阅 P3-4 勘正）。",
+  "baseline": 531,
+  "chibicc_port": 36,
+  "codegen_skeleton": 12,
+  "gap": 15,
+  "knr": 81,
+  "leetcode": 138,
+  "llm_scale": 6,
+  "mutator_probe": 1,
+  "template_generated": 82
+}

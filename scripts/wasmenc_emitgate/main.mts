@@ -1,18 +1,17 @@
 // wasmenc_emitgate —— REHOST 批 1c 产物闸（设计单 §3.2 批 1 验收面①③）：
 // 全语料「153/154 码表 → wasm 子集」发射成功率 100% + 装载核对全过 +
-// wabt 解码级验证全过（证人壳拼装）——三级判定的 .mts 驱动。
+// wabt 内容级验证全过（垫收证人模块）——三级判定的 .mts 驱动。
 //
 // 消费链：cmd/dump_wasm（native exe，ensureFresh 新鲜度门禁）逐语料目录
 // 批跑出 JSONL → 本脚本逐行判定：
-//   1. ok:true → hex（指令区字节）拼证人壳（type ()->()/memory 16 页/
-//      6 globals 装载约定/locals 4 runs/export main）→ wabt readWasm
-//      **解码级（结构）验证**——段结构/LEB128/指令码位域合法。PR #505
-//      审阅 P1-2 勘正：readWasm 只解码不校验类型/栈（类型错/栈下溢/旧
-//      4 字节 fill 均放行）——**真类型验证在 watcheck**（单模板形态经
-//      parseWat 编译=类型检查，157 组次全覆盖）：两级组合 = 模板级真
-//      验证 + 全语料拼接级解码。全语料拼接的真 validate 需按组栈效应
-//      垫收（证人壳现状直塞指令片段，物理上过不了 validate），随批 2
-//      模块组装（dispatch-loop 语义模块带 import 段镜像）一并升级。
+//   1. ok:true → module（垫收证人模块字节——批 2a：MoonBit 侧
+//      assemble_witness_module 按组效应垫收〔组独立 block + 前垫 + drop
+//      收〕+ import 段镜像〔env.vitro_host_call @ 函数索引 0〕段拼装）→
+//      wabt readWasm + **`m.validate()` 内容级验证**——类型检查/栈平衡/
+//      指令签名全过（PR #505 审阅 P1-2 的升级件：批 1c readWasm 只解码
+//      不校验〔类型错/栈下溢均放行〕，垫收前物理上过不了 validate）。
+//      watcheck 模板级（wat ↔ 发射字节逐字节对拍）仍为第二证人；J9 面：
+//      非法样本（翻转一字节）validate 必红〔批 2a 亲证〕。
 //   2. stage=emit|verify → RED（禁译面——deferred.json 按名登记豁免，
 //      首版空：全语料摸底 0 例〔2026-11-13，9 语料目录 955+ 例〕）；
 //   3. stage=lex|parse|type|gen → 计数不判红（编译失败面是 codegen_diff
@@ -53,6 +52,8 @@ export interface DumpLine {
   bytes?: number;
   verify?: string;
   hex?: string;
+  /// 垫收证人模块字节 hex（批 2a——wasm-validate 内容级验证的载体）
+  module?: string;
   gip?: number;
   op?: string;
   reason?: string;
@@ -72,31 +73,6 @@ export function uleb(n: number): number[] {
     out.push(b);
   } while (v !== 0);
   return out;
-}
-
-/// 证人壳拼装：指令区字节 → 完整合法 wasm 模块（validate-only，非产物——
-/// 段结构固定：type ()->() / memory {16,16} / 6 globals（G_PC..G_RET i32 +
-/// G_RV i64，装载约定单源 = wasmenc template.mbt 全局槽表）/ export main /
-/// code（locals 4 runs = 3×i32+i64+f64+f32，批 1b 装载约定）。批 2 模块
-/// 组装（dispatch-loop 语义模块）不是本面——本壳只证「指令区字节在合法
-/// 模块语境下过二进制验证」。
-export function buildWitnessModule(instrs: ReadonlyArray<number>): number[] {
-  const globals: number[] = [];
-  for (let i = 0; i < 5; i += 1) globals.push(0x7f, 0x01, 0x41, 0x00, 0x0b);
-  globals.push(0x7e, 0x01, 0x42, 0x00, 0x0b);
-  const locals: number[] = [0x04, 0x03, 0x7f, 0x01, 0x7e, 0x01, 0x7c, 0x01, 0x7d];
-  const body = [...locals, ...instrs, 0x0b];
-  const codeBody = [0x01, ...uleb(body.length), ...body];
-  const seg = (id: number, payload: ReadonlyArray<number>): number[] => [id, ...uleb(payload.length), ...payload];
-  return [
-    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
-    ...seg(0x01, [0x01, 0x60, 0x00, 0x00]),
-    ...seg(0x03, [0x01, 0x00]),
-    ...seg(0x05, [0x01, 0x01, 0x10, 0x10]),
-    ...seg(0x06, [0x06, ...globals]),
-    ...seg(0x07, [0x01, 0x04, 0x6d, 0x61, 0x69, 0x6e, 0x00, 0x00]),
-    ...seg(0x0a, codeBody),
-  ];
 }
 
 /// 禁译表（EmitError 豁免面——「目录/文件名」键；首版空：全语料摸底 0 例）
@@ -136,7 +112,7 @@ export function judgeLines(
   lines: ReadonlyArray<DumpLine>,
   dirLabel: string,
   deferred: ReadonlySet<string>,
-  validateHex: (hex: string, file: string) => string | null,
+  validateModule: (moduleHex: string, file: string) => string | null,
 ): { reds: string[]; okN: number; compileFail: number } {
   const reds: string[] = [];
   let okN = 0;
@@ -145,8 +121,9 @@ export function judgeLines(
     const key = `${dirLabel}/${l.file}`;
     if (l.ok) {
       okN += 1;
-      const hex = l.hex ?? "";
-      const err = validateHex(hex, key);
+      // 垫收证人模块（批 2a）——缺字段 = 产物形态破损，空字节过
+      // readWasm 自然红（fail loud，不静默放行）
+      const err = validateModule(l.module ?? "", key);
       if (err !== null) reds.push(`${key}: wabt 验证红——${err}`);
       continue;
     }
@@ -164,15 +141,24 @@ export function judgeLines(
   return { reds, okN, compileFail };
 }
 
-async function loadWabtValidate(): Promise<(hex: string, file: string) => string | null> {
+/// 垫收证人模块的内容级验证器（wabt `m.validate()`——类型/栈/指令签名
+/// 全检；批 2a 升级件：readWasm 只解码不校验，见头注。node:test 的 J9
+/// 锚消费——非法样本必红的自证）。
+export async function loadWabtValidate(): Promise<(moduleHex: string, file: string) => string | null> {
   const wabtInit = (await import("wabt")).default;
   const wabt = await wabtInit();
-  return (hex: string, file: string): string | null => {
-    const instrs = Buffer.from(hex, "hex");
-    const mod = buildWitnessModule(Array.from(instrs));
+  return (moduleHex: string, file: string): string | null => {
+    const mod = Buffer.from(moduleHex, "hex");
+    if (mod.length === 0) {
+      return `${file} 垫收证人模块缺失（module 字段为空——产物形态破损）`;
+    }
     try {
       const m = wabt.readWasm(new Uint8Array(mod), {});
-      m.destroy();
+      try {
+        m.validate();
+      } finally {
+        m.destroy();
+      }
       return null;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

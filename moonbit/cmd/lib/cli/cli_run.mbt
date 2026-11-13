@@ -20,6 +20,10 @@ pub(all) struct RunArgs {
   mut max_steps : Int32? // --max-steps（#133 止血包：预算墙教学刚需——
   // 撞 TRAP step-limit 的学生命令行直调出口；显式键覆盖 preset 同款语义）
   mut json_mode : Bool // --json（批③：事件流 NDJSON——gateway 帧单源）
+  // --wasm-rehost（REHOST 批 2b）：run 态装载走 wasm 载体往返（发射→
+  // 折叠→恒等断言→重建 code 驱动；装载失败回退 legacy）——双跑对拍闸
+  // 的 wasm 臂旗标，缺省 false 行为零扰动
+  mut wasm_rehost : Bool
   mut realtime : Bool // --realtime（#211：开真墙钟——config.set 的
   // deterministic 置 false，time()/clock() 走宿主墙钟；默认关保持判分
   // 可复现口径〔vm_diff/clang_direct 的 digest 依赖〕）
@@ -37,6 +41,7 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
     stdin_file: "",
     max_steps: None,
     json_mode: false,
+    wasm_rehost: false,
     realtime: false,
     argv_passthrough: [],
     unknown_flag: None,
@@ -58,6 +63,8 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
       passthrough = true
     } else if a == "--json" {
       ra.json_mode = true
+    } else if a == "--wasm-rehost" {
+      ra.wasm_rehost = true
     } else if a == "--realtime" {
       // #211（2026-10-22）：time()/clock() 真墙钟出口——教学面刚需
       //（srand(time(0)) 种子 / clock() 计时）；默认关 = 判分确定性
@@ -182,5 +189,6 @@ pub fn run(
     channel~,
     max_steps_override=ra.max_steps,
     realtime=ra.realtime,
+    wasm_rehost=ra.wasm_rehost,
   )
 }

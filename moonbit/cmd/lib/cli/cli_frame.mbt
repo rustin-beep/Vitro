@@ -160,6 +160,9 @@ fn frame_pipeline(
   channel~ : EngineChannel,
   max_steps_override~ : Int32? = None,
   realtime~ : Bool = false,
+  // REHOST 批 2b：run 态装载走 wasm 载体往返（`--wasm-rehost` 旗标——
+  // 双跑对拍闸的 wasm 臂；缺省 false = legacy 装载，行为零扰动）
+  wasm_rehost~ : Bool = false,
   exit_passthrough~ : Bool = false, // script 态（WASI 期 0，2026-11-05）：
   // 正常结束时进程 rc = C 返回值 & 0xFF 透传（python sys.exit 惯例）；
   // run 态缺省 false 恒 return 0——防线五值表零扰动
@@ -263,7 +266,9 @@ fn frame_pipeline(
   } else {
     ",\"batch_input\":true"
   }
-  let run_req = "{\{argv_json}\{input_json}}"
+  // 批 2b：装载 flag 随 run 帧下发（帧参数域——非 config.set 白名单）
+  let rehost_json = if wasm_rehost { ",\"wasm_rehost\":true" } else { "" }
+  let run_req = "{\{argv_json}\{input_json}\{rehost_json}}"
   // ── 输出三帧拉取（stdout/stderr/note）──
   if json_mode {
     let run = inv_raw("run", run_req)
@@ -337,6 +342,13 @@ fn frame_pipeline(
     if bnd.length() > 0 {
       cli_stderr_write(bnd)
     }
+  }
+  // 批 2b：装载状态标记行（stderr——不进 digest 消费面；`--wasm-rehost`
+  // 开且帧携带 wasm_rehost 字段时打出——双跑对拍闸断言「ok」形态，
+  // fallback 形态 = 装载回退（fail loud 归闸）
+  let rehost_status = jstr(jfield(run_result, "wasm_rehost"))
+  if wasm_rehost && !rehost_status.is_empty() {
+    say("// WASM-REHOST \{rehost_status}")
   }
   // stderr：还原字节 → UTF-8 优先解码 → `// STDERR` 标记行
   //（与拆除前 utf8_text_partial 同源形态）

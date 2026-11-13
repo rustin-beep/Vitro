@@ -64,6 +64,8 @@ pub fn is_host_func_name(String) -> Bool
 
 pub fn is_host_rerouted(String) -> Bool
 
+pub fn rehost_round_trip(CompileOutput) -> Result[Array[@opcode.Instruction], String]
+
 pub fn shadowed_host_names() -> Array[String]
 
 pub fn verify_compile_output(CompileOutput, Bool) -> Array[VerifyViolation]

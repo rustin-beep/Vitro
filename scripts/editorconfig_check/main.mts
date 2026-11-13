@@ -19,6 +19,8 @@ const SKIP_SEGS = new Set([
   ".clang_cache_cd",
   ".shadow_tmp",
   "tmp_vitro_fs_bb_roundtrip",
+  // 顶层 tmp_* 探针工作区族走 .gitignore 单源（/tmp_*/ 通配，2026-11-13）——
+  // gitignored 面豁免自动覆盖,不再逐名登记
   ".vscode",
   "build",
   "dist-pilot",

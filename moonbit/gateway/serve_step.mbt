@@ -289,7 +289,9 @@ fn serve_step_begin_frame(
   let argc = s.runtime_argv.length()
   // issue #29 #4：vis 行随重建灌入（compile_pipeline.rs:364 同形——run/step
   // 两通道统一装配，demo 可视化侧栏的数据源）
-  s.vm.setup_from_output(
+  // step 态恒 legacy（设计单批 2：step/breakpoint 职权在引擎侧；批 3
+  // 才评估 step 态切组粒度）——返回状态串不消费
+  let _ = s.vm.setup_from_output(
     output,
     argc,
     s.runtime_argv,

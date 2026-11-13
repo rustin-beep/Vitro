@@ -123,3 +123,115 @@ pub fn build_wasm_product(
     }
   }
 }
+
+///|
+/// **装载往返原语（REHOST 批 2b）**——run 态装载协议：code → 发射
+/// （wasm 字节）→ 组表引导裁决折叠（`verify_fold_with_table`：组边界 +
+/// 模板形状 + 还原槽 operand 与侧车比对）→ 重建 Instruction（op/operand
+/// 来自侧车终裁产物、loc 来自组表侧车）→ 与原 code 逐位一致断言。
+/// **一致性口径（PR #512 审阅 P2-1 收窄）**：本断言核的是「形状/边界/
+/// 槽类 operand 往返」——组身份与 loc 本就由侧车携带（同源自 code 直填），
+/// **不是从字节独立推出的恒等**；独立推导面有两层：还原槽 operand（装载
+/// 核对内）+ 纯 A/B 产物追加盲折叠终裁（`verify_group_table`，不依赖侧车
+/// 身份的贪心折叠——见实现尾段）。模板表自身的语义错误（形状自洽但算
+/// 错指令）对本协议不可见——该面由 wasmenc 包的 softstack 双实现与
+/// watcheck wat 证人对拍守护（PR #512 审阅注入实验：模板变异对往返/
+/// validate 双面隐形，唯独立实现红）。
+///
+/// Err（String = 单行诊断）= 装载失败面：发射失败（禁译面/域非法）、
+/// 装载核对红（非自家产物形态）、往返失配（发射↔折叠互逆性破坏——
+/// 理论不可达，装载协议必须显式拦）。消费方（`setup_from_output`）
+/// 过渡期按设计单回退 legacy code 执行并携带状态——fail loud 归双跑
+/// 对拍闸（wasm 臂标记行非 ok 即红）。
+pub fn rehost_round_trip(
+  output : CompileOutput,
+) -> Result[Array[@opcode.Instruction], String] {
+  let ctx = wasm_emit_ctx(output)
+  let p = match build_wasm_product(output) {
+    Ok(p) => p
+    Err(EmitFailed(gip, op_name, reason)) =>
+      return Err("emit-failed gip=\{gip} op=\{op_name} \{reason}")
+  }
+  let folded = match @wasmenc.verify_fold_with_table(p.table, p.bytes, ctx) {
+    Ok(folded) => folded
+    Err(e) => return Err("verify-failed \{verify_err_one_line(e)}")
+  }
+  // 纯 A/B 产物追加盲折叠终裁（PR #512 审阅 P2-1②：引导裁决的身份来自
+  // 侧车声明——对含 C 类歧义组的产物是唯一形态；纯 A/B 产物可再走
+  // **不依赖侧车身份**的盲折叠（贪心最长分组 + op/operand 逐组比对）
+  // 独立推导一遍，两路互证。模板表自错面（形状自洽语义错）仍不可见——
+  // 由 wasmenc softstack/wat 证人守护，见头注）
+  let mut has_ambiguous = false
+  for g in p.table.groups {
+    if @wasmenc.template_spec(g.op).state is Ambiguous {
+      has_ambiguous = true
+    }
+  }
+  if !has_ambiguous {
+    match @wasmenc.verify_group_table(p.table, p.bytes, ctx) {
+      Ok(_) => ()
+      Err(e) => return Err("blind-fold-failed \{verify_err_one_line(e)}")
+    }
+  }
+  if folded.length() != output.code.length() {
+    return Err(
+      "roundtrip-count groups=\{folded.length()} code=\{output.code.length()}",
+    )
+  }
+  let out : Array[@opcode.Instruction] = []
+  for i = 0; i < folded.length(); i = i + 1 {
+    let g = folded[i]
+    let e = p.table.groups[i]
+    let want = output.code[i]
+    // loc 恒等先比（重建物从侧车来——侧车发射时由原 loc 直填，理论恒等；
+    // 失配 = 侧车/重建双实现分叉，装载协议拦）
+    if e.loc_line != want.loc.line ||
+      e.loc_column != want.loc.column ||
+      e.loc_file_id != want.loc.file_id {
+      return Err(
+        "roundtrip-loc gip=\{i} sidecar=\{e.loc_line}:\{e.loc_column}:\{e.loc_file_id} code=\{want.loc.line}:\{want.loc.column}:\{want.loc.file_id}",
+      )
+    }
+    // op/operand 恒等（verify 的还原槽比对只覆盖可还原槽——这里是全量
+    // 双侧断言：侧车声明与折叠产物都必须与原 code 一致）
+    if g.op != want.op || g.operand != want.operand {
+      return Err(
+        "roundtrip-op gip=\{i} folded=\{g.op.name()}(\{g.operand}) code=\{want.op.name()}(\{want.operand})",
+      )
+    }
+    out.push(
+      @opcode.Instruction::new(
+        g.op,
+        g.operand,
+        @source.SourceLoc::with_file(e.loc_line, e.loc_column, e.loc_file_id),
+      ),
+    )
+  }
+  Ok(out)
+}
+
+///|
+/// VerifyError → 单行文本（装载失败诊断——cmd/dump_wasm 的
+/// verify_err_text 是 cmd 层复制件，本函数是 bytecode 装载通道侧的
+/// 简短形态）。
+fn verify_err_one_line(e : @wasmenc.VerifyError) -> String {
+  match e {
+    GroupCountMismatch(want, got) => "GroupCountMismatch \{want} vs \{got}"
+    GroupMismatch(gip, a, b, x, y) =>
+      "GroupMismatch gip=\{gip} \{a.name()}(\{x}) vs \{b.name()}(\{y})"
+    FoldFailed(fe) =>
+      match fe {
+        Decode(off, _) => "FoldDecode @\{off}"
+        NoTemplate(off) => "NoTemplate @\{off}"
+        TableShapeConflict(off, a, b) =>
+          "TableShapeConflict @\{off} \{a.name()}/\{b.name()}"
+      }
+    TemplateMismatch(gip, op, off) =>
+      "TemplateMismatch gip=\{gip} \{op.name()} @\{off}"
+    BoundaryMismatch(gip, op, got, want) =>
+      "BoundaryMismatch gip=\{gip} \{op.name()} \{got} vs \{want}"
+    GroupGap(gip, prev, off) => "GroupGap gip=\{gip} \{prev}→\{off}"
+    TrailingInstrs(at, left) => "TrailingInstrs @\{at} +\{left}"
+    ReservedGroup(gip, op) => "ReservedGroup gip=\{gip} \{op.name()}"
+  }
+}

@@ -8,8 +8,9 @@
 /// 用法：moon run cmd/dump_wasm -- <corpus_dir|file.c>
 ///
 /// 每输入一行：
-/// - 成功：{"file":"x.c","ok":true,"groups":N,"bytes":M,"verify":"ok","hex":"..."}
-///   （hex = 指令区字节——node 侧 wabt validate 消费；组表数字段供统计）
+/// - 成功：{"file":"x.c","ok":true,"groups":N,"bytes":M,"verify":"ok","hex":"...","module":"..."}
+///   （hex = 指令区字节；module = 垫收证人模块字节——批 2a 起 node 侧
+///   wabt `m.validate()` **内容级**真验证消费；组表数字段供统计）
 /// - 编译失败：{"file":"x.c","ok":false,"stage":"lex|parse|type|gen","errors":[...]}
 ///   （与 dump_compile 的 stage 口径同构——编译失败面不是本闸验收对象，
 ///   由 codegen_diff 既有防线管）
@@ -109,26 +110,39 @@ fn dump_one(name : String, lexed : @lexer.LexResult) -> String {
 }
 
 ///|
-/// 发射 + 装载核对 → JSON 行（成功/emit/verify 三态）。
+/// 发射 + 装载核对 + 垫收组装 → JSON 行（成功/emit/verify/assemble 四态）。
+/// `module` = 垫收证人模块字节 hex（批 2a：组独立 block + 效应垫收 + 段
+/// 拼装——emitgate 消费过 `wasm-validate` **内容级**真验证；批 1c 的
+/// `hex` 指令区直塞壳只过解码级，审阅 P1-2 的升级件）。
 fn emit_json(name : String, o : @bytecode.CompileOutput) -> String {
   let ctx = @bytecode.wasm_emit_ctx(o)
   match @bytecode.build_wasm_product(o) {
     Ok(p) =>
       // 组表引导裁决（装载核对——产物闸机检核心；C 类组唯一可裁决通道）
       match @wasmenc.verify_fold_with_table(p.table, p.bytes, ctx) {
-        Ok(_groups) => {
-          let buf = StringBuilder()
-          buf.write_string("{\"file\":")
-          buf.write_string(@ast.json_escape_string(name))
-          buf.write_string(",\"ok\":true,\"groups\":")
-          buf.write_string(p.table.groups.length().to_string())
-          buf.write_string(",\"bytes\":")
-          buf.write_string(p.bytes.length().to_string())
-          buf.write_string(",\"verify\":\"ok\",\"hex\":\"")
-          buf.write_string(hex_bytes(p.bytes))
-          buf.write_string("\"}")
-          buf.to_string()
-        }
+        Ok(_groups) =>
+          // 垫收模块组装（批 2a 第三级验证的载体）
+          match @wasmenc.assemble_witness_module(p.table, p.bytes) {
+            Ok(mod_bytes) => {
+              let buf = StringBuilder()
+              buf.write_string("{\"file\":")
+              buf.write_string(@ast.json_escape_string(name))
+              buf.write_string(",\"ok\":true,\"groups\":")
+              buf.write_string(p.table.groups.length().to_string())
+              buf.write_string(",\"bytes\":")
+              buf.write_string(p.bytes.length().to_string())
+              buf.write_string(",\"verify\":\"ok\",\"hex\":\"")
+              buf.write_string(hex_bytes(p.bytes))
+              buf.write_string("\",\"module\":\"")
+              buf.write_string(hex_bytes(mod_bytes))
+              buf.write_string("\"}")
+              buf.to_string()
+            }
+            Err(e) => {
+              let (kind, detail) = assemble_err_text(e)
+              "{\"file\":\{@ast.json_escape_string(name)},\"ok\":false,\"stage\":\"verify\",\"kind\":\"\{kind}\",\"detail\":\{@ast.json_escape_string(detail)}}"
+            }
+          }
         Err(e) => {
           let (kind, detail) = verify_err_text(e)
           "{\"file\":\{@ast.json_escape_string(name)},\"ok\":false,\"stage\":\"verify\",\"kind\":\"\{kind}\",\"detail\":\{@ast.json_escape_string(detail)}}"
@@ -184,6 +198,38 @@ fn verify_err_text(e : @wasmenc.VerifyError) -> (String, String) {
       (
         "ReservedGroup",
         "组 \{gip} 为 Reserved（\{op.name()}）——装载即拒载",
+      )
+  }
+}
+
+///|
+/// AssembleError → (kind, detail) 文本翻译（垫收组装失败的诊断面——
+/// 批 2a 第四态）。
+fn assemble_err_text(e : @wasmenc.AssembleError) -> (String, String) {
+  match e {
+    Decode(off, _) =>
+      ("AssembleDecode", "组装解码失败 @字节偏移 \{off}")
+    BadBoundary(gip, off, len) =>
+      (
+        "AssembleBadBoundary",
+        "组 \{gip} 边界越界：offset=\{off} len=\{len}",
+      )
+    NotCovered(want, got) =>
+      (
+        "AssembleNotCovered",
+        "组表未覆盖指令流：期待 \{want} 实得 \{got}",
+      )
+    Effect(inner) =>
+      (
+        "AssembleEffect",
+        match inner {
+          TypeMismatch(at, w, g) =>
+            "效应类型错 @\{at}：期望 0x\{w.to_int()} 实得 0x\{g.to_int()}"
+          BadBrDepth(at, d, n) => "br 深度越界 @\{at}：d=\{d} 帧数=\{n}"
+          BadSlot(at, i) => "槽越界 @\{at}：idx=\{i}"
+          BadCallIdx(at, n) =>
+            "call 索引非法 @\{at}：idx=\{n}（面内仅 0）"
+        },
       )
   }
 }

@@ -1,13 +1,18 @@
 // wasmenc_emitgate —— REHOST 批 1c 产物闸（设计单 §3.2 批 1 验收面①③）：
 // 全语料「153/154 码表 → wasm 子集」发射成功率 100% + 装载核对全过 +
-// wabt 二进制验证全过（证人壳拼装）——三级判定的 .mts 驱动。
+// wabt 解码级验证全过（证人壳拼装）——三级判定的 .mts 驱动。
 //
 // 消费链：cmd/dump_wasm（native exe，ensureFresh 新鲜度门禁）逐语料目录
 // 批跑出 JSONL → 本脚本逐行判定：
 //   1. ok:true → hex（指令区字节）拼证人壳（type ()->()/memory 16 页/
 //      6 globals 装载约定/locals 4 runs/export main）→ wabt readWasm
-//      二进制验证——「发射字节 = 合法 wasm」的第三方证人（wasm-validate
-//      内容级；watcheck 是更强的逐字节恒等，但语料面只有本闸全覆盖）；
+//      **解码级（结构）验证**——段结构/LEB128/指令码位域合法。PR #505
+//      审阅 P1-2 勘正：readWasm 只解码不校验类型/栈（类型错/栈下溢/旧
+//      4 字节 fill 均放行）——**真类型验证在 watcheck**（单模板形态经
+//      parseWat 编译=类型检查，157 组次全覆盖）：两级组合 = 模板级真
+//      验证 + 全语料拼接级解码。全语料拼接的真 validate 需按组栈效应
+//      垫收（证人壳现状直塞指令片段，物理上过不了 validate），随批 2
+//      模块组装（dispatch-loop 语义模块带 import 段镜像）一并升级。
 //   2. stage=emit|verify → RED（禁译面——deferred.json 按名登记豁免，
 //      首版空：全语料摸底 0 例〔2026-11-13，9 语料目录 955+ 例〕）；
 //   3. stage=lex|parse|type|gen → 计数不判红（编译失败面是 codegen_diff
@@ -100,6 +105,32 @@ function loadDeferred(): Set<string> {
   return new Set(raw);
 }
 
+/// 基线钉住（审阅 P2-1：绿项基数对账——ok 数下跌即红，扫描面退化/目录
+/// 改名/管线整体退到编译失败时闸不再全绿；**增长**（新增语料/新增可发
+/// 射面）不红——改本文件随批提交）
+interface Baseline {
+  [dir: string]: number;
+}
+
+function loadBaseline(): Baseline {
+  return JSON.parse(fs.readFileSync(path.join(scriptDir, "baseline.json"), "utf8")) as Baseline;
+}
+
+/// 递归数目录下 .c 条数（与 dump_wasm 的 collect_c_files 同口径——审阅
+/// P3-1 后两端口径必须一致，否则条数对账假红）
+function countCFiles(dir: string): number {
+  let n = 0;
+  for (const name of fs.readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (fs.statSync(full).isDirectory()) {
+      n += countCFiles(full);
+    } else if (name.endsWith(".c")) {
+      n += 1;
+    }
+  }
+  return n;
+}
+
 /// 判定一目录的 JSONL 行集 → 红项清单（emit/verify 失败 + wabt 验证失败）
 export function judgeLines(
   lines: ReadonlyArray<DumpLine>,
@@ -152,9 +183,21 @@ async function loadWabtValidate(): Promise<(hex: string, file: string) => string
 
 export async function main(): Promise<number> {
   const root = projectRoot();
-  const argv = process.argv.slice(2);
-  const dirs = argv.filter((a, i) => i > 0 || a !== "--dir");
-  const corpusDirs = argv.length > 0 ? dirs : CORPUS_DIRS;
+  // argv 解析（审阅 P2-1 勘正：旧过滤逻辑把 --dir 吃掉后可剩空集 →
+  // 「0 例 0 红 exit 0」fail-open——现剥旗取位置参；裸旗〔--dir 后无值〕
+  // 与空目录集均 fail loud，不给静默全量或 0 例全绿）
+  const rawArgv = process.argv.slice(2);
+  if (rawArgv[rawArgv.length - 1] === "--dir") {
+    console.error("--dir 后缺目录参数——fail loud");
+    return 1;
+  }
+  const argv = rawArgv.filter((a) => a !== "--dir");
+  const corpusDirs = argv.length > 0 ? argv : [...CORPUS_DIRS];
+  if (corpusDirs.length === 0) {
+    console.error("目录集为空——fail loud，不给 0 例全绿");
+    return 1;
+  }
+  const baseline = loadBaseline();
   const exe = path.join(root, "moonbit", "_build", "native", "debug", "build", "cmd", "dump_wasm", "dump_wasm.exe");
   ensureFresh("emitgate", exe, ["build", "--target", "native", "cmd/dump_wasm"]);
   const validateHex = await loadWabtValidate();
@@ -178,11 +221,23 @@ export async function main(): Promise<number> {
       .split("\n")
       .filter((x) => x.length > 0)
       .map((x) => JSON.parse(x) as DumpLine);
+    // 条数对账（审阅 P2-1）：磁盘 .c 条数 vs dump_wasm 产物行数——
+    // 扫描面退化（目录改名/过滤器失效/管线整体静默）即红
+    const diskN = countCFiles(corpusDir);
+    if (diskN !== lines.length) {
+      console.error(`RED ${d}: 磁盘 .c ${diskN} != dump 行 ${lines.length}——扫描面退化（递归/过滤/管线故障）`);
+      totalReds.push(`${d}: 条数对账红（磁盘 ${diskN} vs dump ${lines.length}）`);
+    }
     const { reds, okN, compileFail } = judgeLines(lines, d, deferred, validateHex);
     totalOk += okN;
     totalCompile += compileFail;
     totalReds.push(...reds);
-    console.log(`${d.padEnd(20)} ${String(lines.length).padStart(4)} 例：发射+核对+验证 ${okN} ok / 编译期 ${compileFail}（既有防线域）/ 红 ${reds.length}`);
+    // 基线钉住（审阅 P2-1）：ok 数低于基线即红（增长不红）
+    const floorOk = baseline[d];
+    if (floorOk !== undefined && okN < floorOk) {
+      totalReds.push(`${d}: ok 基线红（${okN} < 基线 ${floorOk}）——发射成功率退化`);
+    }
+    console.log(`${d.padEnd(20)} ${String(lines.length).padStart(4)} 例：发射+核对+验证 ${okN} ok（基线 ${floorOk ?? "-"}）/ 编译期 ${compileFail}（既有防线域）/ 红 ${reds.length}`);
     for (const red of reds.slice(0, 5)) console.log(`  RED ${red}`);
   }
   console.log(`wasmenc_emitgate: 发射成功 ${totalOk} / 编译期 ${totalCompile} / 红 ${totalReds.length}（禁译表 ${deferred.size} 条）`);

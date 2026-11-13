@@ -41,11 +41,10 @@ fn main raise {
     Map([])
   }
   if target_is_dir {
-    for name in @fs.read_dir(target) {
-      if name.length() > 2 && name[name.length() - 2:] == ".c" {
-        files.push("\{target}/\{name}")
-      }
-    }
+    // 递归收 .c（PR #505 审阅 P3-1：dump_compile 族只扫顶层而 VFS 递归——
+    // 子目录 .c 静默漏扫；本出口与 VFS 收集同口径递归。dump 四包同病，
+    // 随下次触达连坐）
+    collect_c_files(target, files)
     // 字典序排序（内置 String sort 非字典序——陷阱 #29；dump 四包同款）
     sort_files_lex(files)
   } else {
@@ -297,6 +296,21 @@ fn read_source_or_exit(path : String) -> String {
       println("输入不可读：\{path}（\{io_error_text(e)}）")
       c_exit(4)
       ""
+    }
+  }
+}
+
+///|
+/// 递归收集目录下全部 .c 进 files（审阅 P3-1：与 collect_files 的 VFS
+/// 递归同口径——顶层扫描会静默漏子目录 .c）。
+fn collect_c_files(dir : String, files : Array[String]) -> Unit raise {
+  for name in @fs.read_dir(dir) {
+    let full = vfs_join(dir, name)
+    let sub_is_dir = @fs.is_dir(full) catch { _ => false }
+    if sub_is_dir {
+      collect_c_files(full, files)
+    } else if name.length() > 2 && name[name.length() - 2:] == ".c" {
+      files.push(full)
     }
   }
 }

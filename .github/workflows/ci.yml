@@ -1173,17 +1173,19 @@ jobs:
           cd scripts && npm ci --no-audit --no-fund
           cd .. && node scripts/wasmenc_watcheck/main.mts
 
-      - name: wasmenc emitgate (corpus emission + verify + wabt binary validation)
+      - name: wasmenc emitgate (corpus emission + verify + wabt decode-level validation)
         if: matrix.slice == 'bookkeeping'
         # REHOST 批 1c 主体（2026-11-13）：全语料「154 码表 → wasm 子集」
         # 发射产物闸（设计单 §3.2 批 1 验收面①③）——cmd/dump_wasm
         # （ensureFresh 新鲜度门禁）逐语料目录批跑，三级判定：
         # ①编译成功例 100% 可发射（emit 失败=禁译面，deferred.json 按
         # 「目录/文件」登记豁免，首版空）；②装载核对（组表引导裁决）
-        # 全过；③hex 指令区拼证人壳过 wabt readBinary 二进制验证
-        # （「发射字节=合法 wasm」）。编译期失败例（lex/parse/type/gen）
+        # 全过；③hex 指令区拼证人壳过 wabt readWasm **解码级**验证
+        # （段结构/码位域——真类型验证在 watcheck 模板级，两级组合；
+        # 拼接级真 validate 随批 2 模块组装升级，PR #505 审阅 P1-2）。
+        # 编译期失败例（lex/parse/type/gen）
         # 计数不判红——负例语料属 codegen_diff 既有防线域。基线：9 目录
-        # 902 ok / 47 编译期 / 0 红（2026-11-13，含 #486 B10 新增 5 语料）。
+        # 902 ok / 42 编译期 / 0 红（2026-11-13，含 #486 B10 新增 5 语料）。
         # ensureFresh 对「产物缺失」fail loud（stale 才自动重建）——干净
         # 检出首跑必缺 exe，前置显式构建（dump_* 现场构建同款口径）。
         shell: bash

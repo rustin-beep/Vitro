@@ -6,6 +6,12 @@
 // - vitro 侧：`moon test -p wasmenc` 的 witness_dump_wbtest 打印行（DUMP1B 前缀）——
 //   字节来自仓内单源发射器 emit_group_bytes（零孪生）；
 // - node 侧：cases/*.wat 手写样例经 wabt parseWat→toBinary 编译——规范编码器。
+// wat 用例生成侧说明（PR #505 审阅 P3-3）：cases/*.wat 首行注释
+// "generated skeleton, human-reviewed" 指——批 1b 期由一次性生成器
+// （tmp/gen_wat.py，会话工作区不入库）自 witness dump 字节产出 wat 骨架、
+// 人工逐组核对语义映射（组↔指令段对位）后入库；仓内**无机械再生器**，
+// 新增 opcode 的 wat 用例按 dump 行人工新写（形态参照既有 cases——
+// block+垫栈+语义指令+drop+end），覆盖对账强制不漏）。
 // 对拍口径：提取 wat 模块第一个函数体的**指令区**（含尾 end），与
 // 「block + 垫栈 + 模板字节 + drop×n + end」构造串逐字节比对——wabt 与
 // wasmenc 对同一指令序列的编码选择（sleb/uleb 最短性、对齐立即数、f64 小端）

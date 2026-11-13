@@ -191,6 +191,33 @@ test "witness_dump_templates_b1b" {
       Err(_) => println("DUMP1B \{op.name()} EMIT_FAIL")
     }
   }
+  // 计数锚（PR #505 审阅 P2-2：dump 行是手写数组——新增 opcode 时四态
+  // 计数锚〔anchors_wbtest〕红但**没人被强制补 dump 行**，watcheck 覆盖
+  // 对账静默不触发〔批 1b 漏网 Not/UDiv/UMod 的机制根源〕。本锚把
+  // 「条目行数 == 三态可发射计数」焊死：新增条目在此红，与 watcheck 的
+  // dump→wat 覆盖对账串联成「新增必配 wat」闭环。J9 证红：删任一 a_rows
+  // 行即红〔2026-11-13 亲证〕）
+  let mut emissive_n = 0
+  for code = 0; code <= 255; code = code + 1 {
+    match @opcode.OpCode::from_u8(code) {
+      Some(op) => {
+        let spec = template_spec(op)
+        if spec.state is Exact ||
+          spec.state is Composed ||
+          spec.state is Ambiguous {
+          emissive_n = emissive_n + 1
+        }
+      }
+      None => ()
+    }
+  }
+  // 双形态 3 = PushConstD(1)/PushConstQ(0)/TrapBounds(-3)（第二索引/负
+  // 字面量形态——同 op 第二行）
+  assert_eq(
+    all_rows.length(),
+    emissive_n + 3,
+    msg="dump 行数 == 三态可发射条目（\{emissive_n}）+ 双形态 3——新增 opcode 须连坐补 dump 行与 wat 用例",
+  )
 }
 
 ///|

@@ -26,7 +26,6 @@ vitro/engine/ast vitro/engine/util json_escape_into
 vitro/engine/bytecode moonbitlang/core/encoding/utf8 encode
 vitro/engine/bytecode vitro/engine/ast StructField
 vitro/engine/bytecode vitro/engine/ast Type
-vitro/engine/bytecode vitro/engine/ast compute_type_size
 vitro/engine/bytecode vitro/engine/ast cstring_escape_string
 vitro/engine/bytecode vitro/engine/ast double_to_json_text
 vitro/engine/bytecode vitro/engine/ast json_escape_string

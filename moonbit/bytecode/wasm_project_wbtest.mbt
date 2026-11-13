@@ -56,7 +56,8 @@ test "wasm_triples 保序透传" {
 ///|
 test "wasm_emit_ctx 装配口径" {
   let base = mk_wasm_output()
-  // 符号尺寸表：int(4) + double 数组[3](24)——TrapBounds operand ≥ 0 索引
+  // 符号尺寸表（元素数口径——vm/exec_debug.mbt:96 同源，PR #505 审阅 P1-1）：
+  // int 非数组恒 0 + double 数组[3] → 3（首版误用字节数 4/24 已翻案）
   let symbols : Array[Symbol] = []
   symbols.push({
     name: "a",
@@ -82,8 +83,8 @@ test "wasm_emit_ctx 装配口径" {
   assert_eq(ctx.f64_constants.length(), 1, msg="f64 池直填")
   assert_eq(ctx.f64_constants[0], 1.5, msg="f64 池值")
   assert_eq(ctx.i64_constants[0], 42L, msg="i64 池值")
-  assert_eq(ctx.symbol_sizes[0], 4, msg="int 符号尺寸")
-  assert_eq(ctx.symbol_sizes[1], 24, msg="double[3] 符号尺寸")
+  assert_eq(ctx.symbol_sizes[0], 0, msg="int 非数组元素数恒 0")
+  assert_eq(ctx.symbol_sizes[1], 3, msg="double[3] 元素数")
   assert_eq(ctx.host_argv_ptr, 0x1004, msg="H2 窗口 4 对齐")
   assert_eq(ctx.argc, 0, msg="批 1c 近似面：argc=0")
   assert_eq(

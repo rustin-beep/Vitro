@@ -19,8 +19,10 @@
 - **产物闸** `scripts/wasmenc_emitgate`（.mts 四件套，设计单 §3.2 批 1
   验收面①③落地）：ensureFresh 新鲜度门禁构建 dump_wasm → 9 语料目录
   批跑 → 三级判定（编译成功例 100% 发射 + 装载核对全过 + **hex 指令区拼
-  证人壳过 wabt readBinary 二进制验证**——段结构固定 type ()->()/memory
-  {16,16}/6 globals 装载约定/locals 4 runs）；编译期失败例计数不判红
+  证人壳过 wabt readWasm 解码级〔结构〕验证**——段结构固定 type ()->()/
+  memory {16,16}/6 globals 装载约定/locals 4 runs；审阅 P1-2 勘正：
+  readWasm 只解码不校验类型/栈，真类型验证在 watcheck 模板级〔parseWat
+  编译=类型检查〕——两级组合，拼接级真 validate 随批 2 模块组装升级）；编译期失败例计数不判红
   （lex/parse/type/gen 属 codegen_diff 既有防线域——负例语料编译失败是
   预期）；禁译表 deferred.json 首版空。**基线：902 ok / 47 编译期 / 0 红**（含 #486 B10 新增 5 语料，rebase 后复测）。
   CI 接线 bookkeeping slice；过程实锤一枚：`../` 前缀路径形态下 e2_include

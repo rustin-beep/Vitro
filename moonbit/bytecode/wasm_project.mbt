@@ -11,9 +11,9 @@
 /// EmitCtx 装配口径（逐项登记批 2 精化点——近似值只进发射字节，不影响
 /// 「合法 wasm + 组表核对」两类批 1 验收）：
 /// - f64/i64 常量池：CompileOutput 同名字段直填（唯一无近似项）；
-/// - symbol_sizes：symbols 逐条 `compute_type_size`（struct/union 定义表
-///   直供；TrapBounds operand ≥ 0 = 符号下标查本表，< 0 取 -operand——
-///   `codegen/index_member.mbt` 发射口径）；
+/// - symbol_sizes：symbols 逐条 `Type::array_size`（**元素数**口径、非数组
+///   恒 0——TrapBounds operand ≥ 0 = 符号下标查本表、< 0 取 -operand，与
+///   `vm/exec_debug.mbt` / `codegen/index_member.mbt` 两真值侧同源）；
 /// - argc/argv_addr：填 0（空 argv 面）——argv 铺设在运行层（VM
 ///   `setup_argv`），批 2 装载协议与运行层对齐后由消费方传入；
 /// - fallthrough_pc：填 0（单值近似）——真实块后继是基块划分器产物
@@ -67,17 +67,15 @@ pub fn wasm_triples(
 ///|
 /// CompileOutput → 发射上下文（装配口径见文件头注）。
 pub fn wasm_emit_ctx(output : CompileOutput) -> @wasmenc.EmitCtx {
-  // symbol_sizes：符号尺寸表（TrapBounds 的 operand ≥ 0 索引此表）
+  // symbol_sizes：符号尺寸表（TrapBounds 的 operand ≥ 0 索引此表）——
+  // **元素数**口径（非数组恒 0）：真值侧 `vm/exec_debug.mbt:96`
+  // （`sym.ty.array_size()`）与 `codegen/index_member.mbt:284-288`（负形态
+  // `-bound_size` 同为元素数）三处同源。PR #505 审阅 P1-1 实锤：首版误用
+  // `compute_type_size`（字节数）——`double g[3]` 发 24 而 VM 比 3，wasm
+  // 产物内数组越界不 trap。
   let symbol_sizes : Array[Int32] = []
   for sym in output.symbols {
-    symbol_sizes.push(
-      @ast.compute_type_size(
-        sym.ty,
-        output.struct_defs,
-        output.union_defs,
-        Map([]),
-      ),
-    )
+    symbol_sizes.push(sym.ty.array_size())
   }
   // host_argv_ptr：global_data_end 4 对齐（H2 参数窗口约定地址）
   let host_argv_ptr = ((output.global_data_end + 3U) & 0xFFFFFFFCU).reinterpret_as_int()

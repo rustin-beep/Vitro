@@ -1,0 +1,11 @@
+{
+  "baseline": 531,
+  "chibicc_port": 36,
+  "codegen_skeleton": 12,
+  "gap": 15,
+  "knr": 81,
+  "leetcode": 138,
+  "llm_scale": 6,
+  "mutator_probe": 1,
+  "template_generated": 82
+}

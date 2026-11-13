@@ -983,7 +983,7 @@
         "putchar_range.c": "800ffe79ee66f06e",
         "puts_basic.c": "dcbca459f28974e7",
         "qsort.c": "891a2cd4cefd82b4",
-        "qsort_bsearch_frames.c": "da4c734ed60f45f9",
+        "qsort_bsearch_frames.c": "187673bc0d77f47f",
         "qsort_strcmp_callback.c": "190f12bed1117c9e",
         "qualifier_order_static.c": "0fbad8c965875b72",
         "realloc.c": "bb2f7662cbaf06b9",

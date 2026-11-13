@@ -1028,6 +1028,60 @@
         "clang_direct"
       ],
       "notes": "known reason 字段含完整归因"
+    },
+    {
+      "id": "DIFF-LIB-PRINTF-A-DIALECT-01",
+      "title": "%a/%A 十六进制小数位数实现定义方言：UCRT 13 位全印（0x1.8000000000000p+0）vs glibc 最短（0x1.8p+0），Vitro 择 glibc 最短口径",
+      "class": "architectural",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "C11 7.21.6.1p8 实现定义域/平台方言——真值间自分歧，不追值（#437 入库批定性）",
+      "subsystems": [
+        "host"
+      ],
+      "clang_verdict": "不一致(方言)",
+      "source_docs": [
+        "C真值速查表 P3/P4·P1 行"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "printf_hexfloat_a_dialect.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "#437 入库批 2026-11-12 登记（gap 桶 DIFF-KNOWN）；%F 行已修一致作对照",
+      "carry_over": "inherit"
+    },
+    {
+      "id": "DIFF-LIB-PRINTF-N-UCRT-01",
+      "title": "%n 写回——Win UCRT 出厂禁 %n 整程 fail-fast（0xC0000409）vs Vitro #427 B4 批修写回+实参消耗后对齐 gcc 真值（abcd/n=2）",
+      "class": "architectural",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "C11 7.21.6.1p8 实现定义域/平台方言——真值间自分歧，不追值（#437 入库批定性）",
+      "subsystems": [
+        "host"
+      ],
+      "clang_verdict": "不一致(方言)",
+      "source_docs": [
+        "C真值速查表 P3/P4·P1 行"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "printf_n_writeback_ucrt.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "#437 入库批 2026-11-12 登记（gap 桶 DIFF-KNOWN）；UCRT 平台方言锚",
+      "carry_over": "inherit"
     }
   ]
 }

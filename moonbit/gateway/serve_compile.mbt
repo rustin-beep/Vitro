@@ -75,6 +75,83 @@ fn merge_units(
 }
 
 ///|
+/// 多单元装配词法单源（2026-11-13 DEF-1 批抽取，原内联于
+/// serve_compile_pipeline——迁移非改写，行为零变更；锚 = compile 全链
+/// 测试 + include_wbtest 的 issue364r2 双锚）：头文件过滤 + merge_units
+/// 拼接 + vfs 全量注入 + #364 不动点剔除。消费方 = serve_compile_pipeline
+/// 与 serve_typeck_dump_frame（files 面）。
+///
+/// 头文件 unit（`.h` 后缀）不进拼接：C 语义里头文件不被"编译"，仅经
+/// #include 展开（vfs 全量注入在 lex_full_source）。拼接 + include 展开
+/// 各一份 = 双重定义面（打开本地文件夹批 2026-10-05：浏览器工作区把
+/// .h 与 .c 一并送 compile.files 的形态）
+///
+/// #364（2026-10-29）：**被 include 展开命中的 `.c` unit 同样不进拼接**
+/// ——拼接 + 展开各一份对 .c 目标同样是双重定义面（wasm 臂 collect_walk
+/// 把 include 目标登记为独立编译单元、浏览器工作区全量送 files，两形态
+/// 实测 E3003）。展开命中集以词法真实决策为准（LexResult.included_files
+/// ——注释剥离与 #if 跳过之后的实际拼接；行级预扫描会与真实展开分叉：
+/// 块注释内的 #include 不展开却会被误剔 ⇒ 静默丢码；块注释/#if 0 两
+/// 形态的钉死锚见 include_wbtest 的 issue364r2 双锚。不动点重 lex：
+/// 命中即剔出拼接集（vfs 仍全量注入，include 照常拉入）再跑；每轮至少
+/// 剔一个 unit，≤ 单元数收敛（命中形态典型一轮即收敛——剔除只减文本
+/// 不新增展开；二轮属防御性，代价 = 多一次全量 lex）；单文件/无互引
+/// 形态首轮空集零额外开销。
+fn assemble_units(
+  units : Array[@session.CompileUnit],
+) -> (String, Array[@session.FileRange], @token.LexResult) {
+  let mut compile_units : Array[@session.CompileUnit] = []
+  for u in units {
+    if !is_header_unit(u.filename) {
+      compile_units.push(u)
+    }
+  }
+  let mut full_source = ""
+  let mut ranges : Array[@session.FileRange] = []
+  let mut merged_spans : Array[(Int32, Int32, String)] = []
+  let mut main_name = "main.c"
+  let mut lexed : @token.LexResult? = None
+  while true {
+    let (fs, rs) = merge_units(compile_units)
+    full_source = fs
+    ranges = rs
+    merged_spans = []
+    for r in rs {
+      merged_spans.push((r.start_line, r.end_line, r.filename))
+    }
+    main_name = "main.c"
+    for u in compile_units {
+      if !u.filename.is_empty() {
+        main_name = u.filename
+        break
+      }
+    }
+    let lx = lex_full_source(full_source, units, main_name~, merged_spans~)
+    lexed = Some(lx)
+    let kept : Array[@session.CompileUnit] = []
+    let mut hit = false
+    for u in compile_units {
+      if lx.included_files.contains(unit_vfs_key(u.filename)) {
+        hit = true
+      } else {
+        kept.push(u)
+      }
+    }
+    if !hit || kept.is_empty() {
+      break
+    }
+    compile_units = kept
+  }
+  guard lexed is Some(lx_final) else {
+    abort("unreachable：不动点至少跑一轮")
+  }
+  // 返回 3 元（PR #509 审阅 P3-4：merged_spans/main_name 是不动点循环的
+  // 内部件（lex_full_source 具名实参消费），两消费方对返回值形态皆死——
+  // 5 元形态曾致 release 构建两条 unused_value 警告）
+  (full_source, ranges, lx_final)
+}
+
+///|
 /// 全局行号 → 文件名（Rust resolve_filename 照搬；未命中 None）。
 fn resolve_filename(
   line : Int32,
@@ -355,69 +432,10 @@ fn serve_compile_pipeline(
   st.compiled = false
   st.file_ranges = []
   st.preprocessor_trace = []
-  // ── 合并（file_ranges 生产者）──
-  // 头文件 unit（`.h` 后缀）不进拼接：C 语义里头文件不被"编译"，仅经
-  // #include 展开（vfs 全量注入在 lex_full_source）。拼接 + include 展开
-  // 各一份 = 双重定义面（打开本地文件夹批 2026-10-05：浏览器工作区把
-  // .h 与 .c 一并送 compile.files 的形态）
-  //
-  // #364（2026-10-29）：**被 include 展开命中的 `.c` unit 同样不进拼接**
-  // ——拼接 + 展开各一份对 .c 目标同样是双重定义面（wasm 臂 collect_walk
-  // 把 include 目标登记为独立编译单元、浏览器工作区全量送 files，两形态
-  // 实测 E3003）。展开命中集以词法真实决策为准（LexResult.included_files
-  // ——注释剥离与 #if 跳过之后的实际拼接；行级预扫描会与真实展开分叉：
-  // 块注释内的 #include 不展开却会被误剔 ⇒ 静默丢码；块注释/#if 0 两
-  // 形态的钉死锚见 include_wbtest 的 issue364r2 双锚。不动点重 lex：
-  // 命中即剔出拼接集（vfs 仍全量注入，include 照常拉入）再跑；每轮至少
-  // 剔一个 unit，≤ 单元数收敛（命中形态典型一轮即收敛——剔除只减文本
-  // 不新增展开；二轮属防御性，代价 = 多一次全量 lex）；单文件/无互引
-  // 形态首轮空集零额外开销。
-  let mut compile_units : Array[@session.CompileUnit] = []
-  for u in units {
-    if !is_header_unit(u.filename) {
-      compile_units.push(u)
-    }
-  }
-  let mut full_source = ""
-  let mut ranges : Array[@session.FileRange] = []
-  let mut merged_spans : Array[(Int32, Int32, String)] = []
-  let mut main_name = "main.c"
-  let mut lexed : @token.LexResult? = None
-  while true {
-    let (fs, rs) = merge_units(compile_units)
-    full_source = fs
-    ranges = rs
-    merged_spans = []
-    for r in rs {
-      merged_spans.push((r.start_line, r.end_line, r.filename))
-    }
-    main_name = "main.c"
-    for u in compile_units {
-      if !u.filename.is_empty() {
-        main_name = u.filename
-        break
-      }
-    }
-    let lx = lex_full_source(full_source, units, main_name~, merged_spans~)
-    lexed = Some(lx)
-    let kept : Array[@session.CompileUnit] = []
-    let mut hit = false
-    for u in compile_units {
-      if lx.included_files.contains(unit_vfs_key(u.filename)) {
-        hit = true
-      } else {
-        kept.push(u)
-      }
-    }
-    if !hit || kept.is_empty() {
-      break
-    }
-    compile_units = kept
-  }
-  guard lexed is Some(lx_final) else {
-    abort("unreachable：不动点至少跑一轮")
-  }
-  let lexed = lx_final
+  // ── 合并（file_ranges 生产者）──装配词法已抽 assemble_units 单源
+  //（2026-11-13 DEF-1：typeck.dump 的 files 面共用同款装配——头文件
+  // 过滤 + 拼接 + vfs 注入 + #364 不动点，语义注释随迁至该函数头）。
+  let (full_source, ranges, lexed) = assemble_units(units)
   st.file_ranges = ranges
   // fix 生成用的行表（Rust push_diagnostics 外层 source.lines() 同形）
   let source_lines = @diagnostics.split_lines(full_source)
@@ -499,6 +517,12 @@ fn serve_compile_pipeline(
   // 必然失败，半解析程序不生成。
   // ── 3. TypeChecker（errors/warnings/hints 三段 severity 0/1/2）──
   let tc = @typeck.TypeChecker::new()
+  // M09-A5（#433 批 B9 三批，2026-11-12）：拼接文件边界直通——W3085
+  // 前向序判据的文件门（跨文件拼接序行号不可比；parser 不写
+  // FuncDecl.source_file，AST 层文件信息唯此一路）
+  tc.set_file_boundaries(
+    ranges.map(r => (r.start_line, r.end_line, r.filename)),
+  )
   let (typed, type_errors, type_warnings, type_hints) = tc.check(program)
   // #350 审阅 P1-1（2026-10-28）：语法错在场时，typeck 补报面过滤
   // **非法定位**诊断（line < 1——E3001 零位置族 L0:0 / E3003 负行号
@@ -671,20 +695,23 @@ fn serve_compile_pipeline(
 }
 
 ///|
-/// compile 方法帧（Rust vitro_cli.rs compile 臂照搬）：覆盖式语义——
-/// params.files（数组）即当前完整编译单元集合（非追加）；或 params.source
-/// 单文件（可选 filename）。返回 (响应 JSON, 无停机)。
-fn serve_compile_frame(
-  s : @session.Session,
-  id : Json,
+/// params → units 解析单源（PR #509 审阅 P3-1 处置，2026-11-13）：
+/// files:[{filename?,source}] 数组优先（filename 经 posix_name 归一——
+/// #444 后续小修，诊断 filename/vfs 键三名同源；缺 filename→"main.c"、
+/// 缺 source→""），缺省回落 params.source[,filename] 单文件——
+/// serve_compile_frame 与 serve_typeck_dump_frame（DEF-1 files 面）两
+/// 消费方原逐字重复（第三张 dump 面接 files 时会复制第三份）。空表 =
+/// 参数面错误，Err 带方法名文案（调用方进各自 serve_param_err）。
+fn units_from_params(
   params : Json,
-) -> (String, Bool) {
+  method : String,
+) -> Result[Array[@session.CompileUnit], String] {
   let units : Array[@session.CompileUnit] = []
   match json_field(params, "files") {
     Array(files) =>
       for f in files {
         let filename = match json_field(f, "filename").as_string() {
-          Some(n) => n
+          Some(n) => posix_name(n)
           None => "main.c"
         }
         let source = match json_field(f, "source").as_string() {
@@ -697,7 +724,7 @@ fn serve_compile_frame(
       match json_field(params, "source").as_string() {
         Some(source) => {
           let filename = match json_field(params, "filename").as_string() {
-            Some(n) => n
+            Some(n) => posix_name(n)
             None => "main.c"
           }
           units.push({ filename, source, })
@@ -706,13 +733,31 @@ fn serve_compile_frame(
       }
   }
   if units.is_empty() {
-    return (
-      serve_param_err(
-        id, "compile 需要 params.files:[{filename?,source}] 或 params.source:string[,filename:string]",
-        "files:[{filename?,source}] | source:string[,filename:string]",
-      ).stringify(),
-      false,
+    return Err(
+      "\{method} 需要 params.files:[{filename?,source}] 或 params.source:string[,filename:string]",
     )
+  }
+  Ok(units)
+}
+
+///|
+/// compile 方法帧（Rust vitro_cli.rs compile 臂照搬）：覆盖式语义——
+/// params.files（数组）即当前完整编译单元集合（非追加）；或 params.source
+/// 单文件（可选 filename）。返回 (响应 JSON, 无停机)。
+fn serve_compile_frame(
+  s : @session.Session,
+  id : Json,
+  params : Json,
+) -> (String, Bool) {
+  let units = match units_from_params(params, "compile") {
+    Ok(u) => u
+    Err(msg) =>
+      return (
+        serve_param_err(
+          id, msg, "files:[{filename?,source}] | source:string[,filename:string]",
+        ).stringify(),
+        false,
+      )
   }
   s.compile.compile_units = units
   s.compile.compiled = false

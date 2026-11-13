@@ -62,6 +62,101 @@
 - 零行为自证：wasmenc 仍为纯增量叶包（零现役消费方），digest/golden 零
   触碰；全仓 moon test 1401/1401 裸口径全绿；ci_checklist/surface/
   pkg_deps/mbti_sync/source_hygiene 全绿。
+### fix(gateway+cli+scripts): PR #509 审阅处置——P3-1/2/3/4/5 全收口（2026-11-13）
+
+- **P3-1 入口解析单源**：`units_from_params(params, method)` 抽出（posix_name
+  归一/缺省/空表→Err 带方法名文案）——serve_compile_frame 与
+  serve_typeck_dump_frame 的 params→units 逐字重复收一（第三张 dump 面接
+  files 时的第三份复制预防）。
+- **P3-2 step 帧级判据结构化**：主循环 ok 判定从 contains 子串改结构化
+  外层位（`json_parse_opt` + `jfield(f,"ok") is False`）——与上方 run 臂
+  同源；contains 绑死紧凑序列化形态，协议面换带空格 stringify 即静默退
+  化回十万次空转。解析失败（None）同 run 臂视同帧级失败 fail loud。
+- **P3-3 prove 分桶判定器出库**：`scripts/prove_bucket/main.mts`（钩子原
+  node -e 内联抽出——#273 四件套合规）+ `main.test.mts` J9 五形态（全
+  no-prover/混合/纯 goal 红/failures 空/文件缺）；pre-push 钩子只留单行
+  调用；ci_checklist exceptions 登记本地工具；package.json lint/test 清单
+  连坐。端到端三路径验证（infra→0 / infra→0 / 缺文件→1）。
+- **P3-4 assemble_units 返回 5→3 元**：merged_spans/main_name 是不动点循
+  环内部件（lex_full_source 具名实参消费），对两消费方皆死——release 构建
+  两条 unused_value 警告归零（moon check + release build 双验）。
+- **P3-5 gateway 级 files 面锚**：`serve_dump_typeck_files_face_quote_include`
+  （quote-include 工程 vfs 展开 + typed_ast 非空 + 跨文件 funcs——修前
+  gateway 包该面零用例仅 mcp 跨包覆盖）。
+- **演化候选入册**：D22「抽取单源只抽下半截——入口解析仍双份」（03 缺陷
+  形态清单）+「node -e 内联判定逃出 .mts 四件套」（02 门禁审计）。
+- **P3-6 勘误**（PR 评论登记）：`75c4980c` 提交信息「protocol_frames(双
+  臂）」与实跑不符——rust 臂不可用，实跑单臂 74 帧（MoonBit 单臂基线比）。
+### fix(engine+cli+mcp): 只测不修轮三案红→绿——seek 清 paused · step 帧级 rc 传导 · overview files 面（2026-11-13）
+
+- **time_travel replay_to 清 is_paused**（暂停死锁）：越窗重放复位 finished/
+  trapped/last_trap_message 三态唯独漏 is_paused——暂停态引擎 seek 后批循环
+  闸门永久吞批（step.next 空批 + paused:true 死锁，唯一逃生门 =
+  breakpoints.set []）；VM 层「重放命中即时解除」在引擎层无对应（不对称实
+  锤）。修 = replay_to 补清；直返臂（窗口内 seek）不清（视口移动不动执行控
+  制开关，与终态粘性 M31 A-2 同侧语义）。锚 `engine_seek_overwindow_clears_engine_paused`（红→绿）。
+- **cli step 帧级 ok:false → rc=1 即时传导**（对齐 api 两层判据先例
+  §4.5）：step.next 主循环只匹配三态标记，无标记错误帧落 batch_cap 兜底
+  空转（cap = max_steps+16 次调用后以「协议破损」文案 rc=1——归因变形；
+  默认预算十万次）。修 = 三态后补 `contains "\"ok\":false"` → 即时 rc=1
+  （合法 trap 帧外层 ok:true 不含该子串，rc=2/3 语义不变）。消费方核查
+  （2026-11-13 变基后全量）：无任何依赖「失败帧 rc=0」者；step_invariant
+  rc∈{0,1,2,3} 白名单已含 1、红绿走帧解析，变更透明。协议 §5 补登传导条
+  款（追加非改值——1 在 api 已兼「帧含失败」）。锚
+  `stepnext帧级okfalse_即时rc1传导`（调用计数断言：1 次 ≠ 旧 cap 次空转）。
+- **mcp overview files 面（DEF-1「编译成功但 overview 静默空」）**：files
+  工程的 overview 只把主文件原文喂 typeck.dump（Entry 不存 files +
+  gateway typeck.dump 无 files 面）→ quote-include 工程空 vfs E1021 →
+  typed_ast:null → functions 静默空而 compile_ok=true。修 = gateway
+  typeck.dump 增 files 参数（装配逻辑抽 `assemble_units` 单源——头文件
+  过滤+拼接+vfs 注入+#364 不动点，compile 管线与 dump 共用、抽取零行为
+  变更）；mcp Entry 留存 files、overview files 面产出即拼接坐标**不叠
+  offset**（双重偏移由 PR #457 P2-2 既有锚拦下）。锚
+  `mcp_files_quote_include_overview_nonempty`（红→绿）。
+- **连坐**：CLI_PROTOCOL_V1 §5 step 退出码传导句 + §3 run `--max-steps`
+  补登（实现面 #133 起存在、语法行一直漏登）；pre-push prove 门判据双通道
+  （stdout 三形态 + proof.json `failures[].result` 全 no-prover 形态 →
+  infra 红不阻断——J9 实锤：本机 why3 全灭期旧钩子误判 goal 红阻断
+  push）；moonbit/AGENTS.md 陷阱 46 入册；codegen codegen_skeleton
+  digest 补冻 12 例（PR #504 两轮「基线族连坐重冻」均漏第七节）；
+  perf_budget note 勘正 568/868 → 574/874（git ls-tree 三时点实证原数
+  少数 6）；facts 重采与文档连坐（根 README/快速入门/标准库防线
+  1422→1440；moonbit/README 裸数 1419→1440、native 1484→1511——
+  rebase 62193ec3 后真值）。
+### feat(corpus): #437 修复后入库批——审阅红锚随 B 轮翻面解冻 10 份 + chibicc 修复解锁回收 3 份 + 方言面 2 份入 gap（2026-11-12）
+
+- **review_after_fix 27 份暂存锚三方预检定态**（Win clang 22.1.4 × vitro js+native 双臂）：
+  20 GREEN + 7 仍红。查重甄别后 8 份有增量形态入 `corpus/baseline/`（其余 12 份与 B 轮
+  各修复批随批入库语料形态重复——B1×2/Z16-Z18、B2×3/Z19-Z21/Z1-Z4、B4×2/P5-P8、B5×2/
+  S1·S5、B6×1/E1-E3·E8、#471 cast、#427 vprintf 各自已被 `char_global_*`、
+  `compound_assign_fp_rhs`、`logic_judge_zero`、`p427_printf_missing_arms`、
+  `scanf_c_width`、`ungetc_eof_noop`、`string_escape_latin1_bytes`、
+  `ll_float_casts_domain` 覆盖，不重复入桶）；5 份仍红维持暂存（B10 EOF 族×4 +
+  Z22 Duff——对应修复未落地）。
+- **baseline +8**（翻面批号与速查表行入头注）：`logical_not_zero_domain`（Z5/Z6 Not
+  判零域，#425）、`static_fold_promo_sign`（Z12-Z14 Shl/BitNot/Neg 定型提升，#426）、
+  `static_fold_shortcircuit_saturate`（Z7 短路 + Z11 饱和，#426）、
+  `static_fold_unsigned_domain`（Z8-Z10 无符号域除法 + 静态=运行期对照，#426）、
+  `printf_g17_normalize`（G1-G4 规格化，G2/G4 增量格，#427）、`printf_g17_subnormal`
+  （G5-G7 次正规，G6 增量格，#427）、`printf_nan_case_family`（G8-G10 NaN 族——
+  m21_printf_inf_nan 头注预告的修复后入库面，#427）、`string_escape_exact_fit`
+  （E5-E7 局部/二维恰满计长，#429）。
+- **gap +2 + known_direct 登记**：`printf_hexfloat_a_dialect`（P3/P4——%a/%A 十六进制
+  小数位数实现定义域：UCRT 13 位全印 vs glibc 最短真值间自分歧，Vitro 择 glibc，
+  digest 470eb6b4）、`printf_n_writeback_ucrt`（P1——Win UCRT 出厂禁 %n 整程 fail-fast
+  崩 rc=0xC0000409，真值采 WSL gcc，digest 40b2dac5）。
+- **chibicc_port +3**（B 轮修复解锁的行级剔除面回收，探针 T1-T11 三方对拍定档）：
+  `float_not_judge`（float.c:83-86 ! 浮点判零，#425）、`cast_ll_float_roundtrip`
+  （cast.c:54-55 LL→F→LL 往返，#471）、`literal_shift_i64`（literal.c:39-47 64 位移位
+  族 LLP64 口径改写 ULL 形态）；仍红 8 主题（char 返回窄化/_Bool 参数归一/_Bool 转换
+  归一/_Alignof 无符号/'\x80' 符号性/标量复合字面量/union 写广播/先定义后暂定）登
+  CHIBICC_ASSESSMENT 台账候批。
+- **连坐**：C 真值速查表 B4 面 21 行连坐标 ✐（G1-G10/P1-P8/S7——as_of 刷 2026-11-12）；
+  perf_budget 分解式 823→874 亲跑校数（原记 868 系少数 6，2026-11-13 rebase 后复核勘正）；五家 digest 重冻 + fuzz 判定域增量 + facts
+  `--run --strict`；known_direct 16→18 条。
+- **s7_vprintf_stack_underflow 翻面实证**（速查表 S7 行连坐）：vprintf %s len≥4 栈
+  下溢已随 #427 codegen CallVar word 计数修复消失（三方一致），形态由
+  p427_printf_missing_arms.c t1 段锁定。
 
 ### fix(engine): #446/#447/#448/#471/#465 收口扫除批二——引擎散件五单（2026-11-05）
 

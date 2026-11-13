@@ -120,13 +120,11 @@ pub fn step(
   let compile_params = (channel.compile_params)(file, src)
   let comp = inv("compile", compile_params)
   if comp.contains("\"ok\":false") {
-    // 诊断在 compile 帧——json 模式 type:diag 包装透传 stdout（SWEEP1
-    // #444，2026-11-05：与 run/compile 的 {"type":"diag","frame":…} 同形
-    // ——消费面按 type 统一分派，失败帧不再需要「行内 ok:false 自明」的
-    // 特判；注：step 正常流的 step.next 帧本就无 type〔spec §6 既有契约〕，
-    // 本变更的价值在失败帧可被 type 路由，不在「全流统一 type」——PR #488
-    // 审阅 P3-3 勘正）；文本模式走 stderr（#129 通道分立：stdout 只
-    // 承载程序输出）
+    // 诊断在 compile 帧——json 模式 type:diag 包装出 stdout（#444 协议面
+    // 收口，2026-11-12：旧裸帧直出是三子命令中唯一不包装的，事件流消费方
+    // 按 type 分派须对 step 失败行特判；现与 frame_pipeline 的 run/compile
+    // --json 同形）；文本模式走 stderr（#129 通道分立：stdout 只承载
+    // 程序输出）
     if json_mode {
       out_line(write_stdout, "{\"type\":\"diag\",\"frame\":\{comp}}")
     } else {
@@ -181,6 +179,24 @@ pub fn step(
       running = false
     } else if r.contains("\"waiting_input\":true") {
       running = false
+    } else {
+      // 帧级失败即时传导（对齐 api 两层判据先例——协议 §4.5；step 协议
+      // 面 §5 同款登记）：无三态标记的 step.next 帧 ok:false（协议级错
+      // 帧，result 缺省）——旧形态落 batch_cap 兜底空转（cap 次调用后以
+      // 「协议破损」文案 rc=1——归因变形；默认 max_steps=100000 即十万
+      // 次空转）。判定走结构化外层 ok 位（PR #509 审阅 P3-2：与上方 run
+      // 臂同源——contains 子串绑死紧凑序列化形态，协议面一旦换带空格的
+      // stringify 即静默退化回十万次空转；step.next 的 result 是
+      // AutoStepResult 投影无 ok 键，外层位唯一语义）。解析失败（None）
+      // = 协议破损形态，与 run 臂同款视同帧级失败 fail loud。
+      let next_ok = match json_parse_opt(r) {
+        Some(f) => !(jfield(f, "ok") is False)
+        None => false
+      }
+      if !next_ok {
+        say("vitro step: step.next 帧级失败（ok:false）——\{r}")
+        return 1
+      }
     }
     batches += 1
     if running && batches >= batch_cap {

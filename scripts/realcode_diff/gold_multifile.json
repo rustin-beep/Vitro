@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "as_of": "2026-11-04",
+    "as_of": "2026-11-13",
     "buckets": {
       "both_green": 36,
       "clang_red": 0,
@@ -12,10 +12,10 @@
       "divergence": 0,
       "rescued": 0
     },
-    "note": "金样本签名清单——零源码文本。RC-MF-UNIT 69→0(#221,2026-10-24);RC-MF-STATE W3053 3→1(#285,批四);2026-11-04 #459 重冻(W3053 误报 2+174 条消失,零连坐)。",
-    "repo": "multifile-llm-20261021",
-    "source_commit": "local-20261021",
-    "source_fork": "in-repo:scripts/realcode_diff/corpus/multifile",
+    "note": "2026-11-13 SWEEP2 重冻：M09-C2（E3001 兜底 loc 0:0→精确位）揭开块退出残留 28 条既有误报（vla 等 statement-expr 语料——0:0 时代被无效位置丢弃掩盖，深修挂账）；W3053 char 域豁免扩大（DATE 语料 6 条）",
+    "repo": "TheAlgorithms/C",
+    "source_commit": "e5dad3f",
+    "source_fork": "https://github.com/rustin-beep/C",
     "total": 36
   },
   "files": {
@@ -111,10 +111,9 @@
       "clang_ok": true,
       "gcc_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 7,
+      "vitro_warns": 1,
       "codes": {
-        "H3057": 1,
-        "W3053": 6
+        "H3057": 1
       },
       "layer": "ok",
       "run": ""

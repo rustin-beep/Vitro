@@ -517,3 +517,25 @@ test "serve_compile_lone_surrogate_files_raw_b6" {
     msg="files 直排形态清洗续跑（#419 语义保留）",
   )
 }
+
+///|
+/// #444 后续小修锚（2026-11-12）：posix_name——compile 装配单点的
+/// filename POSIX 规范化（诊断 filename / file_ranges / vfs 表键三名同源；
+/// 修前诊断 filename 原文透传而 vfs 键折叠——同一 unit 两名）。三臂同形
+/// 的进程级断言在 cli_smoke B 组附 10。
+test "i444_posix_name_三态" {
+  // ① 反斜杠折叠（Windows 路径原文 → POSIX）
+  inspect(posix_name("tmp\\x\\y.c"), content="tmp/x/y.c")
+  // ② dot 段剥除 + `..` 回退（与 lexer normalize_path / vitro_wasm
+  // normalize_rel 同语义）
+  inspect(posix_name("./a/./b.c"), content="a/b.c")
+  inspect(posix_name("a/../b.c"), content="b.c")
+  // ③ 裸名/POSIX 原文不变（demo 工作区 files 零影响面）
+  inspect(posix_name("main.c"), content="main.c")
+  inspect(posix_name("sub/a.h"), content="sub/a.h")
+  // ④ 绝对前缀保留（lexer normalize_path 同语义——首版丢根段致
+  // include_wbtest root_level 双锚红："/main.c"→"main.c" 使 base_dir
+  // 从 "/" 退 "."，根级候选键错位 E1021）
+  inspect(posix_name("/main.c"), content="/main.c")
+  inspect(posix_name("/a/../b.h"), content="/b.h")
+}

@@ -29,7 +29,9 @@ test "scan_raw hex float suffix dispatch" {
   inspect(
     summary,
     content=(
-      #|Number:255 FloatLiteral:3.14f FloatLiteral:.5 FloatLiteral:1e5 Number:10 Number:1000 UnsignedLiteral:42ull LongLiteral:8000000000 Eof:
+      // M04-A2（#433 批 B9 三批）：LongLiteral text 带 l/ll 尾承载分量
+      //（病 62 "ull" 同款）——"8000000000" → "8000000000ll"
+      #|Number:255 FloatLiteral:3.14f FloatLiteral:.5 FloatLiteral:1e5 Number:10 Number:1000 UnsignedLiteral:42ull LongLiteral:8000000000ll Eof:
     ),
   )
   assert_eq(r.errors.length(), 0)

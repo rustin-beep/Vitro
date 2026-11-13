@@ -97,7 +97,14 @@ fn Parser::parse_ternary(self : Parser, depth : Int32) -> @ast.Expr {
 fn Parser::parse_ternary_body(self : Parser, depth : Int32) -> @ast.Expr {
   let cond = self.parse_or(depth)
   if self.match_token(Question) {
-    let then_branch = self.parse_ternary(depth)
+    // M04-A1（#433 批 B9 三批，2026-11-12）：C11 §6.5.15 语法
+    // logical-OR-expression ? **expression** : conditional-expression
+    //——then 是完整 expression（含逗号），else 才是 conditional 层；
+    // 修前 then 调 parse_ternary（条件层）拒 `(1 ? 1, 2 : 3)`（四真值
+    // 全收输出 2，Win clang + WSL gcc/clang 跨平台复证）。下游
+    // BinaryOp::Comma 在 typeck（ops.mbt 取右类型）/codegen（binary.mbt
+    // 弃左求右）均已接线，本层放开即通。
+    let then_branch = self.parse_expression(depth)
     ignore(self.consume(Colon, "预期 ':'"))
     let else_branch = self.parse_ternary(depth)
     let loc = self.prev_loc()
@@ -779,8 +786,34 @@ fn Parser::parse_primary_inner(self : Parser, depth : Int32) -> @ast.Expr {
   }
   if self.match_token(LongLiteral) {
     let prev = self.previous()
-    let value = self.parse_i64_or_report(prev, "long long 常量")
+    // M04-A2（#433 批 B9 三批，2026-11-12）：按 l/ll 分量分流——
+    // C11 §6.4.4.1 定 1L 类型为 long、§6.5.3.4 sizeof 由类型决定 ⇒
+    // sizeof(1L)≡sizeof(long)；vitro 类型面钉 Win LLP64（long=4B——
+    // 限定符循环 fallback，parser_test 自注）⇒ L 后缀（无 ll 分量）值在
+    // i32 域内定型 int（=long 同宽），超域按 §6.4.4.1 值域阶递升
+    // long_long；ll 分量照旧 long_long（8B）。修前一律 long_long 令
+    // l01 六值矩阵 [8,4,4,4,8,8] 内部自矛盾（1L(8)≠long(4)），Win
+    // clang 真值 [4,4,4,4,8,8]。text 尾由 scanner 承载（"1l"/"1ll"——
+    // 病 62 "ull" 同款）。同族先例：病 117 u 后缀值域适配。
+    let has_ll = prev.text.has_suffix("ll")
+    let has_l = !has_ll && prev.text.has_suffix("l")
+    let digits = if has_ll || has_l {
+      prev.text[0:prev.text.length() - (if has_ll { 2 } else { 1 })].to_owned()
+    } else {
+      prev.text
+    }
+    let value = self.parse_i64_digits_or_report(digits, prev, "long 常量")
     let loc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)
+    if has_ll {
+      return @ast.Expr::LongLiteral(value, loc, @ast.Type::long_long())
+    }
+    if has_l {
+      if value <= 2147483647 {
+        return @ast.Expr::Literal(value.to_int(), loc, @ast.Type::int())
+      }
+      return @ast.Expr::LongLiteral(value, loc, @ast.Type::long_long())
+    }
+    // 无后缀（i64 域中段 Number 之外的 LongLiteral 形态）：维持 long_long
     return @ast.Expr::LongLiteral(value, loc, @ast.Type::long_long())
   }
   if self.match_token(FloatLiteral) {
@@ -961,6 +994,29 @@ fn Parser::parse_uint64_digits_or_report(
   what : String,
 ) -> UInt64 {
   let v = @string.parse_uint64(digits) catch {
+    _ => {
+      self.errors.push({
+        message: "\{what} '\{tok.text}' 超出范围",
+        line: tok.loc.line,
+        column: tok.loc.column,
+        code: @diag.ErrorCode::E1006_UnsupportedFeature.code(),
+      })
+      return 0
+    }
+  }
+  v
+}
+
+///|
+/// M04-A2（#433 批 B9 三批，2026-11-12）：digits 形态 i64 版——
+/// l/ll 后缀剥壳路径复用（与 parse_uint64_digits_or_report 同款报错）。
+fn Parser::parse_i64_digits_or_report(
+  self : Parser,
+  digits : String,
+  tok : @token.Token,
+  what : String,
+) -> Int64 {
+  let v = @string.parse_int64(digits) catch {
     _ => {
       self.errors.push({
         message: "\{what} '\{tok.text}' 超出范围",

@@ -134,7 +134,7 @@ test("真实仓库：vm 在 gap 上全 SAME（exe 缺失时断言 fail loud 契�
     return;
   }
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /vm_diff\[golden\]: SAME=21 DIFF=0 SKIP=0（共 21）/);
+  assert.match(r.stdout, /vm_diff\[golden\]: SAME=23 DIFF=0 SKIP=0（共 23）/);
 });
 
 test("S05-A1（2026-11-01 审阅 v2）：vm --corpus gap --selftest 必红（cf 首例短路吞篡改的假绿治本）", () => {

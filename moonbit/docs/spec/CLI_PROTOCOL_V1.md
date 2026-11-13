@@ -82,10 +82,11 @@
 ## 3. `run` 命令
 
 ```
-vitro run <file.c> [-i <input.in>] [--dump-memory <out.bin>] [-- <argv...>] [--json]
+vitro run <file.c> [-i <input.in>] [--max-steps N] [--dump-memory <out.bin>] [-- <argv...>] [--json]
 ```
 
 - `-i`：stdin 注入文件（batch 模式——输入耗尽即 EOF 不交互，`while(scanf...)!=EOF` 习语不挂起；`--json` 模式下等效实现 = waiting_input 时 `input.feed` 续跑后重拉输出——2026-10-04 修正：初版静默丢弃，agent 得空输出 + rc=0 的静默错误）；
+- `--max-steps N`：步数预算墙（**#133 止血包**——教学刚需：死循环程序在预算处截断、步数超限 trap 语义可达；不传 = 不设键走 serve 引擎默认预算，显式键覆盖 preset 同款语义。**补登 2026-11-13**：旗标自 #133 起在实现面（cli_run）存在，本节语法行一直漏登——step 子命令同款旗标 §5 已在册，run/step 两节自此对齐）；
 - `--`：其后全部透传给 C 程序 argv（`argv[0]` = 源文件路径，C 惯例）；**首个裸位置参数后的其余位置参数同样进 argv**（Rust vitro_cli :1010「未识别位置参数视为传给 main 的 argv」口径——2026-10-04 修正：初版取最后一个位置参数，分叉未登记）；
 - `-`（文件位）：源码从进程 stdin 读（UTF-8）——**全命令通用**（run/compile/step；Rust `read_source` 同品类，B2）；
 - `--dump-memory`：**`--json` 模式下不适用**（gateway 协议无 1MB 映像导出面——同时给出两旗标按 dump-memory 忽略处理）；
@@ -136,8 +137,9 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 
 - `--max-steps` 经 config.set 传导至 step 族引擎预算（**2026-10-04 性能实测 Blocker 1 修正**：原引擎恒 UnifiedEngine::new() 默认 100_000——参数完全无效且 engine<vm 错配时预算到顶返回**假 finished**〔程序 35% 即报正常结束〕；修正后消费会话 config，到顶走 vm 层步数超限 trap 真语义）；默认 100_000；
 - 默认 `--summary`：帧数 / 终态（`finished` / `trap` / `waiting_input/截断`）/ trap 死因文案；
-- `--json`：每批 `step.next` 的 result JSON 一行（NDJSON——帧数组嵌行内，字段语义见 StepPayload schema）+ 末行 `{"type":"summary","frames":N,"finished":B,"trapped":B}` 收口；
-- 执行序列：compile → run → step.begin → step.next（**run 先行**注入算法检测 matches——缺则帧的 `algorithm_step`/`vis_events` 恒空，demo 通道同坑实证）。
+- `--json`：每批 `step.next` 的 result JSON 一行（NDJSON——帧数组嵌行内，字段语义见 StepPayload schema）+ 末行 `{"type":"summary","frames":N,"finished":B,"trapped":B}` 收口；compile 失败时首行 `{"type":"diag","frame":<compile 帧>}` 后即收（**#444，2026-11-12**：旧裸帧直出是三子命令中唯一不包装的，现与 run/compile --json 同形——type 白名单无新增，diag 已在册；`step.next` 帧保持裸帧直出〔§6 表〕）；
+- 执行序列：compile → run → step.begin → step.next（**run 先行**注入算法检测 matches——缺则帧的 `algorithm_step`/`vis_events` 恒空，demo 通道同坑实证）；
+- 退出码帧级传导（**2026-11-13 补登**，对齐 §4.5 api 两层判据先例）：step.next 帧**无三态标记**（finished/trapped/waiting_input）而含 `ok:false`（协议级错帧）→ **即时 rc=1**——旧形态落批次上限兜底空转（cap=max_steps+16 次调用后以「协议破损」文案 rc=1，归因变形；默认预算下十万次空转）。合法 trap 帧（外层 `ok:true` + `result.trapped:true`）不含该子串、三态判断在前，rc=2/3 语义不变——属**追加传导条款**非五值域变更（1 在 api 已兼「帧含失败」，step 对齐）。
 
 ## 6. `--json` 事件流约定
 
@@ -146,12 +148,14 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 | 命令 | 事件 |
 |---|---|
 | `run --json` | `{"type":"diag",...}` → `{"type":"run",...}` → `{"type":"stdout",...}` → `{"type":"stderr",...}` → `{"type":"note",...}`（stderr 帧：stderr 通道 delta——病 15 批 C 补 2026-10-10，此前整段丢失；note 通道：完成附注+泄漏报告——二轮审 P2 补） |
-| `compile --json` | `{"type":"diag","frame":<compile 帧>}` 单帧（B3 批 a4e91c29 起包装——本表旧「`<compile 帧>` 单行直透」表述未连坐，SWEEP1 #444 批勘正；帧含 `fix_suggestion` 七元组 + `algorithm_matches`〔teaching detect wire 出口——2026-10-04 补，#36 最小路径〕——比文本形态富。识别判据 = 函数名关键词或典型结构特征二选一〔#104 登记〕：非典型命名且结构特征不足时为空数组，非缺陷） |
-| `step --json` | compile 失败：`{"type":"diag","frame":<compile 帧>}` 单帧收口 rc=1（SWEEP1 #444：修前三子命令中 step 唯一裸帧直出无 type——事件流其余行均有 type，消费面按 type 分派易漏；run 帧协议错〔外层 ok:false〕同形态收口 rc=1——#443 D2）；正常流：`<step.next 完整响应帧 {id,ok,result}>` × N + `{"type":"stdout","frame":…}` + `{"type":"summary",…}` |
+| `compile --json` | `{"type":"diag","frame":<compile 帧>}` 单行（**B3 批 M35 A6 起包装形态**——本表旧文「单行直透」未随连坐，#444 批勘正 2026-11-12；帧内含 `fix_suggestion` 七元组 + `algorithm_matches`〔teaching detect wire 出口——2026-10-04 补，#36 最小路径〕——比文本形态富。识别判据 = 函数名关键词或典型结构特征二选一〔#104 登记〕：非典型命名且结构特征不足时为空数组，非缺陷） |
+| `step --json` | compile 失败首帧 `{"type":"diag","frame":<compile 帧>}`（**#444，2026-11-12**——修前三子命令中唯一裸帧直出的失败路径；成功路径无 compile 帧）→ `<step.next 完整响应帧 {id,ok,result}>` × N（**裸帧直出——有意保留**，帧即 StepPayload 批载荷本体）+ `{"type":"stdout",…}` + `{"type":"summary",…}` |
 
 `<帧>` = gateway 协议响应（`{id, ok, result…}`）**单源引用**——帧内字段语义一律见 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md) 与 gateway 协议文档，本规格不重复定义。
 
 **通道字节语义总则（#112，2026-10-15 成文）**：凡携带程序输出文本的字段（`--json` 事件帧的 `delta`、serve/api `output.delta` 的 `delta`）一律为**输出字节流的逐字节 Latin-1 折回**（每字节 → 一个 U+0000~U+00FF 字符；`cursor`/`total` 按字节计）。这是设计行为而非缺陷：程序可输出任意字节（含非法 UTF-8 的 GBK 中文），Latin-1 是唯一无损过 JSON 字符串的单字节全字节域编码。§1 文本模式的「非 UTF-8 字节按 Latin-1 落文本」是同一总则在文本面的投影。判分消费方先还原字节（`Buffer.from(delta,"latin1")`〔node〕/ `bytes(delta,"latin1")`〔python〕）再按源程序编码 decode——直接拿 `delta` 字符串与 Clang golden 比对，中文程序必 mismatch。`memory.dump` 不受影响（本就是 base64 形态）。
+
+**诊断 filename 形态总则（#444 后续小修，2026-11-12）**：帧内 `diagnostics[].filename` / `file_ranges[].filename` 一律为 **POSIX 规范化路径**（`\` 折 `/`、剥 `.` 段、`..` 回退、绝对前缀保留——gateway compile 装配单点 `posix_name`，与 lexer `normalize_path` 同语义）：三子命令三臂同形（修前 wasm 臂 files 通道裸名、Windows 反斜杠路径原文透传两形态分叉）。裸名输入（demo 工作区 files）规范化不变。
 
 ## 7. dump 族语法（有意分叉，登记保留）
 
@@ -161,7 +165,7 @@ Rust oracle 为 flag 形态（`-o`/`--raw`）；mb 为位置参数（`dump_token
 
 ## 8. 版本与演进
 
-- v1 冻结面：标记行前缀**十种**（§1 白名单表**单源**——本计数为两表行数之和〔九种引擎标记行 + 一种壳层标注行，#322 补登 2026-10-28〕，加前缀须两处连坐；历史四次「补登不跟账」：NOTE〔10-04〕/STDERR〔10-10〕/FIX〔10-11，第三次同形且漏进 §1 表致下游剥离器漏剥实锤，#114 补录〕/`[vitro] backend=`〔10-28，#322——长期在产未入表第四次同形〕）/ 退出码五值 / `--json` 事件 type 五种（diag/run/stdout/stderr/note——§6 表**单源**；历史计数句「三种」为 stderr/note 追加前的旧值未跟账，SWEEP1 #444 批勘正；step 的 diag 可达形态同批补全）+ summary；**子命令追加**：`script`（2026-11-05，WASI 期 0——退出码域例外见 §2 script 段：正常结束 = C 返回值 `& 0xFF` 透传，非五值域；标记行前缀零新增〔复用既有十种〕）；
+- v1 冻结面：标记行前缀**十种**（§1 白名单表**单源**——本计数为两表行数之和〔九种引擎标记行 + 一种壳层标注行，#322 补登 2026-10-28〕，加前缀须两处连坐；历史四次「补登不跟账」：NOTE〔10-04〕/STDERR〔10-10〕/FIX〔10-11，第三次同形且漏进 §1 表致下游剥离器漏剥实锤，#114 补录〕/`[vitro] backend=`〔10-28，#322——长期在产未入表第四次同形〕）/ 退出码五值 / `--json` 事件 type **六种** = diag/run/stdout/stderr/note + summary（**#444 批勘正 2026-11-12**：旧文「三种 + summary」系早期快照未随 diag〔B3 批 M35 A6，10-02〕/run/stderr/note 增量连坐——step compile 失败帧入 diag 后全子命令对称，计数按 §6 表实全集复核）；**子命令追加**：`script`（2026-11-05，WASI 期 0——退出码域例外见 §2 script 段：正常结束 = C 返回值 `& 0xFF` 透传，非五值域；标记行前缀零新增〔复用既有十种〕）；
 - **output.delta 帧字段追加（DX ③，2026-10-11）**：`truncated_bytes`（int，环形丢弃累计——16MB/8MB 预算触顶丢最旧的显式位，0=完整；按 stream 通道分域，display=两通道之和）。消费方判「输出不完整」不再依赖可被再丢的截断注记。
 - 演进纪律：只增不改（新前缀、新事件 type、新子命令走追加；语义变更需版本化）；
 - 历史分叉登记：Rust oracle CLI 与本协议的差异（trap 退出码 / dump 语法 / step 形态）随 Rust 退役自然消失。

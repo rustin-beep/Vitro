@@ -59,6 +59,10 @@ pub struct Entry {
   mut seq : Int32
   title : String
   source : String
+  /// files 工程原始清单（DEF-1 2026-11-13：overview 重跑 typeck.dump 时
+  /// 喂 files 面——修前透传 compile 一次后即丢弃，二次调用只剩主文件源
+  /// 可喂，quote-include 工程静默空函数表）。单文件形态 = 空数组。
+  files : Array[Json]
   argv : Array[String]
   mut compile_result : Json
   frames : Array[Frame]

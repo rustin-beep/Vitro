@@ -499,15 +499,25 @@ fn serve_typeck_dump_frame(
   id : Json,
   params : Json,
 ) -> (String, Bool) {
-  guard json_field(params, "source").as_string() is Some(source) else {
-    return (
-      serve_param_err(
-        id, "typeck.dump 需要 params.source:string", "source:string",
-      ).stringify(),
-      false,
-    )
+  // files 面（2026-11-13 DEF-1）：files:[{filename,source}] → 走
+  // assemble_units 同款装配（头文件进 vfs、.c 拼接 + #364 不动点）——
+  // 与 compile 通道单源；单文件形态 params.source 原语义不变（空 vfs，
+  // quote-include 集合外 E1021 宁诊断不静默）。旧形态只收 source：
+  // mcp 的 overview 对 quote-include 工程喂主文件原文 → E1021 →
+  // typed_ast:null → funcs 静默空（DEF-1「编译成功但 overview 空」）。
+  // params→units 解析 = units_from_params 单源（PR #509 审阅 P3-1——
+  // 与 serve_compile_frame 原逐字重复）。
+  let units = match units_from_params(params, "typeck.dump") {
+    Ok(u) => u
+    Err(msg) =>
+      return (
+        serve_param_err(
+          id, msg, "files:[{filename?,source}] | source:string[,filename:string]",
+        ).stringify(),
+        false,
+      )
   }
-  let lexed = lex_full_source(source, [])
+  let (_, _, lexed) = assemble_units(units)
   let buf = StringBuilder()
   if !lexed.errors.is_empty() {
     buf.write_string(

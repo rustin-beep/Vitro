@@ -140,7 +140,7 @@ pub fn api_help_detail(m : String) -> String? {
       )
     "typeck.dump" =>
       Some(
-        "typeck.dump——类型检查导出（静态 dump 族）\n  params: source:string\n  例: vitro api typeck.dump '{\"source\":\"int main(){return 0;}\"}'",
+        "typeck.dump——类型检查导出（静态 dump 族）\n  params: files:[{filename?,source}] | source:string[,filename:string]\n  例: vitro api typeck.dump '{\"source\":\"int main(){return 0;}\"}'",
       )
     "vfs.list" =>
       Some(

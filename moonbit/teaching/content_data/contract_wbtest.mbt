@@ -76,12 +76,13 @@ test "catalog_presence_per_code" {
 
 ///|
 /// 卡片内容抽查（转义正确性锚——原 diag_wbtest 锚迁入）：E1002 中文
-/// 与 icon 语义 id 原样 + 基数 117（SWEEP1 #443 C4：+E3091 step-limit 卡；#426 批 1：+W3090 卡；#214 +W3084/W3085；PR #284 审阅
+/// 与 icon 语义 id 原样 + 基数 122（#426 批 1：+W3090 卡；#214 +W3084/W3085；PR #284 审阅
 /// P3 +W1023 卡；#256/#261 闭合批 +E0/E3074–E3082/E3086–E3088、
-/// 退役 E1022/E2001/E3026/W3056/E4100–E4104；闭合闸摸底 +E1012；#223 +E3089）。
+/// 退役 E1022/E2001/E3026/W3056/E4100–E4104；闭合闸摸底 +E1012；#223 +E3089；
+/// 2026-11-12 B9 三批（#433）+E3092–E3096 卡——tag 冲突/label 重定义/自引用/designator 两面）。
 test "catalog_content_escape_probe" {
   install_baked()
-  assert_eq(@diag.catalog_texts.length(), 117, msg="117 卡基线")
+  assert_eq(@diag.catalog_texts.length(), 122, msg="122 卡基线")
   let e2 = @diag.ErrorCode::from_code(1002).unwrap().catalog().unwrap()
   assert_eq(e2.title, "字符串未闭合")
   assert_eq(e2.icon, "string")

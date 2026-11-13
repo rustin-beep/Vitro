@@ -15,5 +15,9 @@
     "driver": "scripts/gen_course",
     "kind": "retired-fallback",
     "reason": "退役回退预案（#125 批 A 2026-10-15 lessons.ts 渲染角色退役，CI/pages 接线已摘）：课程叙述层生成器本体保留供宿主运行时方案失败时回退——node 直跑可用、npm test 跑其测试；**-check 在干净检出必 rc=1**（产物 demo/src/data/lessons.ts 不入库 .gitignore，须先跑生成再 -check——PR #416 审阅 P3 勘正原「-check 可跑」误导）。按裁定不入 CI 判定面。原无 shebang 逃过扫描面致三向对账恒绿脱管（2026-11-01 审阅 v2 S08-6 补 shebang 入驱动集并登记）。救急前置：cd scripts && npm ci（依赖 marked）"
+  },
+  {
+    "driver": "scripts/prove_bucket",
+    "reason": "本地工具（PR #509 审阅 P3-3）：moon prove proof.json 的 infra/goal 分桶判定器，唯一消费方 = .githooks/pre-push 证明门（本地防线——moon prove 不进 CI 判定面故本驱动亦无 CI 活行面）；判定逻辑 J9 五形态在 prove_bucket/main.test.mts（npm test 全量清单内）"
   }
 ]

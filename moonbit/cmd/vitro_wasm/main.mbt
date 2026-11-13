@@ -160,9 +160,12 @@ fn wasm_compile_params(file : String, src : String) -> String {
   }
   let entries : Array[(String, String)] = []
   let seen : Array[String] = []
-  // 登记名 = basename（main.js path.basename 语义——gateway 的 include
-  // 查找相对「当前文件目录」，主文件带目录路径会让 include 键错位）
-  collect_walk(file, base_name(file), src, entries, seen, read=fn(
+  // 登记名 = 调用方路径原文（#444 后续小修，2026-11-12：旧 basename——
+  // 「主文件带目录路径会让 include 键错位」的顾虑已被 #377 的键=查找同
+  // 坐标系设计消解（vfs_key_for 父键目录+include 原文，resolver cur_dir
+  // 臂同式），且 gateway 侧 compile 装配统一 POSIX 规范化后诊断 filename
+  // 与直连臂同形；basename 形态使 CLI wasm 臂诊断 filename 丢目录段）
+  collect_walk(file, file, src, entries, seen, read=fn(
     path : String,
   ) -> String? {
     Some(@fs.read_file_to_string(path) catch { _ => "" })
@@ -360,23 +363,6 @@ fn dir_of(path : String) -> String {
     // 中段原文透传不归一（#378：与 dump 系同款——base_dir 与 collect_walk
     // VFS 键同源约束；2026-10-29 diff_gate 五案例回归实证后回退）
     path[:last].to_owned()
-  }
-}
-
-///|
-/// 文件名段（最后 / 或 \ 之后；无分隔符 = 原文）。
-fn base_name(p : String) -> String {
-  let cs = p.to_array()
-  let mut idx = -1
-  for i = 0; i < cs.length(); i = i + 1 {
-    if cs[i] == '/' || cs[i] == '\\' {
-      idx = i
-    }
-  }
-  if idx < 0 {
-    p
-  } else {
-    p[idx + 1:].to_owned()
   }
 }
 

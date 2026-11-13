@@ -1212,3 +1212,54 @@ test "engine_run_batch_callback_frame_cap_fail_loud" {
   // 帧先入窗再报错（U2#7 同款——Err 前已采帧不丢）
   assert_true(e.frames.length() > 0, msg="Err 前帧已入窗")
 }
+
+///|
+/// 锚（暂停死锁修复）：replay_to 越窗重放漏清 is_paused——暂停态引擎
+/// seek 后 step.next 永久空批。旧形态：replay_to 复位 finished/trapped/
+/// last_trap_message 三态唯独漏 is_paused（与 VM 层「重放命中即时解除」
+/// 〔engine.mbt 重放循环 vm.unpause〕不对称）；批循环闸门见 is_paused 即
+/// break，续跑永久空批 + paused:true，唯一逃生门 = breakpoints.set []。
+test "engine_seek_overwindow_clears_engine_paused" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(40))
+  let e = UnifiedEngine::with_limits(100_000, 8, 0.5)
+  let src = fake_src()
+  ignore(e.run_batch(vm, src, 30))
+  assert_true(
+    e.frames.start_step() > 0,
+    msg="窗口已滑走（越窗前提）",
+  )
+  // 置暂停：断点行 3（重放区间 [0..=0] 之外——重放不命中，纯置态）
+  vm.add_breakpoint(3)
+  let mut paused_hit = false
+  for i = 0; i < 8; i = i + 1 {
+    guard e.run_batch(vm, src, 5) is Ok(r) else {
+      fail("推进批 \{i} 应 Ok")
+    }
+    if r.paused {
+      paused_hit = true
+      break
+    }
+    if r.finished {
+      break
+    }
+  }
+  assert_true(paused_hit, msg="前置：断点命中")
+  assert_true(e.is_paused, msg="前置：引擎层暂停位在场")
+  // 越窗 seek(0)：重放臂重建时间轴——执行控制开关随状态重建复位
+  let sk = e.seek_to(0, vm, src)
+  assert_true(sk.success)
+  // 断言 1（红点）：重放后 is_paused 须清——旧形态残留 true → 续跑死锁
+  assert_false(
+    e.is_paused,
+    msg="replay_to 须清引擎层暂停位（重放=状态重建）",
+  )
+  // 断言 2（红点）：续跑须有真实载荷——旧形态批循环闸门整批吞（空批）
+  guard e.run_batch(vm, src, 5) is Ok(r2) else {
+    fail("seek 后续跑批应 Ok")
+  }
+  assert_true(
+    r2.payloads.length() > 0,
+    msg="seek 后续跑不得空批（旧形态永久空批死锁）",
+  )
+}

@@ -1161,72 +1161,110 @@ test "m35_a1_api_未知旗标_fail_loud" {
 }
 
 ///|
-/// PR #488 审阅 P3-1 红→绿锚（SWEEP1 处置批，2026-11-05）：run 子命令对
-/// run 帧外层 ok:false（协议错帧）静默 rc=0——#443 D2 只修了 step 的同族面，
-/// frame_pipeline 两模式仍吞（json 分支解析失败回 0 + 文本分支 result 缺失
-/// 走 EXIT 0）。修前四形态实测全 rc=0；修后两模式 rc=1 + fail loud 行。
-test "sweep1_p31_run帧外层ok_false_两模式_rc1" {
-  // ① json 模式：run 帧外层 ok:false → rc=1
-  let jout : Array[Bytes] = []
-  let rc_j = frame_pipeline(
-    "int main(){return 0;}",
-    "x.c",
-    "",
-    [],
-    "",
-    fn() { 0UL },
-    fn(b : Bytes) { jout.push(b) },
-    true,
-    channel=sweep_step_channel(
-      sweep_ok_compile_frame(),
-      "{\"id\":1,\"ok\":false,\"error\":{\"kind\":\"state\",\"message\":\"协议错（桩）\"}}",
-      sweep_finished_stepnext_frame(),
-      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
-    ),
+/// #444 红→绿锚（2026-11-12，审阅 v2 M35b C1）：step --json compile 失败帧
+/// 的 type:diag 包装。修前形态：cli_step compile 失败路径 json 模式裸帧直出
+///（out_line(comp)——事件流其余行均有 type：stdout/summary，唯独 compile
+/// 失败行无）；对照 run/compile --json 的 {"type":"diag","frame":…} 包装
+///（B3 批 M35 A6 同款），三子命令 NDJSON 事件流契约不对称——消费方按 type
+/// 分派须对 step 失败行做「无 type」特判。
+fn i444_step_compile_fail_channel() -> EngineChannel {
+  {
+    invoke: fn(line : String) -> String {
+      if line.contains("\"method\":\"compile\"") {
+        // 真实 gateway 形态：外层 ok:true（协议成功执行）+ result.ok:false
+        //（编译失败）——cli_step 以 result 段 ok:false 子串判 rc=1
+        "{\"id\":3,\"ok\":true,\"result\":{\"ok\":false,\"diagnostics\":[{\"code\":\"E2003\",\"severity\":\"error\",\"line\":1,\"column\":8,\"message\":\"预期表达式\"}]}}"
+      } else {
+        "{\"id\":1,\"ok\":true,\"result\":{}}"
+      }
+    },
+    invoke_parsed: fn(_line : String) -> Json? { None },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(file : String, src : String) -> String {
+      "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
+    },
+  }
+}
+
+///|
+test "i444_step_json_diag_帧包装" {
+  let captured : Array[Bytes] = []
+  let rc = step(
+    ["-", "--json"],
+    () => b"int main() { int a = ; }",
+    fn(b : Bytes) { captured.push(b) },
+    channel=i444_step_compile_fail_channel(),
   )
-  assert_eq(
-    rc_j,
-    1,
-    msg="json 模式 run 协议错帧须 rc=1（修前 rc=0 吞帧）",
+  assert_eq(rc, 1, msg="compile 失败 rc=1（不变）")
+  assert_true(
+    captured.length() == 1,
+    msg="失败路径恰一行（compile 帧后即返回，无后续事件）",
   )
-  // ② 文本模式：同帧 → rc=1
-  let rc_t = frame_pipeline(
-    "int main(){return 0;}",
-    "x.c",
-    "",
-    [],
-    "",
-    fn() { 0UL },
+  let text = @util.utf8_text_partial(captured[0])
+  assert_true(
+    text.has_prefix("{\"type\":\"diag\",\"frame\":{\"id\":"),
+    msg="compile 失败帧 type:diag 包装（与 run/compile --json 同形——修前裸帧无 type）",
+  )
+  assert_true(
+    text.contains("E2003"),
+    msg="诊断码随帧透出（帧内容不变）",
+  )
+  // ② 文本模式不受影响（回归面）：失败走 say(comp)→stderr、stdout 零写出、
+  // rc=1 不变（spec §1 文本模式契约零变更）
+  let txt_captured : Array[Bytes] = []
+  let rc_txt = step(
+    ["-"],
+    () => b"int main() { int a = ; }",
+    fn(b : Bytes) { txt_captured.push(b) },
+    channel=i444_step_compile_fail_channel(),
+  )
+  assert_eq(rc_txt, 1, msg="文本模式 rc=1 不变")
+  assert_true(
+    txt_captured.length() == 0,
+    msg="文本模式 stdout 恒空（诊断走 stderr——#129 通道分立）",
+  )
+}
+
+///|
+/// 锚（step 帧级失败 rc 传导）：step.next 帧含 ok:false（外层协议错，无
+/// 三态标记）须即时 rc=1——对齐 api 子命令两层判据先例（cli_api 对
+/// "\"ok\":false" 子串拦 → rc=1，协议 §4.5）。旧形态：主循环只匹配三态
+/// 标记，错误帧落 batch_cap 兜底空转（--max-steps 1 → 17 次调用后以
+/// 「协议破损」文案 rc=1——归因变形 + 空转；默认 max_steps=100000 则
+/// 十万次）。修后首帧即传导。
+test "stepnext帧级okfalse_即时rc1传导" {
+  let inner = sweep_step_channel(
+    sweep_ok_compile_frame(),
+    "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"trap_code\":\"\",\"waiting_input\":false,\"steps_executed\":1,\"output_truncated\":false}}",
+    "{\"id\":1,\"ok\":false,\"error\":\"session 失效（注入形态）\"}",
+    "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\"}}",
+  )
+  let calls : Array[Int32] = [0]
+  let ch : EngineChannel = {
+    invoke: fn(line : String) -> String {
+      if line.contains("\"method\":\"step.next\"") {
+        calls[0] = calls[0] + 1
+      }
+      (inner.invoke)(line)
+    },
+    invoke_parsed: inner.invoke_parsed,
+    reset: inner.reset,
+    set_clock: inner.set_clock,
+    set_include_reader: inner.set_include_reader,
+    compile_params: inner.compile_params,
+  }
+  let rc = step(
+    ["-", "--max-steps", "1"],
+    () => b"int main(){return 0;}",
     fn(_b : Bytes) { () },
-    false,
-    channel=sweep_step_channel(
-      sweep_ok_compile_frame(),
-      "{\"id\":1,\"ok\":false,\"error\":{\"kind\":\"state\",\"message\":\"协议错（桩）\"}}",
-      sweep_finished_stepnext_frame(),
-      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
-    ),
+    channel=ch,
   )
+  assert_eq(rc, 1, msg="帧级 ok:false 须 rc=1")
   assert_eq(
-    rc_t,
+    calls[0],
     1,
-    msg="文本模式 run 协议错帧须 rc=1（修前 rc=0 吞帧）",
+    msg="帧级失败须首帧即传导（旧形态空转至 batch_cap=17 次后误报协议破损）",
   )
-  // ③ json 模式对照：正常 run 帧（外层 ok:true）不受影响 rc=0
-  let rc_ok = frame_pipeline(
-    "int main(){return 0;}",
-    "x.c",
-    "",
-    [],
-    "",
-    fn() { 0UL },
-    fn(_b : Bytes) { () },
-    true,
-    channel=sweep_step_channel(
-      sweep_ok_compile_frame(),
-      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"trap_code\":\"\",\"waiting_input\":false,\"steps_executed\":1,\"output_truncated\":false}}",
-      sweep_finished_stepnext_frame(),
-      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}",
-    ),
-  )
-  assert_eq(rc_ok, 0, msg="正常帧不受影响（回归面）")
 }

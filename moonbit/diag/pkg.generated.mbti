@@ -160,6 +160,11 @@ pub(all) enum ErrorCode {
   E3089_FunctionDeclaredNotDefined
   W3090_ConstIntOverflow
   E3091_StepLimit
+  E3092_TagKindMismatch
+  E3093_LabelRedeclared
+  W3094_SelfInitReference
+  E3095_DesignatorIndexOutOfBounds
+  E3096_DesignatorIndexNotConstant
 }
 pub fn ErrorCode::all() -> Array[Self]
 pub fn ErrorCode::catalog(Self) -> CatalogEntry?

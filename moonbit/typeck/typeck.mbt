@@ -83,6 +83,16 @@ pub struct TypeChecker {
   // goto/label 闭合检查（visit_func_decl 填充/清空；Rust lib.rs:46-47）
   func_labels : Map[String, @source.SourceLoc]
   pending_gotos : Array[(String, @source.SourceLoc)]
+  // 多文件拼接的文件边界（M09-A5，#433 批 B9 三批 2026-11-12）：
+  // (start_line, end_line, filename)——gateway merge_units 的 file_ranges
+  // 直通（check 前设置）。空 = 单文件语境（行号天然同文件，门恒过，
+  // 行为与旧判据逐位一致）。**为什么不走 FuncSymbol.first_decl_file**：
+  // parser 全目录不写 source_file（FuncDecl::Default 恒 ""），真实多文件
+  // 管线（api compile files 拼接单源）下按 source_file 判文件恒同值——
+  // 文件信息只在 gateway 拼接层（merge_units file_ranges），AST 层需要
+  // 该表直通才能判「两行号是否同文件」（static_func_files 的 E3058
+  // 跨文件检查同债，另批登记）。
+  mut file_boundaries : Array[(Int32, Int32, String)]
   // 诊断三段（push 序 = E1 对拍面）
   errors : Array[TypeError]
   warnings : Array[TypeError]
@@ -111,10 +121,33 @@ pub fn TypeChecker::new() -> TypeChecker {
     char_narrow_suppress: false,
     func_labels: Map([]),
     pending_gotos: [],
+    file_boundaries: [],
     errors: [],
     warnings: [],
     hints: [],
   }
+}
+
+///|
+/// 拼接序行号 → 文件名（M09-A5）：file_boundaries 空（单文件语境）
+/// 返回 ""——两侧同值恒过门，行为与单文件旧判据一致。
+fn TypeChecker::file_of_line(self : TypeChecker, line : Int32) -> String {
+  for b in self.file_boundaries {
+    if line >= b.0 && line <= b.1 {
+      return b.2
+    }
+  }
+  ""
+}
+
+///|
+/// gateway 拼接层直通入口（M09-A5）：merge_units 的 file_ranges 转元组
+/// 注入（check 前调用；单文件语境不调 = 空表恒过门）。
+pub fn TypeChecker::set_file_boundaries(
+  self : TypeChecker,
+  boundaries : Array[(Int32, Int32, String)],
+) -> Unit {
+  self.file_boundaries = boundaries
 }
 
 ///|
@@ -227,6 +260,30 @@ pub fn TypeChecker::check(
     // #174 同约束（C11 §6.7.2.1p7 对 union 同样适用）
     self.check_duplicate_member_names(u, "联合体")
   }
+  // M05-A4（#433 批 B9 三批，2026-11-12）：tag 命名空间冲突检查（C11
+  // §6.2.3——struct/union/enum 共享 tag 名；clang "use of 'A' with tag
+  // type that does not match previous declaration" error）。两轮注册
+  // 完成后交叉查对方表（注册顺序 structs→unions，循环内单侧查漏另一
+  // 序——`union A{}; struct A{};` 与 `struct A{}; union A{};` 双形态
+  // 均收）；前向条目同查（`union A; struct A;` clang 同报）。
+  for s in program.structs {
+    if self.unions.contains(s.name) {
+      self.report_error(
+        "tag '\{s.name}' 已用作 union，不能再用作 struct（C11 §6.2.3：struct/union/enum 共享 tag 命名空间）",
+        s.loc,
+        E3092_TagKindMismatch,
+      )
+    }
+  }
+  for u in program.unions {
+    if self.structs.contains(u.name) {
+      self.report_error(
+        "tag '\{u.name}' 已用作 struct，不能再用作 union（C11 §6.2.3：struct/union/enum 共享 tag 命名空间）",
+        u.loc,
+        E3092_TagKindMismatch,
+      )
+    }
+  }
   // T-P0-8：struct/union 值成员循环包含检测（学生写链表节点漏 `*` 的
   // 经典错误，曾致 compute_type_size 无限递归栈溢出）。
   // 环检测遍历**符号表首版**（sym.fields）而非当前声明——重复定义时
@@ -235,7 +292,8 @@ pub fn TypeChecker::check(
   for s in program.structs {
     match self.structs.get(s.name) {
       Some(sym) => {
-        let path : Array[String] = [s.name]
+        // M05-A5：键带种类前缀（与 value_member_cycle 对齐）
+        let path : Array[String] = ["s:" + s.name]
         match self.value_member_cycle_first(sym.fields.map(f => f.0), path) {
           Some(cycle) =>
             self.report_error(
@@ -252,7 +310,8 @@ pub fn TypeChecker::check(
   for u in program.unions {
     match self.unions.get(u.name) {
       Some(sym) => {
-        let path : Array[String] = [u.name]
+        // M05-A5：键带种类前缀（与 value_member_cycle 对齐）
+        let path : Array[String] = ["u:" + u.name]
         match self.value_member_cycle_first(sym.fields.map(f => f.0), path) {
           Some(cycle) =>
             self.report_error(
@@ -686,6 +745,11 @@ fn params_eq(
 /// T-P0-8：沿"值语义 struct/union 成员"（含数组包裹）展开，检测循环包含
 ///（Rust `value_member_cycle` 同构——字段数组的 find_map 形态改首个命中
 /// 循环）。返回路径中首先撞到的已存在节点名；指针/引用/函数不构成环。
+/// #433 批 B9 三批（2026-11-12，M05-A5）：path 键带 tag 种类前缀
+///（s:/u:）且分表查询——修前 Struct|Union 共臂裸 name 判环（先撞
+/// structs 表），`union A{}; struct A{union A u;}` 的合法异种类同名
+/// 误报 E3072 循环包含（E3092 tag 冲突检查后此形态仍会到达环检测，
+/// 键前缀化不放松同种类真环）。
 fn TypeChecker::value_member_cycle_first(
   self : TypeChecker,
   tys : Array[@ast.Type],
@@ -710,19 +774,30 @@ fn TypeChecker::value_member_cycle(
   while true {
     match ty_ref {
       Array(element, _, _, _, _, _) => ty_ref = element
-      Struct(name, _) | Union(name, _) => {
-        if path.contains(name) {
+      Struct(name, _) => {
+        let key = "s:" + name
+        if path.contains(key) {
           return Some(name)
         }
         let fields : Array[(@ast.Type, String)] = match self.structs.get(name) {
           Some(s) => s.fields
-          None =>
-            match self.unions.get(name) {
-              Some(s) => s.fields
-              None => []
-            }
+          None => []
         }
-        path.push(name)
+        path.push(key)
+        let hit = self.value_member_cycle_first(fields.map(f => f.0), path)
+        let _ = path.pop()
+        return hit
+      }
+      Union(name, _) => {
+        let key = "u:" + name
+        if path.contains(key) {
+          return Some(name)
+        }
+        let fields : Array[(@ast.Type, String)] = match self.unions.get(name) {
+          Some(s) => s.fields
+          None => []
+        }
+        path.push(key)
         let hit = self.value_member_cycle_first(fields.map(f => f.0), path)
         let _ = path.pop()
         return hit

@@ -105,5 +105,15 @@
     "case": "vfs_io_extensions.c",
     "digest": "39a1b5a9",
     "reason": "ftell 文本模式口径分叉（PR #486 审阅 P3 处置，2026-11-05）：UCRT 自身两形态矛盾——fgetc 推进后 ftell 返物理位（本例 5），fseek 定位后 ftell 返逻辑位（pr1 实测 fseek(20)→ftell=20）；vitro 统一逻辑口径（fseek↔ftell round-trip 自洽，本例 4）——实现定义域选定一致口径，与 UCRT 物理口径形态分叉在案（速查表 D 域登记）"
+  },
+  {
+    "case": "printf_hexfloat_a_dialect.c",
+    "digest": "470eb6b4",
+    "reason": "实现定义域方言（#437 修复后入库批 2026-11-12 登记，速查表 P3/P4 行）：%a/%A 十六进制小数位数 C11 7.21.6.1p8 留实现定义——UCRT 13 位全印（0x1.8000000000000p+0）、glibc 最短（0x1.8p+0），真值间自分歧；Vitro（#427 B4 批补执行臂）择 glibc 最短形态，与 Win clang 直拍必然 diff。digest 锁 UCRT 侧输出形态，clang 版本换 13 位口径变则红（跨环境口径漂移哨兵）。%F 对照行双侧一致"
+  },
+  {
+    "case": "printf_n_writeback_ucrt.c",
+    "digest": "40b2dac5",
+    "reason": "平台方言（#437 修复后入库批 2026-11-12 登记，速查表 P1 行）：%n 写回已输出字节数——Win UCRT 出厂禁 %n，整程 fail-fast 崩（返回码 3221226505=0xC0000409，stdout 空）vs Vitro（#427 B4 批修写回+实参消耗）正常 abcd/n=2；真值采 WSL gcc（glibc 全派一致）。同族先例：null_deref_trap_e3083 的「UB 崩溃域吞 stdout + 返回码差」正当形态；B4 批 wbtest（host_b4_printf_wbtest.mbt）直锚行为面，本条锁直拍面 Win clang 崩溃形态"
   }
 ]

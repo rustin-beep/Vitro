@@ -30,7 +30,8 @@
     {
       "method": "compile",
       "brief": "编译（覆盖式语义：files 数组=当前完整编译单元集合，非追加）",
-      "example": "{\"files\":[{\"filename\":\"main.c\",\"source\":\"int main(){return 0;}\"}]}"
+      "example": "{\"files\":[{\"filename\":\"main.c\",\"source\":\"int main(){return 0;}\"}]}",
+      "params": "files:[{filename?,source}] | source:string[,filename:string]"
     },
     {
       "method": "config.get",
@@ -157,7 +158,8 @@
     {
       "method": "typeck.dump",
       "brief": "类型检查导出（静态 dump 族）",
-      "example": "{\"source\":\"int main(){return 0;}\"}"
+      "example": "{\"source\":\"int main(){return 0;}\"}",
+      "params": "files:[{filename?,source}] | source:string[,filename:string]"
     },
     {
       "method": "vfs.list",

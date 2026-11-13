@@ -64,6 +64,7 @@ vitro/engine/cmd/dump_ast vitro/engine/util str_cmp
 vitro/engine/cmd/dump_ast vitro/engine/lexer LexResult
 vitro/engine/cmd/dump_ast vitro/engine/lexer tokenize_with_vfs
 vitro/engine/cmd/dump_ast vitro/engine/parser parse
+vitro/engine/cmd/dump_ast vitro/engine/util str_cmp
 vitro/engine/cmd/dump_compile moonbitlang/core/env args
 vitro/engine/cmd/dump_compile vitro/engine/ast json_escape_string
 vitro/engine/cmd/dump_compile vitro/engine/bytecode compile_output_dump_json
@@ -117,6 +118,7 @@ vitro/engine/cmd/dump_tokens vitro/engine/lexer dump_lex_tsv
 vitro/engine/cmd/dump_tokens vitro/engine/lexer dump_raw_tsv
 vitro/engine/cmd/dump_tokens vitro/engine/lexer tokenize_raw
 vitro/engine/cmd/dump_tokens vitro/engine/lexer tokenize_with_vfs
+vitro/engine/cmd/dump_tokens vitro/engine/util str_cmp
 vitro/engine/cmd/dump_typeck moonbitlang/core/env args
 vitro/engine/cmd/dump_typeck vitro/engine/ast ast_dump_json
 vitro/engine/cmd/dump_typeck vitro/engine/ast json_escape_string
@@ -134,6 +136,7 @@ vitro/engine/cmd/dump_typeck vitro/engine/parser parse
 vitro/engine/cmd/dump_typeck vitro/engine/teaching/content_data install_baked
 vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeChecker
 vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeError
+vitro/engine/cmd/dump_typeck vitro/engine/util str_cmp
 vitro/engine/cmd/lib/cli moonbitlang/core/encoding/utf8 encode
 vitro/engine/cmd/lib/cli vitro/engine/fs read_file_to_string
 vitro/engine/cmd/lib/cli vitro/engine/fs write_bytes_to_file

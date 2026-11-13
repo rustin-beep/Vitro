@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "as_of": "2026-11-04",
+    "as_of": "2026-11-13",
     "buckets": {
       "both_green": 0,
       "clang_red": 21,
@@ -12,10 +12,10 @@
       "divergence": 4,
       "rescued": 1
     },
-    "note": "金样本签名清单,零源码文本。E1021×2 豁免;#278/#343 重冻;2026-10-29 全量重冻(#213/#344/#346,E3001 族 22 处);2026-11-04 #459 重冻(W3053 误报 13+1 条消失,零连坐)。",
-    "repo": "chibicc@RunThem/chibicc-repo",
-    "source_commit": "b9c1f0311709dbc0aab7ff4501f920f30444ae1b",
-    "source_fork": "https://github.com/RunThem/chibicc-repo",
+    "note": "2026-11-13 SWEEP2 重冻：M09-C2（E3001 兜底 loc 0:0→精确位）揭开块退出残留 28 条既有误报（vla 等 statement-expr 语料——0:0 时代被无效位置丢弃掩盖，深修挂账）；W3053 char 域豁免扩大（DATE 语料 6 条）",
+    "repo": "TheAlgorithms/C",
+    "source_commit": "e5dad3f",
+    "source_fork": "https://github.com/rustin-beep/C",
     "total": 41
   },
   "files": {
@@ -48,13 +48,13 @@
     "arith.c": {
       "clang_ok": true,
       "gcc_ok": true,
-      "vitro_errs": 1911,
+      "vitro_errs": 1976,
       "vitro_warns": 61,
       "codes": {
         "E2003": 1,
         "E2005": 1867,
         "E2007": 2,
-        "E3001": 10,
+        "E3001": 75,
         "E3037": 1,
         "E3054": 12,
         "E3067": 5,
@@ -123,13 +123,13 @@
     "cast.c": {
       "clang_ok": true,
       "gcc_ok": true,
-      "vitro_errs": 371,
+      "vitro_errs": 375,
       "vitro_warns": 6,
       "codes": {
         "E2003": 1,
         "E2005": 349,
         "E2007": 2,
-        "E3001": 17,
+        "E3001": 21,
         "E3037": 1,
         "E3076": 1,
         "W1019": 6
@@ -202,13 +202,13 @@
     "decl.c": {
       "clang_ok": true,
       "gcc_ok": true,
-      "vitro_errs": 190,
+      "vitro_errs": 192,
       "vitro_warns": 3,
       "codes": {
         "E2003": 1,
         "E2005": 183,
         "E2007": 2,
-        "E3001": 3,
+        "E3001": 5,
         "E3037": 1,
         "W1019": 3
       },
@@ -218,12 +218,13 @@
     "enum.c": {
       "clang_ok": true,
       "gcc_ok": true,
-      "vitro_errs": 248,
+      "vitro_errs": 277,
       "vitro_warns": 9,
       "codes": {
         "E2003": 1,
         "E2005": 244,
         "E2007": 2,
+        "E3001": 29,
         "E3037": 1,
         "W1019": 9
       },
@@ -322,13 +323,13 @@
     "pointer.c": {
       "clang_ok": true,
       "gcc_ok": false,
-      "vitro_errs": 905,
+      "vitro_errs": 933,
       "vitro_warns": 32,
       "codes": {
         "E2003": 1,
         "E2005": 891,
         "E2007": 2,
-        "E3001": 6,
+        "E3001": 34,
         "E3037": 1,
         "E3067": 4,
         "W1019": 32
@@ -382,13 +383,13 @@
     "struct.c": {
       "clang_ok": true,
       "gcc_ok": false,
-      "vitro_errs": 2164,
+      "vitro_errs": 2194,
       "vitro_warns": 60,
       "codes": {
         "E2003": 1,
         "E2005": 2038,
         "E2007": 2,
-        "E3001": 69,
+        "E3001": 99,
         "E3002": 19,
         "E3004": 4,
         "E3037": 1,
@@ -439,13 +440,13 @@
     "union.c": {
       "clang_ok": true,
       "gcc_ok": true,
-      "vitro_errs": 417,
+      "vitro_errs": 420,
       "vitro_warns": 16,
       "codes": {
         "E2003": 1,
         "E2005": 400,
         "E2007": 2,
-        "E3001": 13,
+        "E3001": 16,
         "E3037": 1,
         "W1019": 16
       },
@@ -455,13 +456,13 @@
     "usualconv.c": {
       "clang_ok": true,
       "gcc_ok": true,
-      "vitro_errs": 164,
+      "vitro_errs": 165,
       "vitro_warns": 4,
       "codes": {
         "E2003": 1,
         "E2005": 150,
         "E2007": 2,
-        "E3001": 4,
+        "E3001": 5,
         "E3016": 2,
         "E3037": 1,
         "E3054": 2,
@@ -490,13 +491,13 @@
     "variable.c": {
       "clang_ok": true,
       "gcc_ok": false,
-      "vitro_errs": 991,
+      "vitro_errs": 1010,
       "vitro_warns": 25,
       "codes": {
         "E2003": 1,
         "E2005": 964,
         "E2007": 2,
-        "E3001": 20,
+        "E3001": 39,
         "E3037": 1,
         "E3067": 2,
         "E3075": 1,
@@ -508,13 +509,13 @@
     "vla.c": {
       "clang_ok": true,
       "gcc_ok": false,
-      "vitro_errs": 657,
+      "vitro_errs": 685,
       "vitro_warns": 26,
       "codes": {
         "E2003": 1,
         "E2005": 639,
         "E2007": 2,
-        "E3001": 13,
+        "E3001": 41,
         "E3037": 1,
         "E3067": 1,
         "W1019": 26

@@ -345,7 +345,13 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
       // 9223372036854775808LL；配合一元负号即得 LLONG_MIN 位模式）
       self.make_token(UnsignedLiteral, val_str, start)
     } else {
-      self.make_token(LongLiteral, val_str, start)
+      // M04-A2（#433 批 B9 三批，2026-11-12）：text 带 l/ll 尾承载分量
+      //（病 62 "ull" 同款模式）——parser 侧按分量分流定型（L=long 同宽
+      // LLP64 4B / ll=long_long 8B）；旧剥尾形态下 1L 与 1LL 词法层
+      // 不可分，parser 一律 long_long 令 sizeof(1L)=8≠sizeof(long)=4
+      // 自矛盾（C11 §6.4.4.1 定 1L 类型为 long）
+      let suffix = if l_count >= 2 { "ll" } else { "l" }
+      self.make_token(LongLiteral, val_str + suffix, start)
     }
   } else if has_integer_prefix {
     if fits_i32(val) {

@@ -90,7 +90,15 @@ pub fn TypeChecker::visit_call(
         self.check_builtin_qsort(args, loc)
       }
     "calloc" => self.check_builtin_calloc(args, loc)
-    "bsearch" => self.check_builtin_bsearch(args, loc)
+    "bsearch" =>
+      // M10c-A-7（P3，#433 批 B9 三批顺手收口）：bsearch 补 funcs 优先
+      // 分流（与 qsort/print_int 同构）——修前 include stdlib.h 时专臂
+      // 拦截绕过用户原型（#79 为 qsort 修的问题在 bsearch 原样存在）
+      if self.funcs.contains(name) {
+        self.check_user_func(name, args, loc)
+      } else {
+        self.check_builtin_bsearch(args, loc)
+      }
     "sprintf" => self.check_builtin_sprintf(args, loc)
     "snprintf" => self.check_builtin_snprintf(args, loc)
     "sscanf" => self.check_builtin_sscanf(args, loc)
@@ -513,6 +521,36 @@ fn TypeChecker::builtin_check_file_arg(
 }
 
 ///|
+/// 指针参数位三态判定（M10c-A-4，#433 批 B9 三批 2026-11-12）：指针放行；
+/// **裸字面量 0** 放行（null pointer constant——`qsort(...,0)` /
+/// `realloc(0,n)` clang 零诊断实测；NULL 经词法层已是指针形态走
+/// TK_Pointer 分支）；其余（含非 0 int）报 E3029——修前 qsort/bsearch
+/// compar 位与 realloc 首参判据 `!(TK_Int) && !(TK_Pointer)` 显式放行
+/// int，与文案「必须是（函数）指针」自相矛盾（三方编译期 error 实锤，
+/// include 形态经 check_user_func 的 E3054 恰为 error 级——专臂修后
+/// 两路径同级对齐）。三态形态承病 15 批 A 的 builtin_check_file_arg。
+fn TypeChecker::builtin_check_ptr_or_null(
+  self : TypeChecker,
+  args : Array[@ast.Expr],
+  idx : Int32,
+  note : String,
+  loc : @source.SourceLoc,
+) -> Unit {
+  // resolve 前取原始 Expr 判 0 字面量（resolve 可能包隐式 cast）
+  let is_zero_literal = args[idx] is @ast.Expr::Literal(0, _, _)
+  let (t, new_arg) = self.resolve_expr_type(args[idx])
+  args[idx] = new_arg
+  let kind = t.kind()
+  if kind is TK_Pointer {
+    return
+  }
+  if kind is TK_Int && is_zero_literal {
+    return
+  }
+  self.report_error(note, loc, E3029_BuiltInArgType)
+}
+
+///|
 /// 第 idx 实参必须是 int（E3029；可赋值即放行 + 隐式转换插入）。
 fn TypeChecker::builtin_check_int(
   self : TypeChecker,
@@ -620,15 +658,9 @@ fn TypeChecker::check_builtin_qsort(
         args[i] = insert_implicit_cast(new_arg, @ast.Type::int())
       }
     }
-    let (compar_type, new_a3) = self.resolve_expr_type(args[3])
-    args[3] = new_a3
-    if !(compar_type.kind() is TK_Int) && !(compar_type.kind() is TK_Pointer) {
-      self.report_error(
-        "qsort 第四个参数必须是函数指针",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_ptr_or_null(
+      args, 3, "qsort 第四个参数必须是函数指针", loc,
+    )
   }
   @ast.Type::void_type()
 }
@@ -664,15 +696,9 @@ fn TypeChecker::check_builtin_bsearch(
     for i in [2, 3] {
       self.builtin_check_int(args, i, "bsearch", loc)
     }
-    let (compar_type, new_a4) = self.resolve_expr_type(args[4])
-    args[4] = new_a4
-    if !(compar_type.kind() is TK_Int) && !(compar_type.kind() is TK_Pointer) {
-      self.report_error(
-        "bsearch 第五个参数必须是函数指针",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_ptr_or_null(
+      args, 4, "bsearch 第五个参数必须是函数指针", loc,
+    )
   }
   @ast.Type::pointer_to(@ast.Type::void_type())
 }
@@ -1080,7 +1106,8 @@ fn TypeChecker::check_builtin_malloc(
 }
 
 ///|
-/// realloc（两参：指针或 int / int）。
+/// realloc（两参：指针或裸 0（null pointer constant）/ int——首参三态
+/// 见 builtin_check_ptr_or_null，M10c-A-4）。
 fn TypeChecker::check_builtin_realloc(
   self : TypeChecker,
   args : Array[@ast.Expr],
@@ -1089,15 +1116,9 @@ fn TypeChecker::check_builtin_realloc(
   if args.length() != 2 {
     self.report_error("realloc 需要两个参数", loc, E3028_BuiltInArgCount)
   } else {
-    let (ptr_type, new_a0) = self.resolve_expr_type(args[0])
-    args[0] = new_a0
-    if !(ptr_type.kind() is TK_Pointer) && !(ptr_type.kind() is TK_Int) {
-      self.report_error(
-        "realloc 第一个参数必须是指针",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_ptr_or_null(
+      args, 0, "realloc 第一个参数必须是指针", loc,
+    )
     let (size_type, new_a1) = self.resolve_expr_type(args[1])
     args[1] = new_a1
     if !self.check_assignable(@ast.Type::int(), size_type, loc) {

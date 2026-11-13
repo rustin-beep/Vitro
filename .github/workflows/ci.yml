@@ -2048,6 +2048,32 @@ jobs:
           moon build --release --target wasm-gc gateway/wasm
           MOON_CC=clang moon build --release --target native cmd/vitro
           MOON_CC=clang moon build --release --target native cmd/serve
+      # ── #500 批（2026-11-12）：C stub 隐式声明防线 ─────────────────────
+      # cmd 下全部 .c 的严格声明扫描。为何是独立步而非构建旗标注入：
+      # ① moon 无 CFLAGS/MOON_CFLAGS 环境变量透传（moon.exe strings 实证
+      #   ——旗标入口只有 moon.pkg 的 cc-flags/stub-cc-flags 配置面）；
+      # ② 即便注入 -Werror=implicit-function-declaration，x86_64 的
+      #   moonbit.h emmintrin→mm_malloc→stdlib 链会意外供给 malloc 族声明
+      #   （arm64 走 arm_neon 分支无此巧合——Apple clang 21/gcc14+ 隐式
+      #   声明默认 error 即断供，#500），构建照绿抓不住；须
+      #   -DMOONBIT_NATIVE_NO_SYS_HEADER（moonbit.h 官方宏）还原「文件自身
+      #   显式 include 集」，而该宏改变 v128 typedef——不能进真实构建，
+      #   只能进扫描。J9：删任一 host_clock_stub.c 的 stdlib.h → 四份当步
+      #   红（malloc:56 隐式声明，WSL clang 21 实证同形态）。
+      - name: C stub strict-declaration scan (moonbit/cmd .c set — #500)
+        run: |
+          set -e
+          cd moonbit
+          files=$(find cmd -name '*.c' | sort)
+          [ -n "$files" ] || { echo '::error::扫描文件集为空（find 失败？）'; exit 1; }
+          echo "扫描 $(echo "$files" | wc -l) 个 C stub（-DMOONBIT_NATIVE_NO_SYS_HEADER = 文件自身显式声明集口径）"
+          for f in $files; do
+            clang -fsyntax-only -Werror=implicit-function-declaration -Werror=implicit-int \
+              -DMOONBIT_NATIVE_NO_SYS_HEADER -I "$HOME/.moon/include" "$f" \
+              || { echo "::error::$f 隐式声明扫描红——缺显式 include（对照 #500）"; exit 1; }
+          done
+          echo "C stub 严格声明扫描：全部通过"
+        shell: bash
       - name: unified CLI smoke (ubuntu lane, #366 anchors with teeth)
         run: node scripts/vitro_cli_smoke/main.mts --corpus 30
       # A7 批连坐（2026-11-02）：CLI 参数面对称性冒烟 ubuntu 臂——与 gates-wasm

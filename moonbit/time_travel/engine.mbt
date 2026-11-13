@@ -679,10 +679,16 @@ fn[P : SourceLineProvider] UnifiedEngine::replay_to(
       // 坑 ⑥-6（#430 起仅重放臂）：seek = 回到过去——重放真重建时间
       // 轴，终结标志复位（重放若真到终结态会再次置位——见下方
       // WaitingInput|Finished 臂）；trap 终态同款（issue #29）。直返
-      // 臂不复位（见上——无时间旅行终态保持，M31 A-2）。
+      // 臂不复位（见上——无时间旅行终态保持，M31 A-2）。is_paused 同款
+      // 复位（暂停死锁修复，2026-11-13）：重放=状态重建，执行控制开关
+      // 随之复位——与 VM 层「重放命中即时解除」对称（重放循环
+      // vm.unpause）；不清则暂停态越窗 seek 后批循环闸门永久吞批（旧
+      // 形态唯一逃生门 = breakpoints.set []）。直返臂不清（视口移动不
+      // 动执行控制开关，M31 A-2 同侧语义）。
       self.is_finished = false
       self.is_trapped = false
       self.last_trap_message = None
+      self.is_paused = false
       // #87 重放快道（2026-10-27）：窗口边距之外的中间步跳过
       // collect/推帧——这些帧终将被 finish_replay 裁出窗口（纯白干），
       // 跳过后重放每步成本降为裸 vm.step()。生效门：algo.matches 为

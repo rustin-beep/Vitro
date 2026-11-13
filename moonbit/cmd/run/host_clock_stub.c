@@ -6,8 +6,13 @@
 // json_parse 批实锤 Double/UInt64 双宽度返回为垃圾值；fs 包 fseek/is_null
 // 的 int 返回为活先例），MoonBit 侧组 millis = secs*1000 + frac。
 // oracle 对应物：vitro_vm 的 current_time_millis（墙钟毫秒）。
+// stdlib.h（#500 批 2026-11-12）：stdin 段 malloc/realloc/free 此前无显式
+// 声明——x86_64 靠 moonbit.h 的 emmintrin→mm_malloc→stdlib 链意外供给而不炸，
+// arm64（arm_neon 分支）无此巧合，clang≥16/gcc≥14 隐式声明默认 error 即断供；
+// serve 子集无 stdin 段不涉及（连坐审视过）。
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #ifdef _WIN32
 #include <windows.h>
 #else

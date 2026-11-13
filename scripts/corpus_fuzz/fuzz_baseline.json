@@ -27,15 +27,6 @@
     "baseline/bool_from_compare.c|init_partial": {
       "bucket": "AGREE"
     },
-    "baseline/break_continue.c|div2shift": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/break_continue.c|init_partial": {
-      "bucket": "AGREE"
-    },
-    "baseline/break_continue.c|paren_wrap": {
-      "bucket": "CLANG_REJECT"
-    },
     "baseline/char_global_scalar_literal_byte.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -137,6 +128,15 @@
     "baseline/p2a_host_semantics.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/printf_g17_normalize.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/printf_g17_normalize.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/printf_g17_normalize.c|char_escape": {
+      "bucket": "AGREE"
+    },
     "baseline/putchar_function.c|cast_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -218,15 +218,6 @@
     "chibicc_port/complit_local.c|init_partial": {
       "bucket": "WRONG_VALUE"
     },
-    "chibicc_port/const_qualified_basic.c|brace_wrap": {
-      "bucket": "AGREE"
-    },
-    "chibicc_port/const_qualified_basic.c|char_escape": {
-      "bucket": "AGREE"
-    },
-    "chibicc_port/const_qualified_basic.c|static_inject": {
-      "bucket": "AGREE"
-    },
     "chibicc_port/constexpr_array_dim.c|cmp_swap": {
       "bucket": "AGREE"
     },
@@ -261,6 +252,15 @@
       "bucket": "AGREE"
     },
     "chibicc_port/float_conv_matrix.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/float_not_judge.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/float_not_judge.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/float_not_judge.c|nested2flat": {
       "bucket": "AGREE"
     },
     "chibicc_port/generic_typeof_basic.c|div2shift": {
@@ -481,6 +481,15 @@
     "gap/p2d_parser_preproc_batch.c|nested2flat": {
       "bucket": "AGREE"
     },
+    "gap/printf_n_writeback_ucrt.c|char_escape": {
+      "bucket": "WRONG_VALUE"
+    },
+    "gap/printf_n_writeback_ucrt.c|div2shift": {
+      "bucket": "WRONG_VALUE"
+    },
+    "gap/printf_n_writeback_ucrt.c|nested2flat": {
+      "bucket": "WRONG_VALUE"
+    },
     "gap/printf_scanf_type_mismatch.c|brace_wrap": {
       "bucket": "CLANG_REJECT",
       "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
@@ -503,18 +512,6 @@
     },
     "gap/scanf_0x_retval.c|init_partial": {
       "bucket": "WRONG_VALUE",
-      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
-    },
-    "gap/sizeof_array_param.c|brace_strip": {
-      "bucket": "CLANG_REJECT",
-      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
-    },
-    "gap/sizeof_array_param.c|cast_strip": {
-      "bucket": "CLANG_REJECT",
-      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
-    },
-    "gap/sizeof_array_param.c|div2shift": {
-      "bucket": "CLANG_REJECT",
       "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
     },
     "gap/static_assert.c|brace_strip": {

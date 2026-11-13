@@ -289,6 +289,7 @@
         "logical_and_var.c": "d48c431d",
         "logical_not.c": "6a9f88bf",
         "logical_not_var.c": "1fef2e19",
+        "logical_not_zero_domain.c": "971abc85",
         "logical_or.c": "32643640",
         "logical_or_var.c": "70fec8ac",
         "long_long.c": "9aa10d56",
@@ -383,6 +384,9 @@
         "print_int_user_redefine_bad.c": "794a7c6a",
         "printf_char.c": "af37cd32",
         "printf_flags.c": "7db9bc67",
+        "printf_g17_normalize.c": "065fe0bd",
+        "printf_g17_subnormal.c": "447ef45f",
+        "printf_nan_case_family.c": "649e102c",
         "printf_percent_fold.c": "b6cb4e3b",
         "printf_retval.c": "4659d3b4",
         "printf_star_family.c": "6c4cf6f8",
@@ -455,6 +459,9 @@
         "sscanf_scanset.c": "5050f21f",
         "sscanf_struct_member_addr.c": "e73214b2",
         "static_assert_sizeof.c": "eaff46b4",
+        "static_fold_promo_sign.c": "33f537b4",
+        "static_fold_shortcircuit_saturate.c": "bdfee670",
+        "static_fold_unsigned_domain.c": "dfe911fe",
         "static_forward_func.c": "e82fdca6",
         "static_forward_global.c": "8fd6e158",
         "static_global_basic.c": "6e2264cf",
@@ -480,6 +487,7 @@
         "strcat_empty.c": "fba688cf",
         "strcat_function.c": "64d863aa",
         "strcpy_retval_chain.c": "e642bd01",
+        "string_escape_exact_fit.c": "feb8ba30",
         "string_escape_latin1_bytes.c": "6dd916a7",
         "string_escape_nul_term.c": "5b6a628b",
         "string_escape_octal_hex.c": "9dda4d23",
@@ -971,7 +979,7 @@
           "result_sha": "680127be3bdcad7d"
         },
         "e1_c23_typeof_unqual.c": {
-          "result_sha": "9c1b0a477bd6abd9"
+          "result_sha": "92264d1aacadbfa9"
         },
         "e1_c23_u8_string.c": {
           "result_sha": "8b18af453349d87a"
@@ -1451,6 +1459,9 @@
         "logical_not_var.c": {
           "result_sha": "48ed61fe246208fe"
         },
+        "logical_not_zero_domain.c": {
+          "result_sha": "456ab783d47dcff8"
+        },
         "logical_or.c": {
           "result_sha": "c4347d9efa71a94e"
         },
@@ -1738,6 +1749,15 @@
         "printf_flags.c": {
           "result_sha": "9d445607c9d3f7b6"
         },
+        "printf_g17_normalize.c": {
+          "result_sha": "25d2d73ef580413e"
+        },
+        "printf_g17_subnormal.c": {
+          "result_sha": "ca37da67adad99da"
+        },
+        "printf_nan_case_family.c": {
+          "result_sha": "4023235e03556703"
+        },
         "printf_percent_fold.c": {
           "result_sha": "db060ad6663d5510"
         },
@@ -1955,6 +1975,15 @@
         "static_assert_sizeof.c": {
           "result_sha": "95a7098fb51a95e8"
         },
+        "static_fold_promo_sign.c": {
+          "result_sha": "bcb813d378418abb"
+        },
+        "static_fold_shortcircuit_saturate.c": {
+          "result_sha": "6e39c47676ece4e0"
+        },
+        "static_fold_unsigned_domain.c": {
+          "result_sha": "378d265f3eedaace"
+        },
         "static_forward_func.c": {
           "fail": true,
           "fail_stage": "type"
@@ -2031,6 +2060,9 @@
         },
         "strcpy_retval_chain.c": {
           "result_sha": "ac61ff2e0c0752f5"
+        },
+        "string_escape_exact_fit.c": {
+          "result_sha": "632a62987634497b"
         },
         "string_escape_latin1_bytes.c": {
           "result_sha": "348fb75e7ceec1e0"
@@ -2314,6 +2346,7 @@
         "arith_compound_incdec.c": "04012a35",
         "arith_int_compare.c": "9fdccb0a",
         "arith_ptr_diff_expr.c": "b1ab977a",
+        "cast_ll_float_roundtrip.c": "82e3e915",
         "cast_truncate_signedness.c": "d17c8704",
         "commonsym_tentative.c": "420b932e",
         "complit_local.c": "d763a8ee",
@@ -2325,6 +2358,7 @@
         "control_switch.c": "416918f5",
         "float_compare_arith.c": "47a45441",
         "float_conv_matrix.c": "35731106",
+        "float_not_judge.c": "1d9a3594",
         "function_call_basic.c": "0a8c685e",
         "function_many_args.c": "5b42a12e",
         "function_struct_pass_ret.c": "bca8f314",
@@ -2333,6 +2367,7 @@
         "initializer_globals.c": "71163b3c",
         "initializer_locals.c": "33a644b9",
         "literal_int_domain.c": "10802419",
+        "literal_shift_i64.c": "593c453a",
         "macro_conditional.c": "21f69813",
         "macro_define_args.c": "a4e220a2",
         "pointer_array_basic.c": "12852aa8",
@@ -2362,8 +2397,11 @@
         "arith_ptr_diff_expr.c": {
           "result_sha": "8f02924ca00fd962"
         },
+        "cast_ll_float_roundtrip.c": {
+          "result_sha": "59f1b023ed96eba2"
+        },
         "cast_truncate_signedness.c": {
-          "result_sha": "1743c0ed64416841"
+          "result_sha": "112da9f7a87d2b65"
         },
         "commonsym_tentative.c": {
           "result_sha": "9f2da7ed3f522ee7"
@@ -2395,6 +2433,9 @@
         "float_conv_matrix.c": {
           "result_sha": "4ee130c02b1e5d44"
         },
+        "float_not_judge.c": {
+          "result_sha": "12e2a68fba06af36"
+        },
         "function_call_basic.c": {
           "result_sha": "a8249de02f4bf380"
         },
@@ -2418,6 +2459,9 @@
         },
         "literal_int_domain.c": {
           "result_sha": "1bc113b339116663"
+        },
+        "literal_shift_i64.c": {
+          "result_sha": "9fe07acbc0fbcae4"
         },
         "macro_conditional.c": {
           "result_sha": "86d0237de6607336"
@@ -2531,6 +2575,8 @@
         "keyword_compat.c": "ce1212f3",
         "loop_var_shadow.c": "67d2073f",
         "p2d_parser_preproc_batch.c": "f629bffd",
+        "printf_hexfloat_a_dialect.c": "bd202812",
+        "printf_n_writeback_ucrt.c": "36a80339",
         "printf_scanf_type_mismatch.c": "6fb1cda5",
         "scanf_0x_retval.c": "182a1281",
         "sizeof_array_param.c": "34ee7a7e",
@@ -2584,6 +2630,12 @@
         "p2d_parser_preproc_batch.c": {
           "fail": true,
           "fail_stage": "lex"
+        },
+        "printf_hexfloat_a_dialect.c": {
+          "result_sha": "8710b0d0d3620e5a"
+        },
+        "printf_n_writeback_ucrt.c": {
+          "result_sha": "3e7812c2b991c3d5"
         },
         "printf_scanf_type_mismatch.c": {
           "result_sha": "9f51aa47bc605435"
@@ -3514,7 +3566,7 @@
           "result_sha": "6af49505f6394deb"
         },
         "llm_scale_db.c": {
-          "result_sha": "64c30d2322e65570"
+          "result_sha": "3eba8e44132d9d78"
         },
         "llm_scale_db_join.c": {
           "result_sha": "9a76838561fb15da"

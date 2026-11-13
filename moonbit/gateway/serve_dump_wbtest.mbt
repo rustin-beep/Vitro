@@ -83,13 +83,24 @@ test "serve_dump_symbols_table" {
 ///|
 test "serve_dump_missing_source_protocol_error" {
   let s = @session.Session::new()
-  for m in ["ast.dump", "typeck.dump", "symbols.dump"] {
+  for m in ["ast.dump", "symbols.dump"] {
     let (r, _) = serve_handle(s, "{\"id\":1,\"method\":\"\{m}\"}")
     assert_true(r.contains("\"kind\":\"protocol\""))
     assert_true(r.contains("需要 params.source"))
     // #68 连坐：expected 字段存在断言（dump 族形状 = source:string）
     assert_true(r.contains("\"expected\":\"source:string\""))
   }
+  // typeck.dump 的参数面扩为 files|source 二选一（DEF-1 2026-11-13）——
+  // 空参数报错文案与 expected 形状连坐更新（对齐 compile 的双通道形态）
+  let (r2, _) = serve_handle(s, "{\"id\":1,\"method\":\"typeck.dump\"}")
+  assert_true(r2.contains("\"kind\":\"protocol\""))
+  assert_true(r2.contains("需要 params.files"))
+  assert_true(r2.contains("或 params.source"))
+  assert_true(
+    r2.contains(
+      "\"expected\":\"files:[{filename?,source}] | source:string[,filename:string]\"",
+    ),
+  )
 }
 
 ///|
@@ -284,5 +295,31 @@ test "json_lex_value_level_fail_loud_466" {
     json_structural_depth("{\"a\":\"}{[\"}"),
     1,
     msg="字符串内括号不计",
+  )
+}
+
+///|
+/// 锚（PR #509 审阅 P3-5）：typeck.dump 的 files 面 gateway 级直锚——
+/// quote-include 工程经 vfs 展开后无词法错、typed_ast 非空且 funcs 含
+/// 跨文件定义（修前该面在 gateway 包零用例，仅 mcp 跨包锚覆盖——
+/// entry_call 虽走真实 invoke_on，但单文件面回归会被 mcp 侧既有锚掩盖）。
+test "serve_dump_typeck_files_face_quote_include" {
+  let s = @session.Session::new()
+  let params = "{\"files\":[{\"filename\":\"util.h\",\"source\":\"int twice(int x);\"},{\"filename\":\"util.c\",\"source\":\"#include \\\"util.h\\\"\\nint twice(int x){return x*2;}\"},{\"filename\":\"main.c\",\"source\":\"#include \\\"util.h\\\"\\nint main(){return twice(21);}\"}]}"
+  let (r, _) = serve_handle(
+    s,
+    "{\"id\":1,\"method\":\"typeck.dump\",\"params\":\{params}}",
+  )
+  assert_true(
+    r.contains("\"ok\":true"),
+    msg="files 面装配无词法错（vfs 展开成功）",
+  )
+  assert_false(
+    r.contains("\"typed_ast\":null"),
+    msg="typed_ast 非空（修前单文件面空 vfs E1021 → null）",
+  )
+  assert_true(
+    r.contains("\"name\":\"twice\"") && r.contains("\"name\":\"main\""),
+    msg="funcs 含跨文件定义（util.c 的 twice + main.c 的 main）",
   )
 }

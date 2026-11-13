@@ -100,5 +100,10 @@
       "a5e36455",
       "618cd2c8"
     ]
+  },
+  {
+    "case": "vfs_io_extensions.c",
+    "digest": "39a1b5a9",
+    "reason": "ftell 文本模式口径分叉（PR #486 审阅 P3 处置，2026-11-05）：UCRT 自身两形态矛盾——fgetc 推进后 ftell 返物理位（本例 5），fseek 定位后 ftell 返逻辑位（pr1 实测 fseek(20)→ftell=20）；vitro 统一逻辑口径（fseek↔ftell round-trip 自洽，本例 4）——实现定义域选定一致口径，与 UCRT 物理口径形态分叉在案（速查表 D 域登记）"
   }
 ]

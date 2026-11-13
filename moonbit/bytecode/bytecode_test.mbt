@@ -80,15 +80,14 @@ test "host_rerouted_exceptions" {
 test "shadowed_host_names_are_declared" {
   let shadowed = @bytecode.shadowed_host_names()
   assert_eq(shadowed.length(), @bytecode.SHADOWED_HOST_NAME_COUNT)
-  assert_eq(@bytecode.SHADOWED_HOST_NAME_COUNT, 16)
+  assert_eq(@bytecode.SHADOWED_HOST_NAME_COUNT, 15)
   assert_eq(
     shadowed,
     [
       "isdigit", "isalpha", "islower", "isupper", "tolower", "toupper", "isspace",
-      "isalnum", "isprint", "iscntrl", "isxdigit", "abs", "atoi", "srand", "rand",
-      "strlen",
+      "isalnum", "isprint", "iscntrl", "isxdigit", "abs", "srand", "rand", "strlen",
     ],
-    msg="遮蔽名单必须与 route.mbt 显式清单逐字一致（2026-10-06 三函数改判出表；2026-10-13 strcmp 改判出表——病 45）",
+    msg="遮蔽名单必须与 route.mbt 显式清单逐字一致（2026-10-06 三函数改判出表；2026-10-13 strcmp 改判出表——病 45；B10 #434 2026-11-05 atoi 改判出表）",
   )
   // 遮蔽名仍**登记在 host 表**（只是路由不选它）——这正是"隐式覆盖"要显式化的点
   for name in shadowed {
@@ -97,13 +96,14 @@ test "shadowed_host_names_are_declared" {
       msg="遮蔽名仍在 host 表内",
     )
   }
-  // 改判集的两个名字**不在**遮蔽清单（它们实际路由到 Host）
+  // 改判集的名字**不在**遮蔽清单（它们实际路由到 Host）
   assert_false(shadowed.contains("strcpy"))
   assert_false(shadowed.contains("strcat"))
   assert_false(shadowed.contains("strncpy"))
   assert_false(shadowed.contains("memcpy"))
   assert_false(shadowed.contains("memmove"))
   assert_false(shadowed.contains("strcmp"))
+  assert_false(shadowed.contains("atoi"))
 }
 
 ///|
@@ -180,4 +180,34 @@ test "every_table_name_has_exactly_one_route" {
   // 反向：非表内名不得有形态
   assert_true(@bytecode.call_route("main") is None)
   assert_true(@bytecode.call_route("__not_a_builtin") is None)
+}
+
+///|
+/// rerouted 死段显式登记（M17b-B2 处方 / B10 #434 落）：改判集 7 名在
+/// 88 名表内有固定索引（预编译段物理在库指令流中）但 `call_route` 恒走
+/// Host——这些段是**不可达死代码**（承载已知历史缺陷，如 strcmp 有符号
+/// 差、atoi 空白前缀只认空格——改判即因它们），「表内但不可达」在此
+/// 事实化，防未来 rerouted 集收缩或库内新增对固定索引的 Call 使带病段
+/// 复活。指令量（M17b-A1/B2 反汇编）：strcpy 50 / strcat 65 / strncpy 89
+/// / memcpy 47 / memmove 92 / strcmp 42 / atoi ~20——共 ~405/3485 条。
+test "rerouted_dead_segments_declared" {
+  let rerouted = [
+    "strcpy", "strcat", "strncpy", "memcpy", "memmove", "strcmp", "atoi",
+  ]
+  for name in rerouted {
+    // 段物理在表（固定索引存在）
+    guard @bytecode.bytecode_libc_index(name) is Some(_) else {
+      fail("\{name} 应在 88 名表内（死段物理在库指令流）")
+    }
+    // 但路由恒 Host（不可达）
+    guard @bytecode.call_route(name) is Some(@bytecode.CallRoute::Host(_)) else {
+      fail("\{name} 应改判 Host（段不可达）")
+    }
+  }
+  // 计数一致性：改判集恰 7（与 SHADOWED 15 + 7 = 两表交集 22 对账）
+  assert_eq(
+    @bytecode.SHADOWED_HOST_NAME_COUNT + 7,
+    22,
+    msg="交集 22 = 遮蔽 15 + 改判 7",
+  )
 }

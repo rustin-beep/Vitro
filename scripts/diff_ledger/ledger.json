@@ -1000,6 +1000,34 @@
         "clang_direct"
       ],
       "notes": "digest 双向监控（known_direct 锁定；修复转绿自动提醒摘除）；工程模式无 digest 冻结层，回归锚=每轮现场 clang 直拍"
+    },
+    {
+      "id": "DIFF-CD-FTELL-01",
+      "title": "ftell 文本模式口径分叉（vfs_io_extensions.c）——UCRT 自身两形态矛盾（fgetc 推进后返物理位 / fseek 定位后返逻辑位），vitro 统一逻辑口径（fseek↔ftell round-trip 自洽）",
+      "class": "architectural",
+      "carry_over": "inherit",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "实现定义域选定一致口径：C 标准对文本模式 ftell 值不保证可 round-trip 之外的语义；UCRT 自身 fgetc/fseek 两路径互相矛盾（审阅 P3 实测：fgetc 推进后 vfs_io=5 物理 / fseek(20) 后 pr1=20 逻辑）——vitro 统一逻辑位口径使 fseek↔ftell 自洽，与 UCRT 物理口径的形态分叉在案（速查表 D 域 D13 登记行 + faf65e26 锚 vfs_ftell_text_roundtrip_b10r）",
+      "subsystems": [
+        "host",
+        "scripts/clang_direct"
+      ],
+      "clang_verdict": "不一致（实现定义域口径选定）",
+      "source_docs": [
+        "clang_direct known_direct.json（PR #486 审阅处置批登记 2026-11-05）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "vfs_io_extensions.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "known reason 字段含完整归因"
     }
   ]
 }

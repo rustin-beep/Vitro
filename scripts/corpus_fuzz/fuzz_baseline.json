@@ -9,14 +9,14 @@
     "baseline/array_of_union.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
-    "baseline/bitwise.c|char_escape": {
-      "bucket": "CLANG_REJECT"
+    "baseline/b10_strtol_strtod_scanner.c|brace_wrap": {
+      "bucket": "AGREE"
     },
-    "baseline/bitwise.c|cmp_swap": {
-      "bucket": "CLANG_REJECT"
+    "baseline/b10_strtol_strtod_scanner.c|char_escape": {
+      "bucket": "AGREE"
     },
-    "baseline/bitwise.c|static_inject": {
-      "bucket": "CLANG_REJECT"
+    "baseline/b10_strtol_strtod_scanner.c|static_inject": {
+      "bucket": "AGREE"
     },
     "baseline/bool_from_compare.c|brace_strip": {
       "bucket": "CLANG_REJECT"

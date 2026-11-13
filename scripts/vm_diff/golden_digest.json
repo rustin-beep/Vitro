@@ -2967,10 +2967,10 @@
       "memory_sha": "e83c783b2ff6c3df"
     },
     "baseline/strncmp_strcmp_sign_only.c": {
-      "src_sha": "d9d729d7",
+      "src_sha": "e082b2f5",
       "exit_code": 0,
-      "stdout_sha": "95a2cfd108aab759",
-      "memory_sha": "3c20b157186054f0"
+      "stdout_sha": "e1ad13d7efcedf9d",
+      "memory_sha": "7430449e8fbdc02b"
     },
     "baseline/strtol_prefix.c": {
       "src_sha": "4ab8b53d",
@@ -3609,9 +3609,9 @@
       "memory_sha": "443cdd7abfce4e5c"
     },
     "chibicc_port/literal_int_domain.c": {
-      "src_sha": "10802419",
+      "src_sha": "39020229",
       "exit_code": 0,
-      "stdout_sha": "1a55fa6b59cd7dfc",
+      "stdout_sha": "5a992c8ffded917e",
       "memory_sha": "d9bb1e70edd0ea66"
     },
     "chibicc_port/literal_shift_i64.c": {

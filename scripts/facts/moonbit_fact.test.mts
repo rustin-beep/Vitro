@@ -293,7 +293,7 @@ test("moonbit check warnings 绿路径（B3 台账机制）", () => {
       "     ╭─[ moonbit/parser/expr.mbt:8:1 ]\n" +
       "     │  ╰──── Warning (deprecated): x is deprecated\n" +
       "─────╯\n" +
-      "Finished. moon: ran 68 tasks (0 errors)",
+      "Finished. moon: ran 68 tasks (2 warnings, 0 errors)",
     0, facts);
   const f = facts["moonbit_check_warnings"];
   assert.ok(f !== undefined && f.status === "ok" && f.value === 2,
@@ -309,13 +309,13 @@ test("moonbit check warnings J9 埋雷①：数字码行 Warning: [NNNN] 不双�
       "     ╭─[ moonbit/a.mbt:1:1 ]\n" +
       "     │  ╰──── Warning (unused_value): Unused variable 'v'\n" +
       "─────╯\n" +
-      "Finished. moon: ran 1 tasks (0 errors)",
+      "Finished. moon: ran 1 tasks (1 warnings, 0 errors)",
     0, facts);
   assert.ok(facts["moonbit_check_warnings"]?.value === 1,
     `码行+助记行 = 1 条非 2 条: ${JSON.stringify(facts["moonbit_check_warnings"])}`);
 });
 
-test("moonbit check warnings J9 埋雷②：无 Finished 行 unavailable（管道截断防护）", () => {
+test("moonbit check warnings J9 埋雷②：无 Finished 行 unavailable（管道截断防护）+ Finished 自报互证不等 unavailable", () => {
   // 工具陷阱 9 同族：SIGPIPE/截断杀输出——数出一半的计数是毒数字，不采
   const facts = factsOf();
   collectMoonbitCheckWarningsFromOutput(
@@ -323,6 +323,24 @@ test("moonbit check warnings J9 埋雷②：无 Finished 行 unavailable（管�
     0, facts);
   assert.equal(facts["moonbit_check_warnings"]?.status, "unavailable",
     `无 Finished 行（截断形态）应 unavailable: ${JSON.stringify(facts["moonbit_check_warnings"])}`);
+  // PR #511 审阅 P3-3：Finished 自报总数与助记计数不等 = 输出形态漂移
+  //（防 moonc 格式变化静默少计），fail loud 不采
+  const facts2 = factsOf();
+  collectMoonbitCheckWarningsFromOutput(
+    "Warning: [0002]\n     ╭─[ moonbit/a.mbt:1:1 ]\n     │  ╰──── Warning (unused_value): x\n─────╯\n" +
+      "Warning: [0020]\n     ╭─[ moonbit/b.mbt:2:1 ]\n     │  ╰──── Warning (deprecated): y\n─────╯\n" +
+      "Finished. moon: ran 1 tasks (5 warnings, 0 errors)",
+    0, facts2);
+  assert.equal(facts2["moonbit_check_warnings"]?.status, "unavailable",
+    `自报 5 ≠ 助记 2 应 unavailable（形态漂移）: ${JSON.stringify(facts2["moonbit_check_warnings"])}`);
+  // 有 warning 却无 warnings 自报——零 warning 形态与漂移不可辨，同样不采
+  const facts3 = factsOf();
+  collectMoonbitCheckWarningsFromOutput(
+    "Warning: [0002]\n     ╭─[ moonbit/a.mbt:1:1 ]\n     │  ╰──── Warning (unused_value): x\n─────╯\n" +
+      "Finished. moon: ran 1 tasks (0 errors)",
+    0, facts3);
+  assert.equal(facts3["moonbit_check_warnings"]?.status, "unavailable",
+    `助记 1 条但无 warnings 自报应 unavailable: ${JSON.stringify(facts3["moonbit_check_warnings"])}`);
 });
 
 test("moonbit check warnings J9 埋雷③：check 失败（code≠0）不产真值", () => {

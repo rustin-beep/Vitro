@@ -600,7 +600,24 @@ export function collectMoonbitCheckWarningsFromOutput(out: string, code: number,
   }
   const m = out.match(/Warning \(\w+\)/g);
   const n = m === null ? 0 : m.length;
-  const f = okFact(n, "条", "moonbit/（moon check --target all，助记形计数）", "run", nowISO());
+  // PR #511 审阅 P3-3：Finished 行总数互证——moonc 自报 `(N warnings, E
+  // errors)` 是权威总数，与助记计数不等 = 输出形态漂移（防格式变化静默
+  // 少计/归零），fail loud 不采。零 warning 形态可能不带 warnings 字段——
+  // 此时仅在助记计数 > 0 才判漂移（有 warning 却无总数自报即异常）。
+  const fm = /\((\d+) warnings?, \d+ errors?\)/.exec(out);
+  if (fm !== null) {
+    const reported = Number.parseInt(fm[1]!, 10);
+    if (reported !== n) {
+      facts["moonbit_check_warnings"] = unavail("条", "moonbit/（moon check --target all）", how,
+        `Finished 自报 ${reported} warnings ≠ 助记计数 ${n}——输出形态漂移，须人工核口径`);
+      return;
+    }
+  } else if (n > 0) {
+    facts["moonbit_check_warnings"] = unavail("条", "moonbit/（moon check --target all）", how,
+      `助记计数 ${n} 但 Finished 行无 warnings 自报——零 warning 形态与漂移不可辨，须人工核`);
+    return;
+  }
+  const f = okFact(n, "条", "moonbit/（moon check --target all，助记形计数 + Finished 互证）", "run", nowISO());
   f.note = "moon check warning 台账键（B3 止涨机制）——增减须归因入台账文档（docs/current/07-质量与裁定/moon-check-warning台账.md）";
   facts["moonbit_check_warnings"] = f;
 }

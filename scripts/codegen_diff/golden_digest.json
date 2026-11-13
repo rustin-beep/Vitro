@@ -498,7 +498,7 @@
         "string_strcmp.c": "08a19bfe",
         "string_strcpy.c": "badba1ab",
         "string_strlen.c": "74038346",
-        "strncmp_strcmp_sign_only.c": "d9d729d7",
+        "strncmp_strcmp_sign_only.c": "e082b2f5",
         "strtol_prefix.c": "4ab8b53d",
         "struct_array_char_member_init.c": "1a085aa9",
         "struct_array_elem_byval.c": "30917e63",
@@ -2097,7 +2097,7 @@
           "result_sha": "4eb7a3ec263645a8"
         },
         "strncmp_strcmp_sign_only.c": {
-          "result_sha": "878c6b85980669fb"
+          "result_sha": "7ec32e520e24222c"
         },
         "strtol_prefix.c": {
           "result_sha": "62f2e027c1e030d2"
@@ -2374,7 +2374,7 @@
         "initializer_designated.c": "c0eacf0a",
         "initializer_globals.c": "71163b3c",
         "initializer_locals.c": "33a644b9",
-        "literal_int_domain.c": "10802419",
+        "literal_int_domain.c": "39020229",
         "literal_shift_i64.c": "593c453a",
         "macro_conditional.c": "21f69813",
         "macro_define_args.c": "a4e220a2",
@@ -2466,7 +2466,7 @@
           "result_sha": "8a910eafe535b20c"
         },
         "literal_int_domain.c": {
-          "result_sha": "1bc113b339116663"
+          "result_sha": "0943dc65edda8edd"
         },
         "literal_shift_i64.c": {
           "result_sha": "9fe07acbc0fbcae4"

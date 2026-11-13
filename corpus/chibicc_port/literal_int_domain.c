@@ -31,6 +31,9 @@ int main(void) {
   printf("%d %d\n", (int)sizeof(8.0f), (int)sizeof(0.3F));   // 4 4
   printf("%d %d\n", (int)sizeof(0.), (int)sizeof(.0));     // 8 8
   printf("%d %d\n", (int)'a', (int)'\n');
-  // 注：chibicc 原 '\x80' → -128（char 符号域）——Vitro 128（hex 字面量 ≥0x80 无符号化，速查表 E 族同族 DIFF 候选），移 deferred
+  // #510 修复翻面转正（2026-11-13）：chibicc 原 '\x80' → -128（char 符号域）
+  // ——旧 Vitro 128（hex 字面量 ≥0x80 零扩展）曾移 deferred；scanner 符号化
+  // 修复后两侧一致，探针转正为锚
+  printf("%d\n", (int)'\x80');
   return 0;
 }

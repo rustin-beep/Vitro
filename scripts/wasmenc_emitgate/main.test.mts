@@ -69,3 +69,51 @@ test("loadWabtValidate：合法过 / 栈下溢必红 / 空字段必红（J9）",
   flipped.set([flipped[flipped.length - 1]! ^ 0x01], flipped.length - 1);
   assert.notEqual(validate(flipped.toString("hex"), "t.c"), null);
 });
+
+/// 带唯一 import 的最小可执行模块（PR #512 审阅 P1-1 的实例化冒烟形态：
+/// 本地 main 体返回 42；export main 的函数索引由 goodIndex 参数给定——
+/// 正确值 = import 函数数(1) + 本地序号(0) = 1，错误值 0 = import 本身）
+function moduleWithImport(goodIndex: number): number[] {
+  const body = [0x00, 0x41, 0x2a, 0x0b]; // locals 0 + i32.const 42(sleb 单字节) + end
+  const code = [0x01, body.length, ...body];
+  const seg = (id: number, payload: ReadonlyArray<number>): number[] => [id, payload.length, ...payload];
+  return [
+    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+    ...seg(0x01, [0x02, 0x60, 0x00, 0x00, 0x60, 0x00, 0x01, 0x7f]), // type: ()->() 与 ()->i32
+    ...seg(0x02, [0x01, 0x03, ...[..."env"].map((c) => c.charCodeAt(0)), 0x0f, ...[..."vitro_host_call"].map((c) => c.charCodeAt(0)), 0x00, 0x00]), // import env.vitro_host_call ()->() @0
+    ...seg(0x03, [0x01, 0x01]), // function: 本地 1 个, type idx 1 (()->i32)
+    ...seg(0x07, [0x01, 0x04, ...[..."main"].map((c) => c.charCodeAt(0)), 0x00, goodIndex]),
+    ...seg(0x0a, code),
+  ];
+}
+
+test("实例化冒烟：导出 main 必须指向本地函数体而非 import（P1-1）", async () => {
+  const wabtInit = (await import("wabt")).default;
+  const wabt = await wabtInit();
+  let hostCalls = 0;
+  const instantiate = async (idx: number): Promise<{ ret: unknown; hostCalls: number }> => {
+    const mod = moduleWithImport(idx);
+    const m = wabt.readWasm(new Uint8Array(mod), {});
+    try {
+      m.validate();
+    } finally {
+      m.destroy();
+    }
+    hostCalls = 0;
+    const inst = await WebAssembly.instantiate(new Uint8Array(mod), {
+      // 桩签名与 import type idx 0（()->()）对齐——被调即计数（错误索引
+      // 形态下 main() 返回 undefined，判定只看 hostCalls 与本地返回值）
+      env: { vitro_host_call: (): void => { hostCalls += 1; } },
+    });
+    const main = (inst.instance.exports as { main: () => unknown }).main;
+    return { ret: main(), hostCalls };
+  };
+  // 正确索引 1：本地体执行（i32.const 42），宿主零调用
+  const good = await instantiate(1);
+  assert.equal(good.ret, 42);
+  assert.equal(good.hostCalls, 0);
+  // 错误索引 0（修前形态）：validate 全绿但 main 落到 import——宿主被调
+  // ——引擎行为锚：指向错实体验证器不拦，实例化冒烟才拦
+  const bad = await instantiate(0);
+  assert.equal(bad.hostCalls, 1);
+});

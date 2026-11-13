@@ -79,22 +79,24 @@ priv struct EffectSim {
   mut unreach_ends : Int32
   /// 前垫欠记（栈空时 pop 的期望类型，底→顶序）
   pad : Array[Byte]
+  /// 首个类型错（PR #512 审阅 P3-1：修前 sim_pop 直接 abort——坏模板
+  /// 让消费进程崩〔dump_wasm 闸无 JSON 行〕；记录式传播＝40 调用点零
+  /// 改动 + 错误结构化到 Err(TypeMismatch)，dump_wasm 第四态可达）
+  mut err : EffectError?
 }
 
 ///|
-/// pop 一个期望类型值：栈空记前垫，否则弹栈顶并断言类型一致。
-/// 类型不符 = 模板形状与指令效应表分叉（理论不可达——模板发射单源 +
-/// watcheck wat 对拍先行锁定；abort fail loud 是第二道闸的形态）。
+/// pop 一个期望类型值：栈空记前垫，否则弹栈顶并核对类型——不符记首个
+/// 错（不崩；结构化传播由 `seq_net_effect` 尾部承担，消费方 fail loud
+/// 不崩——PR #512 审阅 P3-1：修前 abort 会让 dump_wasm 闸进程无 JSON 行）。
 fn EffectSim::sim_pop(self : EffectSim, want : Byte, at : Int32) -> Unit {
   if self.stack.length() == 0 {
     self.pad.push(want)
   } else {
     let got = self.stack[self.stack.length() - 1]
     let _ = self.stack.remove(self.stack.length() - 1)
-    if got != want {
-      abort(
-        "效应模拟类型错 @指令 \{at}：期望 0x\{want.to_int()} 实得 0x\{got.to_int()}（模板/效应表分叉——watcheck 对拍应先行红）",
-      )
+    if got != want && self.err is None {
+      self.err = Some(TypeMismatch(at, want, got))
     }
   }
 }
@@ -483,7 +485,13 @@ fn EffectSim::sim_step(
 fn seq_net_effect(
   instrs : Array[WInstr],
 ) -> Result[(Array[Byte], Int32), EffectError] {
-  let sim : EffectSim = { stack: [], frames: [0], unreach_ends: 0, pad: [], }
+  let sim : EffectSim = {
+    stack: [],
+    frames: [0],
+    unreach_ends: 0,
+    pad: [],
+    err: None,
+  }
   for i = 0; i < instrs.length(); i = i + 1 {
     let w = instrs[i]
     if sim.unreach_ends == 0 {
@@ -505,6 +513,11 @@ fn seq_net_effect(
       }
     }
   }
+  // 首个类型错优先拒载（结构化传播——P3-1）
+  match sim.err {
+    Some(e) => return Err(e)
+    None => ()
+  }
   // pad 反转成「底→顶」序（欠记序 = pop 序 = 顶→底；垫入与 witness 表
   // 语义都是底→顶——StoreMemD 族弹序「先值后址」的垫序「先址后值」，
   // 批 2a 对拍锚实锤）
@@ -513,21 +526,4 @@ fn seq_net_effect(
     ordered.push(sim.pad[k])
   }
   Ok((ordered, sim.stack.length()))
-}
-
-///|
-/// 组操作模板效应（发射单源复用——`emit_group` 展开 + `seq_net_effect`
-/// 模拟；效应与 operand 值无关（结构性的），仅取发射不失败的样值）。
-fn template_net_effect(
-  op : @opcode.OpCode,
-  operand : Int32,
-  ctx : EmitCtx,
-) -> Result[(Array[Byte], Int32), EffectError] {
-  match emit_group(op, operand, ctx) {
-    Ok(instrs) => seq_net_effect(instrs)
-    Err(_) =>
-      // 发射失败（Reserved/域非法）不是效应面——空效应占位，消费方
-      // （组装层）先行拒载 Reserved 组，不触达本形态
-      Ok(([], 0))
-  }
 }

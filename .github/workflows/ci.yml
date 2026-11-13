@@ -1202,8 +1202,9 @@ jobs:
         # stdout 逐字节 + rc + 1MB 映像（--dump-memory）+ 装载标记行断言
         # （`// WASM-REHOST ok` 必在——fallback 即红，静默回退会让双臂
         # 恒一致而闸失明）。编译失败例两臂同形不红（codegen_diff 域）。
-        # 基线：9 目录 944 例 = 902 双跑一致 + 42 编译期 / 0 红
-        # （2026-11-13 首版全量摸底）。
+        # 基线：9 目录 959 例 = 917 双跑一致 + 42 编译期 / 0 红
+        # （2026-11-13 rebase 基 0db534ec 复跑值——#509 收编面扩入；
+        # 开发期首发基 ece3955a 为 944/902、#511 语料卫生 +2 前 957/915，PR #512 审阅 P3-4 勘正）。
         shell: bash
         run: |
           cd moonbit && moon build --target native cmd/run

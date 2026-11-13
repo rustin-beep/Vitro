@@ -17,7 +17,7 @@ test "effect_sim_matches_witness_table" {
   }
   for row in all {
     let (op, operand, pushes, drops) = row
-    match template_net_effect(op, operand, ctx) {
+    match effect_of(op, operand, ctx) {
       Ok((pad, residual)) => {
         // 类型串 → 字节串（i=I32 I=I64 f=F32 d=F64——witness 表型约定）
         let want : Array[Byte] = []
@@ -82,7 +82,7 @@ test "effect_sim_covers_all_emissive_ops" {
           spec.state is Composed ||
           spec.state is Ambiguous {
           // operand 取 0（槽位类样值不影响结构效应——效应是结构性的）
-          match template_net_effect(op, 0, ctx) {
+          match effect_of(op, 0, ctx) {
             Ok(_) => emissive = emissive + 1
             Err(e) =>
               fail(
@@ -146,7 +146,32 @@ test "assemble_witness_module_structure" {
     expect,
     msg="import 段 = env.vitro_host_call func@type1",
   )
-  // 3. code 体断言：locals(4 runs) + block(02 40) + PushConst 模板字节
+  // 3. export 段断言（PR #512 审阅 P1-1 的字节级锚——修前红：导出 main
+  //    曾指向 import 函数索引 0 = env.vitro_host_call，程序体永不执行；
+  //    wasm 绝对索引 = import 函数数(1) + 本地序号(0) = 1）
+  let export_seg = extract_section(mod_bytes, 7)
+  let main_name = "main".to_array()
+  let mem_name = "memory".to_array()
+  let want_export : Array[Byte] = []
+  want_export.push(2) // vec 计数
+  want_export.push(main_name.length().to_byte())
+  for ch in main_name {
+    want_export.push(Char::to_int(ch).to_byte())
+  }
+  want_export.push(0) // kind = func
+  want_export.push(1) // **绝对索引 = 1（import 占 0）——P1-1 锚点**
+  want_export.push(mem_name.length().to_byte())
+  for ch in mem_name {
+    want_export.push(Char::to_int(ch).to_byte())
+  }
+  want_export.push(2) // kind = memory
+  want_export.push(0) // memory 索引 0
+  assert_eq(
+    export_seg,
+    want_export,
+    msg="export 段：main → 本地函数体（绝对索引 1，非 import 0）+ memory",
+  )
+  // 4. code 体断言：locals(4 runs) + block(02 40) + PushConst 模板字节
   //    (i32.const 8 = 41 08) + drop(1a) + end(0b) + 函数尾 end(0b)
   let code_seg = extract_section(mod_bytes, 10)
   // code 段体 = vec(1) + body_size(uleb) + body
@@ -335,5 +360,36 @@ fn emit_err_text(e : EmitError) -> String {
   match e {
     NotImplemented(s) => "NotImplemented: \{s}"
     BadOperand(s) => "BadOperand: \{s}"
+  }
+}
+
+///|
+/// 类型错序列 fail loud 锚（PR #512 审阅 P3-1：修前 sim_pop 直接 abort——
+/// 坏模板让闸进程崩、无 JSON 行；修后结构化 Err(TypeMismatch) 传播，
+/// dump_wasm 的第四态 Effect(TypeMismatch) 可达）。
+test "seq_net_effect 类型错结构化拒载" {
+  // [i64.const 0; i32.add]：add 第二弹期望 i32、栈顶 i64——类型分叉形态
+  match seq_net_effect([WI64Const(0L), WI32Add]) {
+    Ok(_) => fail("类型错序列不该推导成功")
+    Err(TypeMismatch(at, want, got)) => {
+      assert_eq(at, 1, msg="错位 = i32.add 指令索引")
+      assert_eq(want, WT_I32, msg="期望 i32")
+      assert_eq(got, WT_I64, msg="实得 i64")
+    }
+    Err(e) => fail("应给 TypeMismatch，实得：\{effect_err_text(e)}")
+  }
+}
+
+///|
+/// 测试侧效应入口（原 template_net_effect 包装——PR #512 审阅 P3-2 删除
+/// 生产死函数后，wbtest 直接消费 emit_group + seq_net_effect 两单源）。
+fn effect_of(
+  op : @opcode.OpCode,
+  operand : Int32,
+  ctx : EmitCtx,
+) -> Result[(Array[Byte], Int32), EffectError] {
+  match emit_group(op, operand, ctx) {
+    Ok(instrs) => seq_net_effect(instrs)
+    Err(_) => Ok(([], 0)) // 发射失败非效应面（与原包装同语义——消费方先行拒载）
   }
 }

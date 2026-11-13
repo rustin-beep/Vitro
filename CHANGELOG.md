@@ -1,13 +1,42 @@
 ## [Unreleased]
 
+### fix(wasmenc+bytecode+scripts): PR #512 审阅处置——P1×1 + P2×1 + P3×6（2026-11-13）
+
+- **P1-1 证人模块导出 main 指向 import（E0）**：`ModuleBuilder::add_func`
+  改返**绝对函数索引**（import 函数数 + 本地序号——wasm 索引空间 import
+  先占；修前 assemble 的 export main 直用本地序号 0 → 指向
+  env.vitro_host_call，本地函数体永不执行，validate 只查索引合法不查
+  指向故批 2a 全绿）。锚三件：export 段字节锚（**先红后绿**——修前实红）、
+  node 实例化冒烟（正确索引 main() 落本地体零宿主调用；错误索引形态
+  宿主被调 1 次——「指向错实体验证器不拦」的引擎行为锚）。
+- **P2-1 「逐位恒等」系构造性恒等，往返/内容级 validate/双跑三面对模板
+  语义错隐形（E0）**：① 措辞三处收窄（wasm_project 头注/rundiff 头注/
+  CHANGELOG——「形状/边界核对 + 槽类 operand 往返」，非「从字节独立推出
+  身份」）；② 装载协议补**纯 A/B 产物盲折叠终裁**（verify_group_table
+  ——不依赖侧车身份的贪心独立分组，两路互证；含 C 类歧义组产物保持
+  侧车裁决〔设计形态〕；wbtest 双裁决锚）；③ rundiff 头注写明本闸证
+  「装载重建后执行路径未受损」非「载体语义等价」。模板表自错盲区登记
+  （softstack 双实现 + watcheck wat 证人是该面守门人——审阅注入实验：
+  UAdd→xor 变异唯 wasmenc 包 7 红）。
+- **P3×6**：① `EffectError::TypeMismatch` 构造点补齐（sim_pop abort →
+  记录式结构化传播，dump_wasm 第四态可达；类型错序列锚先红〔修前
+  abort 崩〕后绿）；② `template_net_effect` 生产死函数删除（wbtest 切
+  emit_group+seq_net_effect 直消费）；③ CHANGELOG 残句与旧测试数修复；
+  ④ CI 注释/baseline.json 旧数字 944/902→957/915；⑤ surface 计数
+  +3→+4（VerifyError 漏计）；⑥ rundiff 头注耗时 ~1 分钟→3-4 分钟 +
+  **程序 stderr 对比**（剥 WASM-REHOST 标记行后逐字节——两臂 STDERR 行
+  分叉此前不可见；node:test 锚：纯标记行差异不红/STDERR 分叉红）。
+
 ### feat(vm+gateway+cli+scripts): REHOST 批 2b——run 态装载往返接线 + 双跑对拍闸（2026-11-13）
 
 - **bytecode 装载往返原语**（`wasm_project.mbt`）：`rehost_round_trip`——
-  code → 发射 → 组表引导裁决折叠 → 重建 Instruction（op/operand 折叠
-  产物 + loc 侧车）→ **与原 code 逐位恒等断言**（op/operand/loc 三元组
-  ——「装载期把 wasm 字节折叠回组操作」的机检形态，digest 零漂移的
-  机制根基）。Err 单行诊断三态：emit-failed（禁译面）/ verify-failed
-  （装载核对红）/ roundtrip-*（互逆性破坏——理论不可达，装载协议拦）。
+  code → 发射 → 组表引导裁决折叠（形状/边界/还原槽 operand 比对）→
+  重建 Instruction → 与原 code 逐位一致断言。**口径（PR #512 审阅 P2-1
+  收窄）**：断言核的是「形状/边界/槽类 operand 往返」——组身份与 loc 由
+  侧车携带（同源自 code 直填），非从字节独立推出的恒等；独立推导面 =
+  还原槽 operand + 纯 A/B 产物盲折叠终裁（审阅处置补）；模板表自错面
+  由 wasmenc softstack/wat 证人守护。Err 单行诊断：emit-failed /
+  verify-failed / blind-fold-failed / roundtrip-*。
   白盒 +2：恒等往返（C 类组 + 多档 loc 侧车重建）/ Reserved 拒载。
 - **vm 装载接线**（`setup_from_output` +`wasm_rehost~` 参数，返回状态串
   ""/"ok groups=N"/"fallback …"）：flag on 时用户 code 走往返装载、
@@ -26,15 +55,19 @@
   回退会让双臂恒一致而闸失明）。fail-open 防护同 emitgate（磁盘 .c
   对账 + baseline.json 钉九目录 + 裸旗 fail loud）；node:test 5 锚
   （双绿/三不一致/fallback/编译失败两臂同形不红/超时）。
-- **验收实况**：九目录 957 例 = **915 双跑一致 / 0 mismatch / 0（rebase 基 0db534ec 后复跑——#509 收编面自动扩入；首发基 ece3955a 为 944=902）**、原句：**915 双跑一致 / 0
-  fallback / 42 编译期两臂同形 / 0 红**；vm_diff
+- **验收实况**：九目录 957 例 = **915 双跑一致 / 0 fallback / 42 编译期
+  两臂同形 / 0 红**（rebase 基 0db534ec 后复跑——#509 收编面自动扩入；
+  开发期首发基 ece3955a 实测 944 例 = 902 一致）；vm_diff
   golden **861/861 SAME 零漂移**（铁律 1——#509 重冻 golden 新基线）；
   vitro_cli_smoke 三臂全绿；裸 moon test **1454/1454** + native **1526/1526**
   （rebase 后实跑真值）。CI bookkeeping 接线 + ci_checklist 自动登记
   （活行 71）。
-- 连坐：surface +1 边（vm→bytecode rehost_round_trip）；emitgate CI 注释
-  勘正（批 2a 内容级口径）；测试数 1430→1433 七文档；设计单批 2 行批
-  2b 落地注。
+- 连坐：surface 本批实增 **4 边**（dump_wasm→wasmenc assemble_witness_module/
+  AssembleError + bytecode→wasmenc VerifyError + vm→bytecode
+  rehost_round_trip——PR #512 审阅 P3-5 勘正：原写 +3 漏计 VerifyError）；
+  emitgate CI 注释勘正（批 2a 内容级口径）；测试数 1447→1454（+7 =
+  批 2a +4 / 批 2b +3，rebase 基 #509 的 1447）+ native 1519→1526 七文档；
+  设计单批 2 行批 2b 落地注。
 
 ### feat(wasmenc+scripts): REHOST 批 2a——垫收模块组装 + wasm-validate 内容级真验证（emitgate 第三级升级，2026-11-13）
 

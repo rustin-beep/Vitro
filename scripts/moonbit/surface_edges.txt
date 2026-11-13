@@ -40,6 +40,7 @@ vitro/engine/bytecode vitro/engine/wasmenc GroupTable
 vitro/engine/bytecode vitro/engine/wasmenc VerifyError
 vitro/engine/bytecode vitro/engine/wasmenc build_group_table
 vitro/engine/bytecode vitro/engine/wasmenc emit_group_bytes
+vitro/engine/bytecode vitro/engine/wasmenc template_spec
 vitro/engine/bytecode vitro/engine/wasmenc verify_fold_with_table
 vitro/engine/bytecode vitro/engine/wasmenc verify_group_table
 vitro/engine/bytecode vitro/engine/util str_cmp

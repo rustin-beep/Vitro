@@ -80,8 +80,8 @@ pub fn ModuleBuilder::new() -> ModuleBuilder {
 
 ///|
 /// 追加 import（kind: 0=func 2=memory 3=global；type_idx 仅 func 消费）。
-/// import 函数先于本地函数占用函数索引空间（`add_func` 返回的是**本地**
-/// 函数序号——跨 import 的绝对索引 = import 函数数 + 本地序号）。
+/// import 函数先于本地函数占用函数索引空间——`add_func` 返回的**绝对**
+/// 索引已含该偏移（PR #512 审阅 P1-1 收敛点，见 add_func 头注）。
 pub fn ModuleBuilder::add_import(
   self : ModuleBuilder,
   mod_name : String,
@@ -105,7 +105,12 @@ pub fn ModuleBuilder::add_type(
 }
 
 ///|
-/// 追加函数（type_idx + 体；返回函数索引）。
+/// 追加函数（type_idx + 体）。**返回绝对函数索引**（= import 函数数 +
+/// 本地序号——wasm 索引空间 import 先于本地函数；PR #512 审阅 P1-1：
+/// 曾返回裸本地序号，assemble 的 `add_export("main", …)` 直用后导出指向
+/// import〔env.vitro_host_call〕而非本地函数体——validate 只查索引合法
+/// 不查指向，证人模块的 main 永不执行。绝对索引收进本原语单点，消费方
+/// 不再各自记偏移）。本地序号 = 返回值 − import 函数数。
 pub fn ModuleBuilder::add_func(
   self : ModuleBuilder,
   type_idx : Int32,
@@ -113,7 +118,13 @@ pub fn ModuleBuilder::add_func(
 ) -> Int32 {
   self.funcs.push(type_idx)
   self.codes.push(body)
-  self.funcs.length() - 1
+  let mut import_funcs = 0
+  for entry in self.imports {
+    if entry.2 == 0 {
+      import_funcs = import_funcs + 1
+    }
+  }
+  import_funcs + self.funcs.length() - 1
 }
 
 ///|

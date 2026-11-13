@@ -117,7 +117,7 @@ docs/                      设计文档、规范与事故报告
 curl -O https://raw.githubusercontent.com/rustin-beep/Vitro/master/examples/demo.mbtx
 moon run demo.mbtx --target wasm-gc
 
-# 1. MoonBit 现役引擎：1450 测试用例 + 全部闸门绿（构建/闸门/发布全流程见 moonbit/AGENTS.md；闸清单以 ci.yml 为权威，不锚闸数）
+# 1. MoonBit 现役引擎：1459 测试用例 + 全部闸门绿（构建/闸门/发布全流程见 moonbit/AGENTS.md；闸清单以 ci.yml 为权威，不锚闸数）
 cd moonbit && moon check && moon test
 # 2. 端到端跑一个 C 程序（`vitro` 总入口：stdout / 返回码 / 1MB 内存映像三通道）
 cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro

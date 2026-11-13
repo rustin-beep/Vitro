@@ -215,3 +215,30 @@ test "rehost_round_trip Reserved 拒载" {
       )
   }
 }
+
+///|
+/// 纯 A/B 产物盲折叠双裁决锚（PR #512 审阅 P2-1②）：无 C 类歧义组的
+/// 产物在引导裁决之外追加**不依赖侧车身份**的盲折叠终裁（贪心独立分组
+/// + op/operand 逐组比对）——两路互证。含 C 类产物（`rehost_round_trip
+/// 恒等往返` 锚的 Jump/Call/Ret 样例）保持引导裁决单道（歧义组身份由
+/// 侧车给定是设计形态）。
+test "rehost_round_trip 纯 A/B 产物盲折叠双裁决" {
+  let base = mk_wasm_output()
+  // 纯 A 类两组：PushConst 42; Pop——无控制流/C 类，盲折叠可独立分组
+  let code : Array[@opcode.Instruction] = [
+    @opcode.Instruction::new(PushConst, 42, @source.SourceLoc::new(1, 1)),
+    @opcode.Instruction::new(Pop, 0, @source.SourceLoc::new(2, 3)),
+  ]
+  let o : CompileOutput = { ..base, code, }
+  match rehost_round_trip(o) {
+    Ok(roundtripped) => {
+      assert_eq(roundtripped.length(), 2, msg="纯 A/B 双裁决组数")
+      assert_eq(
+        roundtripped[0].operand,
+        42,
+        msg="还原槽 operand 经盲折叠互证",
+      )
+    }
+    Err(reason) => fail("纯 A/B 往返不该失败：\{reason}")
+  }
+}

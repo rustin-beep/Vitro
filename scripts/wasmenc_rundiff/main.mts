@@ -63,10 +63,22 @@ export function judgeCase(
   if (!leg.stdout.equals(reh.stdout)) {
     return `${file}: stdout 不一致（${leg.stdout.length} vs ${reh.stdout.length} 字节）`;
   }
+  // 程序 stderr 对比（P3-6：剥装载标记行后逐字节——文本模式 `// STDERR`
+  // 行落 CLI stderr，两臂分叉此前不可见）
+  if (!stripRehostMark(leg.stderr).equals(stripRehostMark(reh.stderr))) {
+    return `${file}: 程序 stderr 不一致（剥 WASM-REHOST 行后比对）`;
+  }
   if (leg.mem === null || reh.mem === null || !leg.mem.equals(reh.mem)) {
     return `${file}: 1MB 映像不一致（dump-memory 对拍）`;
   }
   return null;
+}
+
+/// 剥装载标记行（`// WASM-REHOST …`——CLI 层通道，两臂合法差异面；
+/// 其余 stderr（程序 STDERR 行/TRAP 行）逐字节保留参与比对）
+export function stripRehostMark(stderr: string): Buffer {
+  const kept = stderr.split("\n").filter((l) => !l.startsWith("// WASM-REHOST "));
+  return Buffer.from(kept.join("\n"), "latin1");
 }
 
 /// 递归数目录下 .c 条数（与 emitgate countCFiles 同口径）

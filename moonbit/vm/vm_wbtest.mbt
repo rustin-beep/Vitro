@@ -687,7 +687,7 @@ test "setup_from_output_wasm_rehost_roundtrip" {
   let vm_rehost = VitroVM::new()
   let st_on = vm_rehost.setup_from_output(mk_out(), 0, [], [], wasm_rehost=true)
   assert_true(
-    st_on.length() > 3 && st_on.substring(start=0, end=3) == "ok ",
+    st_on.length() > 3 && st_on[0:3] == "ok ",
     msg="ok 前缀（实得 \{st_on}）",
   )
   assert_eq(

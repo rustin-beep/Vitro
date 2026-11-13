@@ -125,13 +125,18 @@ pub fn build_wasm_product(
 }
 
 ///|
-/// **装载往返原语（REHOST 批 2b）**——run 态装载协议的核心：code →
-/// 发射（wasm 字节）→ 组表引导裁决折叠（`verify_fold_with_table`）→
-/// 重建 Instruction（op/operand 来自折叠产物、loc 来自组表侧车）→
-/// **与原 code 逐位恒等断言**（op/operand/loc 三元组）。设计单 §3.1
-/// 「装载期把 wasm 字节按发射模板折叠回组操作」的机检形态——恒等即
-/// 「语义冻结最强形态」：折叠重建产物驱动执行与 legacy code 同构，
-/// digest 零漂移的机制根基。
+/// **装载往返原语（REHOST 批 2b）**——run 态装载协议：code → 发射
+/// （wasm 字节）→ 组表引导裁决折叠（`verify_fold_with_table`：组边界 +
+/// 模板形状 + 还原槽 operand 与侧车比对）→ 重建 Instruction（op/operand
+/// 来自侧车终裁产物、loc 来自组表侧车）→ 与原 code 逐位一致断言。
+/// **一致性口径（PR #512 审阅 P2-1 收窄）**：本断言核的是「形状/边界/
+/// 槽类 operand 往返」——组身份与 loc 本就由侧车携带（同源自 code 直填），
+/// **不是从字节独立推出的恒等**；独立推导面有两层：还原槽 operand（装载
+/// 核对内）+ 纯 A/B 产物追加盲折叠终裁（`verify_group_table`，不依赖侧车
+/// 身份的贪心折叠——见实现尾段）。模板表自身的语义错误（形状自洽但算
+/// 错指令）对本协议不可见——该面由 wasmenc 包的 softstack 双实现与
+/// watcheck wat 证人对拍守护（PR #512 审阅注入实验：模板变异对往返/
+/// validate 双面隐形，唯独立实现红）。
 ///
 /// Err（String = 单行诊断）= 装载失败面：发射失败（禁译面/域非法）、
 /// 装载核对红（非自家产物形态）、往返失配（发射↔折叠互逆性破坏——
@@ -150,6 +155,23 @@ pub fn rehost_round_trip(
   let folded = match @wasmenc.verify_fold_with_table(p.table, p.bytes, ctx) {
     Ok(folded) => folded
     Err(e) => return Err("verify-failed \{verify_err_one_line(e)}")
+  }
+  // 纯 A/B 产物追加盲折叠终裁（PR #512 审阅 P2-1②：引导裁决的身份来自
+  // 侧车声明——对含 C 类歧义组的产物是唯一形态；纯 A/B 产物可再走
+  // **不依赖侧车身份**的盲折叠（贪心最长分组 + op/operand 逐组比对）
+  // 独立推导一遍，两路互证。模板表自错面（形状自洽语义错）仍不可见——
+  // 由 wasmenc softstack/wat 证人守护，见头注）
+  let mut has_ambiguous = false
+  for g in p.table.groups {
+    if @wasmenc.template_spec(g.op).state is Ambiguous {
+      has_ambiguous = true
+    }
+  }
+  if !has_ambiguous {
+    match @wasmenc.verify_group_table(p.table, p.bytes, ctx) {
+      Ok(_) => ()
+      Err(e) => return Err("blind-fold-failed \{verify_err_one_line(e)}")
+    }
   }
   if folded.length() != output.code.length() {
     return Err(

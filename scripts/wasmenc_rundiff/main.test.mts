@@ -42,6 +42,17 @@ test("judgeCase：缺标记行——编译失败两臂同形不红 / 其余必�
   assert.notEqual(red, null, "非编译失败缺标记必红");
 });
 
+test("judgeCase：程序 stderr 分叉必红（剥标记行后比对——P3-6）", () => {
+  // 仅标记行差异（合法面）：不红
+  const a = arm({ stderr: "out\n" });
+  const b = arm({ stderr: "// WASM-REHOST ok groups=3\nout\n" });
+  assert.equal(judgeCase("a.c", a, b), null, "纯标记行差异不红");
+  // 程序 STDERR 行分叉：必红
+  const c = arm({ stderr: "// STDERR boom\n" });
+  const d = arm({ stderr: "// WASM-REHOST ok groups=3\n// STDERR bam\n" });
+  assert.notEqual(judgeCase("a.c", c, d), null, "程序 stderr 分叉红");
+});
+
 test("judgeCase：超时必红", () => {
   assert.notEqual(judgeCase("a.c", arm({ status: null }), arm({ status: null })), null);
 });

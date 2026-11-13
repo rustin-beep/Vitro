@@ -62,6 +62,31 @@
 - 零行为自证：wasmenc 仍为纯增量叶包（零现役消费方），digest/golden 零
   触碰；全仓 moon test 1401/1401 裸口径全绿；ci_checklist/surface/
   pkg_deps/mbti_sync/source_hygiene 全绿。
+### fix(gateway+cli+scripts): PR #509 审阅处置——P3-1/2/3/4/5 全收口（2026-11-13）
+
+- **P3-1 入口解析单源**：`units_from_params(params, method)` 抽出（posix_name
+  归一/缺省/空表→Err 带方法名文案）——serve_compile_frame 与
+  serve_typeck_dump_frame 的 params→units 逐字重复收一（第三张 dump 面接
+  files 时的第三份复制预防）。
+- **P3-2 step 帧级判据结构化**：主循环 ok 判定从 contains 子串改结构化
+  外层位（`json_parse_opt` + `jfield(f,"ok") is False`）——与上方 run 臂
+  同源；contains 绑死紧凑序列化形态，协议面换带空格 stringify 即静默退
+  化回十万次空转。解析失败（None）同 run 臂视同帧级失败 fail loud。
+- **P3-3 prove 分桶判定器出库**：`scripts/prove_bucket/main.mts`（钩子原
+  node -e 内联抽出——#273 四件套合规）+ `main.test.mts` J9 五形态（全
+  no-prover/混合/纯 goal 红/failures 空/文件缺）；pre-push 钩子只留单行
+  调用；ci_checklist exceptions 登记本地工具；package.json lint/test 清单
+  连坐。端到端三路径验证（infra→0 / infra→0 / 缺文件→1）。
+- **P3-4 assemble_units 返回 5→3 元**：merged_spans/main_name 是不动点循
+  环内部件（lex_full_source 具名实参消费），对两消费方皆死——release 构建
+  两条 unused_value 警告归零（moon check + release build 双验）。
+- **P3-5 gateway 级 files 面锚**：`serve_dump_typeck_files_face_quote_include`
+  （quote-include 工程 vfs 展开 + typed_ast 非空 + 跨文件 funcs——修前
+  gateway 包该面零用例仅 mcp 跨包覆盖）。
+- **演化候选入册**：D22「抽取单源只抽下半截——入口解析仍双份」（03 缺陷
+  形态清单）+「node -e 内联判定逃出 .mts 四件套」（02 门禁审计）。
+- **P3-6 勘误**（PR 评论登记）：`75c4980c` 提交信息「protocol_frames(双
+  臂）」与实跑不符——rust 臂不可用，实跑单臂 74 帧（MoonBit 单臂基线比）。
 ### fix(engine+cli+mcp): 只测不修轮三案红→绿——seek 清 paused · step 帧级 rc 传导 · overview files 面（2026-11-13）
 
 - **time_travel replay_to 清 is_paused**（暂停死锁）：越窗重放复位 finished/

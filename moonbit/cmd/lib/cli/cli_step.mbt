@@ -179,15 +179,24 @@ pub fn step(
       running = false
     } else if r.contains("\"waiting_input\":true") {
       running = false
-    } else if r.contains("\"ok\":false") {
+    } else {
       // 帧级失败即时传导（对齐 api 两层判据先例——协议 §4.5；step 协议
       // 面 §5 同款登记）：无三态标记的 step.next 帧 ok:false（协议级错
       // 帧，result 缺省）——旧形态落 batch_cap 兜底空转（cap 次调用后以
       // 「协议破损」文案 rc=1——归因变形；默认 max_steps=100000 即十万
-      // 次空转）。合法 trap 帧外层 ok:true 不含本子串，三态在前为防御
-      // 序（万一失败帧带标记也按标记档位走）。
-      say("vitro step: step.next 帧级失败（ok:false）——\{r}")
-      return 1
+      // 次空转）。判定走结构化外层 ok 位（PR #509 审阅 P3-2：与上方 run
+      // 臂同源——contains 子串绑死紧凑序列化形态，协议面一旦换带空格的
+      // stringify 即静默退化回十万次空转；step.next 的 result 是
+      // AutoStepResult 投影无 ok 键，外层位唯一语义）。解析失败（None）
+      // = 协议破损形态，与 run 臂同款视同帧级失败 fail loud。
+      let next_ok = match json_parse_opt(r) {
+        Some(f) => !(jfield(f, "ok") is False)
+        None => false
+      }
+      if !next_ok {
+        say("vitro step: step.next 帧级失败（ok:false）——\{r}")
+        return 1
+      }
     }
     batches += 1
     if running && batches >= batch_cap {

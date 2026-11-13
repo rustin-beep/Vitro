@@ -297,3 +297,29 @@ test "json_lex_value_level_fail_loud_466" {
     msg="字符串内括号不计",
   )
 }
+
+///|
+/// 锚（PR #509 审阅 P3-5）：typeck.dump 的 files 面 gateway 级直锚——
+/// quote-include 工程经 vfs 展开后无词法错、typed_ast 非空且 funcs 含
+/// 跨文件定义（修前该面在 gateway 包零用例，仅 mcp 跨包锚覆盖——
+/// entry_call 虽走真实 invoke_on，但单文件面回归会被 mcp 侧既有锚掩盖）。
+test "serve_dump_typeck_files_face_quote_include" {
+  let s = @session.Session::new()
+  let params = "{\"files\":[{\"filename\":\"util.h\",\"source\":\"int twice(int x);\"},{\"filename\":\"util.c\",\"source\":\"#include \\\"util.h\\\"\\nint twice(int x){return x*2;}\"},{\"filename\":\"main.c\",\"source\":\"#include \\\"util.h\\\"\\nint main(){return twice(21);}\"}]}"
+  let (r, _) = serve_handle(
+    s,
+    "{\"id\":1,\"method\":\"typeck.dump\",\"params\":\{params}}",
+  )
+  assert_true(
+    r.contains("\"ok\":true"),
+    msg="files 面装配无词法错（vfs 展开成功）",
+  )
+  assert_false(
+    r.contains("\"typed_ast\":null"),
+    msg="typed_ast 非空（修前单文件面空 vfs E1021 → null）",
+  )
+  assert_true(
+    r.contains("\"name\":\"twice\"") && r.contains("\"name\":\"main\""),
+    msg="funcs 含跨文件定义（util.c 的 twice + main.c 的 main）",
+  )
+}

@@ -505,42 +505,19 @@ fn serve_typeck_dump_frame(
   // quote-include 集合外 E1021 宁诊断不静默）。旧形态只收 source：
   // mcp 的 overview 对 quote-include 工程喂主文件原文 → E1021 →
   // typed_ast:null → funcs 静默空（DEF-1「编译成功但 overview 空」）。
-  let units : Array[@session.CompileUnit] = []
-  match json_field(params, "files") {
-    Array(files) =>
-      for f in files {
-        let filename = match json_field(f, "filename").as_string() {
-          Some(n) => posix_name(n)
-          None => "main.c"
-        }
-        let source = match json_field(f, "source").as_string() {
-          Some(src) => src
-          None => ""
-        }
-        units.push({ filename, source, })
-      }
-    _ =>
-      match json_field(params, "source").as_string() {
-        Some(source) => {
-          let filename = match json_field(params, "filename").as_string() {
-            Some(n) => posix_name(n)
-            None => "main.c"
-          }
-          units.push({ filename, source, })
-        }
-        None => ()
-      }
+  // params→units 解析 = units_from_params 单源（PR #509 审阅 P3-1——
+  // 与 serve_compile_frame 原逐字重复）。
+  let units = match units_from_params(params, "typeck.dump") {
+    Ok(u) => u
+    Err(msg) =>
+      return (
+        serve_param_err(
+          id, msg, "files:[{filename?,source}] | source:string[,filename:string]",
+        ).stringify(),
+        false,
+      )
   }
-  if units.is_empty() {
-    return (
-      serve_param_err(
-        id, "typeck.dump 需要 params.files:[{filename?,source}] 或 params.source:string[,filename:string]",
-        "files:[{filename?,source}] | source:string[,filename:string]",
-      ).stringify(),
-      false,
-    )
-  }
-  let (_, _, _, _, lexed) = assemble_units(units)
+  let (_, _, lexed) = assemble_units(units)
   let buf = StringBuilder()
   if !lexed.errors.is_empty() {
     buf.write_string(

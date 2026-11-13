@@ -57,18 +57,16 @@ fi
 #   <basename>.proof.json 的 failures[].result（"(no prover available)" 形态）。
 #   J9 实锤：2026-11-13 本机 why3 环境故障期 arith 100 failure 全 infra，
 #   stdout 无①三形态，旧钩子误判 goal 红 60s 档复跑仍「红」阻断 push。
-#   判据 = failures 非空且全为 no-prover 形态 → infra；读不到/混合形态 →
-#   维持 goal 红路径（fail loud，不静默放行）。
+#   判据实现 = scripts/prove_bucket/main.mts 单源（PR #509 审阅 P3-3：原
+#   node -e 内联逃出 #273 四件套门——改正则无闸拦；J9 五形态负例在
+#   scripts/prove_bucket/main.test.mts，判据 = failures 非空且全为
+#   no-prover 形态 → infra；读不到/混合形态维持 goal 红路径 fail loud）。
 prove_pj_infra() {  # $1 = pkg 名（arith / proofs/arith_mirror）
   local base pj
   base="${1##*/}"
   pj="moonbit/_build/verif/$1/$base.proof.json"
   [ -f "$pj" ] || return 1
-  node -e '
-    const j = require("./" + process.argv[1]);
-    const f = j.failures || [];
-    process.exit(f.length > 0 && f.every(x => /\(no prover available\)/.test(x.result || "")) ? 0 : 1);
-  ' "$pj" 2>/dev/null
+  node scripts/prove_bucket/main.mts "$pj" 2>/dev/null
 }
 prove_infra_red=0
 prove_goal_red=0

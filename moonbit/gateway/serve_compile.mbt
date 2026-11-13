@@ -99,13 +99,7 @@ fn merge_units(
 /// 形态首轮空集零额外开销。
 fn assemble_units(
   units : Array[@session.CompileUnit],
-) -> (
-  String,
-  Array[@session.FileRange],
-  Array[(Int32, Int32, String)],
-  String,
-  @token.LexResult,
-) {
+) -> (String, Array[@session.FileRange], @token.LexResult) {
   let mut compile_units : Array[@session.CompileUnit] = []
   for u in units {
     if !is_header_unit(u.filename) {
@@ -151,7 +145,10 @@ fn assemble_units(
   guard lexed is Some(lx_final) else {
     abort("unreachable：不动点至少跑一轮")
   }
-  (full_source, ranges, merged_spans, main_name, lx_final)
+  // 返回 3 元（PR #509 审阅 P3-4：merged_spans/main_name 是不动点循环的
+  // 内部件（lex_full_source 具名实参消费），两消费方对返回值形态皆死——
+  // 5 元形态曾致 release 构建两条 unused_value 警告）
+  (full_source, ranges, lx_final)
 }
 
 ///|
@@ -438,9 +435,7 @@ fn serve_compile_pipeline(
   // ── 合并（file_ranges 生产者）──装配词法已抽 assemble_units 单源
   //（2026-11-13 DEF-1：typeck.dump 的 files 面共用同款装配——头文件
   // 过滤 + 拼接 + vfs 注入 + #364 不动点，语义注释随迁至该函数头）。
-  let (full_source, ranges, merged_spans, main_name, lexed) = assemble_units(
-    units,
-  )
+  let (full_source, ranges, lexed) = assemble_units(units)
   st.file_ranges = ranges
   // fix 生成用的行表（Rust push_diagnostics 外层 source.lines() 同形）
   let source_lines = @diagnostics.split_lines(full_source)
@@ -700,20 +695,21 @@ fn serve_compile_pipeline(
 }
 
 ///|
-/// compile 方法帧（Rust vitro_cli.rs compile 臂照搬）：覆盖式语义——
-/// params.files（数组）即当前完整编译单元集合（非追加）；或 params.source
-/// 单文件（可选 filename）。返回 (响应 JSON, 无停机)。
-fn serve_compile_frame(
-  s : @session.Session,
-  id : Json,
+/// params → units 解析单源（PR #509 审阅 P3-1 处置，2026-11-13）：
+/// files:[{filename?,source}] 数组优先（filename 经 posix_name 归一——
+/// #444 后续小修，诊断 filename/vfs 键三名同源；缺 filename→"main.c"、
+/// 缺 source→""），缺省回落 params.source[,filename] 单文件——
+/// serve_compile_frame 与 serve_typeck_dump_frame（DEF-1 files 面）两
+/// 消费方原逐字重复（第三张 dump 面接 files 时会复制第三份）。空表 =
+/// 参数面错误，Err 带方法名文案（调用方进各自 serve_param_err）。
+fn units_from_params(
   params : Json,
-) -> (String, Bool) {
+  method : String,
+) -> Result[Array[@session.CompileUnit], String] {
   let units : Array[@session.CompileUnit] = []
   match json_field(params, "files") {
     Array(files) =>
       for f in files {
-        // filename POSIX 规范化单点（#444 后续小修，2026-11-12）——诊断
-        // filename/vfs 键三名同源，详见 gateway.mbt posix_name 头注
         let filename = match json_field(f, "filename").as_string() {
           Some(n) => posix_name(n)
           None => "main.c"
@@ -737,13 +733,31 @@ fn serve_compile_frame(
       }
   }
   if units.is_empty() {
-    return (
-      serve_param_err(
-        id, "compile 需要 params.files:[{filename?,source}] 或 params.source:string[,filename:string]",
-        "files:[{filename?,source}] | source:string[,filename:string]",
-      ).stringify(),
-      false,
+    return Err(
+      "\{method} 需要 params.files:[{filename?,source}] 或 params.source:string[,filename:string]",
     )
+  }
+  Ok(units)
+}
+
+///|
+/// compile 方法帧（Rust vitro_cli.rs compile 臂照搬）：覆盖式语义——
+/// params.files（数组）即当前完整编译单元集合（非追加）；或 params.source
+/// 单文件（可选 filename）。返回 (响应 JSON, 无停机)。
+fn serve_compile_frame(
+  s : @session.Session,
+  id : Json,
+  params : Json,
+) -> (String, Bool) {
+  let units = match units_from_params(params, "compile") {
+    Ok(u) => u
+    Err(msg) =>
+      return (
+        serve_param_err(
+          id, msg, "files:[{filename?,source}] | source:string[,filename:string]",
+        ).stringify(),
+        false,
+      )
   }
   s.compile.compile_units = units
   s.compile.compiled = false

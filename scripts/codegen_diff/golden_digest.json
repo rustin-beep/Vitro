@@ -32,6 +32,7 @@
         "b10_strerror_table_no_leak.c": "82df13fc",
         "b10_strtol_strtod_scanner.c": "c98c2879",
         "bfs_graph.c": "753681a3",
+        "binsearch_float_ulp_chain.c": "833522c3",
         "bit_not_zero.c": "01df9ebd",
         "bit_xor.c": "905d87d5",
         "bitwise.c": "ee71a0b6",
@@ -110,6 +111,7 @@
         "counting_sort.c": "c43d54b1",
         "dec_no_suffix_ull.c": "b15a2297",
         "decrement_var.c": "629e3563",
+        "deref_struct_byval_arg.c": "0158a913",
         "designated_init.c": "1bb9fd6b",
         "designated_mixed_cont.c": "413bba13",
         "designated_struct_copy.c": "2ea3f5f3",
@@ -667,6 +669,9 @@
         "bfs_graph.c": {
           "result_sha": "c15a8891f4f6a644"
         },
+        "binsearch_float_ulp_chain.c": {
+          "result_sha": "eb20ba645cfc41c6"
+        },
         "bit_not_zero.c": {
           "result_sha": "cb6bcf2abfaac2d4"
         },
@@ -901,6 +906,9 @@
         },
         "decrement_var.c": {
           "result_sha": "ba35f6c407344668"
+        },
+        "deref_struct_byval_arg.c": {
+          "result_sha": "ec8939a96a0245e5"
         },
         "designated_init.c": {
           "result_sha": "776d87db07f56a42"

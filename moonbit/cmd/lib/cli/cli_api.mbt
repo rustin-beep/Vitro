@@ -13,8 +13,9 @@
 // 32 漂移）可脚本化——比逐方法子命令镜像轻一个量级；长活会话（跨命令驻留/
 // 前端长连接）仍归 serve 长会话。
 //
-// 退出码：0=全部帧 ok:true / 1=任一帧 ok:false（协议内错误统一——api 是
-// 透传层不细分语义）/ 4=用法错。read_stdin 由薄壳注入（`-` 同款平台绑定）；
+// 退出码：0=全部帧 ok:true / 1=任一帧 ok:false（**帧 ok 指信封层**顶层
+// 位——#400：result 内嵌的 ok 是方法语义位，不算帧失败）/ 4=用法错。
+// read_stdin 由薄壳注入（`-` 同款平台绑定）；
 // write_stdout 同由薄壳注入（#366：帧出口同步直写——管道口径防截断，
 // js/wasm=fs.writeSync / native=fwrite stub，out_line 单源编码）。
 
@@ -113,8 +114,14 @@ pub fn api(
       }
       let resp = (channel.invoke)(l)
       out_line(write_stdout, resp)
-      if resp.contains("\"ok\":false") {
-        rc = 1
+      // #400（2026-11-13）：rc 判定走信封层结构化（json_parse_opt + jfield
+      // 顶层 ok 位——与 run/step 臂同源）。旧 contains 子串宽判定把 run 帧
+      // result 内嵌的 "ok":false（run 语义位八字段之一，trap 形态必现）
+      // 误当信封失败——三帧信封全 ok 的 UAF trap 序列必假红。解析失败不
+      // 记红（帧已透传 stdout，下游自判——run 臂同款）
+      match json_parse_opt(resp) {
+        Some(f) => if jfield(f, "ok") is False { rc = 1 }
+        None => ()
       }
     }
     return rc
@@ -145,8 +152,11 @@ pub fn api(
     "{\"id\":1,\"method\":\"\{method_name}\",\"params\":\{params}}",
   )
   out_line(write_stdout, resp)
-  if resp.contains("\"ok\":false") {
-    return 1
+  // #400：单帧臂同病同修——run 单帧 result 内嵌 ok:false（trap 语义位）
+  // 不再误报 rc=1；判定源与 batch 臂同款（信封层结构化）
+  match json_parse_opt(resp) {
+    Some(f) => if jfield(f, "ok") is False { return 1 }
+    None => ()
   }
   0
 }

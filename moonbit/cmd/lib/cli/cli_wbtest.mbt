@@ -1268,3 +1268,100 @@ test "stepnext帧级okfalse_即时rc1传导" {
     msg="帧级失败须首帧即传导（旧形态空转至 batch_cap=17 次后误报协议破损）",
   )
 }
+
+///|
+/// #400（2026-11-13）：api rc 判定走信封层结构化——修前 contains
+/// 子串宽判定把 run 帧 result 内嵌的 "ok":false（run 语义位八字段之一，
+/// trap 形态必现）误当信封失败，三帧全 ok 的 UAF trap 序列必假红。
+/// 红锚双向：①信封 ok:true + result 内 ok:false → rc=0（修前红）；
+/// ②信封真 ok:false → rc=1（防修过头吞真协议失败）。
+fn i400_channel(run_frame : String) -> EngineChannel {
+  let frame_of = fn(line : String) -> String {
+    if line.contains("\"method\":\"run\"") {
+      run_frame
+    } else {
+      "{\"id\":1,\"ok\":true,\"result\":{}}"
+    }
+  }
+  {
+    invoke: fn(line : String) -> String { frame_of(line) },
+    invoke_parsed: fn(line : String) -> Json? {
+      Some(@util.json_parse(frame_of(line)) catch { _ => Json::number(0) })
+    },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(file : String, src : String) -> String {
+      "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
+    },
+  }
+}
+
+///|
+test "i400_batch信封层rc_run内嵌okfalse不误报" {
+  // UAF trap 形态（issue 复现序列同构）：三帧信封全 ok:true，
+  // run 帧 result 内嵌 ok:false（run 语义位）——修前 rc=1 假红
+  let rc = api(
+    ["--batch"],
+    () => {
+      b"{\"id\":1,\"method\":\"session.create\",\"params\":{}}\n{\"id\":2,\"method\":\"compile\",\"params\":{\"source\":\"int main(){}\"}}\n{\"id\":3,\"method\":\"run\",\"params\":{\"argv\":[\"main.c\"]}}\n"
+    },
+    write_stdout=noop_write,
+    channel=i400_channel(
+      "{\"id\":3,\"ok\":true,\"result\":{\"ok\":false,\"status\":\"trap\",\"return_value\":0,\"trap\":\"[uaf]\",\"waiting_input\":false,\"steps_executed\":10,\"output_truncated\":false}}",
+    ),
+  )
+  assert_eq(
+    rc,
+    0,
+    msg="信封层全 ok:true 须 rc=0（result 内嵌 ok:false 是 run 语义位——修前 contains 假红）",
+  )
+}
+
+///|
+test "i400_batch信封okfalse仍rc1" {
+  // 防修过头：信封层真失败仍须 rc=1（与 run 臂协议错帧处置同族）
+  let rc = api(
+    ["--batch"],
+    () => {
+      b"{\"id\":1,\"method\":\"ping\",\"params\":{}}\n{\"id\":2,\"method\":\"run\",\"params\":{}}\n"
+    },
+    write_stdout=noop_write,
+    channel=i400_channel(
+      "{\"id\":2,\"ok\":false,\"error\":{\"kind\":\"protocol\",\"message\":\"注入形态\"}}",
+    ),
+  )
+  assert_eq(
+    rc,
+    1,
+    msg="信封层 ok:false 须 rc=1（结构化判定不得吞真协议失败）",
+  )
+}
+
+///|
+test "i400_单帧信封层rc判定" {
+  // 单帧臂同病同修（api run 单帧形态）：result 内嵌 ok:false 信封 ok:true → rc=0
+  let rc_ok = api(
+    ["run", "{\"argv\":[\"main.c\"]}"],
+    () => b"",
+    write_stdout=noop_write,
+    channel=i400_channel(
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":false,\"status\":\"trap\",\"return_value\":0,\"trap\":\"[uaf]\",\"waiting_input\":false,\"steps_executed\":10,\"output_truncated\":false}}",
+    ),
+  )
+  assert_eq(
+    rc_ok,
+    0,
+    msg="单帧信封 ok:true 须 rc=0（result 内嵌语义位不算信封失败）",
+  )
+  // 单帧信封真失败 → rc=1（回归面）
+  let rc_fail = api(
+    ["run", "{}"],
+    () => b"",
+    write_stdout=noop_write,
+    channel=i400_channel(
+      "{\"id\":1,\"ok\":false,\"error\":{\"kind\":\"protocol\",\"message\":\"注入形态\"}}",
+    ),
+  )
+  assert_eq(rc_fail, 1, msg="单帧信封 ok:false 须 rc=1")
+}

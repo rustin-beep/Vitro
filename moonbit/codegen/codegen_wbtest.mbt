@@ -1877,3 +1877,112 @@ test "skeleton: vardecl defensive cast store drives emit_conversion" {
     msg="防御层 float←signedLL 发 Q2D+D2F（手抄链零发射分叉格归一）",
   )
 }
+
+///|
+/// #147 回归锚（2026-11-13）：指向 struct 的指针解引用作按值实参——
+/// `take(*sp)`。Deref 的 pointee 是 struct 时须**地址直通零指令**（struct
+/// 左值「值即地址」约定——复合字面量/struct 返回调用/gen_index struct
+/// 结果〔#162〕同族）；缺陷版 Deref 落 `_` 兜底 LoadMem 把首字段值读出来
+/// 当拷贝源地址（f(*sp) 双重解引用 TRAP 首字段值——探针 NEST_s2 L119
+/// `print_point("…", *first_pt_ptr)` 运行中断的根因；#330 数组 pointee
+/// 同病同修）。断言口径：函数体 LoadMem 恰 = struct 字数（Point 8B=2
+/// words 的 gen_call_ptr 兜底臂逐字 LoadMem）；多 1 个即缺陷版复发
+/// （Deref 多读一层）。
+test "skeleton: ptr-to-struct deref as byval arg passes address through (#147)" {
+  let loc = @source.SourceLoc::new(2, 5)
+  // struct Point { int x; int y; }
+  let decl_point : @ast.StructDecl = {
+    ..Default::default(),
+    loc,
+    name: "Point",
+    fields: [
+      { ty: @ast.Type::int(), name: "x", },
+      { ty: @ast.Type::int(), name: "y", },
+    ],
+  }
+  // int take(struct Point p) —— 存根（签名进 func_table 即可）
+  let take : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "take",
+    params: [
+      { ty: @ast.Type::struct_type("Point"), name: "p", loc, default: None, },
+    ],
+    body: Some(@ast.Stmt::Block([], loc)),
+    source_file: "t.c",
+  }
+  // void f(struct Point *sp) { take(*sp); }
+  let deref_call : @ast.Stmt = @ast.Stmt::Expr(
+    @ast.Expr::CallPtr(
+      @ast.Expr::Identifier("take", loc, @ast.Type::void_type()),
+      [
+        @ast.Expr::Unary(
+          @ast.UnaryOp::Deref,
+          @ast.Expr::Identifier(
+            "sp",
+            loc,
+            @ast.Type::pointer_to(@ast.Type::struct_type("Point")),
+          ),
+          loc,
+          @ast.Type::struct_type("Point"),
+        ),
+      ],
+      loc,
+      @ast.Type::int(),
+    ),
+    loc,
+  )
+  let f : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::void_type(),
+    name: "f",
+    params: [
+      {
+        ty: @ast.Type::pointer_to(@ast.Type::struct_type("Point")),
+        name: "sp",
+        loc,
+        default: None,
+      },
+    ],
+    body: Some(
+      @ast.Stmt::Block([deref_call, @ast.Stmt::Return(None, loc)], loc),
+    ),
+    source_file: "t.c",
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(@ast.Stmt::Block([@ast.Stmt::Return(None, loc)], loc)),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate({
+    structs: [decl_point],
+    unions: [],
+    globals: [],
+    funcs: [take, f, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let f_meta = o.func_table.get("f").unwrap()
+  let body_len = 32 // 防御上界——计数遍历窗口（#193 同款形态）
+  let mut load_mem_count = 0
+  for i in f_meta.ip..<(f_meta.ip + body_len) {
+    if i < o.code.length() && o.code[i].op is @opcode.OpCode::LoadMem {
+      load_mem_count = load_mem_count + 1
+    }
+  }
+  assert_eq(
+    load_mem_count,
+    2,
+    msg="take(*sp) 恰 2 次 LoadMem（Point 两 word 逐字拷贝）；3 次即缺陷版复发（Deref 多读一层）",
+  )
+}

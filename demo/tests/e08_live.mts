@@ -134,10 +134,11 @@ function apiBatch(requests: Array<Record<string, unknown>>): Array<Envelope> {
   });
   const backend = process.env["VITRO_E08_BACKEND"] ?? "js";
   if (r.error) throw new Error(`[e08-live] 引擎启动失败（backend=${backend}）：${r.error.message}`);
-  // rc 判定注意：CLI 的 batch rc=1 是「响应文本含 "ok":false 子串」的宽判定
-  // ——run 帧 trap 时 result 内嵌 ok:false（信封层 ok:true，协议帧本身成
-  // 功）也会 rc=1。此处按**信封层** ok 判定（唯一权威），rc 只兜底用法错
-  // （rc=4）与进程级失败（rc 非 0/1）。
+  // rc 判定注意：CLI 的 batch rc=1 是**信封层**单判（#400，2026-11-13 起
+  // ——此前「响应文本含 "ok":false 子串」宽判定把 run/compile 帧 result
+  // 内嵌的 ok:false 语义位误当帧失败，含 trap/编译错的序列必假红；现
+  // result.ok 归帧内语义位，消费方读帧自判）。此处本就按**信封层** ok
+  // 判定（唯一权威），rc 只兜底用法错（rc=4）与进程级失败（rc 非 0/1）。
   if (r.status !== null && r.status !== 0 && r.status !== 1) {
     throw new Error(`[e08-live] api --batch rc=${r.status}（backend=${backend}）\nstderr 尾部：${(r.stderr ?? "").slice(-400)}`);
   }

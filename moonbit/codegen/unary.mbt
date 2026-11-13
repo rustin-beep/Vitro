@@ -215,6 +215,12 @@ fn BytecodeGen::gen_unary(
         // (*q)[i] 以 q 值寻址），无值可 load；旧落 _ 兜底 LoadMem 把首
         // 元素值读出来当地址——(*q)[0] 双重解引用 TRAP 0x4
         Some(TK_Array) => ()
+        // #147（2026-11-13）：指向 struct 的指针解引用 *sp——struct 左值
+        // 「值即地址」约定（复合字面量/struct 返回调用/gen_index struct
+        // 结果〔#162〕同族），地址直通零指令；旧落 _ 兜底 LoadMem 把首
+        // 字段值读出来当拷贝源地址——f(*sp) 作 struct 按值实参双重解引用
+        // TRAP 首字段值（探针 NEST_s2 L119 运行中断根因）
+        Some(TK_Struct) => ()
         Some(TK_Char) =>
           if pointee_unsigned {
             self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)

@@ -23,7 +23,7 @@
     },
     {
       "code": 2005,
-      "suggestion": "语句末尾缺少分号，建议添加 ';'",
+      "suggestion": "语句间缺少分号（在上一声明末尾添加 ';'），或该 token 是 C 子集外语法（class 等 C++ 声明不在 C 教学子集——见『已知限制与差异』）",
       "fix_kind": 2,
       "anchor": "LineEnd",
       "text": ";"

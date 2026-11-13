@@ -8,7 +8,7 @@ import path from "node:path";
 import { test } from "node:test";
 import {
   collectAbiVersion, collectAll, collectCargoTestFromLog,
-  collectMoonbitCoverageFromOutput, collectMoonbitFromOutput, collectMoonbitNativeFromOutput, collectMoonbitPackages, parseLexerDiffPass, parseParserDiffPass,
+  collectMoonbitCheckWarningsFromOutput, collectMoonbitCoverageFromOutput, collectMoonbitFromOutput, collectMoonbitNativeFromOutput, collectMoonbitPackages, parseLexerDiffPass, parseParserDiffPass,
 } from "./facts.mts";
 import { RUN_KEYS } from "./facts.mts";
 import type { Fact, FactsDoc } from "./facts.mts";
@@ -275,4 +275,66 @@ test("cargo 日志解析绿路径与缺失形态", () => {
   facts = factsOf();
   collectCargoTestFromLog(root, "native/不存在的日志.log", facts);
   assert.equal(facts["cargo_test_passed"]!.status, "unavailable", "日志缺失必须 unavailable");
+});
+
+// B3（2026-11-13，issue #510 同期台账机制批）：moon check warning 台账键
+// ——手册「余额 34 条」硬数字失真（master 实测 98，两轮评审各时点 80/98）
+// 后的止涨机制：warning 计数入 facts，台账文档裸数字声明对账（涨=漂移红
+// =须归因清点入台账）。
+test("moonbit check warnings 绿路径（B3 台账机制）", () => {
+  const facts = factsOf();
+  // 真实形态样例：码行 + 块（块内助记行）+ Finished 尾
+  collectMoonbitCheckWarningsFromOutput(
+    "Warning: [0002]\n" +
+      "     ╭─[ moonbit/wasmenc/assemble.mbt:12:3 ]\n" +
+      "     │  ╰──── Warning (unused_value): Unused function 'f'\n" +
+      "─────╯\n" +
+      "Warning: [0020]\n" +
+      "     ╭─[ moonbit/parser/expr.mbt:8:1 ]\n" +
+      "     │  ╰──── Warning (deprecated): x is deprecated\n" +
+      "─────╯\n" +
+      "Finished. moon: ran 68 tasks (0 errors)",
+    0, facts);
+  const f = facts["moonbit_check_warnings"];
+  assert.ok(f !== undefined && f.status === "ok" && f.value === 2,
+    `warning 计数应为 2: ${JSON.stringify(f)}`);
+});
+
+test("moonbit check warnings J9 埋雷①：数字码行 Warning: [NNNN] 不双计", () => {
+  // 实测踩坑：同一 warning 两行呈现（码行 + 块内助记行）——裸 grep 'Warning'
+  // 双计（196 vs 真值 98）；计数只认助记形 `Warning (name)`
+  const facts = factsOf();
+  collectMoonbitCheckWarningsFromOutput(
+    "Warning: [0002]\n" +
+      "     ╭─[ moonbit/a.mbt:1:1 ]\n" +
+      "     │  ╰──── Warning (unused_value): Unused variable 'v'\n" +
+      "─────╯\n" +
+      "Finished. moon: ran 1 tasks (0 errors)",
+    0, facts);
+  assert.ok(facts["moonbit_check_warnings"]?.value === 1,
+    `码行+助记行 = 1 条非 2 条: ${JSON.stringify(facts["moonbit_check_warnings"])}`);
+});
+
+test("moonbit check warnings J9 埋雷②：无 Finished 行 unavailable（管道截断防护）", () => {
+  // 工具陷阱 9 同族：SIGPIPE/截断杀输出——数出一半的计数是毒数字，不采
+  const facts = factsOf();
+  collectMoonbitCheckWarningsFromOutput(
+    "Warning: [0002]\n     ╭─[ moonbit/a.mbt:1:1 ]\n     │  ╰──── Warning (unused_value): x\n─────╯",
+    0, facts);
+  assert.equal(facts["moonbit_check_warnings"]?.status, "unavailable",
+    `无 Finished 行（截断形态）应 unavailable: ${JSON.stringify(facts["moonbit_check_warnings"])}`);
+});
+
+test("moonbit check warnings J9 埋雷③：check 失败（code≠0）不产真值", () => {
+  const facts = factsOf();
+  collectMoonbitCheckWarningsFromOutput(
+    "Warning (unused_value): x\nFinished. moon: ran 1 tasks (1 errors)",
+    1, facts);
+  assert.equal(facts["moonbit_check_warnings"]?.status, "unavailable",
+    "类型红的 check 输出计数不可比（非同口径面），须 unavailable");
+});
+
+test("moonbit check warnings 口径键在 RUN_KEYS 在册（B3）", () => {
+  assert.ok(RUN_KEYS.includes("moonbit_check_warnings"),
+    "moonbit_check_warnings 须登记 RUN_KEYS（cached 沿用语义）");
 });

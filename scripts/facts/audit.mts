@@ -27,6 +27,10 @@ const RETIRED_KEYS = new Set([
   "shadow_c_gap_extension", "shadow_c_gaps",
   "cargo_test_passed", "cargo_test_suites",
   "shadow_cpp_cases",
+  // cpp_e2e_cases 键退役（C1 卫生批 2026-11-13）：corpus/cpp 83 例零消费、
+  // 键名「e2e」虚指对拍面——采集行已删（facts.mts collectCaseDirs），桶本体
+  // 原地保留 deferred（corpus/cpp/README.md）；历史引用按退役豁免。
+  "cpp_e2e_cases",
 ]);
 
 // ─── 对账规则 ────────────────────────────────────────────────────────────────
@@ -56,8 +60,9 @@ export function rules(): Rule[] {
     mk("shadow_cpp_cases", "C++ 影子用例总数",
       `C\\+\\+.*(影子|shadow)|shadow_verify_cpp|cpp_shadow|C\\+\\+ 侧`,
       ``, 30, 250, "用例"),
-    mk("cpp_e2e_cases", "C++ E2E 用例数", `C\\+\\+\\s*E2E|cases/cpp`,
-      `影子|shadow`, 30, 250, "用例"),
+    // cpp_e2e_cases 对账规则随键退役删除（C1 卫生批 2026-11-13）——
+    // docs/current 已无活声明（唯一相关 = 路线图 G10 删除线历史条目），
+    // 规则成死面；键进 RETIRED_KEYS。
     // Exclude 防线插座行（PR #312 审阅处置 2026-10-25）：CLI 使用手册「防线
     // 插座」行与脚本总清单 gates-wasm 段的数字只有 issue 号（#49）/纪律条号
     // （14）——已由 numberSpans 的 RE_ISSUE/RE_DISCIPLINE 掩码治本（J9 锚
@@ -107,6 +112,13 @@ export function rules(): Rule[] {
     // 各扣 1 例 known-fork 跳过；.c 文件数 787 非真值）超带宽，750→860
     // （机械放宽，非语义变更；PR #312 审阅 P1-1 处置——带宽须改本 .mts 现役面）。
     mk("moonbit_parser_diff_samples", "解析差分样本数", `解析差分[^\\n]*样本|样本[^\\n]*解析差分|AST[^\\n]*诊断序列|parser_diff`, ``, 500, 860, "个"),
+    // B3 台账机制（2026-11-13，两轮评审实锤手册「余额 34」失真——master 实测
+    // 98）：warning 计数锁台账文档裸数字（增减=漂移红=须归因清点）；context
+    // 以「台账」字样收紧——普通文档的构建输出示例（「46 warnings, 0 errors」）
+    // 不进候选防误命中。带宽 lo=0（清零是理想终态不红）/ hi=120（猛涨警报）。
+    mk("moonbit_check_warnings", "moon check warning 台账数",
+      `warning[^\\n]{0,8}台账|台账[^\\n]{0,30}(条|warning)|moonbit_check_warnings`,
+      ``, 0, 120, "条"),
   ];
 }
 

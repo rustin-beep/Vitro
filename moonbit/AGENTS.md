@@ -168,11 +168,14 @@ c`.replace 得 `a-bc`）——全量替换必须循环 `while contains { replace
 ## 发布流程（T5 定型）
 
 ```bash
-# 前置：moon check --target all 干净（余额 34 条全为带据豁免：0020×18
-#       inspect 系 Show→Debug 迁移期噪音〔core 稳定后清零〕+ 0001/0002/0029/
-#       0050/0007 族 A3 批登记；0079/0027 已清零且经 moon.mod warnings
-#       @ 升错误锁死〔#54 B〕——复发即 check/test 双红）+ moon test 全绿 +
-#       moon info 无意外 diff + gen_diag -check 绿
+# 前置：moon check --target all 计数与 warning 台账一致（台账 =
+#       docs/current/07-质量与裁定/moon-check-warning台账.md；facts 键
+#       moonbit_check_warnings 锁数——增减即漂移红，涨须逐条归因、减须
+#       同步台账；B3 批 2026-11-13 建账，旧「余额 34」硬数字口径随批退役
+#       ——时点数字写死在静态手册必陈旧，13 号模块审阅 P2-1 同型教训。
+#       0079/0027 仍经 moon.mod warnings @ 升错误锁死〔#54 B〕——复发即
+#       check/test 双红）+ moon test 全绿 + moon info 无意外 diff +
+#       gen_diag -check 绿
 cd moonbit && moon publish        # Server 200 OK 后：
 # 验收：moon search vitro 可查 → 全新项目 moon add vitro/engine@<ver> →
 #       安装后跑一段示例；包 zip（~/.moon/registry/cache）核对根级四件：

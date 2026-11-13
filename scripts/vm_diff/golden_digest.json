@@ -410,6 +410,12 @@
       "stdout_sha": "108c995b953c8a35",
       "memory_sha": "45a4cc430352349c"
     },
+    "baseline/char_literal_high_escape.c": {
+      "src_sha": "d42d2268",
+      "exit_code": 0,
+      "stdout_sha": "be41d94ab0896a87",
+      "memory_sha": "65edeec2251ec4d8"
+    },
     "baseline/char_local_narrow_matrix.c": {
       "src_sha": "13f4aba5",
       "exit_code": 0,
@@ -2959,6 +2965,12 @@
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "e83c783b2ff6c3df"
+    },
+    "baseline/strncmp_strcmp_sign_only.c": {
+      "src_sha": "d9d729d7",
+      "exit_code": 0,
+      "stdout_sha": "95a2cfd108aab759",
+      "memory_sha": "3c20b157186054f0"
     },
     "baseline/strtol_prefix.c": {
       "src_sha": "4ab8b53d",

@@ -72,6 +72,7 @@
         "char_init_neg_unsigned_domain.c": "3a6b1b5e",
         "char_init_no_false_positive.c": "c559bd1e",
         "char_literal.c": "66ec14b0",
+        "char_literal_high_escape.c": "d42d2268",
         "char_local_narrow_matrix.c": "13f4aba5",
         "char_signedness.c": "558096f8",
         "circular_queue.c": "e85826b6",
@@ -497,6 +498,7 @@
         "string_strcmp.c": "08a19bfe",
         "string_strcpy.c": "badba1ab",
         "string_strlen.c": "74038346",
+        "strncmp_strcmp_sign_only.c": "d9d729d7",
         "strtol_prefix.c": "4ab8b53d",
         "struct_array_char_member_init.c": "1a085aa9",
         "struct_array_elem_byval.c": "30917e63",
@@ -785,6 +787,9 @@
         },
         "char_literal.c": {
           "result_sha": "acde6e3a2e8309cd"
+        },
+        "char_literal_high_escape.c": {
+          "result_sha": "655c0b5d854f40f3"
         },
         "char_local_narrow_matrix.c": {
           "result_sha": "19fc7e23c5899ad0"
@@ -2090,6 +2095,9 @@
         },
         "string_strlen.c": {
           "result_sha": "4eb7a3ec263645a8"
+        },
+        "strncmp_strcmp_sign_only.c": {
+          "result_sha": "878c6b85980669fb"
         },
         "strtol_prefix.c": {
           "result_sha": "62f2e027c1e030d2"

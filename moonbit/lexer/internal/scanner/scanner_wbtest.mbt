@@ -271,3 +271,21 @@ test "scan_raw E1001 column points at offending char body" {
   inspect(r.errors[0].loc.line, content="1")
   inspect(r.errors[1].loc.column, content="15")
 }
+
+///|
+/// #510（2026-11-13）：字符常量高位转义符号化——C11 §6.4.4.4 字符常量值 =
+/// 执行字符集成员经 char 转换后的 int；vitro char 语义 = signed char
+///（x86 clang 基准，与 char 变量路径/W3053 typeck 判定同源）。
+/// 修前红锚：旧实现零扩展——'\377' 产 255、'\200' 产
+/// 128，与自家 `char c = 200` → -56 内部不一致（clang 实测 -1/-128/-56）。
+test "scan_raw char literal high escape sign extension (#510)" {
+  let r = scan_raw(
+    @utf8.encode("'a' '\\377' '\\200' '\\xff' '\\x7f' '\\0' 'z'"),
+  )
+  let summary = r.tokens.map(t => "\{t.ty.to_name()}:\{t.text}").join(" ")
+  inspect(
+    summary,
+    content="CharLiteral:97 CharLiteral:-1 CharLiteral:-128 CharLiteral:-1 CharLiteral:127 CharLiteral:0 CharLiteral:122 Eof:",
+  )
+  assert_eq(r.errors.length(), 0)
+}

@@ -123,3 +123,93 @@ pub fn build_wasm_product(
     }
   }
 }
+
+///|
+/// **装载往返原语（REHOST 批 2b）**——run 态装载协议的核心：code →
+/// 发射（wasm 字节）→ 组表引导裁决折叠（`verify_fold_with_table`）→
+/// 重建 Instruction（op/operand 来自折叠产物、loc 来自组表侧车）→
+/// **与原 code 逐位恒等断言**（op/operand/loc 三元组）。设计单 §3.1
+/// 「装载期把 wasm 字节按发射模板折叠回组操作」的机检形态——恒等即
+/// 「语义冻结最强形态」：折叠重建产物驱动执行与 legacy code 同构，
+/// digest 零漂移的机制根基。
+///
+/// Err（String = 单行诊断）= 装载失败面：发射失败（禁译面/域非法）、
+/// 装载核对红（非自家产物形态）、往返失配（发射↔折叠互逆性破坏——
+/// 理论不可达，装载协议必须显式拦）。消费方（`setup_from_output`）
+/// 过渡期按设计单回退 legacy code 执行并携带状态——fail loud 归双跑
+/// 对拍闸（wasm 臂标记行非 ok 即红）。
+pub fn rehost_round_trip(
+  output : CompileOutput,
+) -> Result[Array[@opcode.Instruction], String] {
+  let ctx = wasm_emit_ctx(output)
+  let p = match build_wasm_product(output) {
+    Ok(p) => p
+    Err(EmitFailed(gip, op_name, reason)) =>
+      return Err("emit-failed gip=\{gip} op=\{op_name} \{reason}")
+  }
+  let folded = match @wasmenc.verify_fold_with_table(p.table, p.bytes, ctx) {
+    Ok(folded) => folded
+    Err(e) => return Err("verify-failed \{verify_err_one_line(e)}")
+  }
+  if folded.length() != output.code.length() {
+    return Err(
+      "roundtrip-count groups=\{folded.length()} code=\{output.code.length()}",
+    )
+  }
+  let out : Array[@opcode.Instruction] = []
+  for i = 0; i < folded.length(); i = i + 1 {
+    let g = folded[i]
+    let e = p.table.groups[i]
+    let want = output.code[i]
+    // loc 恒等先比（重建物从侧车来——侧车发射时由原 loc 直填，理论恒等；
+    // 失配 = 侧车/重建双实现分叉，装载协议拦）
+    if e.loc_line != want.loc.line ||
+      e.loc_column != want.loc.column ||
+      e.loc_file_id != want.loc.file_id {
+      return Err(
+        "roundtrip-loc gip=\{i} sidecar=\{e.loc_line}:\{e.loc_column}:\{e.loc_file_id} code=\{want.loc.line}:\{want.loc.column}:\{want.loc.file_id}",
+      )
+    }
+    // op/operand 恒等（verify 的还原槽比对只覆盖可还原槽——这里是全量
+    // 双侧断言：侧车声明与折叠产物都必须与原 code 一致）
+    if g.op != want.op || g.operand != want.operand {
+      return Err(
+        "roundtrip-op gip=\{i} folded=\{g.op.name()}(\{g.operand}) code=\{want.op.name()}(\{want.operand})",
+      )
+    }
+    out.push(
+      @opcode.Instruction::new(
+        g.op,
+        g.operand,
+        @source.SourceLoc::with_file(e.loc_line, e.loc_column, e.loc_file_id),
+      ),
+    )
+  }
+  Ok(out)
+}
+
+///|
+/// VerifyError → 单行文本（装载失败诊断——cmd/dump_wasm 的
+/// verify_err_text 是 cmd 层复制件，本函数是 bytecode 装载通道侧的
+/// 简短形态）。
+fn verify_err_one_line(e : @wasmenc.VerifyError) -> String {
+  match e {
+    GroupCountMismatch(want, got) => "GroupCountMismatch \{want} vs \{got}"
+    GroupMismatch(gip, a, b, x, y) =>
+      "GroupMismatch gip=\{gip} \{a.name()}(\{x}) vs \{b.name()}(\{y})"
+    FoldFailed(fe) =>
+      match fe {
+        Decode(off, _) => "FoldDecode @\{off}"
+        NoTemplate(off) => "NoTemplate @\{off}"
+        TableShapeConflict(off, a, b) =>
+          "TableShapeConflict @\{off} \{a.name()}/\{b.name()}"
+      }
+    TemplateMismatch(gip, op, off) =>
+      "TemplateMismatch gip=\{gip} \{op.name()} @\{off}"
+    BoundaryMismatch(gip, op, got, want) =>
+      "BoundaryMismatch gip=\{gip} \{op.name()} \{got} vs \{want}"
+    GroupGap(gip, prev, off) => "GroupGap gip=\{gip} \{prev}→\{off}"
+    TrailingInstrs(at, left) => "TrailingInstrs @\{at} +\{left}"
+    ReservedGroup(gip, op) => "ReservedGroup gip=\{gip} \{op.name()}"
+  }
+}

@@ -1173,17 +1173,17 @@ jobs:
           cd scripts && npm ci --no-audit --no-fund
           cd .. && node scripts/wasmenc_watcheck/main.mts
 
-      - name: wasmenc emitgate (corpus emission + verify + wabt decode-level validation)
+      - name: wasmenc emitgate (corpus emission + verify + wabt content-level validation)
         if: matrix.slice == 'bookkeeping'
-        # REHOST 批 1c 主体（2026-11-13）：全语料「154 码表 → wasm 子集」
-        # 发射产物闸（设计单 §3.2 批 1 验收面①③）——cmd/dump_wasm
-        # （ensureFresh 新鲜度门禁）逐语料目录批跑，三级判定：
-        # ①编译成功例 100% 可发射（emit 失败=禁译面，deferred.json 按
-        # 「目录/文件」登记豁免，首版空）；②装载核对（组表引导裁决）
-        # 全过；③hex 指令区拼证人壳过 wabt readWasm **解码级**验证
-        # （段结构/码位域——真类型验证在 watcheck 模板级，两级组合；
-        # 拼接级真 validate 随批 2 模块组装升级，PR #505 审阅 P1-2）。
-        # 编译期失败例（lex/parse/type/gen）
+        # REHOST 批 1c 主体（2026-11-13）+ 批 2a 升级（同日）：全语料
+        # 「154 码表 → wasm 子集」发射产物闸（设计单 §3.2 批 1 验收面
+        # ①③）——cmd/dump_wasm（ensureFresh 新鲜度门禁）逐语料目录批跑，
+        # 三级判定：①编译成功例 100% 可发射（emit 失败=禁译面，
+        # deferred.json 按「目录/文件」登记豁免，首版空）；②装载核对
+        # （组表引导裁决）全过；③垫收证人模块过 wabt `m.validate()`
+        # **内容级**验证（类型/栈/指令签名全检——批 1c 解码级壳的升级件，
+        # PR #505 审阅 P1-2 的「随批 2 模块组装升级」闭环；watcheck
+        # 模板级仍为第二证人）。编译期失败例（lex/parse/type/gen）
         # 计数不判红——负例语料属 codegen_diff 既有防线域。基线：9 目录
         # 902 ok / 42 编译期 / 0 红（2026-11-13，含 #486 B10 新增 5 语料）。
         # ensureFresh 对「产物缺失」fail loud（stale 才自动重建）——干净
@@ -1193,6 +1193,22 @@ jobs:
           cd moonbit && moon build --target native cmd/dump_wasm
           cd .. && cd scripts && npm ci --no-audit --no-fund
           cd .. && node scripts/wasmenc_emitgate/main.mts
+
+      - name: wasmenc rundiff (legacy vs wasm-rehost dual-run digest crosscheck)
+        if: matrix.slice == 'bookkeeping'
+        # REHOST 批 2b（2026-11-13）：双跑对拍闸（设计单 §3.3 迁移期新旧
+        # 载体并存的对拍形态）——同一语料 legacy 装载 vs `--wasm-rehost`
+        # （发射→折叠→恒等断言→重建 code 驱动）双跑 digest 逐位对拍：
+        # stdout 逐字节 + rc + 1MB 映像（--dump-memory）+ 装载标记行断言
+        # （`// WASM-REHOST ok` 必在——fallback 即红，静默回退会让双臂
+        # 恒一致而闸失明）。编译失败例两臂同形不红（codegen_diff 域）。
+        # 基线：9 目录 944 例 = 902 双跑一致 + 42 编译期 / 0 红
+        # （2026-11-13 首版全量摸底）。
+        shell: bash
+        run: |
+          cd moonbit && moon build --target native cmd/run
+          cd .. && cd scripts && npm ci --no-audit --no-fund
+          cd .. && node scripts/wasmenc_rundiff/main.mts
 
       - name: Build serve.exe (debug native) for facts replay/serve_smoke collectors
         if: matrix.slice == 'bookkeeping'

@@ -164,6 +164,10 @@ examples/**/.mooncakes/
 # （2026-09-28 扩：黑盒 roundtrip 探针工作目录会落在 moonbit/ 根等任意层，
 # 原先只盖 moonbit/fs/ 一处的路径限定漏住了 moonbit/tmp_vitro_fs_bb_roundtrip）
 tmp_vitro_fs_*/
+# 顶层 tmp_* 一次性探针/工作区目录(各会话遗留惯例:tmp_dev_toolchain/tmp_z3fake/
+# tmp_provemin/tmp_review_provemin 等——不入库不提交;editorconfig 闸的 gitignored
+# 面豁免随本单源自动覆盖,2026-11-13 批 2 PR 期三个逐名豁免由此收回)
+/tmp_*/
 
 # AI 工具项目级目录（skills 批 2026-09-29）：install_skills.go --scope project
 # 与各工具自建的项目级配置会落在仓库根隐藏目录——安装物与工具本地状态不入库，

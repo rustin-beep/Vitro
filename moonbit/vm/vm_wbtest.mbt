@@ -436,7 +436,7 @@ test "setup_from_output_protocol" {
     i64_constants: [],
     global_data_end: 0U,
   }
-  vm.setup_from_output(out, 0, [], [])
+  let _ = vm.setup_from_output(out, 0, [], [])
   // 合并后 code 长度 = 3485 + 2
   assert_eq(vm.code.length(), 3487)
   // 入口 ip = libc_code_len
@@ -479,7 +479,7 @@ test "gate3_integrated_roundtrip_with_libc_setup" {
     i64_constants: [],
     global_data_end: 0U,
   }
-  vm.setup_from_output(out, 1, ["prog"], [])
+  let _ = vm.setup_from_output(out, 1, ["prog"], [])
   ignore(vm.vfs.inject_preset_file(vm.mem_map, vm.memory, "t.txt", b"ab"))
   // 非平凡堆：两块分配 + 一块释放（隔离/日志非空）
   let p1 = vm.mem_map.allocate_raw(64U, @bytecode.MEM_SIZE).unwrap()
@@ -605,7 +605,7 @@ test "libc_step_event_no_user_breakpoint_hit_issue168" {
     i64_constants: [],
     global_data_end: 0U,
   }
-  vm.setup_from_output(out, 0, [], [])
+  let _ = vm.setup_from_output(out, 0, [], [])
   vm.write_cstring(4104U, "ab")
   // 用户断点 91 行（与 strlen 内部 StepEvent 行号域 89~95 重叠）
   ignore(vm.breakpoints.add(91))
@@ -649,4 +649,63 @@ test "clock_start_resampled_on_reset" {
   vm.push(0UL)
   vm.execute_host_func(123, 1, 1)
   assert_eq(vm.pop(), 9UL)
+}
+
+///|
+/// REHOST 批 2b 装载往返锚：`wasm_rehost` flag 的 setup_from_output 三态——
+/// ① flag off 返回空串（行为零扰动）；② flag on 往返装载成功返回
+/// `ok groups=N` 且**执行消费折叠重建产物**（运行结果与 legacy 同构——
+/// 语义冻结形态）；③ flag off/on 两 VM 的 1MB 映像终态逐字节一致。
+test "setup_from_output_wasm_rehost_roundtrip" {
+  // 用户 main：PushConst 21; Ret（含 C 类 Ret 组——侧车身份装载面）
+  fn mk_out() -> @bytecode.CompileOutput {
+    {
+      code: [
+        @opcode.Instruction::new(PushConst, 21, @source.SourceLoc::new(1, 1)),
+        @opcode.Instruction::new(Ret, 0, @source.SourceLoc::new(1, 1)),
+      ],
+      globals_init_32: [],
+      globals_init_64: [],
+      func_table: Map([]),
+      func_index: Map([]),
+      string_data: [],
+      source_map: [],
+      symbols: [],
+      struct_defs: Map([]),
+      union_defs: Map([]),
+      f64_constants: [],
+      i64_constants: [],
+      global_data_end: 0U,
+    }
+  }
+  // ① flag off：状态空串 + 运行正常
+  let vm_legacy = VitroVM::new()
+  let st_off = vm_legacy.setup_from_output(mk_out(), 0, [], [])
+  assert_eq(st_off, "", msg="flag off 状态空串")
+  assert_eq(vm_legacy.run(), 21, msg="legacy 运行")
+  // ② flag on：ok 状态 + 运行同构（折叠重建产物驱动）
+  let vm_rehost = VitroVM::new()
+  let st_on = vm_rehost.setup_from_output(mk_out(), 0, [], [], wasm_rehost=true)
+  assert_true(
+    st_on.length() > 3 && st_on.substring(start=0, end=3) == "ok ",
+    msg="ok 前缀（实得 \{st_on}）",
+  )
+  assert_eq(
+    vm_rehost.code.length(),
+    vm_legacy.code.length(),
+    msg="装载 code 长度同构（libc+2）",
+  )
+  assert_eq(vm_rehost.run(), 21, msg="rehost 运行同构")
+  // ③ 终态映像逐字节一致（装载通道差异不出 1MB 映像）
+  let a = vm_legacy.dump_memory_raw()
+  let b = vm_rehost.dump_memory_raw()
+  assert_eq(a.length(), b.length(), msg="映像长度")
+  let mut diff = -1
+  for i = 0; i < a.length(); i = i + 1 {
+    if a[i] != b[i] {
+      diff = i
+      break
+    }
+  }
+  assert_eq(diff, -1, msg="1MB 映像逐字节一致（首个差异偏移）")
 }

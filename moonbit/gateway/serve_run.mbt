@@ -41,12 +41,19 @@ fn not_compiled_json() -> Json {
 /// → vm.run → 六字段出口。
 
 ///|
-/// run/feed 八字段出口组装（审阅 P3 下沉，2026-10-15；#261 +trap_code）——原
-/// serve_execute_run 与 serve_execute_run_via_engine 两份手写组装，
-/// 下一次改一侧就是静默分叉（C5 形态）。ret 为已完成计算的返回值；
-/// 完成/泄漏附注由调用方在 trap 空且非 waiting 时触发（run_one_outcome
-/// 内聚完成附注 + 出口组装）。
-fn run_outcome_json(s : @session.Session, trap : String) -> Json {
+/// run/feed 八字段出口组装（审阅 P3 下沉，2026-10-15；#261 +trap_code；REHOST
+/// 批 2b +`wasm_rehost` 可选字段）——原 serve_execute_run 与
+/// serve_execute_run_via_engine 两份手写组装，下一次改一侧就是静默分叉
+/// （C5 形态）。ret 为已完成计算的返回值；完成/泄漏附注由调用方在 trap
+/// 空且非 waiting 时触发（run_one_outcome 内聚完成附注 + 出口组装）。
+/// `rehost_status` 非空时帧携带 `wasm_rehost` 字段（"ok groups=N" /
+/// "fallback …"——双跑对拍闸的装载状态消费面；空 = flag 未开，字段
+/// 缺省——协议「前缀只增不改」的增量面，老消费者零感知）。
+fn run_outcome_json(
+  s : @session.Session,
+  trap : String,
+  rehost_status : String,
+) -> Json {
   let waiting = s.vm.waiting_input
   let ret = if trap.is_empty() && !waiting {
     let v = s.vm.final_return_value()
@@ -79,13 +86,19 @@ fn run_outcome_json(s : @session.Session, trap : String) -> Json {
       s.vm.output.dropped_bytes() > 0 || s.vm.output.note_dropped_bytes() > 0,
     ),
   )
+  // REHOST 批 2b：装载状态（非空才携带——flag off/resume/step 通道零感知）
+  if !rehost_status.is_empty() {
+    m.set("wasm_rehost", Json::string(rehost_status))
+  }
   Json::object(m)
 }
 
 ///|
-fn serve_execute_run(s : @session.Session) -> Json {
+fn serve_execute_run(s : @session.Session, wasm_rehost : Bool) -> Json {
   let is_resume = s.vm.waiting_input
   s.vm.clear_waiting_input()
+  // REHOST 批 2b：run 态装载往返状态（flag off / resume = 空串不进帧）
+  let mut rehost_status = ""
   if !is_resume {
     // reset_runtime 等价：输出清 + vfs 重建（内存/堆游标由 setup 内部
     // reset 承担——vm reset 不碰 output/vfs/input，跨 run 存活的输入
@@ -98,11 +111,12 @@ fn serve_execute_run(s : @session.Session) -> Json {
     }
     let argc = s.runtime_argv.length()
     // issue #29 #4：vis 行随装配灌入（与 step.begin 同一投影，两通道统一）
-    s.vm.setup_from_output(
+    rehost_status = s.vm.setup_from_output(
       output,
       argc,
       s.runtime_argv,
       project_vis_lines(s.compile.algorithm_matches),
+      wasm_rehost~,
     )
     // R1 ① 动态堆起点（须在 setup 之后——其内部 reset 重建 mem_map 回
     // 默认；cmd/run 同款注释）
@@ -121,8 +135,9 @@ fn serve_execute_run(s : @session.Session) -> Json {
   let _ = s.vm.run()
   // 审阅 P3 下沉（2026-10-15）：八字段出口（#261 +trap_code）+ 完成附注统一走
   // run_outcome_json——原与 serve_execute_run_via_engine 两份手写组装，
-  // 下一次改一侧就是静默分叉（C5 形态）
-  run_outcome_json(s, s.vm.error)
+  // 下一次改一侧就是静默分叉（C5 形态）。批 2b +rehost_status（非空时
+  // 帧携带 wasm_rehost 字段——老消费者零感知）
+  run_outcome_json(s, s.vm.error, rehost_status)
 }
 
 ///|
@@ -182,10 +197,18 @@ fn serve_run_frame(
   if s.vm.input.batch != s.runtime_batch {
     s.vm.set_input(@host.InputState::new(s.vm.input.lines, s.runtime_batch))
   }
-  // run 帧八字段冻结面（#91 不带 clamped；#261 +trap_code）——run 内联配置的钳制静默
-  // 登记在案（config.set 通道已显式化；run 帧扩面属协议变更另案）
+  // run 帧八字段冻结面（#91 不带 clamped；#261 +trap_code；批 2b +可选
+  // wasm_rehost）——run 内联配置的钳制静默登记在案（config.set 通道已
+  // 显式化；run 帧扩面属协议变更另案）
   let (_cfg, _clamped) = serve_apply_config(s, params)
-  (serve_ok(id, serve_execute_run(s)).stringify(), false)
+  // REHOST 批 2b：run 帧参数 wasm_rehost（bool，缺省 false）——装载通道
+  // flag，非会话配置（不进 config.set 白名单——config 是纯配置通道，
+  // 装载形态是 run 帧行为参数）
+  let wasm_rehost = match json_field(params, "wasm_rehost").as_bool() {
+    Some(b) => b
+    None => false
+  }
+  (serve_ok(id, serve_execute_run(s, wasm_rehost)).stringify(), false)
 }
 
 ///|

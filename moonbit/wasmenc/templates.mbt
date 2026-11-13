@@ -820,7 +820,7 @@ pub fn template_spec(op : @opcode.OpCode) -> TemplateSpec {
           Fixed(WI64ShrU),
           Fixed(WI32WrapI64),
         ],
-        "i64.reinterpret_f64; 拆半各符号扩展压栈（exec_memory.mbt:76 同构——low 先 high 后）",
+        "i64.reinterpret_f64; 拆半各符号扩展压栈（exec_memory.mbt:76 同构——low 先 high 后；shift 量 i64 常量同型直发——批 2a 误判签名曾改坏，validate 红实锤回滚）",
       )
     SplitQ =>
       seq(
@@ -836,7 +836,7 @@ pub fn template_spec(op : @opcode.OpCode) -> TemplateSpec {
           Fixed(WI64ShrU),
           Fixed(WI32WrapI64),
         ],
-        "i64 拆半（low/high 各 i32 符号扩展）",
+        "i64 拆半（low/high 各 i32 符号扩展；shift 量 i64 常量同型——批 2a 误判回滚同 SplitD）",
       )
     StackAlloc =>
       // 三重检查全保形（exec_memory.mbt:85-99 镜像）：负数（ge_s 0）/
@@ -1170,7 +1170,7 @@ pub fn template_spec(op : @opcode.OpCode) -> TemplateSpec {
           Fixed(WLocalGet(L_T64)),
           Fixed(WI64Shl),
         ],
-        "域检查 0~63 + i64.shl",
+        "域检查 0~63 + i64.shl（shift 操作数 i64 同型——wasm 移位取模语义内建；批 2a 误判 [i64,i32] 签名曾加 wrap 改坏，全语料 wabt validate 14 红实锤回滚）",
       )
     ShrQ =>
       seq(
@@ -1189,7 +1189,7 @@ pub fn template_spec(op : @opcode.OpCode) -> TemplateSpec {
           Fixed(WLocalGet(L_T64)),
           Fixed(WI64ShrS),
         ],
-        "域检查 + i64.shr_s",
+        "域检查 + i64.shr_s（shift 同型——批 2a 误判回滚，见 ShlQ 注）",
       )
     LShrQ =>
       seq(
@@ -1208,7 +1208,7 @@ pub fn template_spec(op : @opcode.OpCode) -> TemplateSpec {
           Fixed(WLocalGet(L_T64)),
           Fixed(WI64ShrU),
         ],
-        "域检查 + i64.shr_u",
+        "域检查 + i64.shr_u（shift 同型——批 2a 误判回滚，见 ShlQ 注）",
       )
     // 常量池索引（值可逆；同值多索引歧义面由组表终裁——池反查取首索引）
     PushConstD =>

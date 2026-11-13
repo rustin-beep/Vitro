@@ -3,17 +3,17 @@
 /// 直译（type/memory/global/export/code/data 最小段集；table/elem 按
 /// 设计单 §2.1 子集边界不用，start/datacount 同）。
 ///
-/// **import 段预留（PR #495 审阅 P3 勘正——与 templates.mbt 统一）**：
-/// 本文件的段原语面不含 import 段（1a 往返不消费），但 CallHost 模板
-/// 发射 `call 0`（templates.mbt）依赖装载约定 **函数索引 0 =
+/// **import 段（REHOST 批 2a 铺段）**：CallHost 模板发射 `call 0`
+/// （templates.mbt）依赖装载约定 **函数索引 0 =
 /// `env.vitro_host_call(route_id, argv_ptr) -> i64`**（H2 单一 ABI）——
 /// 该索引只在模块铺了 import 段（env.vitro_host_call 为唯一 import、
-/// 排在 function 段之前）时才成立。批 1c 组装完整模块时**必须**按此
-/// 约定铺设 import 段（wasm 索引空间：import 函数先于本模块函数编号），
-/// 否则 `call 0` 落到首个本地函数——装载约定两文件以此注为准。
+/// 排在 function 段之前）时才成立（wasm 索引空间：import 函数先于本
+/// 模块函数编号），否则 `call 0` 落到首个本地函数。`add_import` +
+/// build 的 import 段（id 2）即此约定的段原语；组装层（assemble.mbt）
+/// 消费。
 ///
 /// 段序按 wasm 二进制规范固定：magic+version → type(1) → **import(2)
-/// 〔批 1c 起——env.vitro_host_call @ 函数索引 0〕** → function(3) →
+/// 〔批 2a 起——env.vitro_host_call @ 函数索引 0〕** → function(3) →
 /// memory(5) → global(6) → export(7) → code(10) → data(11)。段 id+uleb
 /// 长度前缀；vec 元素 uleb 计数前缀。
 ///
@@ -43,6 +43,10 @@ pub extend FuncBody with Debug::{to_repr}
 pub(all) struct ModuleBuilder {
   /// (params, results) 类型表
   types : Array[(Array[Byte], Array[Byte])]
+  /// (module, name, kind, type_idx) import 表（kind: 0=func 2=memory
+  /// 3=global——REHOST 批 2a 铺段；import 函数先于本地函数占用索引空间，
+  /// `env.vitro_host_call` @ 0 即 CallHost 模板 `call 0` 的装载约定）
+  imports : Array[(String, String, Int32, Int32)]
   /// (type_idx) 函数表
   funcs : Array[Int32]
   /// (min, max?) 内存表（max=None → 无上界声明；设计单基线 {16,16}）
@@ -64,6 +68,7 @@ pub extend ModuleBuilder with Debug::{to_repr}
 pub fn ModuleBuilder::new() -> ModuleBuilder {
   {
     types: [],
+    imports: [],
     funcs: [],
     memories: [],
     globals: [],
@@ -71,6 +76,21 @@ pub fn ModuleBuilder::new() -> ModuleBuilder {
     codes: [],
     datas: [],
   }
+}
+
+///|
+/// 追加 import（kind: 0=func 2=memory 3=global；type_idx 仅 func 消费）。
+/// import 函数先于本地函数占用函数索引空间（`add_func` 返回的是**本地**
+/// 函数序号——跨 import 的绝对索引 = import 函数数 + 本地序号）。
+pub fn ModuleBuilder::add_import(
+  self : ModuleBuilder,
+  mod_name : String,
+  name : String,
+  kind : Int32,
+  type_idx : Int32,
+) -> Int32 {
+  self.imports.push((mod_name, name, kind, type_idx))
+  self.imports.length() - 1
 }
 
 ///|
@@ -204,6 +224,29 @@ pub fn ModuleBuilder::build(self : ModuleBuilder) -> Array[Byte] {
       }
     }
     section_into(1, payload, out)
+  }
+  // import 段（id 2——批 2a 铺段：env.vitro_host_call 是面内唯一 import，
+  // 函数索引 0 的装载约定见头注；kind 0=func 2=memory 3=global）
+  if self.imports.length() > 0 {
+    let payload : Array[Byte] = []
+    for b in uleb_encode(self.imports.length().to_uint64()) {
+      payload.push(b)
+    }
+    for entry in self.imports {
+      for b in name_le_bytes(entry.0) {
+        payload.push(b)
+      }
+      for b in name_le_bytes(entry.1) {
+        payload.push(b)
+      }
+      payload.push(entry.2.to_byte())
+      if entry.2 == 0 {
+        for b in uleb_encode(entry.3.to_uint64()) {
+          payload.push(b)
+        }
+      }
+    }
+    section_into(2, payload, out)
   }
   if self.funcs.length() > 0 {
     let payload : Array[Byte] = []

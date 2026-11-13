@@ -72,7 +72,8 @@ fn serve_input_feed_frame(
     // resume 语义：waiting_input 由 serve_execute_run 的 is_resume 承担
     // （参数回推 + ip 回退已就位；二段锚 serve_run_waiting_then_input_resumes
     // 已锁行为——本帧是同一机制的独立方法入口）
-    return (serve_ok(id, serve_execute_run(s)).stringify(), false)
+    // REHOST 批 2b：resume 分支不重 setup（装载已发生）——flag 恒 false
+    return (serve_ok(id, serve_execute_run(s, false)).stringify(), false)
   }
   (serve_ok(id, serve_execute_run_via_engine(s, engine)).stringify(), false)
 }
@@ -106,8 +107,9 @@ fn serve_execute_run_via_engine(
   }
   let trap = if !err_msg.is_empty() { err_msg } else { s.vm.error }
   // 审阅 P3 下沉（2026-10-15）：与 serve_execute_run 共用 run_outcome_json
-  //（双出口单源——八字段组装〔#261 +trap_code〕/完成附注/#91 output_truncated 位只此一份）
-  run_outcome_json(s, trap)
+  //（双出口单源——八字段组装〔#261 +trap_code〕/完成附注/#91 output_truncated 位只此一份；
+  // 批 2b 第三参 rehost_status：engine 通道 = step 态装载恒 legacy——空串）
+  run_outcome_json(s, trap, "")
 }
 
 ///|

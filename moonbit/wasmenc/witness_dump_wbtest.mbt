@@ -1,12 +1,10 @@
 ///|
-/// **批 1b wabt 证人 dump**（批 1c wabt CI 闸的消费口——stdout 行前缀
-/// DUMP1B 由 D:/tmp/rehost-probe/src/wasmenc_spec_verify_1b.mjs 消费；零孪生：
-/// 证「仓内发射字节 = 合法 wasm」的模块字节全部来自本包单源发射器。产物供
-/// rehost-probe 的 wasmenc_spec_verify_1b.mjs 消费）：打印 63 条 B/C
-/// 模板的发射字节 hex + 垫栈/终态类型（.mjs 据此拼最小模块过
-/// wasm-validate——「仓内发射字节 = 合法 wasm」的外部证人，零孪生）。
-test "witness_dump_templates_b1b" {
-  let ctx : EmitCtx = {
+/// 效应人工核对表共享行（witness dump 与 effect 推导对拍锚共用——
+/// REHOST 批 2a 提为顶层：垫收类型串的手写快照只有这一份，wabt wat
+/// 编译合法性背书〔watcheck 消费 dump 行〕+ `effect_wbtest` 推导器对拍
+/// 双消费）。
+fn witness_ctx() -> EmitCtx {
+  {
     f64_constants: [1.5, -0.25],
     i64_constants: [42L, -1L],
     argc: 3,
@@ -15,8 +13,13 @@ test "witness_dump_templates_b1b" {
     host_argv_ptr: 0x5000,
     symbol_sizes: [4, 10],
   }
-  // (op, operand, push 垫栈型序（底→顶）, 终态残留深（drop 数）)
-  let rows : Array[(@opcode.OpCode, Int32, String, Int32)] = [
+}
+
+///|
+/// (op, operand, push 垫栈型序（底→顶）, 终态残留深（drop 数）)。
+fn witness_effect_rows() -> Array[(@opcode.OpCode, Int32, String, Int32)] {
+  [
+
     // B 类 50
     (LoadLocal, 8, "", 1),
     (StoreLocal, 8, "i", 0),
@@ -86,9 +89,13 @@ test "witness_dump_templates_b1b" {
     (PushArgc, 0, "", 1),
     (PushArgv, 0, "", 1),
   ]
-  // A 类全量 84 条（批 1c watcheck 全量对拍源——垫栈型 i=I32 I=i64 f=f32
-  // d=f64；operand 槽位类取非零样值）
-  let a_rows : Array[(@opcode.OpCode, Int32, String, Int32)] = [
+}
+
+///|
+/// A 类全量 84 条（批 1c watcheck 全量对拍源——垫栈型 i=I32 I=i64 f=f32
+/// d=f64；operand 槽位类取非零样值）。
+fn witness_a_rows() -> Array[(@opcode.OpCode, Int32, String, Int32)] {
+  [
     (Nop, 0, "", 0),
     (PushConst, 8, "", 1),
     (Pop, 0, "i", 0),
@@ -174,11 +181,22 @@ test "witness_dump_templates_b1b" {
     (UGtQ, 0, "II", 1),
     (UGeQ, 0, "II", 1),
   ]
+}
+
+///|
+/// **批 1b wabt 证人 dump**（批 1c wabt CI 闸的消费口——stdout 行前缀
+/// DUMP1B 由 D:/tmp/rehost-probe/src/wasmenc_spec_verify_1b.mjs 消费；零孪生：
+/// 证「仓内发射字节 = 合法 wasm」的模块字节全部来自本包单源发射器）。产物供
+/// rehost-probe 的 wasmenc_spec_verify_1b.mjs 消费）：打印 63 条 B/C
+/// 模板的发射字节 hex + 垫栈/终态类型（.mjs 据此拼最小模块过
+/// wasm-validate——「仓内发射字节 = 合法 wasm」的外部证人，零孪生）。
+test "witness_dump_templates_b1b" {
+  let ctx = witness_ctx()
   let all_rows : Array[(@opcode.OpCode, Int32, String, Int32)] = []
-  for row in rows {
+  for row in witness_effect_rows() {
     all_rows.push(row)
   }
-  for row in a_rows {
+  for row in witness_a_rows() {
     all_rows.push(row)
   }
   for row in all_rows {

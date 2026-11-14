@@ -702,7 +702,10 @@ export async function runRepo(opts: CliOptions, vitroRoot: string): Promise<numb
         paths.push(tmp);
       }
       try {
-        const res = await serveBatchKeys(repoAbs, keys, paths);
+        // 剥壳重试与主批同源：serve 须在 Vitro 仓根跑（moon run 解析 moonbit/cmd/serve）。
+        // Go 版首参是弃用死参（exec.Command 不设 Dir），迁移版激活 cwd 语义后沿传
+        // repoAbs 会令剥壳批全灭（fork 仓根无 moon.mod）——J9 红证：25 候选 0 回填。
+        const res = await serveBatchKeys(vitroRoot, keys, paths);
         for (const r of results) {
           const diags = res.get(r.path);
           if (diags === undefined) continue;

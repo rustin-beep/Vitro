@@ -1007,6 +1007,36 @@
   五臂 golden 重算 1 条（语料扩段，digest 受控变化）；裸 1188/1188 +
   native 1237/1237。
 
+### feat(scripts+ci): vitro-green 棘轮分支三臂对拍闸 + ci-summary 三面机判化（PR #513，2026-11-14）
+
+- **green_probe 新闸**（`scripts/green_probe/main.mts`，四件套齐）：外部 C
+  语料棘轮防线——fork `rustin-beep/C@vitro-green` 分支（166 全绿精选集 +
+  2 本地 .h，GPL 样本永不进仓，**分支内容即断言锚**：零白名单零签名文件）
+  × 三臂（js/native/wasm 统一入口 `scripts/bin/vitro`）compile 零 error +
+  臂间诊断签名一致双断言；J9 红证 = 首轮 3 份 E1021（建支漏拷本地 .h）真红
+  EXIT=1。配套 fork 三分支：vitro-green@0e0d691（锚）/ vitro-probe-fix2@
+  c428e73（43 文件 C 侧自身问题修复探针态：缺 include×24 + LeetCode 平台
+  struct 注入×10 + 双解法删重×6 + K&R×3 + 原型×3 + UCRT 宏×2；complex
+  双件 UCRT ABI 死局不修）/ baseline@462074f 未动。审阅处置批连坐：stderr
+  尾部入 detail（判因）+ MIN_FILES=166 棘轮下限 + rc/ok 口径补强 + 超时
+  taskkill /T 杀树 + `!TIMEOUT!` 系签名可读化 + CI clone 重试×3 +
+  timeout-minutes 15。
+- **ci_checklist ⑤ 新判据**（PR #513 审阅 P1-1：**「闸的闸面漏登记」第三次
+  同形复发后机判化**——green_probe 漏 ci-summary needs，红/被 skip 时汇总
+  仍绿，防遮蔽失效）：gate job 集 ⊆ needs + env 面 == needs 面 + pairs 数
+  == needs 数三面机判（schedule-only job 自动豁免、mutation-gate 观察期
+  显式豁免表）；单测双向证红 5 锚 + 真仓红证（`漏 needs: green_probe`）
+  → 三面补入转绿（J9 闭环）。前科：10-30 backend-triage、10-31
+  release-preflight。
+- **fix(scripts)**: `realcode_diff/main.mts` 剥壳重试 cwd 迁移回归——Go 版
+  `serveBatchKeys` 首参是弃用死参（`exec.Command` 不设 Dir），.mts 迁移激活
+  cwd 语义后沿传 repoAbs（fork 仓根无 moon.mod）致剥壳批全灭；红证 = 25
+  候选 0 回填，修后 4/4 回填。审阅 P2-1 处置：`serveBatch/serveBatchKeys/
+  serveBatchFiles/runCompare` 首参改名 `serveCwd`（命名如实——根因面）+
+  真跑锚单测（cwd 空目录必 reject，fail loud 语义钉进单测）。
+- **文档连坐**：`脚本总清单与必跑防线.md` §1.1 CI job 名单（15→16）+ §2
+  脚本清单登记 green_probe。
+
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 下游断供；版本号口径见 docs/current/08-发布档案/0.9.1.md）
 
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）

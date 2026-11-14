@@ -235,8 +235,88 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
     }
   }
 
-  const summary = `ci_checklist: PASS——驱动 ${drivers.length}（.go ${drivers.length - mtsDrivers.length} / .mts ${mtsDrivers.length}）/ 活行 ${liveSet.size} / 例外 ${exceptions.length} 三向对账 + moon test 目标面（${targetUnion.size} 目标齐）一致`;
+  // ⑤ ci-summary 三面对账（2026-11-14 PR #513 审阅 P1-1：第三次同形复发后机判化——
+  // 「闸的闸面漏登记」形态：新 gate job 自己的 check 会红，但汇总判据看不见它，
+  // 红或被 skip 时 ci-summary 仍判绿 ⇒ 防遮蔽机制对新闸失效。前科：10-30
+  // backend-triage、10-31 release-preflight（ci.yml ci-summary 段注记）、
+  // 11-14 green_probe。判据三面：
+  //   A. gate job 集 ⊆ needs（漏登记即红）；
+  //   B. env 的 needs.<job>.result 集 == needs 集（三面互证——2026-10-30
+  //      「needs 11 而循环 10」失衡形态）；
+  //   C. pairs 条数 == needs 数。
+  // 豁免面：schedule-only job（if: github.event_name == 'schedule'——PR/push
+  // 面不触发，needs 它们会恒 skipped 假红）自动免；mutation-gate 观察期
+  // 显式豁免（ci.yml ci-summary 段注记），复活时摘除。
+  const SUMMARY_EXEMPT = new Map<string, string>([
+    ["mutation-gate", "观察期不入 needs（ci.yml ci-summary 段注记 2026-10-31）"],
+  ]);
+  const summaryResult = checkCiSummary(ciBytes, SUMMARY_EXEMPT);
+  if (summaryResult !== null) {
+    lines.push(summaryResult);
+    failed = true;
+  }
+
+  const summary = `ci_checklist: PASS——驱动 ${drivers.length}（.go ${drivers.length - mtsDrivers.length} / .mts ${mtsDrivers.length}）/ 活行 ${liveSet.size} / 例外 ${exceptions.length} 三向对账 + moon test 目标面（${targetUnion.size} 目标齐）+ ci-summary 三面一致`;
   return { failed, lines, summary };
+}
+
+/** ⑤ 单独成函数供单测：返回 null = 一致；非 null = 红描述（可能多行拼一串）。 */
+export function checkCiSummary(
+  ciBytes: string,
+  exempt: ReadonlyMap<string, string>,
+): string | null {
+  // job 集：两空格缩进的 `id:` 行——只从 `^jobs:` 之后扫（`on:` 触发器块
+  // 同为两空格键形态，push/pull_request 等会被误判成 job）
+  const jobsAnchor = ciBytes.search(/^jobs:/m);
+  if (jobsAnchor < 0) return null; // 无 jobs 段的最小 fixture：本判据不适用
+  const jobArea = ciBytes.slice(jobsAnchor);
+  const jobRe = /^  ([a-z0-9][a-z0-9_-]*):$/gm;
+  const jobs = new Map<string, string>(); // id → 段文本（供 schedule 检测）
+  for (const m of jobArea.matchAll(jobRe)) {
+    const id = m[1] as string;
+    const start = (m.index ?? 0) + m[0].length;
+    const next = jobArea.slice(start).search(/^  [a-z0-9][a-z0-9_-]*:$/m);
+    jobs.set(id, next < 0 ? jobArea.slice(start) : jobArea.slice(start, start + next));
+  }
+  const summaryBody = jobs.get("ci-summary");
+  if (summaryBody === undefined) return null; // 无 ci-summary 的最小 fixture：本判据不适用
+  // schedule-only 自动豁免 + 显式豁免表
+  const gateJobs: string[] = [];
+  for (const [id, body] of jobs) {
+    if (id === "ci-summary") continue;
+    if (/if:\s*github\.event_name\s*==\s*'schedule'/.test(body)) continue;
+    if (exempt.has(id)) continue;
+    gateJobs.push(id);
+  }
+  // A. needs
+  const needsM = summaryBody.match(/needs:\s*\[([^\]]*)\]/);
+  if (needsM === null) return "ci-summary 三面: needs 行缺失或非数组形态";
+  const needsSet = new Set(
+    (needsM[1] ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s !== ""),
+  );
+  const missing = gateJobs.filter((j) => !needsSet.has(j));
+  // B. env 面
+  const envSet = new Set<string>();
+  for (const m of summaryBody.matchAll(/\$\{\{\s*needs\.([a-z0-9_-]+)\.result\s*\}\}/g)) {
+    envSet.add(m[1] as string);
+  }
+  // C. pairs 面（"name:$VAR" 形态计数）
+  const pairsCount = [...summaryBody.matchAll(/"[a-z0-9_-]+:\$\{?[A-Z_0-9]+\}?"/g)].length;
+  const bad: string[] = [];
+  if (missing.length > 0) {
+    bad.push(`漏 needs: ${missing.join(", ")}（gate job 未入 ci-summary needs——红/被 skip 时汇总仍绿，防遮蔽失效）`);
+  }
+  const envOnly = [...envSet].filter((j) => !needsSet.has(j));
+  if (envOnly.length > 0) bad.push(`env 多出: ${envOnly.join(", ")}`);
+  const needsOnly = [...needsSet].filter((j) => !envSet.has(j));
+  if (needsOnly.length > 0) bad.push(`env 缺失: ${needsOnly.join(", ")}（needs 有而 env 无——三面失衡）`);
+  if (pairsCount !== needsSet.size) {
+    bad.push(`pairs ${pairsCount} != needs ${needsSet.size}（循环面与 needs 失衡——2026-10-30 同形）`);
+  }
+  return bad.length > 0 ? `ci-summary 三面: ${bad.join("；")}` : null;
 }
 
 export function main(argv: string[]): number {

@@ -54,3 +54,28 @@ test("resolveGcc：--gcc 显式优先；显式缺失不回退；PATH 优先于 f
   });
   assert.deepEqual(resolveGcc("", null, GCC_FALLBACK, () => false), { gcc: "", source: "none" });
 });
+
+// PR #513 审阅 P2-1 真跑锚：serveBatchKeys 首参是**活的子进程 cwd**（Go 版为弃用
+// 死参，.mts 迁移激活语义后 main.mts:705 曾沿传 repoAbs 致剥壳批全灭——修复零锚
+// 是复发温床）。锚定语义：cwd 无 moon module 时必须 fail loud reject，禁止任何
+// 「静默换目录成功」的退化形态回潮。
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { serveBatchKeys } from "./probes.mts";
+
+test("serveBatchKeys：cwd 无 module（空目录）→ reject（首参=cwd 语义锚）", async () => {
+  const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "vitro-servecwd-"));
+  const tmpC = path.join(emptyDir, "a.c");
+  fs.writeFileSync(tmpC, "int main(void){return 0;}\n");
+  await assert.rejects(
+    serveBatchKeys(emptyDir, ["k"], [tmpC]),
+    (e: unknown) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes("serve 响应不足")) {
+        console.error("reject 形态漂移（判据须随实况校准）:", msg);
+      }
+      return true; // 只要 fail-loud reject 即锚成立；文案形态打印供人工核对
+    },
+  );
+});

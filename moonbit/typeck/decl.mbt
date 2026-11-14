@@ -90,6 +90,11 @@ fn TypeChecker::visit_func_decl(
   self.func_labels.clear()
   self.exit_scope()
   self.current_func_params.clear()
+  // #517 P3-14（C7）：未初始化局部标量读取的静态警告（保守数据流——
+  // W3099；挂点与 W3084 同点：函数体定型尾段）
+  if node.body is Some(body_stmt2) {
+    self.check_uninitialized_reads(node.name, body_stmt2)
+  }
   // #214（2026-10-22）：非 void 函数的未返回路径教学警告——所有出口
   // 路径缺 return 时返回值未定义（C 标准不保证任何值，得 0 只是巧合）；
   // clang -Wreturn-type 同点。always_returns 判据对齐 clang 矩阵
@@ -775,6 +780,12 @@ fn TypeChecker::process_var_decl(
       None => None
     }
   } else {
+    // #517 P3-13（C2）：局部（非 static）声明的常量初始化器静态探测——
+    // W3098（全局/静态形态走 E3075 拒编译；局部运行期求值，静态预警）
+    match new_init {
+      Some(ie) => self.warn_const_eval_failure(ie)
+      None => ()
+    }
     new_init
   }
   self.declare_var(

@@ -154,6 +154,8 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| #vars{flex:1;overflow:auto;padding:6px 10px}
   #| table{border-collapse:collapse;width:100%;font:12.5px ui-monospace,monospace}
   #| td{padding:3px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  #| #vars td:first-child{white-space:nowrap}
+  #| #vars td.ver{white-space:nowrap;font-size:11px}
   #| td.vv{color:var(--accent);word-break:break-all}
   #| td.changed{color:var(--changed)}
   #| #stack{padding:6px 10px;font:12.5px ui-monospace,monospace}

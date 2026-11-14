@@ -138,6 +138,38 @@
   **1539/1539**；STEP-INV **1035 语料 / 2,087,483 帧** RED 0 ZOMBIE 0；
   W4 **1081 cases** AGREE identical；rundiff **919**；vm_diff **865/865**；
   驱动 .mts 口径 **67→70**（批 3 时点 64→69 + #513 green_probe +1）。
+### fix(diag+typeck+vm+time_travel+cmd): #517 缺陷猎杀批余项——P3×4 全修（2026-11-14）
+
+- **诊断码表 +3**（E3097/W3098/W3099——全补教学卡闭合，catalog_closure
+  双向绿；臂基线 126→129、卡基线 122→125，gen_diag/README.mbt.md/
+  content_data 基线锚连坐）。
+- **P3-13 常量除零静态缺口（C2）**：局部声明的常量初始化器静态探测
+  （`warn_const_eval_failure`——纯常量树却 const_eval 拒折〔除零/移位量
+  越界/INT_MIN÷-1〕报 **W3098**；全局/静态同形态既有 E3075 拒编译不动，
+  局部是运行期求值域→W 级预警「运行到此必 trap」，clang
+  -Wdivision-by-zero 同口径）。增益：探测路径顺带让局部常量溢出报
+  W3090（旧零警告）。真机：`int x=1/0;` 零诊断→W3098。
+- **P3-14 未初始化读取静态缺位（C7）**：保守数据流 pass
+  （`typeck/uninit_read.mbt`——clang -Wuninitialized 子集，**漏报方向
+  安全零误报优先**：只查标量局部；赋值/取址〔&u 经 scanf/传参〕视为
+  初始化；if-else 双分支都赋值才传播；单分支/循环体内赋值不传播；全局
+  /参数不查；每名一次）。锚：gateway 黑盒 6 件（stash 挂点+diag 证红
+  3 红→186 绿）；连坐 2 个既有锚的脚手架无意未初始化形态（补 init——
+  测试语义不变）。真机：`int u; int v=u+1; int w; …` 零诊断→W3099×2。
+- **P3-15 溢出 trap 无类别/E 码前缀（C4）**：6 处有符号溢出 trap
+  （Add/Sub/Mul/Div MIN÷-1/Mod MIN%-1/Neg -INT_MIN）升格
+  `[overflow] 整数X溢出 (E3097)：…[cause]…[fix]…` 家族形态（对齐
+  E3086 `[deny]`/E3088 `[divide-zero]`——修前裸文本单句）；trap_code
+  锚两处连坐。真机：加法溢出 trapped 文案全段形态。
+- **P3-16 变量面板挤行 + char 标量不格式化**：① `format_value` 补
+  TK_Char 臂（可打印 `'c'` 形态/低 8 位符号解释——与数组快照元素同
+  口径，修前标量恒数值 `char 65`）；② 产物 CSS `#vars` 的 name/类型列
+  nowrap（挤行根因=值列 break-all 压缩邻列）。真机：`c char 'A'`。
+- 验收：moon test **1472**（js 全量）/native+wasm-gc 受影响七包
+  646+646（三臂）；mcp_smoke 18/18；facts `--run --strict` 漂移 0
+  （moonbit_check_warnings 98 持平）；gen_diag/-check、catalog_closure
+  双向闭合绿。
+
 ### fix(vm+time_travel+teaching+mcp+cmd): 缺陷猎杀批 #517——P1×4 修 + P2×6 修/登记（2026-11-14）
 
 - **P1-1 无限递归阻塞 server 主循环 232s（C3）双修复**：① collector

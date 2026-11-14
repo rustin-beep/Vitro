@@ -374,6 +374,9 @@ fn find_var_name_in_frame(
 ///|
 /// 变量值文本化（Rust format_value 照搬）：Double/Float 按位还原后定点
 /// 15/7 位并剪尾零（`1.500` → `1.5`、`2.0` → `2`）；其余整值直出。
+/// #517 P3-16（2026-11-14）：TK_Char 臂与 get_array_snapshots 的 char
+/// 元素同口径（可打印 `'c'` 形态 / 裸数值）——修前标量恒数值（char 65
+/// 不见 'A'，与数组元素 `'A'` 两口径分裂）。
 fn format_value(ty : @ast.Type, value : Int64) -> String {
   match ty.kind() {
     TK_Double => {
@@ -384,6 +387,16 @@ fn format_value(ty : @ast.Type, value : Int64) -> String {
       let bits = value.reinterpret_as_uint64() & 0xFFFFFFFFUL
       let f = Float::reinterpret_from_uint(bits.to_uint())
       trim_trailing_zeros(@host.format_fixed(f.to_double(), 7))
+    }
+    TK_Char => {
+      // 低 8 位符号解释（char c=200 读回 -56——与 exec TruncByte 同口径）
+      let b = (value & 0xFFL).to_int()
+      let b8 = if b >= 128 { b - 256 } else { b }
+      if b8 >= 32 && b8 <= 126 {
+        "'\{b8.unsafe_to_char()}'"
+      } else {
+        "\{b8}"
+      }
     }
     _ => "\{value}"
   }

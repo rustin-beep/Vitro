@@ -241,3 +241,6 @@ demo/design/
 
 # agent 个人工具箱（agent 会话杂活脚本/探针模板，不属于仓库资产；性质约定见 toolbox/README.md）
 /toolbox/
+
+# CLI/serve 运行时输出目录（vitro step/run 的演示产物与浏览器 profile 残留——会话级产物不入库）
+/vitro-out/

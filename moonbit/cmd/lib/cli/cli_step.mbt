@@ -17,6 +17,13 @@ pub fn step(
   ensure_include_reader(channel)
   let mut file = ""
   let mut json_mode = false
+  // --wasm-rehost（REHOST 批 3）：step 态装载走 wasm 载体往返——与 run
+  // 态 `--wasm-rehost`（批 2b）**独立并行**的旗标（设计单 §3.2 批 3 回退
+  // 点：step 态 flag 可单独关）。flag 只随 step.begin 帧下发（预跑 run 帧
+  // 不带——run 通道旗标独立；预跑副作用仅 runtime_argv 落定，其执行态
+  // 被 step.begin 的 output.clear + setup 重建整体覆盖，装载形态不影响
+  // step 帧流）；缺省 false 行为零扰动
+  let mut wasm_rehost = false
   // 默认 100_000（2026-10-04 对照复核拍板值，历史蓝本 unified 同值〔tag
   // rust-oracle-freeze〕；初版硬编码 2_000_000 系实现自拍未登记形态差）
   let mut max_steps = 100000
@@ -24,6 +31,8 @@ pub fn step(
   while i < args.length() {
     if args[i] == "--json" {
       json_mode = true
+    } else if args[i] == "--wasm-rehost" {
+      wasm_rehost = true
     } else if args[i] == "--summary" {
       json_mode = false // 显式摘要模式（默认）
     } else if args[i] == "--max-steps" {
@@ -33,7 +42,9 @@ pub fn step(
       // 文案分叉）。rc=4 不变，文案对齐 run。
       if i + 1 >= args.length() {
         say("用法错: --max-steps 尾置缺值（须跟正整数）")
-        say("用法: step <file.c> [--max-steps N] [--json|--summary]")
+        say(
+          "用法: step <file.c> [--max-steps N] [--wasm-rehost] [--json|--summary]",
+        )
         return 4
       }
       i += 1
@@ -66,19 +77,25 @@ pub fn step(
       // 病 87 残留⑦（2026-10-13，方案 A）：未知旗标 fail loud——
       // run 已严格（DX P1）step 漏，旧 --xyz 被静默吞照常出帧
       say("vitro step: 未知旗标：\{args[i]}")
-      say("用法: step <file.c> [--max-steps N] [--json|--summary]")
+      say(
+        "用法: step <file.c> [--max-steps N] [--wasm-rehost] [--json|--summary]",
+      )
       return 4
     } else if file != "" {
       say(
         "vitro step: 多余位置参数 '\{args[i]}'（step 是单文件命令）",
       )
-      say("用法: step <file.c> [--max-steps N] [--json|--summary]")
+      say(
+        "用法: step <file.c> [--max-steps N] [--wasm-rehost] [--json|--summary]",
+      )
       return 4
     }
     i += 1
   }
   if file == "" {
-    say("用法: step <file.c> [--max-steps N] [--json|--summary]")
+    say(
+      "用法: step <file.c> [--max-steps N] [--wasm-rehost] [--json|--summary]",
+    )
     return 4
   }
   // `-` = 源码走 stdin（B2 全命令品类——同 compile 修正）
@@ -152,7 +169,25 @@ pub fn step(
     }
     return 1
   }
-  ignore(inv("step.begin", "{}"))
+  // REHOST 批 3：装载 flag 随 step.begin 帧下发（帧参数域——与 run 帧的
+  // 批 2b 形态同款）；返回帧携带 wasm_rehost 状态串（flag on 才非空）——
+  // stderr 标记行 `// WASM-REHOST-STEP <status>` 消费（与 run 通道的
+  // `// WASM-REHOST` 区分通道；不进 stdout/digest 消费面）。装载回退
+  // （fallback 形态）不打断 step 流——fail loud 归 flag on 形态的防线
+  // （STEP-INV --rehost 轮断言 ok 形态，与批 2b rundiff「fallback 即红」
+  // 同款纪律）
+  let rehost_param = if wasm_rehost { "{\"wasm_rehost\":true}" } else { "{}" }
+  let begin_resp = inv("step.begin", rehost_param)
+  if wasm_rehost {
+    let begin_tree = json_parse_opt(begin_resp)
+    let st = match begin_tree {
+      Some(f) => jstr(jfield(jfield(f, "result"), "wasm_rehost"))
+      None => ""
+    }
+    if !st.is_empty() {
+      say("// WASM-REHOST-STEP \{st}")
+    }
+  }
   let mut frames = 0
   let mut last : String = ""
   let mut finished = false

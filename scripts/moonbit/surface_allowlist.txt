@@ -104,3 +104,19 @@ vitro/engine/wasmenc L_V
 # REHOST 批 1c（2026-11-13）：bytecode 投影层 wasm_triples（code→组三元组
 # 直投影——build_wasm_product 内部消费；跨包消费方批 2 装载协议接线时补边）
 vitro/engine/bytecode wasm_triples
+
+# REHOST 批 4a（2026-11-14）：dispatch-loop 组装器件——4b 宿主胶水/对拍闸
+# 接线时 assemble_dispatch_module 等获得跨包消费方（bytecode/cmd 层投影），
+# 届时出白名单进边表；块划分/栈空闸为组装器内聚件（wbtest 同包锁）。
+vitro/engine/wasmenc G_DEPTH
+vitro/engine/wasmenc assemble_dispatch_body
+vitro/engine/wasmenc control_pop_words
+vitro/engine/wasmenc partition_blocks
+
+# REHOST 批 4b-1（2026-11-14）：投影层入口（4b 胶水壳接线时出表）+ 溢出池内聚件
+vitro/engine/vm build_dispatch_input
+vitro/engine/vm build_dispatch_product
+vitro/engine/wasmenc L_SPILL_BASE
+vitro/engine/wasmenc SPILL_SLOTS
+vitro/engine/wasmenc blocks_exit_heights
+vitro/engine/wasmenc blocks_underflow_with_entry

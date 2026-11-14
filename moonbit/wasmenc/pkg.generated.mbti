@@ -8,6 +8,8 @@ import {
 }
 
 // Values
+pub const G_DEPTH : Int32 = 6
+
 pub const G_FB : Int32 = 1
 
 pub const G_PC : Int32 = 0
@@ -24,6 +26,8 @@ pub const L_A : Int32 = 1
 
 pub const L_N : Int32 = 2
 
+pub const L_SPILL_BASE : Int32 = 7
+
 pub const L_T64 : Int32 = 3
 
 pub const L_TF : Int32 = 4
@@ -31,6 +35,8 @@ pub const L_TF : Int32 = 4
 pub const L_TF32 : Int32 = 5
 
 pub const L_V : Int32 = 0
+
+pub const SPILL_SLOTS : Int32 = 8
 
 pub const WT_F32 : Byte = 0x7D
 
@@ -42,9 +48,19 @@ pub const WT_I64 : Byte = 0x7E
 
 pub const WT_VOID : Byte = 0x40
 
+pub fn assemble_dispatch_body(DispatchInput) -> Result[Array[WInstr], DispatchError]
+
+pub fn assemble_dispatch_module(DispatchInput) -> Result[Array[Byte], DispatchError]
+
 pub fn assemble_witness_module(GroupTable, Array[Byte]) -> Result[Array[Byte], AssembleError]
 
+pub fn blocks_exit_heights(Array[@opcode.OpCode], Array[Int32], BlockTable, (Int32) -> Int32, EmitCtx) -> Result[Array[Int32], BlocksError]
+
+pub fn blocks_underflow_with_entry(Array[@opcode.OpCode], Array[Int32], BlockTable, Array[Int32], (Int32) -> Int32, EmitCtx) -> Result[Unit, BlocksError]
+
 pub fn build_group_table(Array[(@opcode.OpCode, Int32, @source.SourceLoc)], EmitCtx) -> Result[(GroupTable, Array[Byte]), EmitError]
+
+pub fn control_pop_words(@opcode.OpCode) -> Int32
 
 pub fn emit_group(@opcode.OpCode, Int32, EmitCtx) -> Result[Array[WInstr], EmitError]
 
@@ -57,6 +73,8 @@ pub fn fold_bytes(Array[Byte], EmitCtx) -> Result[Array[FoldedGroup], FoldError]
 pub fn fold_instrs(Array[WInstr], EmitCtx) -> Result[Array[FoldedGroup], FoldError]
 
 pub fn parse_first_code_body(Array[Byte]) -> Result[Array[WInstr], ModuleParseError]
+
+pub fn partition_blocks(Array[@opcode.OpCode], Array[Int32], Array[Int32], Int32) -> Result[BlockTable, BlocksError]
 
 pub fn sleb_decode(Array[Byte], Int32) -> Result[(Int64, Int32), LebError]
 
@@ -92,6 +110,30 @@ pub(all) enum AssembleError {
 }
 pub fn AssembleError::to_repr(Self) -> @debug.Repr
 
+pub(all) struct BlockTable {
+  starts : Array[Int32]
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) enum BlocksError {
+  BadTarget(Int32, Int32)
+  ExitStackNonEmpty(Int32, Int32, Int32)
+  CallPtrUnsupported(Int32)
+  Effect(EffectError)
+  Emit(String)
+}
+pub fn BlocksError::equal(Self, Self) -> Bool
+pub fn BlocksError::not_equal(Self, Self) -> Bool
+pub fn BlocksError::to_repr(Self) -> @debug.Repr
+
+pub(all) struct CallSiteMeta {
+  target_ip : Int32
+  arg_words : Int32
+  frame_bytes : Int32
+  param_words : Array[Int32]
+  is_void : Bool
+}
+
 #derive(Eq, @debug.Debug)
 pub(all) enum CtxSlot {
   Argc
@@ -110,6 +152,30 @@ pub(all) enum DecodeError {
   Eof
 }
 pub fn DecodeError::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum DispatchError {
+  Blocks(BlocksError)
+  Emit(String)
+  Effect(EffectError)
+  BadReturnPoint(Int32, Int32)
+  NotSupportedHeight(Int32)
+}
+pub fn DispatchError::equal(Self, Self) -> Bool
+pub fn DispatchError::not_equal(Self, Self) -> Bool
+pub fn DispatchError::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DispatchInput {
+  ops : Array[@opcode.OpCode]
+  operands : Array[Int32]
+  func_entry_ips : Array[Int32]
+  entry_ip : Int32
+  call_sites : Map[Int32, CallSiteMeta]
+  stack_start : Int32
+  call_depth_limit : Int32
+  max_steps : Int32
+  ctx : EmitCtx
+}
 
 #derive(Eq, @debug.Debug)
 pub(all) enum EffectError {
@@ -302,9 +368,12 @@ pub(all) enum WInstr {
   WNop
   WBlock
   WLoop
+  WIf
+  WReturn
   WEnd
   WBr(Int32)
   WBrIf(Int32)
+  WBrTable(Array[Int32], Int32)
   WDrop
   WCall(Int32)
   WLocalGet(Int32)

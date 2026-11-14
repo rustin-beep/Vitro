@@ -1,5 +1,123 @@
 ## [Unreleased]
 
+### feat(wasmenc+vm): REHOST 批 4b-1——溢出池架构修正（libc 实锤）+ 投影层 DCE（2026-11-14）
+
+- **溢出池架构修正（libc 实锤驱动）**：jit PoC「块边界栈空」假设被
+  libc 真实字节码推翻——短路求值 `Dup+JumpIfZero` 落空后留值跨块
+  （`||` 形态 Call 返回值被块内消费同族）。修正：出口高度静态化
+  （`blocks_exit_heights` 增量口径 + 联立下溢判定
+  `blocks_underflow_with_entry`）+ 块图前驱会合（**不动点迭代**——
+  函数头 h_in=0 预置/Call 目标边/返回点边 = h_out + 非 void 的 G_RV
+  load 项/有效出口高含返回点 load）+ **wasm locals 溢出池**（L_S×8
+  i32 槽——跨块值恒 i32 契约由 JumpIf 模板 L_A i32 槽佐证；块尾
+  spill/块首 fill；超限 NotSupportedHeight 禁译）。
+- **投影层 `vm/dispatch_setup.mbt`**：全程序 → `DispatchInput`——
+  **DCE**（libc 只拼被引用函数闭包：全拼 3485 组死代码既撑大产物又
+  让个别函数形态缺陷全程序传染——剪后局部化到实际调用者）+ ip 重
+  映射表统一重写 Jump/Call 目标 + **Call operand 重写**（func_idx →
+  目标 ip——VM do_call 语义与载体 ip 域的桥）+ 变参禁译 + data blob
+  （稀疏写集稠密投影、空洞零铺——宿主写 memory 与 VM 装载期
+  set_globals_*/write_cstring 同语义）。
+- 锚 14 件（块划分 6 + 组装器 4 + 投影层 4，J9 五红：越界/下溢/
+  CallPtr/变参/调用点缺失）；wasmenc 49/49、vm 125/125、**全仓
+  1476/1476**；surface 边表 +11（vm→wasmenc 投影链）/白名单 +6/-2
+  （assemble_dispatch_module 出表进边）。
+
+### feat(wasmenc): REHOST 批 4a——dispatch-loop 语义模块组装器（V8/wasmtime 可执行载体，2026-11-14）
+
+- **指令件三新增**：`WBrTable`（0x0E 标签向量分发）+ `WIf`/`WReturn`
+  （骨架 trap/出口件）——编码 + 效应臂连坐；**解码器不跟**（dispatch
+  模块字节是执行产物、非折叠管线对象——winstr_decode 遇之 fail loud
+  即路径边界，垫收证人模块不含此类指令）。
+- **块划分器 `blocks.mbt`**：leader 规则（入口/函数头/跳转目标/控制流
+  后继）+ **块出口栈空闸**（jit_survey PoC 对 15 产物的人工假设升格为
+  装载期机检——出口净高非零 fail loud 进禁译面）；CallPtr 首版禁译
+  （运行期 func meta 查表的参数搬运不可静态展开）。
+- **组装器 `dispatchloop.mbt`**：PoC `bodyDispatch`（实测 299×）通用化
+  ——loop + n 层 block + `br_table[ip→块索引]`（标签向量逐 ip 填、
+  运行期 pc 天然支持；default=unreachable）+ 出口哨兵块（main Ret →
+  return G_RV）+ 块首批量步锚（组粒度恒等）+ 块尾预算检查（overshoot
+  ≤1 块——预算 trap 语料 steps 对拍面 4b 登记豁免）。**两条发射路径
+  分离**（拍板）：往返路径字节（批 2/3 已锁）不动；A/B 类组字节同源
+  复用、C 类组展开完整执行协议。
+- **软件调用栈（方案 B'）**：12B 帧头内嵌帧底〔return_ip|orig_top|
+  caller_fb〕——Ret 静态可定位；代价 = 局部地址较 VM 差 12×深度
+  （`&x`/%p/VLA 语料进已知分叉豁免面，R4 残余风险同族——结果级三锚
+  不含地址）。**返回值走 G_RV 通道**（Ret 存、返回点块首 load 回
+  wasm 栈——块边界栈空由该约定保持；void 不 load）。深度上限教学
+  trap + NULL 下界双保险（堆碰撞检查首版不做，4b 对拍实测定）。
+- 锚 9 件（块划分 5 + 组装器 4，含 J9 四红：越界/栈非空/CallPtr/
+  调用点元数据缺失）；`assemble_dispatch_body` 拆 pub（WInstr 层结构
+  锚——骨架/深度/步锚/G_RV 通道指令级断言；实跑验证归 4b）。
+  wasmenc 48/48、全仓 1471/1471、surface 白名单 +6（4b 接线时出表）。
+
+### docs(设计单): §3.2 批次序修订——V8/wasmtime 对拍提前为批 4、退役挪链尾批 6 三重前置（2026-11-14 用户拍板）
+
+- **动机**：批 4' 不可逆退役（code 字段停发）的决策依据原全是同源自证证人（往返恒等/
+  wasm-validate/wat/softstack——批 2b 审阅 P2-1 实锤模板语义错对此四面隐形），真 runtime
+  执行级独立证人（V8/wasmtime 执行用户载体 vs 引擎）原排在退役之后的批 5——时序倒置。
+- **修订**：①批 4'（新插）= dispatch-loop 语义模块 + node 宿主胶水（host call 回接同进程
+  引擎——host 语义单源）+ 全语料结果级对拍闸（V8+wasmtime 双证人；零禁译函数子集首版，
+  覆盖率入 facts 非静默跳过）；②批 5' 只剩产品面（快路径-确认协议/UI/上报），维持产品
+  触发；③批 6'（退役）前置从一条扩三重（批 2/3 一周期零漂移 + 批 4' 对拍一周期绿 +
+  批 5' 实战分歧归零/未启动时批 4' 连续两周期绿替代）；④防线面与产品面分轨——对拍闸
+  随批 2/3 合入即触发，不等产品需求（§9 豁免条款）。连坐：§6 依赖链/§7.2 工作量
+  （合计 ~7.6–10.2k 行）/§7.3 R5/O2/O6。
+
+### fix(scripts): vm_diff native 臂新鲜度软警告升级 ensureFresh 复核构建硬门禁（REHOST 批 3 连坐，2026-11-14）
+
+- **S05-C2 降软的代价实锤**：本地 release run.exe 陈旧（exe 日期早于 #511 的
+  lexer 改动——依赖面源码变更不触发本地重建），warnStaleExe 软警告打了 stderr
+  第 2 行但**不阻断**，vm_diff 产出 DIFF=2 假红（三提交 worktree 归因才闭环）。
+  native 臂升级 `ensureFresh`（freshness.mts 单源——clang_direct/rundiff 等
+  九处现役同源）：stale → 自动复核构建（`MOON_CC=clang moon build --release
+  --target native cmd/run`）→ **mtime 只作触发、内容 hash 由 moon 增量把关**
+  （checkout 刷源 mtime 的 S05-C2 假阳性顾虑由此消化——touch 实测复核秒过、
+  判定照常 SAME）；真陈旧自动重建，假红根除；构建失败红（陈旧产物假红/假绿
+  由此封死）。wasm 臂维持软警告（产物链含 wasmopt 后置覆盖，自动重建会以
+  裸产物覆盖优化产物——升级待 freshness 支持构建后置钩子另批）。
+  J9 场景实测：touch 源 →「旧于源——跑构建复核」触发 → moon 增量 up-to-date
+  秒过 → 判定 SAME。
+
+### feat(vm+gateway+cli+scripts): REHOST 批 3——step 态切换 + time_travel 采集适配 + ci_checklist 驱动集盲区根治（2026-11-14）
+
+- **step 态独立 flag 接线（设计单 §3.2 批 3 回退点：与批 2 run 态 flag
+  并行可单独关）**：`step.begin` 帧参数 `wasm_rehost`（bool 缺省 false，
+  与 run 帧同形态）→ `setup_from_output(wasm_rehost~)` 装载走 wasm 载体
+  往返（`rehost_round_trip` 单源——折叠重建产物驱动取指，**单步=组**：
+  一组恰一条 Instruction，`code[gip]` 取指即组粒度）；返回帧携带
+  `wasm_rehost` 状态串（非空才带——前缀只增不改，老消费者零感知）。
+  CLI `step --wasm-rehost` 旗标 + stderr 标记行 `// WASM-REHOST-STEP
+  <status>`（与 run 通道 `// WASM-REHOST` 区分；不进 digest 消费面）。
+- **VMSnapshot.ip → gip 换名不换义（设计单 §2.4）**：快照字段语义 =
+  组索引（组=装载原子执行单元；与 legacy 指令下标一一同构，值域/行为
+  零变化——`rehost_step_semantics_gip_breakpoint_b3` 锚锁 flag on/off
+  同位快照 gip 同值 + restore 回填执行态 ip 一致）；VM 执行态字段仍名
+  `ip`（批 4 收口统一）。断点判定经组表侧车 loc/operand 同构（StepEvent
+  语义原样——铁律 2：单步/断点/VisEvent 职权在引擎侧零迁移）。
+- **step_invariant --rehost 透传 + 装载断言**：`--rehost` 旗标透传
+  `vitro step --wasm-rehost`；`rehostMarkerViolation` 纯函数判定（终态
+  rc 0/2/3 须含 `// WASM-REHOST-STEP ok`——**fallback/缺失即红**，批 2b
+  rundiff「fallback 即红」同款纪律；rc=1 编译失败早退不在断言面）。
+- **ci_checklist 驱动集盲区根治（#512 彻查连坐）**：原判据「main.mts 且
+  shebang 首行」——无 shebang 的 main.mts **静默逃逸驱动集**，「存在即
+  接入」对账零检出力（前科 gen_course〔S08-6 补个案未根治〕；#505/#512
+  的 wasmenc_emitgate/wasmenc_rundiff 重蹈 + 存量 clang_direct/
+  demo_smoke/docs_preview/mcp_smoke 同盲区——六件活行碰巧在场故无行为
+  缺口，纯防线盲）。判据改 **main.mts 文件名即驱动**（shebang 只是可执行
+  直跑标记非身份判据）；J9 双锚先红后绿（无 shebang 无活行必红 / 有活行
+  不误伤）；emitgate/rundiff 补 shebang 形态归一。驱动 .mts 64→69。
+- **验收（全部亲跑）**：裸 moon test 1462/1462；STEP-INV 全量 flag on
+  （--rehost --audit-known）1033 语料 / **2,084,521 帧 RED 0 / ZOMBIE 0 /
+  装载断言零红**（INV3a step_index 严格 +1 最强锚过）；W4 wasmtime_arm
+  deep-nomem 1079 cases / 23,734 帧 AGREE 全 identical 零 DIFF；rundiff
+  917 双跑一致 / 0 红；vm_diff golden 863/863 SAME 零漂移（首轮 DIFF=2
+  经三提交 worktree 归因 = **陈旧 release 产物假红**〔exe 日期早于 #511
+  的 lexer 改动，新鲜度门禁只看 cmd/run 包内源不追依赖面〕——重建后全绿，
+  #511/批 2/批 3 三方无嫌疑）；flag on/off 帧流逐位一致（端到端 + gateway
+  wbtest 帧流同构锚）；native 全量冷构建（MOONBIT_NEW_NATIVE=0
+  MOON_CC=clang）数字见 facts。
+
 ### fix(wasmenc+bytecode+scripts): PR #512 审阅处置——P1×1 + P2×1 + P3×6（2026-11-13）
 
 - **P1-1 证人模块导出 main 指向 import（E0）**：`ModuleBuilder::add_func`

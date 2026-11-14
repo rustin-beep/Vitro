@@ -76,7 +76,7 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
     // workflows 目录缺失不阻断（CI 里必有）
   }
 
-  // ── 驱动集：scripts/** 含 package main 的 .go + 带 shebang 的 main.mts ──
+  // ── 驱动集：scripts/** 含 package main 的 .go + main.mts（文件名即驱动）──
   const driverSet = new Set<string>();
   const drivers: string[] = [];
   const mtsDrivers: string[] = [];
@@ -90,21 +90,17 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
         continue;
       }
       if (ent.name.endsWith("_test.go")) continue;
-      // 第二扫描面：main.mts + node shebang（排除 .test.mts 与被 import 的库）
+      // 第二扫描面：main.mts 文件名即驱动（2026-11-14 #512 彻查修复：原判据
+      // 额外要求 shebang 首行——无 shebang 的 main.mts 静默逃逸驱动集，「存在
+      // 即接入」对账对它们零检出力〔前科：gen_course S08-6 补个案未根治判据；
+      // wasmenc_emitgate/wasmenc_rundiff #505/#512 重蹈——REHOST 批 3 连坐根治〕
+      // ——shebang 只是可执行直跑标记，非驱动身份判据。排除 .test.mts。）
       if (ent.name.endsWith("main.mts") && !ent.name.endsWith(".test.mts")) {
-        let body: string;
-        try {
-          body = fs.readFileSync(p, "utf8");
-        } catch {
-          continue;
-        }
-        if (body.startsWith("#!/usr/bin/env node")) {
-          const rel = toSlash(path.relative(repo, path.dirname(p)));
-          if (!driverSet.has(rel)) {
-            driverSet.add(rel);
-            drivers.push(rel);
-            mtsDrivers.push(rel);
-          }
+        const rel = toSlash(path.relative(repo, path.dirname(p)));
+        if (!driverSet.has(rel)) {
+          driverSet.add(rel);
+          drivers.push(rel);
+          mtsDrivers.push(rel);
         }
         continue;
       }

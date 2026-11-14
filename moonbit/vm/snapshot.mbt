@@ -55,7 +55,13 @@ pub(all) struct VMSnapshot {
   // ── 值栈与调用 ──
   stack : Array[UInt64]
   call_stack : Array[CallFrame]
-  ip : Int32
+  /// 取指位置 = **组索引**（gip——REHOST 批 3 换名不换义，设计单 §2.4）：
+  /// 组 = 装载的原子执行单元（折叠重建产物一组恰一条 Instruction——
+  /// `rehost_round_trip` 逐位恒等断言），故 gip 与 legacy 指令下标同构、
+  /// 值域/行为零变化；VM 执行态字段仍名 `ip`（restore 单点回填
+  /// `self.ip = snap.gip`——批 4 收口时统一）。seek/回放按组重放
+  /// （`replay_to` 逐 `vm.step()` = 逐组）。
+  gip : Int32
   mem_stack_top : UInt32
   // ── 运行控制 ──
   step_count : Int32
@@ -169,7 +175,7 @@ pub fn VitroVM::snapshot(self : VitroVM) -> VMSnapshot {
     mem: self.mem_map.dump(),
     stack: stack_copy,
     call_stack: call_copy,
-    ip: self.ip,
+    gip: self.ip,
     mem_stack_top: self.mem_stack_top,
     step_count: self.step_count,
     current_line: self.current_line,
@@ -258,7 +264,8 @@ pub fn VitroVM::restore(self : VitroVM, snap : VMSnapshot) -> Unit {
       local_buffers: buffers,
     })
   }
-  self.ip = snap.ip
+  // gip（组索引）→ 执行态 ip 回填：换名不换义（批 3——见 struct 字段注）
+  self.ip = snap.gip
   self.mem_stack_top = snap.mem_stack_top
   self.step_count = snap.step_count
   self.current_line = snap.current_line

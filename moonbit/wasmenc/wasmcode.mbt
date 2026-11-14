@@ -21,9 +21,16 @@ pub(all) enum WInstr {
   WNop
   WBlock // block void（嵌套深度由发射器 label 栈管——折叠侧解码不还原）
   WLoop
+  WIf // if void（批 4a dispatch 骨架：预算/深度检查的 trap 出口）——解码不跟（同 WBrTable 边界）
+  WReturn // 0x0F（批 4a 骨架：出口块 return G_RV / 预算 return -1）——解码不跟
   WEnd
   WBr(Int32) // 相对深度（uleb）
   WBrIf(Int32)
+  // br_table（REHOST 批 4a——dispatch-loop 分发骨架专用）：标签向量 +
+  // default 深度。**解码器不跟**（dispatch 模块字节是执行产物、非折叠
+  // 管线对象——winstr_decode 遇 0x0E fail loud 即边界；垫收证人模块
+  // 〔assemble_witness_module〕不产此指令）。
+  WBrTable(Array[Int32], Int32)
   // ── 参数 ──
   WDrop
   // ── 调用（CallHost 的 H2 单一 ABI 面：批 1b 约定函数索引 0 =
@@ -253,6 +260,27 @@ fn winstr_encode_into(instr : WInstr, out : Array[Byte]) -> Unit {
     WBrIf(depth) => {
       pushOp(0x0D, out)
       for b in uleb_encode(depth.to_uint64()) {
+        out.push(b)
+      }
+    }
+    WIf => {
+      pushOp(0x04, out)
+      out.push(WT_VOID)
+    }
+    WReturn => pushOp(0x0F, out)
+    WBrTable(labels, default) => {
+      // 0x0E + vec(labels: uleb 深度) + default（uleb）——dispatch-loop
+      // 分发骨架：标签逐 ip 填块索引、default = 出口/unreachable
+      pushOp(0x0E, out)
+      for b in uleb_encode(labels.length().to_uint64()) {
+        out.push(b)
+      }
+      for l in labels {
+        for b in uleb_encode(l.to_uint64()) {
+          out.push(b)
+        }
+      }
+      for b in uleb_encode(default.to_uint64()) {
         out.push(b)
       }
     }

@@ -1,5 +1,33 @@
 ## [Unreleased]
 
+### feat(wasmenc): REHOST 批 4a——dispatch-loop 语义模块组装器（V8/wasmtime 可执行载体，2026-11-14）
+
+- **指令件三新增**：`WBrTable`（0x0E 标签向量分发）+ `WIf`/`WReturn`
+  （骨架 trap/出口件）——编码 + 效应臂连坐；**解码器不跟**（dispatch
+  模块字节是执行产物、非折叠管线对象——winstr_decode 遇之 fail loud
+  即路径边界，垫收证人模块不含此类指令）。
+- **块划分器 `blocks.mbt`**：leader 规则（入口/函数头/跳转目标/控制流
+  后继）+ **块出口栈空闸**（jit_survey PoC 对 15 产物的人工假设升格为
+  装载期机检——出口净高非零 fail loud 进禁译面）；CallPtr 首版禁译
+  （运行期 func meta 查表的参数搬运不可静态展开）。
+- **组装器 `dispatchloop.mbt`**：PoC `bodyDispatch`（实测 299×）通用化
+  ——loop + n 层 block + `br_table[ip→块索引]`（标签向量逐 ip 填、
+  运行期 pc 天然支持；default=unreachable）+ 出口哨兵块（main Ret →
+  return G_RV）+ 块首批量步锚（组粒度恒等）+ 块尾预算检查（overshoot
+  ≤1 块——预算 trap 语料 steps 对拍面 4b 登记豁免）。**两条发射路径
+  分离**（拍板）：往返路径字节（批 2/3 已锁）不动；A/B 类组字节同源
+  复用、C 类组展开完整执行协议。
+- **软件调用栈（方案 B'）**：12B 帧头内嵌帧底〔return_ip|orig_top|
+  caller_fb〕——Ret 静态可定位；代价 = 局部地址较 VM 差 12×深度
+  （`&x`/%p/VLA 语料进已知分叉豁免面，R4 残余风险同族——结果级三锚
+  不含地址）。**返回值走 G_RV 通道**（Ret 存、返回点块首 load 回
+  wasm 栈——块边界栈空由该约定保持；void 不 load）。深度上限教学
+  trap + NULL 下界双保险（堆碰撞检查首版不做，4b 对拍实测定）。
+- 锚 9 件（块划分 5 + 组装器 4，含 J9 四红：越界/栈非空/CallPtr/
+  调用点元数据缺失）；`assemble_dispatch_body` 拆 pub（WInstr 层结构
+  锚——骨架/深度/步锚/G_RV 通道指令级断言；实跑验证归 4b）。
+  wasmenc 48/48、全仓 1471/1471、surface 白名单 +6（4b 接线时出表）。
+
 ### docs(设计单): §3.2 批次序修订——V8/wasmtime 对拍提前为批 4、退役挪链尾批 6 三重前置（2026-11-14 用户拍板）
 
 - **动机**：批 4' 不可逆退役（code 字段停发）的决策依据原全是同源自证证人（往返恒等/

@@ -1233,7 +1233,7 @@ test "mcp_render_viz_doc_contract" {
   let focus = jstr_arr(jget(data, "focus"))
   assert_true(
     focus.contains("arr"),
-    msg="声明序列必须进 focus：\{focus}",
+    msg="声明序列必须进 focus（缺项即红）",
   )
   let frames = jarr(jget(data, "frames"))
   assert_true(frames.length() > 0, msg="帧数据非空")
@@ -1338,6 +1338,6 @@ test "mcp_render_viz_multi_series_focus" {
   let focus = jstr_arr(jget(rendered.val, "focus"))
   assert_true(
     focus.contains("ghost_a") && focus.contains("ghost_b"),
-    msg="多序列全部进 focus：\{focus}",
+    msg="多序列全部进 focus（ghost_a/ghost_b 缺一即红）",
   )
 }

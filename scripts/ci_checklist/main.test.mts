@@ -43,8 +43,21 @@ test("绿：一驱动 + 四目标齐 + 空例外表", () => {
   const f = makeFixture();
   const r = check(f.root);
   assert.equal(r.failed, false, r.lines.join("\n"));
-  assert.match(r.summary, /驱动 1（\.go 1 \/ \.mts 0）/);
+  assert.match(r.summary, /驱动 1（\.go 1 \/ \.mts 0，双形态目录各计其形）/);
   assert.match(r.summary, /moon test 目标面（4 目标齐）/);
+});
+
+// PR #518 审阅 P3-5：双形态目录（main.go + main.mts 同目录——clang_direct
+// 实形）的 .mts 计数——walk 目录序 go 先占 driverSet rel 时 mts 形态漏计
+// （真实仓库 71 个 main.mts 文件摘要只报 .mts 70）。J9：修复前本锚红
+// （.mts 0——go 先占）。双形态目录各计其形（驱动总数仍按目录去重 = 1）。
+test("双形态目录（go+mts 同目录）.mts 形态在场即计（PR #518 审阅 P3-5）", () => {
+  const f = makeFixture((x) => {
+    x.edit("scripts/alpha/main.mts", "// 双形态：go 活行先占 rel，mts 形态也须计数\n");
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+  assert.match(r.summary, /驱动 1（\.go 1 \/ \.mts 1，双形态目录各计其形）/);
 });
 
 test("J9 ①漏登记：新驱动无活行 → 红", () => {
@@ -154,14 +167,14 @@ test("Stryker sandbox（scripts/.stryker-tmp）不进扫描面（PR #416 mutatio
   });
   const r = check(f.root);
   assert.equal(r.failed, false, r.lines.join("\n"));
-  assert.match(r.summary, /驱动 1（\.go 1 \/ \.mts 0）/, "sandbox 副本不得计入驱动集");
+  assert.match(r.summary, /驱动 1（\.go 1 \/ \.mts 0，双形态目录各计其形）/, "sandbox 副本不得计入驱动集");
 });
 
 test("真实仓库端到端：默认绿 + 未知参数 exit 2", () => {
   const root = projectRoot();
   const def = spawnSync(process.execPath, [MAIN], { cwd: root, encoding: "utf8" });
   assert.equal(def.status, 0, def.stdout + def.stderr);
-  assert.match(def.stdout, /ci_checklist: PASS——驱动 \d+（\.go \d+ \/ \.mts \d+）\/ 活行 \d+ \/ 例外 \d+ 三向对账/);
+  assert.match(def.stdout, /ci_checklist: PASS——驱动 \d+（\.go \d+ \/ \.mts \d+，双形态目录各计其形）\/ 活行 \d+ \/ 例外 \d+ 三向对账/);
   const bad = spawnSync(process.execPath, [MAIN, "--nope"], { cwd: root, encoding: "utf8" });
   assert.equal(bad.status, 2);
 });
@@ -228,4 +241,30 @@ test("⑤ 显式豁免表：mutation-gate 不入 needs 不红（观察期注记�
     "    runs-on: ubuntu-latest",
   ].join("\n");
   assert.equal(checkCiSummary(ci, EXEMPT), null);
+});
+
+test("J9 ①漏登记（.mts 无 shebang 形态，2026-11-14 #512 彻查）：main.mts 文件名即驱动——shebang 缺失不得逃逸驱动集", () => {
+  // 前科：gen_course（S08-6 2026-11-01 补 shebang 个案）/wasmenc_emitgate
+  // /wasmenc_rundiff（#505/#512）无 shebang 落库，三向对账对它们零检出力
+  // （活行碰巧在场故未爆——防线盲而非行为缺口）。判据修复 = 文件名即驱动
+  //（shebang 只是可执行直跑标记，非驱动身份判据）。修复前形态：无 shebang
+  // 的 main.mts 不进驱动集，本锚「漏登记红」断言 failed=false 即证红。
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, "scripts/noshebang"), { recursive: true });
+    fs.writeFileSync(path.join(x.root, "scripts/noshebang/main.mts"), "// 判定驱动但无 shebang 头\n");
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, true);
+  assert.match(r.lines.join("\n"), /漏登记: scripts\/noshebang/);
+});
+
+test("无 shebang main.mts + 活行在场 → 不误伤（文件名即驱动的正向面）", () => {
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, "scripts/noshebang2"), { recursive: true });
+    fs.writeFileSync(path.join(x.root, "scripts/noshebang2/main.mts"), "// 判定驱动但无 shebang 头\n");
+    x.edit(".github/workflows/ci.yml", "steps:\n  - run: go run ./scripts/alpha\n  - run: node scripts/noshebang2/main.mts\n  - run: |\n      moon test --target js\n      moon test --target native\n      moon test\n      moon test --target wasm-gc\n");
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+  assert.match(r.summary, /\.mts 1/);
 });

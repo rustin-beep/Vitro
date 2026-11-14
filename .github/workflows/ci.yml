@@ -513,6 +513,10 @@ jobs:
             node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known
           else
             node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000 --step-budget 20000
+            # PR #518 审阅 P3-6：--rehost 装载路径 CI 接线（REHOST 批 3 的
+            # step 态 wasm 载体往返——此前 CI 无该旗标活行，覆盖只剩 wbtest
+            # 两锚；抽样 40 独立跑，装载断言 fallback/缺失即红）
+            node scripts/step_invariant/main.mts --corpus corpus --sample 40 --jobs 8 --timeout-ms 600000 --step-budget 20000 --rehost
           fi
         shell: bash
 

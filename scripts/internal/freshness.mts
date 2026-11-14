@@ -1,10 +1,14 @@
 // freshness.mts —— MoonBit 产物新鲜度门禁单源（#273 存量 Go 重写批）。
 //
 // 语义（与 Go 版一致）：产物缺失 fail loud exit 1；任一 moonbit 源
-// （.mbt/.mod/.pkg，排除 *_test.mbt / *_wbtest.mbt，跳过 _build/.mooncakes）
-// 新于产物 → 跑规范化构建复核（MOON_CC=clang），失败 exit 1；复核后产物仍缺
-// → exit 1。mtime 只作触发、内容 hash 由 moon 增量判定把关（防 touch/换行归一
-// 假阳性）。
+// （.mbt/.mod/.pkg，排除 *_test.mbt / *_wbtest.mbt / *_gen.mbt，跳过
+// _build/.mooncakes）新于产物 → 跑规范化构建复核（MOON_CC=clang），失败
+// exit 1；复核后产物仍缺 → exit 1。
+// 触发语义勘正（PR #518 审阅 P2-1）：mtime 触发的是**一次真实重建复核**——
+// moon 的增量判定同样以 mtime 为触发面，checkout/生成器刷源后的首跑付重建
+// 时长（native ~40s / wasm 链 ~70s 含 wasmopt），重建后产物 mtime 自愈、后续
+// 零税；CI 干净构建不触发。早先「内容 hash 把关、touch 秒过、假阳性消化」
+// 的表述与实测不符（touch 后 moon build 37.6s 真重编），已废。
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -19,21 +23,47 @@ export const ENSURE_FRESH_FAIL_MARKS = [
   "不存在——先跑",
   "构建失败——修好构建前不给判定",
   "仍缺失",
+  "后置优化失败——修好构建链前不给判定",
 ] as const;
 
-// #483/PR #487 审阅 P3-3·P3-4：三种「环境前置未就绪」die 的判别标记单源——
-// die 文案以常量引用拼装，下游检测器与测试只引此处（防手写字面量脱钩 fail-open）。
-export function ensureFresh(prefix: string, artifact: string, buildArgs: string[]): void {
+// 构建后置钩子端口（PR #518 追加批：vm_diff wasm 臂硬门禁前置）——产物链含
+// 构建后覆盖步骤（wasmopt 后置优化等）的消费方必须传 postBuild：自动重建
+// 只跑 moon build 会以裸产物覆盖优化产物（gateway/wasm 链实锤），后置链
+// 与构建同批执行才保链完整。moonbitRoot/rebuildRunner 为测试注入端口
+// （hermetic——同 findStaleSource 的 moonbitRoot 先例），生产调用省略。
+export interface EnsureFreshOpts {
+  postBuild?: (artifact: string) => boolean;
+  moonbitRoot?: string;
+  rebuildRunner?: (buildArgs: string[]) => boolean;
+}
+
+// #483/PR #487 审阅 P3-3·P3-4：「环境前置未就绪」die 的判别标记单源——
+// die 文案以常量引用拼装，下游检测器（facts artifactMissingNote——数组遍历
+// 匹配，第四条自动认得）与测试只引此处（防手写字面量脱钩 fail-open）。
+export function ensureFresh(
+  prefix: string,
+  artifact: string,
+  buildArgs: string[],
+  opts?: EnsureFreshOpts,
+): void {
   try {
     fs.statSync(artifact);
   } catch {
-    die(`${prefix}: ${artifact} ${ENSURE_FRESH_FAIL_MARKS[0]} cd moonbit && moon ${buildArgs.join(" ")}`);
+    const postNote =
+      opts?.postBuild !== undefined ? " && node scripts/wasmopt/main.mts <产物>（后置链）" : "";
+    die(
+      `${prefix}: ${artifact} ${ENSURE_FRESH_FAIL_MARKS[0]} cd moonbit && moon ${buildArgs.join(" ")}${postNote}`,
+    );
   }
-  const stale = findStaleSource(artifact);
+  const stale = findStaleSource(artifact, opts?.moonbitRoot);
   if (stale !== "") {
     process.stderr.write(`${prefix}: ${artifact} 旧于源 ${stale}——跑构建复核（moon 内容 hash 增量）...\n`);
-    if (!rebuild(buildArgs)) {
+    const runner = opts?.rebuildRunner ?? rebuild;
+    if (!runner(buildArgs)) {
       die(`${prefix}: ${ENSURE_FRESH_FAIL_MARKS[1]}（陈旧产物假红/假绿由此封死）`);
+    }
+    if (opts?.postBuild !== undefined && !opts.postBuild(artifact)) {
+      die(`${prefix}: ${ENSURE_FRESH_FAIL_MARKS[3]}（构建成功但后置链失败——裸产物已覆盖优化产物，重跑链或手跑 node scripts/wasmopt/main.mts ${artifact}）`);
     }
     try {
       fs.statSync(artifact);
@@ -83,7 +113,11 @@ export function findStaleSource(artifact: string, moonbitRoot?: string): string 
         walk(p);
         continue;
       }
-      if (e.name.endsWith("_test.mbt") || e.name.endsWith("_wbtest.mbt")) continue;
+      // *_gen.mbt = @generated 产物（新鲜度由各自 -check 闸保证，生成器/构建
+      // 重跑只刷 mtime 不改语义）——非被测产物的手写输入，不计入（PR #518
+      // 审阅 P2-2：被删 warnStaleExe 的该排除在双臂统一走 findStaleSource 时
+      // 丢失，实测 libc_data_gen.mbt 每次构建后多触发一轮重建）
+      if (e.name.endsWith("_test.mbt") || e.name.endsWith("_wbtest.mbt") || e.name.endsWith("_gen.mbt")) continue;
       if (!(e.name.endsWith(".mbt") || e.name.endsWith(".mod") || e.name.endsWith(".pkg"))) continue;
       try {
         if (fs.statSync(p).mtimeMs > artMtime && stale === "") stale = p;

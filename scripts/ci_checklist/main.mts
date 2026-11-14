@@ -76,10 +76,13 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
     // workflows 目录缺失不阻断（CI 里必有）
   }
 
-  // ── 驱动集：scripts/** 含 package main 的 .go + 带 shebang 的 main.mts ──
+  // ── 驱动集：scripts/** 含 package main 的 .go + main.mts（文件名即驱动）──
   const driverSet = new Set<string>();
   const drivers: string[] = [];
+  // 形态计数（PR #518 审阅 P3-5）：双形态目录（go+mts 同目录，如
+  // clang_direct）各计其形——形态数之和可大于驱动总数（目录去重口径）
   const mtsDrivers: string[] = [];
+  const goDrivers: string[] = [];
   const scriptsRoot = path.join(repo, "scripts");
   const walk = (dir: string): void => {
     for (const ent of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
@@ -90,22 +93,21 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
         continue;
       }
       if (ent.name.endsWith("_test.go")) continue;
-      // 第二扫描面：main.mts + node shebang（排除 .test.mts 与被 import 的库）
+      // 第二扫描面：main.mts 文件名即驱动（2026-11-14 #512 彻查修复：原判据
+      // 额外要求 shebang 首行——无 shebang 的 main.mts 静默逃逸驱动集，「存在
+      // 即接入」对账对它们零检出力〔前科：gen_course S08-6 补个案未根治判据；
+      // wasmenc_emitgate/wasmenc_rundiff #505/#512 重蹈——REHOST 批 3 连坐根治〕
+      // ——shebang 只是可执行直跑标记，非驱动身份判据。排除 .test.mts。）
       if (ent.name.endsWith("main.mts") && !ent.name.endsWith(".test.mts")) {
-        let body: string;
-        try {
-          body = fs.readFileSync(p, "utf8");
-        } catch {
-          continue;
+        const rel = toSlash(path.relative(repo, path.dirname(p)));
+        if (!driverSet.has(rel)) {
+          driverSet.add(rel);
+          drivers.push(rel);
         }
-        if (body.startsWith("#!/usr/bin/env node")) {
-          const rel = toSlash(path.relative(repo, path.dirname(p)));
-          if (!driverSet.has(rel)) {
-            driverSet.add(rel);
-            drivers.push(rel);
-            mtsDrivers.push(rel);
-          }
-        }
+        // .mts 形态在场即计（PR #518 审阅 P3-5）——双形态目录（go+mts 同
+        // 目录，如 clang_direct）walk 序 go 先占 driverSet rel 时，mts 形态
+        // 仍须入 mtsDrivers（摘要计数与形态对账，不影响 drivers 目录去重）
+        mtsDrivers.push(rel);
         continue;
       }
       let body: string;
@@ -120,6 +122,7 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
           driverSet.add(rel);
           drivers.push(rel);
         }
+        goDrivers.push(rel);
       }
     }
   };
@@ -256,7 +259,7 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
     failed = true;
   }
 
-  const summary = `ci_checklist: PASS——驱动 ${drivers.length}（.go ${drivers.length - mtsDrivers.length} / .mts ${mtsDrivers.length}）/ 活行 ${liveSet.size} / 例外 ${exceptions.length} 三向对账 + moon test 目标面（${targetUnion.size} 目标齐）+ ci-summary 三面一致`;
+  const summary = `ci_checklist: PASS——驱动 ${drivers.length}（.go ${goDrivers.length} / .mts ${mtsDrivers.length}，双形态目录各计其形）/ 活行 ${liveSet.size} / 例外 ${exceptions.length} 三向对账 + moon test 目标面（${targetUnion.size} 目标齐）+ ci-summary 三面一致`;
   return { failed, lines, summary };
 }
 

@@ -709,3 +709,142 @@ test "setup_from_output_wasm_rehost_roundtrip" {
   }
   assert_eq(diff, -1, msg="1MB 映像逐字节一致（首个差异偏移）")
 }
+
+///|
+/// REHOST 批 3：step 态切换锚——①单步=组（flag on 折叠重建产物驱动，
+/// StepResult 序列逐位同构）；②断点判定经组表侧车（StepEvent operand/
+/// loc 来自折叠产物 = 组表——命中行为同构）；③VMSnapshot.gip 换名不换义
+/// （flag on/off 两 VM 同位快照 gip 同值；restore 回填执行态 ip 一致）。
+/// 与批 2b 锚分工：彼锚锁 run 态（`run()` 返回值+映像），此锚锁 step 态
+/// （逐 StepResult/断点/gip——批 3 的行为面）。
+test "rehost_step_semantics_gip_breakpoint_b3" {
+  // code 带 StepEvent 行锚（断点判定面）+ Ret（C 类侧车身份装载面）：
+  //   StepEvent(1) PushConst 7 StepEvent(2) StoreLocal? …——最小面：
+  //   StepEvent(1); PushConst 7; StepEvent(2); Ret（行 1/2 两锚）
+  fn mk_out() -> @bytecode.CompileOutput {
+    {
+      code: [
+        @opcode.Instruction::new(StepEvent, 1, @source.SourceLoc::new(1, 1)),
+        @opcode.Instruction::new(PushConst, 7, @source.SourceLoc::new(1, 1)),
+        @opcode.Instruction::new(StepEvent, 2, @source.SourceLoc::new(2, 1)),
+        @opcode.Instruction::new(Ret, 0, @source.SourceLoc::new(2, 1)),
+      ],
+      globals_init_32: [],
+      globals_init_64: [],
+      func_table: Map([]),
+      func_index: Map([]),
+      string_data: [],
+      source_map: [],
+      symbols: [],
+      struct_defs: Map([]),
+      union_defs: Map([]),
+      f64_constants: [],
+      i64_constants: [],
+      global_data_end: 0U,
+    }
+  }
+  // ②断点行 2 + ①③：flag on/off 逐 StepResult 同构 + 断点命中位/快照 gip
+  //（drive 不做断言——test 内嵌 fn 无 raise 面，状态串随返回值外层判）
+  // PR #518 审阅 P3-2：补 gip/ip 逐采样对——原锚 gip_on==gip_off 两侧同源
+  //（各自 snap.gip）值自指，gip:0 注入不红（仓内靠既有两锚兜底）；独立来源
+  // 互证（快照字段 vs 执行态字段）外层判，gip 坏即红。
+  fn drive(
+    flag_on : Bool,
+  ) -> (Array[String], Int32, Int32, String, Array[(Int32, Int32)]) {
+    let vm = VitroVM::new()
+    let st = vm.setup_from_output(mk_out(), 0, [], [], wasm_rehost=flag_on)
+    vm.breakpoints.add(2) // 断点行 2（StepEvent(2) 命中位）
+    let seq : Array[String] = []
+    let gip_ip : Array[(Int32, Int32)] = [] // 每步 (snapshot.gip, vm.ip) 对
+    let mut paused_gip = -1
+    let mut paused_line = -1
+    for i = 0; i < 8; i = i + 1 {
+      ignore(i)
+      let snap = vm.snapshot() // 每步前快照（gip 采样——③换名不换义锚）
+      gip_ip.push((snap.gip, vm.ip))
+      let r = vm.step()
+      seq.push(
+        match r {
+          Ok => "Ok"
+          Paused => {
+            paused_gip = snap.gip
+            paused_line = vm.current_line
+            "Paused"
+          }
+          Finished => "Finished"
+          Trap => "Trap"
+          WaitingInput => "Waiting"
+        },
+      )
+      if r is Paused || r is Finished || r is Trap {
+        break
+      }
+    }
+    (seq, paused_gip, paused_line, st, gip_ip)
+  }
+  let (seq_off, gip_off, line_off, st_off, gip_ip_off) = drive(false)
+  let (seq_on, gip_on, line_on, st_on, gip_ip_on) = drive(true)
+  assert_eq(st_off, "", msg="flag off 状态空串")
+  assert_true(
+    st_on.length() > 3 && st_on[0:3] == "ok ",
+    msg="flag on 装载须 ok（实得 \{st_on}）",
+  )
+  // ①单步=组：StepResult 序列逐位同构（StepEvent(1)/PushConst/StepEvent(2)
+  // 命中断点 → Paused——两侧同位同态）
+  assert_eq(
+    seq_on.length(),
+    seq_off.length(),
+    msg="StepResult 序列长度同构",
+  )
+  for i = 0; i < seq_off.length(); i = i + 1 {
+    assert_eq(
+      seq_on[i],
+      seq_off[i],
+      msg="StepResult[\{i}] 同构（组粒度单步）",
+    )
+  }
+  // ②断点经组表侧车：命中行/暂停位一致
+  assert_eq(line_on, 2, msg="flag on 断点命中行 2")
+  assert_eq(line_off, 2, msg="flag off 断点命中行 2")
+  assert_eq(
+    gip_on,
+    gip_off,
+    msg="③暂停前快照 gip 同值（换名不换义——组索引与指令下标同构）",
+  )
+  // ③补（PR #518 审阅 P3-2）：快照 gip ≡ 执行态 ip 独立来源逐对互证——
+  // 上面的同值锚两侧同源（gip:0 注入不红），此锚 gip 字段坏即红
+  for i = 0; i < gip_ip_on.length(); i = i + 1 {
+    let (g, p) = (gip_ip_on[i].0, gip_ip_on[i].1)
+    assert_eq(
+      g,
+      p,
+      msg="flag on 快照 gip ≡ 执行态 ip（步 \{i}，独立来源互证）",
+    )
+  }
+  for i = 0; i < gip_ip_off.length(); i = i + 1 {
+    let (g, p) = (gip_ip_off[i].0, gip_ip_off[i].1)
+    assert_eq(
+      g,
+      p,
+      msg="flag off 快照 gip ≡ 执行态 ip（步 \{i}，独立来源互证）",
+    )
+  }
+  // ③快照往返：restore 回填执行态 ip（gip → ip 单点——值域零变化）
+  let vm = VitroVM::new()
+  let _ = vm.setup_from_output(mk_out(), 0, [], [], wasm_rehost=true)
+  ignore(vm.step())
+  let snap = vm.snapshot()
+  let gip_before = snap.gip
+  let ip_before = vm.ip
+  assert_eq(
+    gip_before,
+    ip_before,
+    msg="快照 gip ≡ 执行态 ip（restore 前互证——P3-2，防 gip:0 注入自指绿）",
+  )
+  vm.restore(snap)
+  assert_eq(
+    vm.ip,
+    gip_before,
+    msg="restore 回填 gip → 执行态 ip（快照往返一致）",
+  )
+}

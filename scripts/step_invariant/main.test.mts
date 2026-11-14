@@ -338,3 +338,21 @@ test("classifyViolations：count 内 expected 放行 / 超限恶化红 / 未登�
   const none = classifyViolations(mk(1), []);
   assert.equal(none.reds.length, 1);
 });
+
+// ── REHOST 批 3：--rehost 装载标记判定锚 ──────────────────────────────
+
+test("批 3 rehostMarkerViolation：ok 标记放行 / 缺失与 fallback 红 / rc=1 不在断言面", async () => {
+  const { rehostMarkerViolation } = await import("./main.mts");
+  // ok 形态：终态 rc（0/2/3）+ ok 标记 → 放行
+  for (const rc of [0, 2, 3]) {
+    assert.equal(rehostMarkerViolation(rc, "// WASM-REHOST-STEP ok groups=12\n"), null, `rc=${rc} ok 放行`);
+  }
+  // fallback 形态（装载回退——标记行非 ok）→ 红
+  assert.match(String(rehostMarkerViolation(0, "// WASM-REHOST-STEP fallback emit-failed gip=0 op=TryBegin\n")), /装载标记缺失\/回退/);
+  // 标记缺失（旗标未生效/协议破损）→ 红
+  assert.match(String(rehostMarkerViolation(2, "")), /装载标记缺失\/回退/);
+  // rc=1（编译失败早退——未达 step.begin）与 rc=4（用法错）不在断言面
+  assert.equal(rehostMarkerViolation(1, ""), null, "rc=1 编译失败不在断言面");
+  assert.equal(rehostMarkerViolation(4, ""), null, "rc=4 用法错不在断言面");
+});
+

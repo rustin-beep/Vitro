@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // wasmenc_rundiff —— REHOST 批 2b 双跑对拍闸（设计单 §3.3「迁移期新旧
 // 载体并存的对拍形态」：同一语料 legacy 装载 vs wasm 载体往返装载
 // 〔--wasm-rehost：发射→折叠→恒等断言→重建 code 驱动〕双跑 digest

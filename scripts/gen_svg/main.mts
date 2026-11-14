@@ -1060,7 +1060,7 @@ export function genWasm(root: string): void {
   writeSVG(root, "docs/current/06-出口与协议/wasm-multi-instance-isolation.svg", P);
 }
 
-// ─── 图 K：MoonBit 自建验证防线全景（源：脚本总清单与必跑防线.md §1/§2 + ci.yml）─
+// ─── 图 K：MoonBit 自建验证防线全景（源：脚本总清单与必跑防线.md §1/§2 + CI workflow 族）─
 
 export function genGates(root: string): void {
   // 本图零 facts 依赖：moonbit_test_passed 的采集依赖 moon test（CI --run 形态下
@@ -1071,7 +1071,7 @@ export function genGates(root: string): void {
     940,
     "vitro MoonBit 自建验证防线全景",
     "MoonBit 自建验证防线 · 对拍链与闸卫",
-    "对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml hygiene job；结构图无数字锚（测试数见 README 机判行）",
+    "对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci-hygiene.yml hygiene job（CI 拆分批 2026-11-14 起 job 实体迁 called 文件）；结构图无数字锚（测试数见 README 机判行）",
   );
   // 顶条：引擎白盒测试
   P.push(

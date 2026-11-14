@@ -1,0 +1,549 @@
+# ── CI 拆分批（2026-11-14）：本文件 = 主 CI（ci.yml）的 called 单元 ──────────
+# static-gates job（matrix 三片） 自 ci.yml 逐字搬迁（步骤/注释裁定资产零改动），唯一机械变换 =
+# 删跨文件无效的 `needs: build-artifacts` 行（时序由 caller 侧 needs 承接，
+# 语义等价）。called job 与 caller 同 run 执行：artifact / cache /
+# needs 红态传导 / github 上下文（event_name 等触发事件面）全同域。
+# 编排与汇总（ci-summary）见 ci.yml；夜间哨兵见 nightly.yml。
+name: CI static gates
+on:
+  workflow_call:
+jobs:
+  static-gates:
+    # 二轮审阅 P2（2026-10-17）：红遮红治理——27 步单 job 串行，一步红
+    # 后续全 skipped（surface 红曾遮 single_source/testcount 至 HEAD）。
+    # 拆 matrix 三片（gates-wasm 2026-10-17 同款治理线）：gen=生成器新鲜
+    # 度 / contract=结构契约与卫生 / bookkeeping=需 moon test 的对账闸。
+    # 步骤级 if 路由（setup 三片共享），fail-fast 关保闸级可见性全开。
+    name: Static gates (${{ matrix.slice }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slice: gen
+          - slice: contract
+          - slice: bookkeeping
+    steps:
+      - uses: actions/checkout@v4
+      # #273 接线批（2026-10-24）：gen/contract slice 已跑 .mts 闸
+      # （教学线 teaching_* / host_contract_map / icon_catalog / diff_ledger）——
+      # node 版本走 .node-version 单点（type stripping 需 ≥22.18；不 pin 会随
+      # runner 预装版本漂移，绿灯不可复现）。
+
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Install MoonBit toolchain (probe / fmt / facts --run)
+        uses: ./.github/actions/setup-moonbit
+
+      - name: Refresh MoonBit registry index
+        # toolchain_probe 的索引预检需要 registry 索引在位（fresh 环境同 core）
+        shell: bash
+        run: cd moonbit && moon update
+
+
+      # ── gen_api_help rules.json（#125 收尾，2026-10-15）───────────
+      # gen_api_help 内容批收敛（rules.json ≡ 原 .json.mbt 零漂移）后随
+      # jsonmbt 退场翻转出库——scripts 侧 .json.mbt 清零，本 job 的
+      # .json.mbt static gate 步随之摘除（moon 需求由差分驱动内嵌
+      # moon run 承担，工具链安装保留）。
+
+      - name: Teaching assets gen gate (#125 批 A——C 解析器自举)
+
+        if: matrix.slice == 'gen'
+        # 真源 = moonbit/teaching/content/*.md（md+.c 唯一真源入包）；
+        # content_parser.c 由 vitro 编译运行（自己吃自己狗粮——引擎侧资产链
+        # 自举，#128 裁定确认此即「生成器产 .mbt」实现路径）。产物经 moon fmt
+        # 后与入库 _gen.mbt 逐字节比对（数组换行形态以 fmt 为准）。
+        # 旧「Teaching assets JSON sync gate」（jsonmbt build + 教师 .json 同步）
+        # 随批 A 出库退役——jsonmbt 对教学三张的调用归零。
+        shell: bash
+        run: |
+          set -e
+          cd moonbit && moon build --release --target js cmd/vitro_js && cd ..
+          node scripts/teaching_gen_check/main.mts
+          node scripts/teaching_reconcile/main.mts
+
+      - name: Catalog closure gate (#256/#261——诊断码↔教学卡双向闭合)
+
+        if: matrix.slice == 'gen'
+        # 两套清单（error_codes.json 臂 + catalog.json 卡）各自演进的缺口由
+        # 此闸机判拦截：R1 正向=引擎可产码无卡（下游按码查卡落空）；R2 反向
+        # =卡零生产点（下游预渲染错误清单混入死码）；R3 同号异前缀撞键防
+        # （catalog 数字键）；R4 幽灵卡；R5 白名单僵尸条目。规则外置
+        # scripts/catalog_closure/rules.json（条目带 reason，白名单是债）。
+        # 生产点扫描两形态：[EWH]\d{4}_变体引用（诊断面枚举构造）+ "E\d{4}"
+        # 字面量（trap 面 #261 带码文案/trap_code 赋值）；排除 _build/_gen/测试面。
+        shell: bash
+        run: |
+          set -e
+          node scripts/catalog_closure/main.mts
+
+      - name: Source hygiene (tracked files must be NUL-free)
+
+        if: matrix.slice == 'contract'
+        # P2-NUL 事故族（2026-09-23 修复批）：真 NUL 让 git 判二进制
+        # （w/-text）——.gitattributes 行尾转换失效、diff/PR 审阅不可见
+        # （先例：docs/** 148 行事故族；host_test.mbt 15KB 整文件不可见；
+        # 冻结区 vitro_lexer/src/string.rs 索引侧潜伏 i/-text）。J9 证红留痕。
+        shell: bash
+        run: node scripts/moonbit/source_hygiene/main.mts
+
+      - name: Rust narrative check (dead native/ refs / zombie 照搬不修 / stale 与 Rust 对齐)
+
+        if: matrix.slice == 'contract'
+        # 审阅 v2 批 A7'（2026-11-02，R1b §⑥ 口径固化）：Rust 对照区删区后手写源码
+        # 注释的三类叙事病——R1 死路径裸引 / R2 照搬不修僵尸义务 / R3 与 Rust 对齐
+        # 失实背书——把 #47 批五三件套（历史出处 + tag 可回溯 + 自主基线）机判化。
+        # 规则外置 scripts/rust_narrative_check/rules.json；存量过闸 exemptions.json
+        # 三向对账（漏登记/僵尸例外红）。J9：建闸红 54（R1 35/R2 6/R3 13）→清注后绿。
+        shell: bash
+        run: node scripts/rust_narrative_check/main.mts -check
+
+      - name: Bytecode libc data generation idempotency
+
+        if: matrix.slice == 'gen'
+        # 批四号（2026-09-26）：libc 产物派生闸——Rust include_str! 的
+        # JSON 是单一真相源，本闸保证 MoonBit 数据字面量与其一致
+        # （生成流程内置 moon fmt + check 同流程比对；J9 篡改证红）。
+        shell: bash
+        run: node scripts/moonbit/gen_libc_data/main.mts -check
+
+      - name: MoonBit generated-artifact freshness (gen_diag / gen_host_route / gen_stubs)
+
+        if: matrix.slice == 'gen'
+        # 2026-09-23 审阅批接线（S6 审阅 P5）：三个生成器（diag 码表 /
+        # host 路由表 / 标准库存根表）此前均无 CI 步骤——产物被手改或
+        # 源变更后未再生成，只能靠人跑 -check 才发现（S6 批的 host_func_id_gen
+        # 自 codegen 上提 bytecode 即高风险期）。三脚本均内置 moon fmt 且
+        # -check 无写副作用；J9 证红：gen_host_route 注入 HOST_ACOS 常量值改写
+        # 必红（本批实测）、gen_stubs 注入篡改注释必红（本批实测）、gen_diag
+        # 四雷证红已在先例留痕。前置修复：gen_stubs 原手工只认 --check 且
+        # 生成输出未过 fmt（干净仓库上 --check 必红）——本批改为 flag 包 +
+        # 内置 fmt 后方可入闸。
+        shell: bash
+        run: |
+          node scripts/moonbit/gen_diag/main.mts -check
+          node scripts/moonbit/gen_host_route/main.mts -check
+          node scripts/moonbit/gen_stubs/main.mts -check
+          node scripts/moonbit/gen_protocol_fields/main.mts -check
+          node scripts/moonbit/gen_diagnostics/main.mts -check
+          # #27 图标资产双闸（2026-10-07 挂入）：gen_icons -check 锁几何层
+          # 与真源 svg 同步；icon_catalog 判定契约（viewBox/stroke/白名单/
+          # tsv 对账/digest）。-check 均无写副作用，J9 11 种契约变异证红
+          # 已在 c3601055 资产批留痕。
+          node scripts/gen_icons/main.mts -check
+          node scripts/icon_catalog/main.mts
+      - name: MoonBit API surface audit (unpublished pkgs contracted)
+
+        if: matrix.slice == 'contract'
+        # 2026-09-21 S5 收尾批接线：对外面闸（架构审阅 v2 待办①——"面会
+        # 自动再长，先立闸再加 priv"）。moonbit_surface -check 对账白名单
+        # （scripts/surface_allowlist.txt）：无跨包消费的 pub 符号必须收面
+        # 或入白名单（已发布 5 包走版本化弃期、类型闭包保留）。
+        shell: bash
+        # #292 终局批：Go 版已删；双轨对拍闸同批退役（等价性证据 = 冻结 golden/sha 基线自证）
+        run: node scripts/moonbit/moonbit_surface/moonbit_surface.mts -check
+
+      - name: MoonBit package dependency direction (L0-L9 layering + acyclic)
+
+        if: matrix.slice == 'contract'
+        # 2026-09-22 S5 收尾批接线（架构审阅 v2 A 组 #6）：总计划 §4 的硬
+        # 约束「依赖严格单向无环」此前**零 CI 校验**——越层或成环的依赖可
+        # 静默进来（口头纪律）。本步按外置分层表（rules.json，源 = 总计划
+        # §4 L0–L9）断言每个模块内依赖 go 向低层或同层，并 DFS 查环；
+        # 新包未登记分层即红，解析出 0 包/0 依赖亦红（空集不得绿）。
+        # cmd/* 为工具层豁免方向检查。J9 证红已留痕（注入 opcode→bytecode
+        # 同时触发越层与成环两条判据）。
+        shell: bash
+        run: node scripts/moonbit/pkg_deps/main.mts -check
+
+      - name: MoonBit interface-surface sync (moon info no-drift)
+
+        if: matrix.slice == 'contract'
+        # 2026-09-22 S5 收尾批接线：.mbt（实现）与 pkg.generated.mbti（接口
+        # 面）的一致性此前纯靠人工跑 moon info——本仓已漏过一次（libc 的
+        # .mbti 缺 type LibcSig，下轮才补登）。moon info 无 --check 子命令
+        # （实测 moon 0.1.20260920），故取「跑前后快照 sha256 不变量」形态：
+        # 不等即有 .mbti 与实现脱节（pub 面改了没同步 / 新包未生成 / 改坏）。
+        # 0 个 .mbti 亦红（空集不得绿）。J9 证红：注入脱节内容必红。
+        shell: bash
+        run: node scripts/moonbit/mbti_sync/main.mts -check
+
+      - name: Single-source-of-truth registry check
+
+        if: matrix.slice == 'contract'
+        # 2026-09-22 S5 收尾批接线（架构审阅 v2 A 组 #7 / 判据 C-04）：项目 L1
+        # 判据「同一概念多真相来源」只覆盖**仓内同语言重复**，不覆盖跨语言
+        # 孪生——迁移期每个单源在 MoonBit 侧都有一份孪生，同步义务纯人工
+        # （"照搬不私改"）。本步把清单入版本控制并机判：enforced 条目的定义点
+        # **文件集**必须等于 allowed_def_files（**多一份实现 = 红**，少一份 =
+        # 单源被删/改名亦红）；registered 条目校验两侧声明路径存在。
+        # 清单：scripts/moonbit/single_source/rules.json；J9 证红已留痕。
+        shell: bash
+        run: node scripts/moonbit/single_source/main.mts -check
+
+      - name: libc single-source reconciliation (3 name tables)
+
+        if: matrix.slice == 'contract'
+        # 2026-09-22 S5 收尾批接线（S6 前置）：libc 放行判据在 Rust 侧是
+        # host_func_id 路由名 ∪ BYTECODE_LIBC_ALL_FUNCS 索引名的并集，
+        # MoonBit 侧照搬时手抄成 libc 包 builtin_all（175 名）——第四套
+        # 真相源且零对账。实测已因此失真：libc.mbt 包注释断言「print_int
+        # 不在此集（Rust host_func_id 无此名）」，而 Rust 侧 by_user_name
+        # 明确有 `"print_int" | "__vitro_output" => Some(OUTPUT)` 别名臂。
+        # 本步把「三表一致」变成机判红线（等式 + 交集计数 + PURE 子集 +
+        # 空集不得绿）；规则外置 rules.json，J9 三路证红已留痕。
+        shell: bash
+        run: node scripts/moonbit/libc_single_source/main.mts -check
+
+      - name: Fix-diffusion gates ×4 (twin fingerprint / cast matrix / conv specs / host shared guard)
+
+        if: matrix.slice == 'contract'
+        # 审阅 v2 批 A7（2026-11-02，R1a 处方 R1-R4 落地）：修复扩散面防扩散机判化
+        # ——R1a 审计 11 起种子 + 新挖 F1-F10 共同形态 = 「修复只覆盖触发报告的那个
+        # 成员，同构集合其余成员靠人肉记忆连坐」。四道静态闸各治一形态：
+        #   twin_fingerprint  M1 孪生复制件（cast.mbt 两链 / dump 四家参数段）——
+        #                     集内指纹差集逐条登记，单边改一份即红、修好忘删僵尸红
+        #   cast_matrix       M2 对偶矩阵缺格——分支链 (T,S,u) 全组合求值抓零发射
+        #                     （F1 float→LL 位模式直出当场可见）+ opcode CastX2Y 对偶
+        #   conv_specs        M3 枚举表成员不全——printf/scanf 转换符四消费面 ↔
+        #                     单源声明表逐字母对账（scanf %e 两面漂移 F3/F7 登记在册）
+        #   host_shared_guard M4 函数族口径分叉——host_string 带 n 参数函数负域 trap
+        #                     三态（memset F6 登记）+ json_escape/utf8 族消费方账实对账
+        # 现行缺口（F1/F2/F3/F5/F6/F7/F9）均以 known/divergence 形态**公开登记**在各
+        # rules.json（非豁免）——B 轮修复后条目变僵尸即红逼清账。J9：每闸 --selftest
+        # 内存注入 3-4 路 + 盘上源码注入各 2-3 路全红（batch_A7_REPORT 留痕）。
+        # 四闸纯静态源码解析，合计 <1s；三臂行为面见 cli_smoke slice 的 cli_symmetry。
+        shell: bash
+        run: |
+          node scripts/moonbit/twin_fingerprint/main.mts -check
+          node scripts/moonbit/cast_matrix/main.mts -check
+          node scripts/moonbit/conv_specs/main.mts -check
+          node scripts/moonbit/host_shared_guard/main.mts -check
+
+      - name: Host route coverage (routes vs host impls)
+
+        if: matrix.slice == 'contract'
+        # P2-memchr 事故族（2026-09-23 修复批）：路由表中 memchr 整批
+        # 漏实现——既有对账锚只校验「常量 ↔ 名字」双表一致，不校验
+        # 「路由名 ↔ 有实现」。规则外置 host_route_rules.json（别名 /
+        # vm 白名单，白名单双向对账防腐化）；J9 双路证红留痕。
+        shell: bash
+        run: node scripts/moonbit/host_route_coverage/main.mts
+
+      - name: Host contract map (oracle 103 tests vs mb anchors, 3-state)
+
+        if: matrix.slice == 'contract'
+        # Host Contract 三态对账（总计划表 3，2026-10-04 建）：oracle
+        # host_contract_tests.rs 103 条 ↔ MoonBit 锚（host/memory/vm 三包
+        # wbtest 实测抽取）的 anchored/merged/missing 映射——判据：映射
+        # 无洞（oracle 测试全部在表）+ 锚引用无陈旧；missing 非空提示不红
+        # （补锚段清零后 --strict 收官）。纯文本抽取零 Rust 构建依赖，
+        # 归 moonbit job 静态闸族。J9：--selftest 三锚 + 盘上删条目 HOLE 红
+        # 留痕（2026-10-04 实测）。
+        shell: bash
+        run: |
+          node scripts/host_contract_map/main.mts --selftest
+          node scripts/host_contract_map/main.mts --strict
+
+      - name: Protocol TS types freshness + schema doc parity
+
+        if: matrix.slice == 'gen'
+        # 2026-09-22 接线（架构审阅 v2 A 组 #9 / §7.5）：@vitro/protocol 的 TS
+        # 类型从权威 MoonBit 源（moonbit/protocol/types.mbt，受 wbtest 字段锚守护——
+        # S7 批四号起取代 Rust 源）生成，并与 moonbit/docs/spec 的 schema 表格
+        # **双向对账**——任一方向不同步都红。
+        # 这同时把「文档与实现是否一致」变成机器判据（此前无人守）。
+        # 注意 §5 差分层（StepStreamBatch/StepPayloadDelta）未纳入：该节表格是
+        # 压缩式，无法逐字段机判（已在 rules.json 登记）。
+        shell: bash
+        run: node scripts/gen_protocol_ts/main.mts -check
+
+      - name: MoonBit test count (README vs moon test truth)
+
+        if: matrix.slice == 'bookkeeping'
+        # 五轮审阅流程漏洞封堵（2026-09-26）：测试数/文档数连坐靠人记，
+        # facts check 结构上看不见「文档↔facts 一起错」（四轮里三次同型
+        # 事故）。闸自跑 moon test 取实跑真值对账两份 README 的声明数——
+        # v1 读 facts.json（cached 制品）是复述型，注入三方旧值不红（
+        # 用户 J9 三层之第二层抓出）；v2 真值实跑。J9：篡改声明 ±1 红 /
+        # 原缺陷场景（文档回旧值）红。
+        shell: bash
+        run: node scripts/moonbit/testcount/main.mts
+
+      # ── MoonBit serve 行为闸族（serve exe 由本步骤链内构建）────────────
+      # S7 批四号（2026-09-28）：双宿主对拍——同一请求表与断言集跑 MoonBit
+      # cmd/serve；豁免面外置 moonbit_exemptions.json（step 族 S8 / 已登记
+      # 分叉 / quarantine_budget 欠账，14 断言 + 3 整批，PASS 也豁免防僵尸
+      # 条目）。首跑战果：抓到 config.set 未包 serve_ok 帧的一段真缺陷。
+      # J9 双路证红：删豁免表 → fail loud exit 2；删单条目 → 该断言真红。
+      - name: Difference ledger reconciliation (known whitelists ↔ ledger)
+
+        if: matrix.slice == 'contract'
+        # S8 批零号二段（2026-09-30）：差异台账守门规则机判化——
+        # 三防线 known 白名单（shadow/clang_direct/vm_diff）与
+        # scripts/diff_ledger/ledger.json 双向对账：台账 anchors 不得
+        # 虚报（正向），防线新豁免一条分叉必须同步收编台账（反向——
+        # 沉默漂移即红）；schema/枚举域/17 键 capability_flags 锁定同判。
+        # --selftest 六路注入证红（J9）；shadow 真值为闸内清单
+        # （shadow 未外置 JSON 是历史形态，外置化登记技术债随防线
+        # 维护窗口——G-7 同族）。
+        shell: bash
+        run: node scripts/diff_ledger/main.mts --selftest && node scripts/diff_ledger/main.mts
+
+      - name: Check Bytecode Libc precompiled artifacts are up-to-date
+
+        if: matrix.slice == 'gen'
+        # D5 后续批次第二站（2026-09-18）：precompile_bytecode_libc.py → Go。
+        # 双轨对账：--check 双侧同判定（digest 逐字节一致）；重生成产物 JSON
+        # 逐字节一致、.rs 仅头注指向 Go；J9 篡改源文件 → digest 失配 / exit 1。
+        # 归 hygiene（2026-09-23）：红 = 改 C 源后忘了再生成——账没跟上，
+        # 补 `node scripts/precompile_bytecode_libc/main.mts` + git add 即绿。
+        run: node scripts/precompile_bytecode_libc/main.mts --check
+        shell: bash
+
+      - name: Vendored upstream drift probe (moonbitlang/x fs)
+
+        if: matrix.slice == 'contract'
+        # 2026-09-28 唯一依赖清除 B 路线批接线：moonbit/fs vendored 自
+        # moonbitlang/x@0.5.5，上游是活仓库且实证发生过「内容漂移而
+        # version 未 bump」（fs_native.mbt 的 utf8 迁移）——探针走内容哈希
+        # 口径盯上游 main 四文件（版本号仅报告）。归 hygiene：红 = 上游
+        # 漂移待人工评估（评估令非自动同步令——裁定权在人，处置流程见
+        # docs/current/01-定位与路线/唯一依赖清除路线.md §3B-4）；
+        # exit 2 = 网络无法判定（与漂移区分，防把网络抖动误报上游变更）。
+        # J9 双路实跑证红：基线副本篡改哈希 → exit 1；假域名 → exit 2。
+        shell: bash
+        run: node scripts/moonbit/vendor_drift/main.mts
+
+      # fork 方案落地批（2026-10-02）：外部勘探金样本的静态合规闸——只守
+      # 仓内 gold_signatures.json（schema 键集白名单/值域/码形态/provenance
+      # 锚四道，防诊断文案透传即 GPL 渗漏），**不跑勘探本身**（维持拍板——
+      # 勘探需外部仓库+Clang，CI 不可复现；勘探 CI 化仍二期待拍板）。
+      # J9 三路证红：加 message 键 / 删 source_commit / 伪码形态 → exit 2。
+      - name: Realcode gold signatures compliance (scripts/realcode_diff -check)
+
+        if: matrix.slice == 'contract'
+        shell: bash
+        run: node scripts/realcode_diff/main.mts -check
+
+      # ── hygiene 侧 jsonmbt 再生（2026-10-09，修复 run 37883006515）──────
+      # perf_budget/rules.json 已随 jsonmbt 迁移批②翻转遮蔽（.json.mbt 唯一
+      # 真源），但 job 间不共享工作区——core 的 Regenerate 步产物带不进本
+      # job，perf_budget -check 在干净检出下缺 rules.json 直接 FATAL（run
+      # 37765594479/37883006515 连续红）。本 job 唯一 rules 消费方就是
+      # perf_budget，故只再生这一张（编译 jsonmbt ~40s 是单 job 自洽的代价）。
+      - name: Performance-assumption budget (corpus scale premises)
+
+        if: matrix.slice == 'contract'
+        # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模
+        # 前提**变成机判红线。首条 = typeck O2 债（compute_type_size 每次
+        # 调用重建 struct/union 表）——裁决「不做缓存化」的依据是语料规模
+        # 不可测（实测 struct 定义 ≤2、成员访问 ≤37），但该前提会随语料
+        # 扩展过期且无人提醒。超预算即红并指出裁决所在，迫使重估。
+        # 规则外置 scripts/perf_budget/rules.json；J9 证红：预算压 0 必红。
+        # 归 hygiene（2026-09-23）：红 = 裁决的规模前提过期待重估——决策账，
+        # 不指当下提交有问题。
+        shell: bash
+        run: node scripts/perf_budget/main.mts -check
+
+      - name: Editorconfig hard-rule check (charset/EOL/final-newline/JSON indent)
+
+        if: matrix.slice == 'contract'
+        # 审阅批 P2 接线（2026-10-11）：脚本头注自称"升格为 CI 红"但此前
+        # 零接线——E6（JSON 缩进/末行换行漂移）历史复发 4 次全靠本地抓。
+        # 生成物（@generated 头注）按"产物面归生成器闸"排除；tmp/_build 剪枝。
+        shell: bash
+        run: node scripts/editorconfig_check/main.mts
+
+      - name: gen_api_help artifact check (-check)
+
+        if: matrix.slice == 'gen'
+        # 审阅批 P3 接线（2026-10-11）：#67 生成器产物对账闸此前只在
+        # ci.yml 注释里出现——api_help 双产物漂移无 CI 强制。
+        shell: bash
+        run: node scripts/gen_api_help/main.mts -check
+
+      - name: Go format check (gofmt -l scripts)
+
+        if: matrix.slice == 'contract'
+        # P3-3 修复批（2026-09-23）：scripts/** 此前无 eol 约定 + core.autocrlf
+        # 让工作区 CRLF——gofmt -l 本地恒红（24 项假阳性含真格式漂移 15 项），
+        # 无法作为自检；.gitattributes 补 scripts/** text eol=lf + 全量
+        # gofmt -w 后本步入 CI（格式账，归 hygiene）。
+        shell: bash
+        run: |
+          out=$(gofmt -l scripts/)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt 漂移——本地 gofmt -w scripts/ 后提交"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: wasmenc watcheck (wat ↔ vitro flat bytes crosscheck)
+        if: matrix.slice == 'bookkeeping'
+        # REHOST 批 1c（2026-11-13）：cases/*.wat 手写样例经 wabt（npm
+        # 依赖钉版 1.0.39，scripts/package.json + lockfile 锁定）编译的
+        # 函数体指令字节 ↔ wasmenc 单源发射器扁平字节（witness_dump 打印
+        # 行——moon test -p wasmenc 现场跑）**逐字节恒等对拍**——码位/
+        # 编码形态（sleb/uleb 最短性、对齐立即数、f64 小端）的 node 侧第
+        # 三方证人，比 wasm-validate 内容级更强（同一指令序列两编码器分
+        # 歧即红；批 1b 曾借此实锤 memory.fill 多发 0x00 的 validate 不拦
+        # 字节错位）。逐组切片定位 + **覆盖对账**（witness dump 150 条
+        # = 147 可发射 + 双形态 3，全量须有 wat 小单元——新增 opcode 不配
+        # 用例即红；本对账首跑抓到批 1b 全量声明漏网 Not/UDiv/UMod 三条）。
+        shell: bash
+        run: |
+          cd scripts && npm ci --no-audit --no-fund
+          cd .. && node scripts/wasmenc_watcheck/main.mts
+
+      - name: wasmenc emitgate (corpus emission + verify + wabt content-level validation)
+        if: matrix.slice == 'bookkeeping'
+        # REHOST 批 1c 主体（2026-11-13）+ 批 2a 升级（同日）：全语料
+        # 「154 码表 → wasm 子集」发射产物闸（设计单 §3.2 批 1 验收面
+        # ①③）——cmd/dump_wasm（ensureFresh 新鲜度门禁）逐语料目录批跑，
+        # 三级判定：①编译成功例 100% 可发射（emit 失败=禁译面，
+        # deferred.json 按「目录/文件」登记豁免，首版空）；②装载核对
+        # （组表引导裁决）全过；③垫收证人模块过 wabt `m.validate()`
+        # **内容级**验证（类型/栈/指令签名全检——批 1c 解码级壳的升级件，
+        # PR #505 审阅 P1-2 的「随批 2 模块组装升级」闭环；watcheck
+        # 模板级仍为第二证人）。编译期失败例（lex/parse/type/gen）
+        # 计数不判红——负例语料属 codegen_diff 既有防线域。基线：9 目录
+        # 902 ok / 42 编译期 / 0 红（2026-11-13，含 #486 B10 新增 5 语料）。
+        # ensureFresh 对「产物缺失」fail loud（stale 才自动重建）——干净
+        # 检出首跑必缺 exe，前置显式构建（dump_* 现场构建同款口径）。
+        shell: bash
+        run: |
+          cd moonbit && moon build --target native cmd/dump_wasm
+          cd .. && cd scripts && npm ci --no-audit --no-fund
+          cd .. && node scripts/wasmenc_emitgate/main.mts
+
+      - name: wasmenc rundiff (legacy vs wasm-rehost dual-run digest crosscheck)
+        if: matrix.slice == 'bookkeeping'
+        # REHOST 批 2b（2026-11-13）：双跑对拍闸（设计单 §3.3 迁移期新旧
+        # 载体并存的对拍形态）——同一语料 legacy 装载 vs `--wasm-rehost`
+        # （发射→折叠→恒等断言→重建 code 驱动）双跑 digest 逐位对拍：
+        # stdout 逐字节 + rc + 1MB 映像（--dump-memory）+ 装载标记行断言
+        # （`// WASM-REHOST ok` 必在——fallback 即红，静默回退会让双臂
+        # 恒一致而闸失明）。编译失败例两臂同形不红（codegen_diff 域）。
+        # 基线：9 目录 959 例 = 917 双跑一致 + 42 编译期 / 0 红
+        # （2026-11-13 rebase 基 0db534ec 复跑值——#509 收编面扩入；
+        # 开发期首发基 ece3955a 为 944/902、#511 语料卫生 +2 前 957/915，PR #512 审阅 P3-4 勘正）。
+        shell: bash
+        run: |
+          cd moonbit && moon build --target native cmd/run
+          cd .. && cd scripts && npm ci --no-audit --no-fund
+          cd .. && node scripts/wasmenc_rundiff/main.mts
+
+      - name: Build serve.exe (debug native) for facts replay/serve_smoke collectors
+        if: matrix.slice == 'bookkeeping'
+        # 审阅 v2 A6 批（2026-11）S01-A2 连坐：replay/serve_smoke 两键移出
+        # RETIRED_KEYS 后，采集失败不再被退役豁免吞掉（strict 待采集即红）。
+        # 本 job 此前从不构建 cmd/serve 产物——两键在 CI 上常态采集失败、
+        # 一直靠 RETIRED_KEYS 静默吞成绿（master run 41392942638 bookkeeping
+        # 日志实锤同款「serve.exe 不存在」两行、待采集 0 处假象）。构建步
+        # 补齐采集链（写法同 protocol_frames 族三处先例；本地实证：构建后
+        # facts --run --strict check rc=0、replay 22 处 + serve 14 处引用
+        # 全部对上真值）。
+        shell: bash
+        run: cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
+
+      - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
+
+        if: matrix.slice == 'bookkeeping'
+        # 2026-10-01 --strict 接线（模块审阅 09 P2-1 处方① + 四决策点拍板 C）：
+        # Manual 兜底层（整行无数字等于真值）自此进 CI 判红。合法误报面
+        # （里程碑未来值行等）经 scripts/facts/suspect_exemptions.json 显式
+        # 过闸——条目零命中判僵尸、无条件红（防腐化），node:test 锚
+        # suspect_exemptions.test.mts 五路 J9。
+        # 2026-10-25 #273 迁移批：facts Go→.mts 双跑逐位对拍通过（facts.json
+        # 22 键规范化逐位一致 + facts/check stdout 逐位一致），CI 引用切 TS。
+        # 2026-10-27 #298 治本：check 前置 --run 现场采集——旧形态 fresh
+        # 环境（无 reports/facts.json）27 键待采集静默跳过漂移判定 → 假绿
+        # （run 40409823786 实锤，「MoonBit 测试数」21 处引用防护失效）；
+        # 判定器已改「strict 待采集即红」，本步不给 --run 会常态红。采集
+        # 成本（moon test ×2 + diff_gate ×8 + replay/serve_smoke）与 gen
+        # slice 的 `facts facts` 步等价（两片并行，不阻塞总时长）。
+        shell: bash
+        run: node scripts/facts/main.mts --run --strict check
+
+      - name: Facts collect for gen_svg (slice 内自足落盘)
+        # 2026-10-18 CI 红处置：c5f01fff 拆 matrix 三片时 gen_svg 与 facts
+        # 分家——旧单 job 里 facts check 步顺带落盘 facts.json 喂 gen_svg
+        #（main.mts 写盘在子命令分派前的公共段），拆后 gen slice 断供，
+        # gen_svg -check「读不到 reports/facts.json」必红（39052444299/
+        # 39064277885 两 run 同根因）。修 = slice 内自足：前置纯采集落盘
+        #（`facts facts` 子命令不判红——文档对账仍归 bookkeeping 单点）。
+        if: matrix.slice == 'gen'
+        shell: bash
+        run: node scripts/facts/main.mts facts
+
+      - name: Docs SVG freshness (gen_svg -check)
+
+        if: matrix.slice == 'gen'
+        # 2026-09-28 防漂移批接线：入库 SVG 此前**不在任何闸里**——重生成
+        # 不一致红不了，生成器源码过时（如包图徽标停在上个批次）更无人知，
+        # 2026-09-28 盘点实证：S6 收官 / S7 开工两个批次后包图仍写「S6 进行
+        # 中 / 未开工 / 截至 2026-09-24」。现双管齐下：建成状态改 facts 派生
+        # （moonbit_built_packages / moonbit_engine_version，上一步 facts
+        # facts 已落盘当轮 facts.json），本步 -check 兜「忘了重生成」。J9
+        # 证红：手改落盘 SVG 后 -check 必红（2026-09-28 本批实测）。归
+        # hygiene：红 = 插图账没跟上，跑 node scripts/gen_svg/main.mts all 即绿。
+        shell: bash
+        run: node scripts/gen_svg/main.mts -check
+
+      # 图鉴新鲜度（2026-10-23 #273 P2-1 补接线）：gen_icon_preview 的 .mts
+      # 入口自次批落地起就没有任何 workflow 活行——ci_checklist 加第二扫描面
+      # （.mts 入口面）后当即漏登记红。产物 assets/icons-preview.svg 入库，
+      # -check 是标准新鲜度闸（红 = 改图标后忘了重跑图鉴）。
+      - name: Icon preview freshness (gen_icon_preview -check)
+        if: matrix.slice == 'contract'
+        run: node scripts/gen_icon_preview/main.mts -check
+        shell: bash
+
+      - name: CI checklist (存在即接入注册表——scripts 驱动集 ↔ ci.yml 活行集双向对账)
+
+        if: matrix.slice == 'contract'
+        # msime run-checks 形态 Vitro 化（2026-10-11 #71 防线续批）：
+        # 漏登记（驱动存在零活行——libc_boot 断供类红的事前形态）/ 悬空
+        #（活行引用不存在的驱动）/ 僵尸例外 三向红；例外表 exceptions.json
+        # 每条 reason 必填自证。J9 三向证红在案。
+        shell: bash
+        run: node scripts/ci_checklist/main.mts
+
+      - name: Agent skills frontmatter audit (install_skills --list)
+
+        if: matrix.slice == 'contract'
+        # 2026-09-29 skills 图批接线：.agents/skills/ 的 SKILL.md 此前只有本地
+        # 校验（脚本存在 ≠ 接线）。--list 对每个 skill 做 fail loud 校验：缺
+        # SKILL.md / frontmatter 缺 name 或 description / name 与目录名不一致
+        # → exit 1。与 gen_svg -check（skills 图失步即红）构成双闸——前者挡
+        # 结构坏，后者挡「AI 改了手册而清单图没跟上」。
+        # J9 证红：删任一 SKILL.md 的 name 行 → 必红。
+        shell: bash
+        run: node .agents/install_skills.mts --list
+
+      - name: install_skills .mts selftest (node:test + tsc strict + oxlint)
+        # #273 迁移批：安装器 .mts 四件套面（frontmatter fail loud 三形态 +
+        # discover 排序 + diffOne 四态）。cwd=仓库根——node --test / oxlint
+        # 均不接受含 .. 的相对路径，scripts/ 清单外单步验证（bin 走
+        # scripts/node_modules/.bin，严格档参数与 scripts/tsconfig.json 对齐）。
+        # npm ci 前置：static-gates 三片 matrix 此前无依赖安装步（首跑实锤
+        # exit 127——node_modules 不入 git，scripts 的 bin 在此 job 首次消费）。
+        shell: bash
+        run: |
+          cd scripts && npm ci --no-audit --no-fund
+          cd ..
+          node --test .agents/install_skills.test.mts
+          scripts/node_modules/.bin/tsc --ignoreConfig --noEmit --strict --strictNullChecks --noUncheckedIndexedAccess --noImplicitOverride --noFallthroughCasesInSwitch --target es2023 --module nodenext --moduleResolution nodenext --types node --typeRoots scripts/node_modules/@types --allowImportingTsExtensions --skipLibCheck --forceConsistentCasingInFileNames .agents/install_skills.mts .agents/install_skills.test.mts
+          scripts/node_modules/.bin/oxlint .agents/install_skills.mts .agents/install_skills.test.mts
+
+      # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），
+      # 报告上传 artifact；阈值门禁待阈值基线固化后启用
+      # 2026-10-05 修复：windows runner 上 unix.sh 报 Unsupported platform:
+      # MINGW64_NT-10.0-26100（runner 内核升级后 uname 形态被安装脚本拒绝；
+      # 此步未指定 shell 走 pwsh，curl|bash 撞平台检测）——改走 Windows 官方
+      # powershell 安装（与上方 differential anchors 步同款、shell 显式）

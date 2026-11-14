@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // W4 第四臂对拍驱动：同一 wasm-gc 产物 × wasmtime（Cranelift，rs/ 供给版跑器）
 // vs V8（node，host_node.mts）——gateway NDJSON 协议层逐位对拍。CI 接线 =
-// `.github/workflows/ci.yml` job `arm4-wasmtime`（corpus deep-nomem --all 严格
+// 主 CI called 单元 `.github/workflows/ci-engine-gates.yml` job `arm4-wasmtime`
+//（CI 拆分批 2026-11-14 起自 ci.yml 迁入；corpus deep-nomem --all 严格
 // identical + synth 对抗集 --baseline 锁定）。
 //
 //   node scripts/wasmtime_arm/main.mts gen  [--out D] [--seed N] [--profile P] [--all | --cases a.c,b.c | --quota s=N,...] [--synth] [--shared]

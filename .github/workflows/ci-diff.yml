@@ -1,0 +1,245 @@
+# ── CI 拆分批（2026-11-14）：本文件 = 主 CI（ci.yml）的 called 单元 ──────────
+# gates-diff / corpus-fuzz / green_probe 三 job 自 ci.yml 逐字搬迁（步骤/注释裁定资产零改动），唯一机械变换 =
+# 删跨文件无效的 `needs: build-artifacts` 行（时序由 caller 侧 needs 承接，
+# 语义等价）。called job 与 caller 同 run 执行：artifact / cache /
+# needs 红态传导 / github 上下文（event_name 等触发事件面）全同域。
+# 编排与汇总（ci-summary）见 ci.yml；夜间哨兵见 nightly.yml。
+name: CI diff gates
+on:
+  workflow_call:
+    inputs:
+      # workflow_dispatch 的 refresh 逃生门（PR #310 审阅 P3-4）由 caller
+      # 透传（with: refresh: ${{ inputs.refresh == true }}）——inputs 上下文
+      # 在 called 文件里 = workflow_call 声明的同名输入，语义不变。
+      refresh:
+        description: "Force fuzz judge cache refresh (bypass all hits)"
+        required: false
+        default: false
+        type: boolean
+jobs:
+  gates-diff:
+    name: Diff gate (${{ matrix.driver }})
+    runs-on: windows-latest
+    strategy:
+      # 闸级可见性全开：六实例互不取消（一红不见其余）。
+      # exe 需求分两类（2026-10-11 校正）：parser/lexer/typeck/codegen 四家
+      # 驱动内部 `moon run --target native cmd/dump_*` 现场构建（只要 moon
+      # 在 PATH，自建增量 2-4 分钟并行无妨）；vm_diff / clang_direct 读
+      # release 路径 cmd/run exe（全量构建分钟级——消费 artifact 免重复）。
+      fail-fast: false
+      matrix:
+        include:
+          - driver: parser_diff
+            needs_artifact: false
+          - driver: lexer_diff
+            needs_artifact: false
+          - driver: typeck_diff
+            needs_artifact: false
+          - driver: codegen_diff
+            needs_artifact: false
+          - driver: vm_diff
+            needs_artifact: true
+          - driver: clang_direct
+            needs_artifact: true
+          # realcode 仓内语料对拍（2026-10-24 接线批）：-corpus 全量真跑
+          # （Clang+gcc 分桶 + serve 三方）后与在库 gold 逐字段对账——77 语料
+          # 此前只有 -check 静态闸（运行时防线为零）。moon 现场构建 serve
+          # 同 parser_diff 四家形态（needs_artifact: false）。
+          - driver: realcode_corpus
+            needs_artifact: false
+    steps:
+      - uses: actions/checkout@v4
+      # #273 批（2026-10-25）：diff_gate 与 realcode 勘探均已切 .mts（node 直跑）
+      # ——node 版本走 .node-version 单点（type stripping 需 ≥22.18，不 pin 会
+      # 随 runner 预装漂移）。
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install MoonBit toolchain (driver-embedded moon run)
+        if: ${{ !matrix.needs_artifact }}
+        uses: ./.github/actions/setup-moonbit
+      - uses: actions/download-artifact@v4
+        if: ${{ matrix.needs_artifact }}
+        with:
+          name: build-products
+          path: moonbit/_build
+      - name: Clang version (for cache key)
+        id: clangver
+        shell: bash
+        run: echo "value=$(clang --version | head -n1 | tr -d ' ' | cut -c1-48)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Clang golden results
+        uses: actions/cache@v4
+        with:
+          path: |
+            .clang_cache_cd
+          # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
+          # #273 迁移批（2026-10-25）：clang_direct 主驱动已 .mts（node 直跑），
+          # key 取 main.mts（现役）+ main.go（回退面，internal Go 双轨已随
+          # 清理批删除——.mts 内化完成）+ diff_gate TS 源码——回退面变更同样影响口径可比性。
+          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.mts', 'scripts/clang_direct/main.go', 'scripts/internal/**/*.go', 'scripts/internal/**/*.mts', 'scripts/diff_gate/**/*.mts') }}
+          restore-keys: |
+            clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
+
+      # D5 语言迁移最后一站（2026-09-13）：C 影子验证主驱动 Python→Go。
+      # 双轨对账 PASS（663 用例集合/顺序/逐用例 diff_type/summary/category_frequency
+      # 全一致）后切换；Python 版 shadow_verify.py 已退役删除。
+      # === 工序④删区批（2026-10-05）：Rust 臂整体移除 ===
+      # 被删 = Rust 本体（build/test/clippy/coverage）+ 被测物为 Rust DLL 的防线（shadow ×2/
+      # serve smoke Rust 臂）+ 断言对象为 oracle 的（replay/three-tier/C-ABI/wasm32/freeze 新鲜度闸）。
+      # 差分五驱动自动降级 --golden 冻结基线；protocol_frames 保 mb 单臂帧基线；
+      # 语义防线 = clang_direct（真值 Clang）+ moon test。
+      # === #273 批（2026-10-23）：差分五驱动 Go→TS 切换 ===
+      # 五驱动 .mts 双轨版与 Go 版逐位对拍互证后切 CI 引用（lexer 976 /
+      # typeck 487+1 / parser 487+1+三合成模式 / vm 733/733 三通道 /
+      # codegen 487+80+138+20+6，全部与 Go 版一致）。入口 =
+      # scripts/diff_gate/main.mts <target>（target = driver 去掉 _diff 后缀）。
+      # TS 版零第三方依赖（只用 node 内置 + scripts/internal/*.mts），故本 job
+      # 不需要 npm ci；node 由 runner 自带。Go 版 diff 驱动已于 2026-10-24 删除
+      # （scripts/*_diff/main.go 全删，目录仅存冻结 golden 与台账数据）。
+      - name: Run diff driver (full four corpora)
+        shell: bash
+        run: |
+          case "${{ matrix.driver }}" in
+            parser_diff|lexer_diff|typeck_diff|codegen_diff)
+              # 套件级红遮红治理（2026-10-18）：set -e 下 for 首套件红即断，
+              # 其余套件健康面全盲（lexer_diff baseline 断供轮 knr/leetcode/
+              # gap 三套件 skipped 实锤）。改累计失败：四套件全跑完再退出
+              # 非零——单套件红仍 job 红（闸强度不变），多套件红一屏尽收。
+              rc=0
+              # llm_scale（2026-10-21 接线）：千行单文件语料——结构面规模
+              # 压力源（1082–1627 行/文件；#193/#201/#238 类缺陷正是小语料
+              # 写不出的形态）。llm_multifile 不进本循环——多文件工程的跨
+              # 文件引用对逐文件结构面无意义，其覆盖面归 clang_direct 工程
+              # 模式（#237）。
+              t="${{ matrix.driver }}"; t="${t%_diff}"
+              # chibicc_port（#437 语料扩充窗口 2026-11-03 入库批）：chibicc
+              # 外部基准 port 桶——同四闸结构面循环。
+              for c in baseline knr leetcode gap llm_scale chibicc_port; do
+                node scripts/diff_gate/main.mts "$t" "corpus/$c" || rc=1
+              done
+              # codegen_skeleton 节接线（2026-11-01 审阅 v2 S05-C4）：该语料只
+              # 进 codegen golden（其余三闸 golden 无此节，不能进公共循环）——
+              # 冻结后从未被任何闸消费，13 例零防腐化；接线恢复「冻结即有主」。
+              if [ "${{ matrix.driver }}" = "codegen_diff" ]; then
+                node scripts/diff_gate/main.mts codegen "corpus/codegen_skeleton" || rc=1
+              fi
+              exit $rc
+              ;;
+            vm_diff)
+              node scripts/diff_gate/main.mts vm
+              ;;
+            clang_direct)
+              # 2026-10-25 #273 迁移批：Go→.mts（双跑对拍通过），CI 引用切 TS。
+              node scripts/clang_direct/main.mts
+              ;;
+            realcode_corpus)
+              # 仓内语料批运行时对拍（#273 迁移批 2026-10-25）：勘探与对账
+              # 均已切 TS（main.mts 内嵌 gold 对账 + compare_gold.mts 独立判红，
+              # 双跑逐位互证）。
+              node scripts/realcode_diff/main.mts -corpus chibicc -out tmp/rc_ci_chibicc
+              node scripts/realcode_diff/main.mts -corpus multifile -out tmp/rc_ci_multifile
+              node scripts/realcode_diff/compare_gold.mts chibicc tmp/rc_ci_chibicc/result.json
+              node scripts/realcode_diff/compare_gold.mts multifile tmp/rc_ci_multifile/result.json
+              ;;
+          esac
+  corpus-fuzz:
+    name: Adversarial corpus fuzz (mutated corpus vs clang, baseline-locked)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      # ── 对抗分叉防线（2026-10-18 立项，用户拍板制度化）──────────
+      # 存量语料 × 语义靶制变异算子（rules.json 单源；等价变换类 + 已修复
+      # 面定向类——机械数值盲改类已按用户拍板剔除）三方对拍（clang × js ×
+      # native）。指纹基线 fuzz_baseline.json 入库锁定：新指纹/桶恶化红，
+      # 已知未修病条目带 issue 标注归档。CI 动态生成变体不落库（本地缓存
+      # .corpus_fuzz_cache/ gitignored）。
+      #
+      # 判定缓存（#309 P0，2026-10-25）：bucket 是 (变体源, clang, 双臂引擎,
+      # 壳, 判定口径, node 宿主) 的确定性函数——epoch 键七组件 hash（脚本内
+      # 单源计算），命中即跳过三方进程对拍。引擎未变批（文档/脚本）8.7m →
+      # ~1m。cache key 含引擎双产物 hash + clang 版本 + 驱动源（复用 clang
+      # golden 方案 A 的双闸形态）：第一道闸 = key 组件变化自动失效；第二道
+      # 闸 = 夜间 schedule 轮 CF_JUDGE_REFRESH=1 全量重算覆写防缓存腐化。
+      # node 走 .node-version 单点（本 job 直跑 .mts type stripping 需
+      # ≥22.18；预装 node 漂移既破坏 type stripping 又让 epoch 换血——单点后
+      # 两者都稳）。
+      - name: Install Node (fuzz gate driver)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Clang version (for judge cache key)
+        id: clangver
+        shell: bash
+        run: echo "value=$(clang --version | head -n1 | tr -d ' ' | cut -c1-48)" >> "$GITHUB_OUTPUT"
+      - name: Engine hashes (for judge cache key)
+        id: eng
+        shell: bash
+        run: |
+          cd moonbit/_build
+          h="$(sha256sum native/release/build/cmd/run/run.exe js/release/build/cmd/vitro_js/vitro_js.js | sha256sum | cut -c1-24)"
+          echo "value=$h" >> "$GITHUB_OUTPUT"
+      - name: Cache fuzz judge results
+        uses: actions/cache@v4
+        with:
+          path: .corpus_fuzz_judge
+          key: fuzz-judge-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ steps.eng.outputs.value }}-${{ hashFiles('scripts/corpus_fuzz/main.mts', 'scripts/corpus_fuzz/rules.json') }}
+          restore-keys: |
+            fuzz-judge-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
+      - name: Run corpus fuzz gate (baseline check)
+        shell: bash
+        env:
+          # 夜间 schedule 轮无视缓存全量重算覆写（防腐化第二道闸）；手动
+          # dispatch 可勾选 refresh 强制重算（PR #310 审阅 P3-4 逃生门——
+          # inputs 上下文仅在 workflow_dispatch 事件有值，push/PR 轮恒空）；
+          # 常规 push/PR 轮空值 = 默认启用缓存。
+          CF_JUDGE_REFRESH: ${{ (github.event_name == 'schedule' || inputs.refresh == true) && '1' || '' }}
+        run: |
+          node scripts/corpus_fuzz/main.mts
+  green_probe:
+    # 外部 C 语料棘轮闸（2026-11-14 建）：clone fork rustin-beep/C 的
+    # vitro-green 分支（Vitro 诊断全绿精选集——GPL 样本永不进本仓，
+    # **分支内容即断言锚**：零白名单零签名文件）。断言 = 166+ 文件 × 三臂
+    #（js/native/wasm，scripts/bin/vitro 统一入口——纪律 12）compile 零
+    # error + 三臂诊断签名逐文件一致（arm_divergence 红——纪律 14）。
+    # 棘轮规则见 fork 分支 README（只增不减）：Vitro 修复使新文件达标 →
+    # 从 vitro-probe-fix2 晋升拷入。驱动：scripts/green_probe/main.mts。
+    name: Green corpus three-arm gate (vitro-green ratchet)
+    runs-on: windows-latest
+    # PR #513 审阅 P3：外部 clone 无重试 + job 无时限——本机 3.5min / CI 估
+    # 6-10min，15min 封顶防挂死（未来语料面扩大时按需上调）。
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install MoonBit toolchain
+        uses: ./.github/actions/setup-moonbit
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      # artifact 供给 js 臂（vitro_js.js）+ gateway wasm 产物（wasmopt 终态）；
+      # native 臂 exe 与 wasm 胶水壳现建（cli_smoke 同款——MOON_CC=clang 纪律 11）
+      - name: Build native arm + wasm glue shell
+        run: |
+          cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && MOON_CC=clang moon build --release --target js cmd/vitro_wasm && cd ..
+        shell: bash
+      - name: Clone green corpus branch (retry x3)
+        run: |
+          for i in 1 2 3; do
+            git clone --depth 1 -b vitro-green https://github.com/rustin-beep/C green-repo && break
+            echo "clone 失败（第 ${i} 次），2s 后重试"; rm -rf green-repo; sleep 2
+            [ "$i" = "3" ] && exit 1
+          done
+        shell: bash
+      - name: green_probe three-arm gate
+        run: node scripts/green_probe/main.mts -repo green-repo -timeout 120000
+        shell: bash

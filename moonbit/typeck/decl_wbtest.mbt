@@ -286,7 +286,17 @@ test "condition_warnings" {
     @ast.Type::void_type(),
   )
   let for_stmt : @ast.Stmt = @ast.Stmt::For(
-    Some(@ast.Stmt::VarDecl(@ast.Type::int(), "i", None, [], false, false, loc)),
+    Some(
+      @ast.Stmt::VarDecl(
+        @ast.Type::int(),
+        "i",
+        Some(@ast.Expr::Literal(0, loc, @ast.Type::int())),
+        [],
+        false,
+        false,
+        loc,
+      ),
+    ),
     Some(le),
     [],
     @ast.Stmt::Expr(idx, loc),

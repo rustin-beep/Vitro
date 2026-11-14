@@ -55,6 +55,14 @@ fn VitroVM::arith_u32(
 }
 
 ///|
+/// 有符号整数溢出 trap 文案单点（#517 P3-15，2026-11-14）：形态对齐
+/// E3086 `[deny]` / E3088 `[divide-zero]`——类别前缀 + 码 + 多段
+/// cause/fix（修前裸文本单句，与既有 trap 家族形态不一致）。
+fn int_overflow_msg(what : String, detail : String, fix : String) -> String {
+  "[overflow] 整数\{what}溢出 (E3097)：\{detail}\n\n[cause] 原因：有符号整数溢出在 C 中是未定义行为——Vitro 采用受检语义，溢出即停（可教学观察）而非静默回绕。\n[fix] \{fix}"
+}
+
+///|
 fn VitroVM::execute_arithmetic(
   self : VitroVM,
   op : @opcode.OpCode,
@@ -68,8 +76,13 @@ fn VitroVM::execute_arithmetic(
         (_, _, Ok(r)) => self.push_i32(r.to_int())
         (_, _, Err(_)) =>
           self.trap(
-            "整数加法溢出。两个很大的正数（或很小的负数）相加超出了 int 能表示的范围。",
-            line, column,
+            int_overflow_msg(
+              "加法", "两个很大的正数（或很小的负数）相加超出了 int 能表示的范围。",
+              "检查方法：确认操作数的量级；大数累加请改用 long long。",
+            ),
+            line,
+            column,
+            code="E3097",
           )
       }
     UAdd =>
@@ -82,8 +95,13 @@ fn VitroVM::execute_arithmetic(
         (_, _, Ok(r)) => self.push_i32(r.to_int())
         (_, _, Err(_)) =>
           self.trap(
-            "整数减法溢出。被减数太小而减数太大，结果超出了 int 能表示的范围。",
-            line, column,
+            int_overflow_msg(
+              "减法", "被减数太小而减数太大，结果超出了 int 能表示的范围。",
+              "检查方法：确认结果落在 -2147483648 ~ 2147483647 内；大范围运算请改用 long long。",
+            ),
+            line,
+            column,
+            code="E3097",
           )
       }
     USub =>
@@ -96,8 +114,12 @@ fn VitroVM::execute_arithmetic(
         (_, _, Ok(r)) => self.push_i32(r.to_int())
         (_, _, Err(_)) =>
           self.trap(
-            "整数乘法溢出。乘积太大，超出了 int 能表示的范围。",
-            line, column,
+            int_overflow_msg(
+              "乘法", "乘积太大，超出了 int 能表示的范围。", "检查方法：估算乘积量级；大数相乘请改用 long long。",
+            ),
+            line,
+            column,
+            code="E3097",
           )
       }
     UMul =>
@@ -114,8 +136,13 @@ fn VitroVM::execute_arithmetic(
         }
         (_, _, Err(_)) =>
           self.trap(
-            "整数除法溢出。INT_MIN / -1 的结果超出了 int 能表示的范围。",
-            line, column,
+            int_overflow_msg(
+              "除法", "INT_MIN / -1 的结果超出了 int 能表示的范围。",
+              "检查方法：被除数为 INT_MIN 且除数为 -1 时结果必然溢出；请先判断被除数。",
+            ),
+            line,
+            column,
+            code="E3097",
           )
       }
     UDiv =>
@@ -136,8 +163,13 @@ fn VitroVM::execute_arithmetic(
         // INT_MIN % -1 未定义——先拦截（坑 8：Rust % 在此处 panic）
         (_, _, Err(_)) =>
           self.trap(
-            "整数取模溢出。INT_MIN % -1 的结果未定义，超出了 int 能表示的范围。",
-            line, column,
+            int_overflow_msg(
+              "取模", "INT_MIN % -1 的结果未定义，超出了 int 能表示的范围。",
+              "检查方法：被除数为 INT_MIN 且除数为 -1 时取模结果溢出；请先判断被除数。",
+            ),
+            line,
+            column,
+            code="E3097",
           )
       }
     UMod =>
@@ -154,8 +186,13 @@ fn VitroVM::execute_arithmetic(
         Ok(r) => self.push_i32(r.to_int())
         Err(_) =>
           self.trap(
-            "整数取反溢出。-INT_MIN 的结果超出了 int 能表示的范围。",
-            line, column,
+            int_overflow_msg(
+              "取反", "-INT_MIN 的结果超出了 int 能表示的范围。",
+              "检查方法：对 INT_MIN 取负前先判断，或改用 long long。",
+            ),
+            line,
+            column,
+            code="E3097",
           )
       }
     }

@@ -165,6 +165,9 @@ pub(all) enum ErrorCode {
   W3094_SelfInitReference
   E3095_DesignatorIndexOutOfBounds
   E3096_DesignatorIndexNotConstant
+  E3097_IntOverflow
+  W3098_ConstDivZero
+  W3099_UninitializedRead
 }
 pub fn ErrorCode::all() -> Array[Self]
 pub fn ErrorCode::catalog(Self) -> CatalogEntry?

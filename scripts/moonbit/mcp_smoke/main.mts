@@ -271,11 +271,15 @@ async function drive(): Promise<number> {
     // ── 产物 script 语法门 + PLAYER 驱动对拍（#468/#469 防回归）──
     // #468：extern 模板字面量转义丢失曾致整段 script SyntaxError（播放器
     // 交互全灭，而「生成成功+帧数正确」验收不暴露）——vm.Script 编译 + 逐帧
-    // 驱动是唯一会红的面。锚 5 = BUBBLE_C（真名恰为 arr）抽稀后事件帧全
-    // 点亮（纯 vis_events 驱动——字幕正则兜底已随 #469 退役）。
+    // 驱动是唯一会红的面。锚 3 = BUBBLE_C（真名恰为 arr）抽稀后 swap 帧
+    // 点亮数（纯 vis_events 驱动——字幕正则兜底已随 #469 退役）。#517
+    // P1-3 重锚（2026-11-14）：形参解引用视图修复后 bubble_sort 帧的 arr
+    // 逐帧真变（修前恒为跨帧垃圾、arrays_eq 恒等）——关键帧 w=3 集从少数
+    // 事件帧膨胀到几乎全帧，301 预算下 hi 集均匀抽稀，7 个 swap 帧保留
+    // 3（旧锚 5 系「被调帧数组恒定」缺陷形态的基线）。
     const pa = probeHtml(rendered.html_path);
-    chk.check("render 产物 script 语法门 + PLAYER 驱动（BUBBLE_C swap 锚 5/#468·#469）",
-      pa.ok && pa.swapFrames === 5 && pa.total === 301,
+    chk.check("render 产物 script 语法门 + PLAYER 驱动（BUBBLE_C swap 锚 3/#468·#469/#517）",
+      pa.ok && pa.swapFrames === 3 && pa.total === 301,
       pa.ok ? `swap=${pa.swapFrames}/${pa.total}` : `驱动失败: ${pa.err ?? "?"}`);
     // interactive 回落（CI 无 wasm 资产——恒走回落，恰锁该路径）
     const anim = body<{ ok: boolean; mode: string; frame_count: number; warnings: string[] }>(
@@ -286,14 +290,19 @@ async function drive(): Promise<number> {
 
     // ── #469 分叉面语料：数组真名 a ≠ 字幕展示名 arr ──
     // 语义标注模板硬编码展示名 arr，正则咬字幕形态恒假（swap 全灭）；修复后
-    // swap 高亮走 vis_events context 归属（demo visEvents.ts 同款）。锚 21 =
-    // 301 帧里 21 个 ty=2 事件帧全点亮（context 形如 "a[j]:a[j + 1]"）。
+    // swap 高亮走 vis_events context 归属（demo visEvents.ts 同款）。锚 54 =
+    // 81 帧里 54 个 ty=2 事件帧全点亮（context 形如 "a[j]:a[j + 1]"）。
+    // #517 P2-7 重锚（2026-11-14）：is_swap_assign_line v4 修正单行语料的
+    // 伪交换字幕（整行首个裸 = 在 `int a[5] = {…}…for (int i = 0;` 处——
+    // v3 整行含 [] 即判交换，字幕恒「交换」撑起 weight-2 关键帧 301 抽稀）；
+    // v4 字幕正确化后关键帧 301→81（数组/栈实义帧，不抽稀），7 个交换的
+    // 原始事件帧全保留（21→54）。
     const openedC = body<{ session_id: string }>(await call("session_open", { source: BUBBLE_SORT_A }));
     const renderedC = body<{ ok: boolean; html_path: string; frame_count: number; error?: string }>(
       await call("render", { session_id: openedC.session_id, budget: 300, out_dir: outDir, preview_png: false }));
     const pc = probeHtml(renderedC.ok ? renderedC.html_path : "");
-    chk.check("swap 高亮归属（真名 a ≠ 展示名 arr，vis_events context 归属锚 21/#469）",
-      renderedC.ok && pc.ok && pc.swapFrames === 21,
+    chk.check("swap 高亮归属（真名 a ≠ 展示名 arr，vis_events context 归属锚 54/#469/#517）",
+      renderedC.ok && pc.ok && pc.swapFrames === 54,
       renderedC.ok ? (pc.ok ? `swap=${pc.swapFrames}/${pc.total}` : `驱动失败: ${pc.err ?? "?"}`) : `render 红本文: ${renderedC.error ?? "?"}`);
     await call("session_close", { session_id: openedC.session_id });
 

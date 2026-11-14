@@ -16,7 +16,10 @@
     "repo": "TheAlgorithms/C",
     "source_commit": "e5dad3f",
     "source_fork": "https://github.com/rustin-beep/C",
-    "total": 41
+    "total": 41,
+    "notes": [
+      "#517 P3-14（2026-11-14）：extern.c +W3099——体内 `extern int ext3;` 是 C 子集不支持形态（E2003/E2005 在案），错误恢复期造出的声明上叠加的级联警告；Stmt 层无存储类位 + TypeChecker 无 parser 错可见性 + 恢复造点不改（三重不可达），登记为已知形态去噪属 parser 恢复层批改。"
+    ]
   },
   "files": {
     "alignof.c": {
@@ -235,10 +238,11 @@
       "clang_ok": true,
       "gcc_ok": true,
       "vitro_errs": 4,
-      "vitro_warns": 0,
+      "vitro_warns": 1,
       "codes": {
         "E2003": 2,
-        "E2005": 2
+        "E2005": 2,
+        "W3099": 1
       },
       "layer": "parse",
       "run": ""

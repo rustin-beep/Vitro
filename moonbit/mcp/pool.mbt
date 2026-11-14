@@ -34,16 +34,29 @@ const PHASE_WAITING_INPUT : Int32 = 5
 const PHASE_CAPPED : Int32 = 6
 
 ///|
+/// 终态：采集墙钟超预算（#517 P1-1/P1-5，2026-11-14）——无限递归深栈
+/// 采集实测 232s 阻塞 server 主循环（单线程 stdio 队列全池饥饿、宿主
+/// 30s 超时丢响应）；采集循环超预算即收口此态，防单个慢请求吞掉共享池。
+const PHASE_CAPPED_TIME : Int32 = 7
+
+///|
 fn phase_is_terminal(p : Int32) -> Bool {
   p == PHASE_COMPILE_FAILED ||
   p == PHASE_FINISHED ||
   p == PHASE_TRAPPED ||
   p == PHASE_WAITING_INPUT ||
-  p == PHASE_CAPPED
+  p == PHASE_CAPPED ||
+  p == PHASE_CAPPED_TIME
 }
 
 ///|
 const CAP_FRAMES : Int32 = 20000
+
+///|
+/// 采集墙钟预算（毫秒）：宿主默认 30s 超时下须留出渲染/截图窗口——
+/// 正常程序 20000 步实测 ≈4s 不触；病态程序（深递归/巨数组快照）超时
+/// 收口 capped@time（红→绿锚 mcp_collect_time_budget_capped）。
+const COLLECT_TIME_BUDGET_MS : Double = 20000.0
 
 ///|
 const POOL_CAP : Int32 = 8
@@ -95,6 +108,7 @@ fn Entry::stopped(self : Entry) -> String {
     PHASE_TRAPPED => "trapped: \{self.trap_message}"
     PHASE_WAITING_INPUT => "waiting_input"
     PHASE_CAPPED => "capped@\{CAP_FRAMES}"
+    PHASE_CAPPED_TIME => "capped@time(\{COLLECT_TIME_BUDGET_MS / 1000.0}秒)"
     _ => ""
   }
 }

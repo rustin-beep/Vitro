@@ -618,7 +618,17 @@ test "file_pointer_arg_three_state_anchor" {
     @ast.Expr::FloatLiteral(1.5, loc, @ast.Type::double())
   }
   fn bad_var_decl(loc : @source.SourceLoc) -> @ast.Stmt {
-    @ast.Stmt::VarDecl(@ast.Type::int(), "bad", None, [], false, false, loc)
+    // #517 P3-14 连坐：补 init=0——本锚族测 W3068 类型面，「未初始化」是
+    // 脚手架无意形态（会撞 W3099 新防线）
+    @ast.Stmt::VarDecl(
+      @ast.Type::int(),
+      "bad",
+      Some(@ast.Expr::Literal(0, loc, @ast.Type::int())),
+      [],
+      false,
+      false,
+      loc,
+    )
   }
   fn bad_var(loc : @source.SourceLoc) -> @ast.Expr {
     @ast.Expr::Identifier("bad", loc, @ast.Type::void_type())

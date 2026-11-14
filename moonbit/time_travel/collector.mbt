@@ -17,6 +17,11 @@
 ///   直供」先例的落地形态）。
 
 ///|
+/// 调用栈快照深度上限（#517 P1-1，2026-11-14）——与 MAX_ARRAY_SNAPSHOT_
+/// ELEMENTS 同级的防御性观测截断锚；超限保顶部（当前帧优先）。
+const MAX_CALL_STACK_SNAPSHOT : Int32 = 256
+
+///|
 /// 算法步骤推断上下文（Rust session.unified_{row_entry_vars,last_line,
 /// last_frame_vars} 三字段 + algorithm_matches 的引擎侧内聚；批四号接线
 /// 裁定——跨 seek 不回滚，与 Rust session 字段「重放连续演化」同语义）。
@@ -154,9 +159,20 @@ pub fn[P : SourceLineProvider] collect(
       value: value_str,
     })
   }
-  // 调用栈（return_line=0 MVP 简化照搬）
+  // 调用栈（return_line=0 MVP 简化照搬）。#517 P1-1（2026-11-14）：深栈
+  // 采集截断——保**顶部** MAX_CALL_STACK_SNAPSHOT 层（当前帧上下文优先）。
+  // 无限递归下每帧快照 O(深度) × 20000 步采集 = O(n²) 膨胀（实测 232s
+  // 阻塞 server 主循环，深度上限 10000）；≤256 层的正常教学程序零影响。
+  // 已知限制：超 256 层后栈视图封顶，依赖 c.length() 的深度判定（mcp
+  // annotations 的 call/return、关键帧权重）在封顶段停止新增——深递归
+  // 场景教学价值趋零，换取单帧常数化。
   let call_stack : Array[@protocol.ApiFrameInfo] = []
-  let mut fi = 0
+  let cs_first : Int32 = if cs_len > MAX_CALL_STACK_SNAPSHOT {
+    cs_len - MAX_CALL_STACK_SNAPSHOT
+  } else {
+    0
+  }
+  let mut fi = cs_first
   while fi < cs_len {
     let f = vm.call_stack_at(fi)
     call_stack.push({ func_name: f.func_name, return_line: 0, })
@@ -358,6 +374,9 @@ fn find_var_name_in_frame(
 ///|
 /// 变量值文本化（Rust format_value 照搬）：Double/Float 按位还原后定点
 /// 15/7 位并剪尾零（`1.500` → `1.5`、`2.0` → `2`）；其余整值直出。
+/// #517 P3-16（2026-11-14）：TK_Char 臂与 get_array_snapshots 的 char
+/// 元素同口径（可打印 `'c'` 形态 / 裸数值）——修前标量恒数值（char 65
+/// 不见 'A'，与数组元素 `'A'` 两口径分裂）。
 fn format_value(ty : @ast.Type, value : Int64) -> String {
   match ty.kind() {
     TK_Double => {
@@ -368,6 +387,16 @@ fn format_value(ty : @ast.Type, value : Int64) -> String {
       let bits = value.reinterpret_as_uint64() & 0xFFFFFFFFUL
       let f = Float::reinterpret_from_uint(bits.to_uint())
       trim_trailing_zeros(@host.format_fixed(f.to_double(), 7))
+    }
+    TK_Char => {
+      // 低 8 位符号解释（char c=200 读回 -56——与 exec TruncByte 同口径）
+      let b = (value & 0xFFL).to_int()
+      let b8 = if b >= 128 { b - 256 } else { b }
+      if b8 >= 32 && b8 <= 126 {
+        "'\{b8.unsafe_to_char()}'"
+      } else {
+        "\{b8}"
+      }
     }
     _ => "\{value}"
   }

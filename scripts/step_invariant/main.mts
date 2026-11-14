@@ -490,8 +490,15 @@ export async function checkFile(
         resolve({ violations: [], frames: checker.frameCount, terminal: "timeout", rc: rc ?? -1, timedOut: true });
         return;
       }
-      // rc=4 = 用法错/源不可读（cli_step 契约）——语料形态单列，不红（P3-6）
+      // rc=4 = 用法错/源不可读（cli_step 契约）——语料形态单列，不红（P3-6）。
+      // **rehost 轮例外（PR #520 审阅 P2-2 fail-open 修）**：rc=4 在
+      // rehost 轮计 DRIVER 红——「未知旗标 → rc=4」的桩形态下 rc=4 恰是
+      // 旗标未生效的信号，旧形态被 rc 豁免分支吞掉 = 防线被绕过。
       if (rc === 4) {
+        if (rehost) {
+          resolve({ violations: [{ source, line: 0, invariant: "DRIVER", detail: "rehost 轮 rc=4（用法错/不可读——若 js 壳为「未知旗标」桩形态即旗标未生效）" }], frames: 0, terminal: "none", rc, timedOut: false });
+          return;
+        }
         resolve({ violations: [], frames: 0, terminal: "unreadable", rc, timedOut: false });
         return;
       }

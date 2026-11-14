@@ -133,6 +133,30 @@ export function collectDump(repoRoot: string): Map<string, { operand: number; pu
   return dump;
 }
 
+/// 跑 moon test 抓 dispatch 模块 dump 行（PR #520 审阅 P1 处方①——
+/// dispatch-loop 产物的 validate 外部证人：wasmenc_wbtest 的
+/// witness_dump_dispatch_modules 打 DISPATCHMOD <hex>，本函数收集后由
+/// 主流程逐件过 WebAssembly.validate。修复前实锤：三 fixture 全
+/// validate=false——G_RV 类型错/FB 未置 stack_start/br_table 出口落
+/// loop 回跳（审阅 P1 a/b/c）。
+export function collectDispatchModules(repoRoot: string): number[][] {
+  const out = execFileSync("moon", ["test", "-p", "wasmenc"], {
+    cwd: path.join(repoRoot, "moonbit"),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  const mods: number[][] = [];
+  for (const line of out.split("\n")) {
+    if (!line.startsWith("DISPATCHMOD ")) continue;
+    const hexStr = line.slice("DISPATCHMOD ".length).trim();
+    const bytes: number[] = [];
+    for (let i = 0; i < hexStr.length; i += 2) bytes.push(parseInt(hexStr.slice(i, i + 2), 16));
+    if (bytes.length > 0) mods.push(bytes);
+  }
+  return mods;
+}
+
 /// uleb 读值（返回 [值, 消费字节数]）
 function readUleb(bytes: ReadonlyArray<number>, pos: number): [number, number] {
   let value = 0;
@@ -291,7 +315,26 @@ export async function main(): Promise<number> {
   }
   const groupCount = CASES.reduce((n, c) => n + c.groups.length, 0);
   console.log(`wasmenc watcheck: ${pass} PASS / ${fail} FAIL（${CASES.length} 文件 / ${groupCount} 组次 / 覆盖对账 ${covered.size}/${dump.size} 全量）`);
-  return fail === 0 ? 0 : 1;
+  // dispatch 模块 validate 证人（PR #520 审阅 P1 处方①）：三 fixture
+  // （最小/带调用/短路留值）过 WebAssembly.validate——dispatch-loop
+  // 产物「合法 wasm」的外部裁判。缺 fixture 行 = 数据管线断（红）。
+  const mods = collectDispatchModules(repoRoot);
+  if (mods.length < 3) {
+    console.error(`dispatch validate 红：DISPATCHMOD 行 ${mods.length} < 3（wasmenc_wbtest witness_dump_dispatch_modules 数据管线断）`);
+    return 1;
+  }
+  let vfail = 0;
+  for (let i = 0; i < mods.length; i++) {
+    const bytes = new Uint8Array(mods[i] as number[]);
+    const ok = WebAssembly.validate(bytes);
+    if (ok) {
+      console.log(`PASS dispatch-fixture[${i}] validate（${bytes.length} B）`);
+    } else {
+      vfail++;
+      console.error(`FAIL dispatch-fixture[${i}] validate=false（${bytes.length} B——wabt/V8 验证器拒收，结构错定位见 wasmenc dispatchloop 组装器）`);
+    }
+  }
+  return fail === 0 && vfail === 0 ? 0 : 1;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

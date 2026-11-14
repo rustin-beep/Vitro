@@ -265,3 +265,67 @@ fn bytes_to_hex(bytes : Array[Byte]) -> String {
   }
   hex
 }
+
+///|
+/// **批 4a dispatch 模块 dump（PR #520 审阅 P1 处方①——validate 锚的
+/// vitro 侧数据源）**：三个 fixture（最小程序/带调用/短路留值）的
+/// `assemble_dispatch_module` 产物 hex，前缀 `DISPATCHMOD` 供 node 侧
+/// （wasmenc_watcheck）抓行做 `WebAssembly.validate`——「dispatch 模块
+/// = 合法 wasm」的外部证人。修复前实锤：三 fixture 全 validate=false
+/// （G_RV 类型错/FB 未置 stack_start/br_table 出口落 loop 回跳——审阅
+/// P1 a/b/c 三错）。fixture 与 dispatchloop_wbtest 同源形态（不依赖
+/// libc——手拼 DispatchInput）。
+test "witness_dump_dispatch_modules" {
+  // fixture 1：最小程序 PushConst 42; Ret
+  let mk = fn(
+    ops : Array[@opcode.OpCode],
+    operands : Array[Int32],
+    entries : Array[Int32],
+    sites : Map[Int32, CallSiteMeta],
+  ) -> DispatchInput {
+    {
+      ops,
+      operands,
+      func_entry_ips: entries,
+      entry_ip: 0,
+      call_sites: sites,
+      stack_start: 1048576,
+      call_depth_limit: 10000,
+      max_steps: 100000,
+      ctx: witness_ctx(),
+    }
+  }
+  // F1：return 42
+  let f1 = mk([PushConst, Ret], [42, 0], [0], Map([]))
+  // F2：带调用（参数搬运/帧协议/G_RV 通道）：PushConst 7; Call f(3);
+  //     PushConst 0; Ret + f: PushConst 9; Ret（f 头 gip3）
+  let sites2 : Map[Int32, CallSiteMeta] = Map([])
+  sites2.set(1, {
+    target_ip: 4,
+    arg_words: 1,
+    frame_bytes: 8,
+    param_words: [1],
+    is_void: false,
+  })
+  let f2 = mk(
+    [PushConst, Call, PushConst, Ret, PushConst, Ret],
+    [7, 4, 0, 0, 9, 0],
+    [0, 4],
+    sites2,
+  )
+  // F3：短路留值（Dup+JumpIfZero 落空留 1 值跨块——溢出池路径；两路
+  //     等高汇合于 Ret——真实 codegen 短路求值的标准形态）：
+  //     LoadLocal 0; Dup; JumpIfZero 5; Pop; PushConst 1; Ret
+  let f3 = mk(
+    [LoadLocal, Dup, JumpIfZero, Pop, PushConst, Ret],
+    [0, 0, 5, 0, 0, 0],
+    [0],
+    Map([]),
+  )
+  for f in [f1, f2, f3] {
+    match assemble_dispatch_module(f) {
+      Ok(bytes) => println("DISPATCHMOD " + bytes_to_hex(bytes))
+      Err(_) => println("DISPATCHMOD ASSEMBLE_FAIL")
+    }
+  }
+}

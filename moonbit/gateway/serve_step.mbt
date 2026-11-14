@@ -240,10 +240,18 @@ fn seek_result_json(r : @protocol.SeekResult) -> Json {
 /// P0-A：同会话二次运行不发旧程序滞留帧）+ 新建引擎 + vm 五步重建
 /// （serve_execute_run 非 resume 段同款）+ 检查点 0（Rust step_begin
 /// 显式 save(0)——run_batch 首循环的双保险）。
+///
+/// REHOST 批 3：帧参数 `wasm_rehost`（bool，缺省 false）——step 态装载
+/// 走 wasm 载体往返（与批 2b run 帧参数同形态、**独立开关**——设计单
+/// §3.2 批 3 回退点：step 态 flag 与 run 态 flag 并行可单独关）。装载
+/// 协议与 run 态同源（`rehost_round_trip`：发射→折叠→恒等断言→折叠重建
+/// 产物驱动取指——组=原子执行单元，单步/断点/vis 观测全在引擎侧原样，
+/// 铁律 2）；返回帧携带 `wasm_rehost` 状态串（非空才带——"ok groups=N" /
+/// "fallback …"，与 run_outcome_json 同款前缀只增不改，老消费者零感知）。
 fn serve_step_begin_frame(
   s : @session.Session,
   id : Json,
-  _params : Json,
+  params : Json,
 ) -> (String, Bool) {
   if !s.compile.compiled {
     return (
@@ -289,13 +297,17 @@ fn serve_step_begin_frame(
   let argc = s.runtime_argv.length()
   // issue #29 #4：vis 行随重建灌入（compile_pipeline.rs:364 同形——run/step
   // 两通道统一装配，demo 可视化侧栏的数据源）
-  // step 态恒 legacy（设计单批 2：step/breakpoint 职权在引擎侧；批 3
-  // 才评估 step 态切组粒度）——返回状态串不消费
-  let _ = s.vm.setup_from_output(
+  // REHOST 批 3：step 态装载 flag（帧参数域——与 run 帧同形态，独立开关）
+  let wasm_rehost = match json_field(params, "wasm_rehost").as_bool() {
+    Some(b) => b
+    None => false
+  }
+  let rehost_status = s.vm.setup_from_output(
     output,
     argc,
     s.runtime_argv,
     project_vis_lines(s.compile.algorithm_matches),
+    wasm_rehost~,
   )
   s.vm.mem_map.set_heap_base(
     @bytecode.compute_heap_base(output.global_data_end, argc, s.runtime_argv),
@@ -307,6 +319,11 @@ fn serve_step_begin_frame(
   let m : Map[String, Json] = Map([])
   m.set("ready", Json::boolean(true))
   m.set("max_collected_step", Json::number(-1))
+  // 批 3：装载状态串（flag on 才非空——CLI stderr 标记行/STEP-INV
+  // flag on 轮的装载断言消费面；空串不带字段，帧面冻结）
+  if !rehost_status.is_empty() {
+    m.set("wasm_rehost", Json::string(rehost_status))
+  }
   (serve_ok(id, Json::object(m)).stringify(), false)
 }
 

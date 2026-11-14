@@ -429,19 +429,35 @@ function jsShellPath(root: string): string {
   return path.join(root, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js");
 }
 
+/** REHOST 批 3 装载标记判定（纯函数——checkFile close 回调消费）：
+ * 终态驱动形态（rc 0 正常 / 2 trap / 3 步数超限——rc=1 编译失败早退未达
+ * step.begin 不在断言面）stderr 须含 `// WASM-REHOST-STEP ok`；缺失
+ * （旗标未生效/协议破损）或 fallback（装载回退）返回违例文案，否则 null。
+ * 「fallback 即红」与批 2b wasmenc_rundiff 同款纪律——flag on 形态的
+ * 受检前提是装载真实生效，静默回退会让不变量检查跑在 legacy 上假绿。 */
+export function rehostMarkerViolation(rc: number, stderrTail: string): string | null {
+  if (rc !== 0 && rc !== 2 && rc !== 3) return null;
+  if (stderrTail.includes("// WASM-REHOST-STEP ok")) return null;
+  return `rehost 装载标记缺失/回退（stderr 尾部：${stderrTail.slice(-300)}）`;
+}
+
 /** 采一语料帧流并检查（流式逐行 feed 即弃——大语料 NDJSON 数十 MB 不驻留）。
  * stepBudget > 0 时透传 `--max-steps`（spot 轮大语料降档——预算封顶换墙钟，
- * 截断流仍是合法检查面；PR #478 审阅 P1-2）。 */
+ * 截断流仍是合法检查面；PR #478 审阅 P1-2）。
+ * rehost = true 时透传 `--wasm-rehost`（REHOST 批 3：step 态装载走 wasm
+ * 载体往返）并断言装载标记行（判定单源 rehostMarkerViolation）。 */
 export async function checkFile(
   shell: string,
   file: string,
   source: string,
   timeoutMs: number,
   stepBudget = 0,
+  rehost = false,
 ): Promise<StreamCheckResult & { rc: number; timedOut: boolean }> {
   return new Promise((resolve) => {
     const args = [shell, "step", file, "--json"];
     if (stepBudget > 0) args.push("--max-steps", String(stepBudget));
+    if (rehost) args.push("--wasm-rehost");
     const child = spawn(process.execPath, args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -484,6 +500,15 @@ export async function checkFile(
         resolve({ violations: [{ source, line: 0, invariant: "DRIVER", detail: `js 壳异常退出 rc=${rc}：${stderrTail.slice(0, 400)}` }], frames: 0, terminal: "none", rc, timedOut: false });
         return;
       }
+      // REHOST 批 3 装载断言（rehost 轮专用——判定单源 rehostMarkerViolation，
+      // 纯函数可测；rc=1 编译失败早退未达 step.begin，不在断言面）
+      if (rehost) {
+        const marker = rehostMarkerViolation(rc ?? -1, stderrTail);
+        if (marker !== null) {
+          resolve({ violations: [{ source, line: 0, invariant: "DRIVER", detail: marker }], frames: checker.frameCount, terminal: "none", rc: rc ?? -1, timedOut: false });
+          return;
+        }
+      }
       resolve({ ...checker.finish(), rc: rc ?? -1, timedOut: false });
     });
   });
@@ -497,10 +522,11 @@ export async function checkFileRetry(
   source: string,
   timeoutMs: number,
   stepBudget = 0,
+  rehost = false,
 ): Promise<StreamCheckResult & { rc: number; timedOut: boolean }> {
-  const first = await checkFile(shell, file, source, timeoutMs, stepBudget);
+  const first = await checkFile(shell, file, source, timeoutMs, stepBudget, rehost);
   if (!first.timedOut) return first;
-  const second = await checkFile(shell, file, source, timeoutMs, stepBudget);
+  const second = await checkFile(shell, file, source, timeoutMs, stepBudget, rehost);
   return second;
 }
 
@@ -521,7 +547,7 @@ function listCorpus(dir: string): string[] {
 function usage(): never {
   process.stderr.write(`用法: node scripts/step_invariant/main.mts <file.c> [...]
       node scripts/step_invariant/main.mts --corpus <dir> [--sample N] [--jobs N]
-            [--timeout-ms N] [--step-budget N] [--json] [--audit-known]
+            [--timeout-ms N] [--step-budget N] [--json] [--audit-known] [--rehost]
 `);
   process.exit(1);
 }
@@ -534,12 +560,15 @@ interface Opts {
   timeoutMs: number;
   /** 透传 `vitro step --max-steps`（spot 轮大语料降档，0 = 不透传）。 */
   stepBudget: number;
+  /** REHOST 批 3：透传 `vitro step --wasm-rehost`（step 态装载走 wasm
+   * 载体往返）+ 装载标记行断言（fallback/缺失即红——见 checkFile 头注）。 */
+  rehost: boolean;
   json: boolean;
   auditKnown: boolean;
 }
 
 function parseArgs(argv: string[]): Opts {
-  const o: Opts = { files: [], corpus: null, sample: 0, jobs: 4, timeoutMs: 120_000, stepBudget: 0, json: false, auditKnown: false };
+  const o: Opts = { files: [], corpus: null, sample: 0, jobs: 4, timeoutMs: 120_000, stepBudget: 0, rehost: false, json: false, auditKnown: false };
   let i = 0;
   while (i < argv.length) {
     const a = argv[i++];
@@ -562,6 +591,8 @@ function parseArgs(argv: string[]): Opts {
       const v = Number(argv[i++]);
       if (!Number.isInteger(v) || v < 1) usage();
       o.stepBudget = v;
+    } else if (a === "--rehost") {
+      o.rehost = true;
     } else if (a === "--json") {
       o.json = true;
     } else if (a === "--audit-known") {
@@ -664,7 +695,7 @@ async function main(): Promise<void> {
       const f = files[cursor];
       if (f === undefined) break;
       cursor++;
-      const r = await checkFileRetry(shell, f, path.relative(root, f), opts.timeoutMs, opts.stepBudget);
+      const r = await checkFileRetry(shell, f, path.relative(root, f), opts.timeoutMs, opts.stepBudget, opts.rehost);
       results.push({ file: f, r });
     }
   };

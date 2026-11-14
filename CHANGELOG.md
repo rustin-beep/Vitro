@@ -1,5 +1,59 @@
 ## [Unreleased]
 
+### fix(scripts): vm_diff native 臂新鲜度软警告升级 ensureFresh 复核构建硬门禁（REHOST 批 3 连坐，2026-11-14）
+
+- **S05-C2 降软的代价实锤**：本地 release run.exe 陈旧（exe 日期早于 #511 的
+  lexer 改动——依赖面源码变更不触发本地重建），warnStaleExe 软警告打了 stderr
+  第 2 行但**不阻断**，vm_diff 产出 DIFF=2 假红（三提交 worktree 归因才闭环）。
+  native 臂升级 `ensureFresh`（freshness.mts 单源——clang_direct/rundiff 等
+  九处现役同源）：stale → 自动复核构建（`MOON_CC=clang moon build --release
+  --target native cmd/run`）→ **mtime 只作触发、内容 hash 由 moon 增量把关**
+  （checkout 刷源 mtime 的 S05-C2 假阳性顾虑由此消化——touch 实测复核秒过、
+  判定照常 SAME）；真陈旧自动重建，假红根除；构建失败红（陈旧产物假红/假绿
+  由此封死）。wasm 臂维持软警告（产物链含 wasmopt 后置覆盖，自动重建会以
+  裸产物覆盖优化产物——升级待 freshness 支持构建后置钩子另批）。
+  J9 场景实测：touch 源 →「旧于源——跑构建复核」触发 → moon 增量 up-to-date
+  秒过 → 判定 SAME。
+
+### feat(vm+gateway+cli+scripts): REHOST 批 3——step 态切换 + time_travel 采集适配 + ci_checklist 驱动集盲区根治（2026-11-14）
+
+- **step 态独立 flag 接线（设计单 §3.2 批 3 回退点：与批 2 run 态 flag
+  并行可单独关）**：`step.begin` 帧参数 `wasm_rehost`（bool 缺省 false，
+  与 run 帧同形态）→ `setup_from_output(wasm_rehost~)` 装载走 wasm 载体
+  往返（`rehost_round_trip` 单源——折叠重建产物驱动取指，**单步=组**：
+  一组恰一条 Instruction，`code[gip]` 取指即组粒度）；返回帧携带
+  `wasm_rehost` 状态串（非空才带——前缀只增不改，老消费者零感知）。
+  CLI `step --wasm-rehost` 旗标 + stderr 标记行 `// WASM-REHOST-STEP
+  <status>`（与 run 通道 `// WASM-REHOST` 区分；不进 digest 消费面）。
+- **VMSnapshot.ip → gip 换名不换义（设计单 §2.4）**：快照字段语义 =
+  组索引（组=装载原子执行单元；与 legacy 指令下标一一同构，值域/行为
+  零变化——`rehost_step_semantics_gip_breakpoint_b3` 锚锁 flag on/off
+  同位快照 gip 同值 + restore 回填执行态 ip 一致）；VM 执行态字段仍名
+  `ip`（批 4 收口统一）。断点判定经组表侧车 loc/operand 同构（StepEvent
+  语义原样——铁律 2：单步/断点/VisEvent 职权在引擎侧零迁移）。
+- **step_invariant --rehost 透传 + 装载断言**：`--rehost` 旗标透传
+  `vitro step --wasm-rehost`；`rehostMarkerViolation` 纯函数判定（终态
+  rc 0/2/3 须含 `// WASM-REHOST-STEP ok`——**fallback/缺失即红**，批 2b
+  rundiff「fallback 即红」同款纪律；rc=1 编译失败早退不在断言面）。
+- **ci_checklist 驱动集盲区根治（#512 彻查连坐）**：原判据「main.mts 且
+  shebang 首行」——无 shebang 的 main.mts **静默逃逸驱动集**，「存在即
+  接入」对账零检出力（前科 gen_course〔S08-6 补个案未根治〕；#505/#512
+  的 wasmenc_emitgate/wasmenc_rundiff 重蹈 + 存量 clang_direct/
+  demo_smoke/docs_preview/mcp_smoke 同盲区——六件活行碰巧在场故无行为
+  缺口，纯防线盲）。判据改 **main.mts 文件名即驱动**（shebang 只是可执行
+  直跑标记非身份判据）；J9 双锚先红后绿（无 shebang 无活行必红 / 有活行
+  不误伤）；emitgate/rundiff 补 shebang 形态归一。驱动 .mts 64→69。
+- **验收（全部亲跑）**：裸 moon test 1462/1462；STEP-INV 全量 flag on
+  （--rehost --audit-known）1033 语料 / **2,084,521 帧 RED 0 / ZOMBIE 0 /
+  装载断言零红**（INV3a step_index 严格 +1 最强锚过）；W4 wasmtime_arm
+  deep-nomem 1079 cases / 23,734 帧 AGREE 全 identical 零 DIFF；rundiff
+  917 双跑一致 / 0 红；vm_diff golden 863/863 SAME 零漂移（首轮 DIFF=2
+  经三提交 worktree 归因 = **陈旧 release 产物假红**〔exe 日期早于 #511
+  的 lexer 改动，新鲜度门禁只看 cmd/run 包内源不追依赖面〕——重建后全绿，
+  #511/批 2/批 3 三方无嫌疑）；flag on/off 帧流逐位一致（端到端 + gateway
+  wbtest 帧流同构锚）；native 全量冷构建（MOONBIT_NEW_NATIVE=0
+  MOON_CC=clang）数字见 facts。
+
 ### fix(wasmenc+bytecode+scripts): PR #512 审阅处置——P1×1 + P2×1 + P3×6（2026-11-13）
 
 - **P1-1 证人模块导出 main 指向 import（E0）**：`ModuleBuilder::add_func`

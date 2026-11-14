@@ -84,6 +84,16 @@ fn p_session() -> (String, Json) {
 }
 
 ///|
+/// 配色主题枚举值：auto/light/dark 语义别名 + StylePack 全族 id（单源 @style）。
+fn theme_values() -> Array[String] {
+  let out : Array[String] = ["auto", "light", "dark"]
+  for p in @style.style_packs() {
+    out.push(p.id)
+  }
+  out
+}
+
+///|
 /// render/animate 共用的渲染选项族。
 fn render_props() -> Array[(String, Json)] {
   [
@@ -100,8 +110,17 @@ fn render_props() -> Array[(String, Json)] {
       p_str_arr("聚焦数组名（默认自动：按出现频次取前 4）"),
     ),
     (
+      "viz",
+      p_str(
+        "视图声明（多行；每行 `series <名…> -> <投影器> [k=v …]`，与课源 vitri-viz 同形；缺省 = 全按 cells 索引格）",
+      ),
+    ),
+    (
       "theme",
-      p_enum("配色主题（默认 auto）", ["auto", "light", "dark"]),
+      p_enum(
+        "配色主题（默认 auto；light/dark 为 ice/soft 简写，亦可直接给 StylePack 主题 id）",
+        theme_values(),
+      ),
     ),
     (
       "audio_description",

@@ -110,17 +110,16 @@ vitro/engine/bytecode wasm_triples
 # （refs #470 v0.1.1 / #517）。接线后出现消费边时按闸提示撤销本段。
 vitro/engine/style css_base
 vitro/engine/style css_block
-vitro/engine/style css_text
 vitro/engine/style pack
 vitro/engine/style slot
 vitro/engine/style style_base
 vitro/engine/style style_digest
-vitro/engine/style style_packs
 vitro/engine/style style_sizes
 vitro/engine/view check_decl
 vitro/engine/view default_projector
 vitro/engine/view known_opt
-vitro/engine/view projector
 vitro/engine/view projector_digest
 vitro/engine/view projector_ids
 vitro/engine/view projectors
+vitro/engine/view doc_json
+vitro/engine/view parse_series_decl

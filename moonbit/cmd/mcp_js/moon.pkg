@@ -6,6 +6,7 @@
 // 写出无竞态——探针①③ 2026-11-03 实证：行流事件驱动 / 198KB 帧逐字节）。
 import {
   "vitro/engine/mcp",
+  "vitro/engine/style",
   "vitro/engine/teaching/content_data",
   "vitro/engine/util",
 }

@@ -3,3 +3,11 @@
 // 发射：本包 projectors_gen.mbt（引擎 MoonBit 数据面）+ demo/src/lib/projectors.ts
 // （demo TS 词表）。宿主（demo / MCP）只实现绘制，不各自定义序列条数与维度约束。
 // 分层登记：scripts/moonbit/pkg_deps/rules.json（L0）。
+//
+// 批 E（2026-11-14）：ViewDoc 出口——`parse_series_decl(_block)`（声明文法
+// 单源，与课源 `<!-- vitri-viz v1 -->` 同形）+ `doc_value/doc_json`
+// （doc.series_decl + 全族投影器规格，宿主消费即同一词表）。util 为 L0
+// 机械件（json_escape/str_cmp），不引入业务语义。
+import {
+  "vitro/engine/util",
+}

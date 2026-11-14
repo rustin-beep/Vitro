@@ -1,12 +1,24 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vitro/engine/view"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 pub fn check_decl(String, Int32, Int32) -> String?
 
 pub fn default_projector() -> String
 
+pub fn doc_json(Array[SeriesDecl]) -> String
+
+pub fn doc_value(Array[SeriesDecl]) -> @json.Json
+
 pub fn known_opt(String, String) -> Bool
+
+pub fn parse_series_decl(String) -> Result[SeriesDecl, String]
+
+pub fn parse_series_decl_block(String) -> Result[Array[SeriesDecl], String]
 
 pub fn projector(String) -> Projector?
 
@@ -26,6 +38,12 @@ pub(all) struct Projector {
   min_dims : Int32
   opts : Array[String]
   note : String
+}
+
+pub(all) struct SeriesDecl {
+  series : Array[String]
+  projector : String
+  opts : Array[(String, String)]
 }
 
 // Type aliases

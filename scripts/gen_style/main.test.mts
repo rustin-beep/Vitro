@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { digestOf, mbtStr, render, tupleLine, verify } from "./main.mts";
+import { cssBody, digestOf, mbtStr, render, renderGolden, tupleLine, verify } from "./main.mts";
 import { load } from "../gen_demo_tokens/main.mts";
 import { projectRoot } from "../internal/capi.mts";
 
@@ -53,6 +53,26 @@ test("render：确定性 + 结构锚（五包 / 基座 / 字号档 / digest）",
     assert.ok(a.includes(`id: "${id}"`), `缺主题 ${id}`);
   }
   assert.match(a, /pub fn style_digest\(\) -> String \{/);
+});
+
+test("cssBody/renderGolden：正文去头部 + golden 确定性 + J9 篡改必红", () => {
+  const root = projectRoot();
+  const src = path.join(root, "moonbit/style/tokens.json");
+  const doc = load(src);
+  const digest = digestOf(src);
+  const body = cssBody(doc);
+  assert.match(body, /^:root \{/, "正文须从 base 块起（头部两行注释+空行已去掉）");
+  assert.ok(!body.includes("@generated"), "正文不得含生成头");
+  assert.equal(cssBody(doc), body, "同输入两次 cssBody 逐字节一致");
+  const g1 = renderGolden(doc, digest);
+  const g2 = renderGolden(doc, digest);
+  assert.equal(g1, g2, "golden 确定性");
+  assert.match(g1, /test "css_text_equals_tokens_css_body"/);
+  assert.ok(g1.includes(`digest sha256:${digest}`));
+  // J9：golden 里 CSS 值篡改必须被 verify 判红（判定面与自证面同一）
+  const tampered = g1.replace("--vr-fs: 14px;", "--vr-fs: 99px;");
+  assert.notEqual(tampered, g1, "注入点须存在");
+  assert.notEqual(verify("golden", g1, tampered), null, "篡改 golden 必须判红");
 });
 
 test("真实真源：render ≡ 入库 style_gen.mbt（逐字节）", () => {
@@ -102,7 +122,7 @@ test("真实仓库：-check 绿 + -selftest 绿；未知参数 exit 2", () => {
   assert.equal(ok.status, 0, ok.out);
   const self = run(["-selftest"]);
   assert.equal(self.status, 0, self.out);
-  assert.match(self.out, /篡改 --vr-fs → verify 判红且定位可见/);
+  assert.match(self.out, /篡改 --vr-fs → 两产物 verify 均判红且定位可见/);
   const bad = run(["--nope"]);
   assert.equal(bad.status, 2);
 });

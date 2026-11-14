@@ -1050,3 +1050,160 @@ test "mcp_files_quote_include_overview_nonempty" {
     msg="overview 函数表含跨文件定义（旧形态 quote-include 下静默空）",
   )
 }
+
+///|
+/// 批 E（2026-11-14；refs #470）：render/animate 的 `viz` 声明消费——
+/// doc.series_decl 出口 + focus 注入 + 未知投影器 warning + 坏声明 fail loud。
+test "mcp_render_viz_doc_contract" {
+  let clock : Ref[Double] = Ref(0.0)
+  let rendered : Ref[Json] = Ref(Json::null())
+  let srv = Server::new(host=fake_host(clock, Some(rendered)))
+  ignore(call(srv, "initialize", 1))
+  let r = tool_body(
+    tool_call(
+      srv,
+      1,
+      "animate",
+      ob()
+      .s("source", bubble_src())
+      .s("viz", "series arr -> bars gain=2")
+      .b("preview_png", false)
+      .done(),
+    ),
+  )
+  assert_eq(jbool(jget(r, "ok")), Some(true), msg="viz 声明不阻塞渲染")
+  let data = rendered.val
+  assert_eq(jstr_or(jget(jget(data, "doc"), "pv"), ""), "0.1.1", msg="doc.pv")
+  assert_eq(
+    jstr_or(jget(jget(data, "doc"), "default"), ""),
+    "cells",
+    msg="doc.default",
+  )
+  let ds = jarr(jget(jget(data, "doc"), "series_decl"))
+  assert_eq(ds.length(), 1, msg="series_decl 条数")
+  assert_eq(
+    jstr_or(jget(ds[0], "projector"), ""),
+    "bars",
+    msg="声明投影器透传",
+  )
+  assert_eq(
+    jstr_or(jget(jget(ds[0], "opts"), "gain"), ""),
+    "2",
+    msg="声明选项透传",
+  )
+  assert_eq(
+    jarr(jget(jget(data, "doc"), "projectors")).length(),
+    6,
+    msg="投影器全族规格下发（宿主消费同一词表，禁抽样）",
+  )
+  let focus = jstr_arr(jget(data, "focus"))
+  assert_true(
+    focus.contains("arr"),
+    msg="声明序列必须进 focus：\{focus}",
+  )
+  let frames = jarr(jget(data, "frames"))
+  assert_true(frames.length() > 0, msg="帧数据非空")
+  assert_true(jget(frames[0], "r") is Object(_), msg="帧数组投影存在")
+}
+
+///|
+/// 批 E 负锚：未知投影器 → warning（产物错误面板）+ 仍渲染；坏声明 → -32602。
+test "mcp_render_viz_fail_loud" {
+  let clock : Ref[Double] = Ref(0.0)
+  let rendered : Ref[Json] = Ref(Json::null())
+  let srv = Server::new(host=fake_host(clock, Some(rendered)))
+  ignore(call(srv, "initialize", 1))
+  let r = tool_body(
+    tool_call(
+      srv,
+      1,
+      "animate",
+      ob()
+      .s("source", bubble_src())
+      .s("viz", "series arr -> nope")
+      .b("preview_png", false)
+      .done(),
+    ),
+  )
+  assert_eq(
+    jbool(jget(r, "ok")),
+    Some(true),
+    msg="未知投影器不阻塞产物",
+  )
+  let mut warned = false
+  for w in jstr_arr(jget(r, "warnings")) {
+    if w.has_prefix("viz: 未知投影器 nope") {
+      warned = true
+    }
+  }
+  assert_true(
+    warned,
+    msg="未知投影器须进 warnings（fail loud 不静默）",
+  )
+  // 坏声明：缺 `->` → 协议错，且不进渲染钩子
+  let bad = tool_call(
+    srv,
+    2,
+    "animate",
+    ob()
+    .s("source", bubble_src())
+    .s("viz", "series arr bars")
+    .b("preview_png", false)
+    .done(),
+  )
+  assert_eq(
+    jint(jget(jget(bad, "error"), "code")),
+    Some(-32602),
+    msg="坏声明 -32602",
+  )
+  assert_true(
+    jstr_or(jget(jget(bad, "error"), "message"), "").contains("viz"),
+    msg="错误文案点名 viz 参数",
+  )
+  // 只有注释 → 「文本非空但零声明」同样 fail loud
+  let only_comment = tool_call(
+    srv,
+    3,
+    "animate",
+    ob()
+    .s("source", bubble_src())
+    .s("viz", "// 注释而已")
+    .b("preview_png", false)
+    .done(),
+  )
+  assert_eq(
+    jint(jget(jget(only_comment, "error"), "code")),
+    Some(-32602),
+    msg="零声明非空文本 -32602",
+  )
+}
+
+///|
+/// 批 E：多序列声明（line 族）注入 focus 且 doc 保声明序。
+test "mcp_render_viz_multi_series_focus" {
+  let clock : Ref[Double] = Ref(0.0)
+  let rendered : Ref[Json] = Ref(Json::null())
+  let srv = Server::new(host=fake_host(clock, Some(rendered)))
+  ignore(call(srv, "initialize", 1))
+  let r = tool_body(
+    tool_call(
+      srv,
+      1,
+      "animate",
+      ob()
+      .s("source", bubble_src())
+      .s("viz", "series ghost_a ghost_b -> line")
+      .b("preview_png", false)
+      .done(),
+    ),
+  )
+  assert_eq(jbool(jget(r, "ok")), Some(true))
+  let ds0 = jarr(jget(jget(rendered.val, "doc"), "series_decl"))[0]
+  let names = jstr_arr(jget(ds0, "series"))
+  assert_eq(names, ["ghost_a", "ghost_b"], msg="声明序列序保持")
+  let focus = jstr_arr(jget(rendered.val, "focus"))
+  assert_true(
+    focus.contains("ghost_a") && focus.contains("ghost_b"),
+    msg="多序列全部进 focus：\{focus}",
+  )
+}

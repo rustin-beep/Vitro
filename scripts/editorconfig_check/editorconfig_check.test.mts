@@ -12,6 +12,29 @@ test("真实仓库：全仓合规（与 pre-commit/CI 同门径）", () => {
   assert.deepEqual(checkTree(projectRoot()), []);
 });
 
+// PR #518 审阅 P3-1 hermetic 回归锚：gitignored 豁免的 cwd 锚定——
+// loadGitIgnored 的 git ls-files 输出相对 cwd 的路径，无 cwd 锚定时（修复前）
+// 继承进程 cwd（CI 的 npm test 在 scripts/ 下跑），输出的是**本仓库**清单，
+// 与 checkTree(base) 的 rel 前缀失配 → base 的 gitignored 面静默不豁免。
+// 本锚 git init 独立 fixture：ignored/ 下放违规文件（缺末行换行）——修复前
+// 红（fixture 的 gitignored 面漏豁免）、修复后绿（cwd 锚定 base，ls-files
+// 输出 fixture 自己的清单）。干净 CI 检出无 cargo target 时旧缺陷不显红，
+// 此锚是该修复的唯一回归防线。
+test("gitignored 豁免须按 base 锚定（cwd≠base 不失配，PR #518 审阅 P3-1）", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitro-editorconfig-cwd-"));
+  const gitInit = spawnSync("git", ["init", "-q"], { cwd: dir, encoding: "utf8" });
+  if (gitInit.status !== 0) {
+    // git 不可用环境（理论不存在——本仓闸全部依赖 git）：跳过即假绿，须红
+    assert.fail("git init 失败，hermetic 锚无法成立: " + gitInit.stderr);
+  }
+  fs.writeFileSync(path.join(dir, ".gitignore"), "ignored/\n");
+  fs.mkdirSync(path.join(dir, "ignored"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "ignored", "bad.txt"), "no final newline");
+  fs.writeFileSync(path.join(dir, "ok.txt"), "ok\n");
+  // 测试进程 cwd = scripts/（npm test 形态）≠ base（fixture）——正是失配形态
+  assert.deepEqual(checkTree(dir), [], "fixture 的 gitignored 面须豁免（cwd 锚定 base）");
+});
+
 test("jsonIndentCheck：2 空格倍数合规，奇数缩进点名行号", () => {
   assert.equal(jsonIndentCheck(Buffer.from('{\n  "a": 1\n}\n')), "");
   assert.equal(jsonIndentCheck(Buffer.from('{\n "a": 1\n}\n')), "第 2 行缩进 1（非 2 的倍数）");

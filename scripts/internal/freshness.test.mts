@@ -43,6 +43,17 @@ test("测试文件与 _build/.mooncakes 不参与判定", () => {
   assert.equal(findStaleSource(artifact, mb), "");
 });
 
+// PR #518 审阅 P2-2：*_gen.mbt 排除回搬——被删的 warnStaleExe 曾排除
+// @generated 产物（「均实测误报过」），批 3/追加批双臂统一走 findStaleSource
+// 时丢掉该语义——实测触发源正是 moonbit/vm/libc_data_gen.mbt（构建刷新
+// mtime），每次构建后多一轮重建。J9：修复前本锚红（现状返回该路径非空）。
+test("*_gen.mbt 不参与判定（@generated 产物——warnStaleExe 语义回搬，PR #518 审阅 P2-2）", () => {
+  const { mb, artifact } = fixture();
+  touch(path.join(mb, "libc_data_gen.mbt"), 60000);
+  touch(path.join(mb, "diag", "error_code_gen.mbt"), 60000);
+  assert.equal(findStaleSource(artifact, mb), "");
+});
+
 test(".mod/.pkg 参与判定；旧源不报", () => {
   const { mb, artifact } = fixture();
   // 明显早于产物（产物在 fixture() 里设为 -60000；同量级会因毫秒抖动假红）

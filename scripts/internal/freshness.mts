@@ -1,10 +1,14 @@
 // freshness.mts —— MoonBit 产物新鲜度门禁单源（#273 存量 Go 重写批）。
 //
 // 语义（与 Go 版一致）：产物缺失 fail loud exit 1；任一 moonbit 源
-// （.mbt/.mod/.pkg，排除 *_test.mbt / *_wbtest.mbt，跳过 _build/.mooncakes）
-// 新于产物 → 跑规范化构建复核（MOON_CC=clang），失败 exit 1；复核后产物仍缺
-// → exit 1。mtime 只作触发、内容 hash 由 moon 增量判定把关（防 touch/换行归一
-// 假阳性）。
+// （.mbt/.mod/.pkg，排除 *_test.mbt / *_wbtest.mbt / *_gen.mbt，跳过
+// _build/.mooncakes）新于产物 → 跑规范化构建复核（MOON_CC=clang），失败
+// exit 1；复核后产物仍缺 → exit 1。
+// 触发语义勘正（PR #518 审阅 P2-1）：mtime 触发的是**一次真实重建复核**——
+// moon 的增量判定同样以 mtime 为触发面，checkout/生成器刷源后的首跑付重建
+// 时长（native ~40s / wasm 链 ~70s 含 wasmopt），重建后产物 mtime 自愈、后续
+// 零税；CI 干净构建不触发。早先「内容 hash 把关、touch 秒过、假阳性消化」
+// 的表述与实测不符（touch 后 moon build 37.6s 真重编），已废。
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -109,7 +113,11 @@ export function findStaleSource(artifact: string, moonbitRoot?: string): string 
         walk(p);
         continue;
       }
-      if (e.name.endsWith("_test.mbt") || e.name.endsWith("_wbtest.mbt")) continue;
+      // *_gen.mbt = @generated 产物（新鲜度由各自 -check 闸保证，生成器/构建
+      // 重跑只刷 mtime 不改语义）——非被测产物的手写输入，不计入（PR #518
+      // 审阅 P2-2：被删 warnStaleExe 的该排除在双臂统一走 findStaleSource 时
+      // 丢失，实测 libc_data_gen.mbt 每次构建后多触发一轮重建）
+      if (e.name.endsWith("_test.mbt") || e.name.endsWith("_wbtest.mbt") || e.name.endsWith("_gen.mbt")) continue;
       if (!(e.name.endsWith(".mbt") || e.name.endsWith(".mod") || e.name.endsWith(".pkg"))) continue;
       try {
         if (fs.statSync(p).mtimeMs > artMtime && stale === "") stale = p;

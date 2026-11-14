@@ -745,16 +745,23 @@ test "rehost_step_semantics_gip_breakpoint_b3" {
   }
   // ②断点行 2 + ①③：flag on/off 逐 StepResult 同构 + 断点命中位/快照 gip
   //（drive 不做断言——test 内嵌 fn 无 raise 面，状态串随返回值外层判）
-  fn drive(flag_on : Bool) -> (Array[String], Int32, Int32, String) {
+  // PR #518 审阅 P3-2：补 gip/ip 逐采样对——原锚 gip_on==gip_off 两侧同源
+  //（各自 snap.gip）值自指，gip:0 注入不红（仓内靠既有两锚兜底）；独立来源
+  // 互证（快照字段 vs 执行态字段）外层判，gip 坏即红。
+  fn drive(
+    flag_on : Bool,
+  ) -> (Array[String], Int32, Int32, String, Array[(Int32, Int32)]) {
     let vm = VitroVM::new()
     let st = vm.setup_from_output(mk_out(), 0, [], [], wasm_rehost=flag_on)
     vm.breakpoints.add(2) // 断点行 2（StepEvent(2) 命中位）
     let seq : Array[String] = []
+    let gip_ip : Array[(Int32, Int32)] = [] // 每步 (snapshot.gip, vm.ip) 对
     let mut paused_gip = -1
     let mut paused_line = -1
     for i = 0; i < 8; i = i + 1 {
       ignore(i)
       let snap = vm.snapshot() // 每步前快照（gip 采样——③换名不换义锚）
+      gip_ip.push((snap.gip, vm.ip))
       let r = vm.step()
       seq.push(
         match r {
@@ -773,10 +780,10 @@ test "rehost_step_semantics_gip_breakpoint_b3" {
         break
       }
     }
-    (seq, paused_gip, paused_line, st)
+    (seq, paused_gip, paused_line, st, gip_ip)
   }
-  let (seq_off, gip_off, line_off, st_off) = drive(false)
-  let (seq_on, gip_on, line_on, st_on) = drive(true)
+  let (seq_off, gip_off, line_off, st_off, gip_ip_off) = drive(false)
+  let (seq_on, gip_on, line_on, st_on, gip_ip_on) = drive(true)
   assert_eq(st_off, "", msg="flag off 状态空串")
   assert_true(
     st_on.length() > 3 && st_on[0:3] == "ok ",
@@ -804,12 +811,36 @@ test "rehost_step_semantics_gip_breakpoint_b3" {
     gip_off,
     msg="③暂停前快照 gip 同值（换名不换义——组索引与指令下标同构）",
   )
+  // ③补（PR #518 审阅 P3-2）：快照 gip ≡ 执行态 ip 独立来源逐对互证——
+  // 上面的同值锚两侧同源（gip:0 注入不红），此锚 gip 字段坏即红
+  for i = 0; i < gip_ip_on.length(); i = i + 1 {
+    let (g, p) = (gip_ip_on[i].0, gip_ip_on[i].1)
+    assert_eq(
+      g,
+      p,
+      msg="flag on 快照 gip ≡ 执行态 ip（步 \{i}，独立来源互证）",
+    )
+  }
+  for i = 0; i < gip_ip_off.length(); i = i + 1 {
+    let (g, p) = (gip_ip_off[i].0, gip_ip_off[i].1)
+    assert_eq(
+      g,
+      p,
+      msg="flag off 快照 gip ≡ 执行态 ip（步 \{i}，独立来源互证）",
+    )
+  }
   // ③快照往返：restore 回填执行态 ip（gip → ip 单点——值域零变化）
   let vm = VitroVM::new()
   let _ = vm.setup_from_output(mk_out(), 0, [], [], wasm_rehost=true)
   ignore(vm.step())
   let snap = vm.snapshot()
   let gip_before = snap.gip
+  let ip_before = vm.ip
+  assert_eq(
+    gip_before,
+    ip_before,
+    msg="快照 gip ≡ 执行态 ip（restore 前互证——P3-2，防 gip:0 注入自指绿）",
+  )
   vm.restore(snap)
   assert_eq(
     vm.ip,

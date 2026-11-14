@@ -46,7 +46,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro cmd/r
 ```
 vitro run <f> [-i in] [--dump-memory out] [-- argv...] [--json]   编译+执行
 vitro compile <f> [--json]                                        编译+诊断单出
-vitro step <f> [--max-steps N] [--json|--summary]                 一次性 step 流（交互调试走 serve）
+vitro step <f> [--max-steps N] [--wasm-rehost] [--json|--summary] 一次性 step 流（交互调试走 serve；--wasm-rehost = step 态装载走 wasm 载体往返——REHOST 批 3，stderr 标记行 `// WASM-REHOST-STEP`）
 vitro api <method> [params-json] | api --batch < frames.ndjson    万能单帧 + 批式多帧（状态跨帧——seek/断点/喂入序列可脚本化）
 vitro script <f | -> [argv...]                                    C 脚本直跑（WASI 期 0 骨架——argv 收口/`#!` 剥行/exit 透传）
 ```
@@ -98,7 +98,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `run` | `input` / `argv` / `batch_input` / `max_steps` / `deterministic` | 全速运行，返回 `status`/`return_value`/`steps_executed` |
 | `input.feed` | `text` | 增量喂入交互输入并续跑（`run` 返回 `waiting_input` 后调用；`text` 可多行，省略则仅续推进一步） |
 | `output.delta` | `cursor` | 增量取输出（`cursor`/`total` 按**字节**计；`delta` 字符串为**逐字节 Latin-1 折回**——见 E-P1-5 字节语义） |
-| `step.begin` | — | 初始化统一模式（时间旅行），需先编译成功 |
+| `step.begin` | `wasm_rehost`（bool，缺省 false——REHOST 批 3） | 初始化统一模式（时间旅行），需先编译成功；`wasm_rehost` = 装载走 wasm 载体往返（与 run 帧同形态，返回帧带装载状态串） |
 | `step.next` | `frames`（可选，缺省 1） | 单步/多帧推进，返回 `payloads`（StepPayload，见 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](../../../moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md)）；`frames` ≤0/在场非整数（浮点·字符串·超 Int32 域）fail loud、超上限钳 `config.max_steps`（病 76 实现化 + 2026-10-17 审阅批值域补严——**在架 0.8.0 无此参数**，见下表） |
 | `payload.get` | `start` / `end` | 取窗口内步 payload（窗口 2000 帧，越窗静默裁剪） |
 | `seek` | `step` | 时间旅行定位（窗口外走检查点恢复 + 正向重放） |

@@ -10,16 +10,22 @@
 // **不迁（oracle 侧）**：runOracle / compare 的 oracle 分支 / freezeDigest
 //（需 vivo_cli）。工序④删区后 oracle 永不存在，`--freeze` 必然 fail。
 // **freshness 口径勘正（2026-11-01 审阅 v2 S05-C2；2026-11-14 批 3 连坐再勘；
-// 同日 PR #518 追加批 wasm 臂收口）**：本文件自 2026-10-23 起 native 臂已改
-// **预编译 run.exe 直跑**（原「moon run 消除假绿死角」的论证随之失效——exe
-// 直跑不自带构建检查）。CI 由 build-artifacts 每轮重建闭环；本地侧 S05-C2
-// 曾以**软警告**（warnStaleExe 不判红）兜陈旧——2026-11-14 实锤其不阻断形态
-// 漏拦（陈旧 run.exe 产出 DIFF=2 假红，见 341 行段注）。**双臂现均走
-// ensureFresh 复核构建硬门禁**（mtime 只作触发、内容 hash 由 moon 增量把关）：
+// 同日 PR #518 追加批 wasm 臂收口 + 审阅 P2-1 触发语义再勘）**：本文件自
+// 2026-10-23 起 native 臂已改**预编译 run.exe 直跑**（原「moon run 消除
+// 假绿死角」的论证随之失效——exe 直跑不自带构建检查）。CI 由 build-
+// artifacts 每轮重建闭环；本地侧 S05-C2 曾以**软警告**（warnStaleExe 不
+// 判红）兜陈旧——2026-11-14 实锤其不阻断形态漏拦（陈旧 run.exe 产出
+// DIFF=2 假红，见 341 行段注）。**双臂现均走 ensureFresh 复核构建硬门禁**：
 // native 臂批 3 直升；wasm 臂由 freshness 构建后置钩子（EnsureFreshOpts.
-// postBuild）接线 wasmopt 后置链后同批收口——自动重建不再以裸产物覆盖优化
-// 产物（批 3 登记的未竟边界就此关闭；VITRO_WASM_MOD 显式指定面跳过——外部
-// 产物不在本地构建链管辖）。
+// postBuild）接线 wasmopt 后置链后同批收口——自动重建不再以裸产物覆盖
+// 优化产物（批 3 登记的未竟边界就此关闭；VITRO_WASM_MOD 显式指定面跳过
+// ——外部产物不在本地构建链管辖）。
+// **触发语义（P2-1 勘正）**：mtime 触发的是一次**真实重建**复核——moon 的
+// 增量判定同样以 mtime 为触发面（审阅实测：touch 源后 native moon build
+// 37.6s、wasm 触发链 66.8s 含 wasmopt 48.8s，产物 907754→1121825→907754
+// 证真重编）——checkout/生成器刷源后的本地首跑付此税（重建后 mtime 自愈、
+// 后续零税；CI 干净构建不触发）。早先「内容 hash 把关、touch 秒过、假阳性
+// 消化」的表述与实测不符，已废。
 //
 // 三通道（golden 模式 = mb 当前值 ≡ 清单登记值）：
 //   1. stdout：剥引擎标记行后的纯程序输出（sha16）
@@ -349,9 +355,10 @@ export function runVm(argv: string[], root: string): number {
   // rundiff/step_invariant 等九处现役同源）。本会话实锤：release run.exe
   // 陈旧（exe 日期早于 #511 的 lexer 改动，依赖面源码变更不触发本地重建）
   // 混过软警告（打了不阻断）产出 DIFF=2 假红，三提交 worktree 归因才闭环。
-  // 复核构建形态消化 S05-C2 的假阳性顾虑：checkout 刷源 mtime → 触发复核
-  // → moon 增量按内容 hash 判 up-to-date 秒过（mtime 只作触发不作证据）；
-  // 真陈旧 → 自动重建 → 假红根除。
+  // 触发语义（审阅 P2-1 勘正）：mtime 触发一次**真实重建**复核（moon 增量
+  // 判定同以 mtime 为触发面——touch 后 37.6s 真重编实测），checkout/生成器
+  // 刷源后的本地首跑付重建时长、重建后 mtime 自愈后续零税、CI 干净构建
+  // 不触发；早先「内容 hash 把关、touch 秒过、假阳性消化」表述已废。
   // PR #518 追加批：wasm 臂同批收口——freshness 构建后置钩子（postBuild）
   // 接线 wasmopt 后置链，自动重建不再以裸产物覆盖优化产物（批 3 登记的
   // 未竟边界关闭）。VITRO_WASM_MOD 非空 = 外部显式指定产物，不在本地

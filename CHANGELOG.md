@@ -1,5 +1,45 @@
 ## [Unreleased]
 
+### fix(scripts+vm+ci+docs): PR #518 审阅处置——P2×2 + P3×6 全收口（2026-11-14）
+
+- **P2-1 触发语义勘正（诚实记录）**：freshness「mtime 只作触发、内容 hash
+  由 moon 增量把关、touch 复核秒过 / 假阳性已消化」与实测不符——审阅实测
+  touch 后 native `moon build` 37.6s、wasm 触发链 66.8s（wasmopt 48.8s），
+  产物 907754→1121825→907754 证真重编（moon 增量判定同以 mtime 为触发
+  面）。本地 checkout/生成器刷源后首跑付重建时长（重建后 mtime 自愈后续
+  零税；CI 干净构建不触发）。freshness 头注 / vm.mts 两段注 / 本 PR 两条
+  CHANGELOG 的不实表述全部勘正（保留原述 + 勘正括注，不抹史）。
+- **P2-2 findStaleSource 补 `*_gen.mbt` 排除**：被删 warnStaleExe 的该
+  排除（「均实测误报过」）在双臂统一走 findStaleSource 时丢失——实测
+  触发源正是 `moonbit/vm/libc_data_gen.mbt`（构建刷 mtime），每次构建后
+  多一轮重建。回搬排除 + J9 锚先红后绿（红证：现状返回 `error_code_gen.mbt`
+  路径非空）。
+- **P3-1 editorconfig hermetic 回归锚**：cwd 锚定修复（追加批）原无
+  hermetic 锚——干净 CI 检出撤掉不红。补 git init fixture 锚（cwd≠base
+  形态，正是 CI npm test 在 scripts/ 下跑的失配形态）；撤修复红证
+  （`ignored\bad.txt（缺末行换行）` 漏豁免）→ 恢复绿。
+- **P3-2 b3 锚值自指修复**：`gip_on==gip_off` 两侧同源（各自 snap.gip），
+  gip:0 注入不红（审阅注入实验实锤——靠既有 gate3/seek 两锚才红）。补
+  独立来源互证：drive 逐步收集 (snapshot.gip, vm.ip) 对外层逐对断言 +
+  restore 前互证；gip:0 注入红证（「flag on 快照 gip ≡ 执行态 ip（步 0）」
+  FAILED）→ 恢复 121/121 绿（vm 包，测试数不变）。
+- **P3-3 CLI 手册同步**：step 用法行补 `--wasm-rehost`（含 stderr 标记行
+  说明）；`step.begin` 参数格补 `wasm_rehost`（bool 缺省 false）。
+- **P3-4 CHANGELOG 数字回填**：批 3 条目补 rebase 后复验口径（1463/1539、
+  1035 语料/2,087,483 帧、W4 1081、rundiff 919、vm_diff 865、驱动 67→70）。
+- **P3-5 ci_checklist 双形态计数**：双形态目录（go+mts 同目录，clang_direct
+  实形）walk 序 go 先占 driverSet rel 时 mts 漏计（71 个 main.mts 摘要报
+  70）。go/mts 形态各自独立收集（`双形态目录各计其形`尾注——形态和可大于
+  驱动总数）；J9 锚先红（`.mts 0`）后绿；真实摘要 `驱动 72（.go 2 /
+  .mts 71）`。
+- **P3-6 CI 接线 `--rehost`**：PR 轮 step_invariant 加 `--sample 40
+  --rehost` 活行（此前 CI 无该旗标，覆盖只剩 wbtest 两锚）；本地同款实测
+  绿（40 语料 RED 0 ZOMBIE 0）。
+- 验收（亲跑）：node:test 全量 877/0（freshness/editorconfig/ci_checklist
+  各 +1 处置锚 + prelude_fail 连坐零回归）；tsc 0 err /
+  oxlint 0 err；moon test 裸 1463/1463 + native 1539/1539（vm_wbtest 锚
+  加固不加数）；facts `--strict check` EXIT=0；vm_diff 双臂 SAME=865。
+
 ### feat(scripts): vm_diff wasm 臂新鲜度硬门禁收口——freshness 构建后置钩子 + editorconfig gitignored 豁免 cwd 锚定修复（REHOST 批 3 收尾追加，PR #518，2026-11-14）
 
 - **freshness 构建后置钩子（`EnsureFreshOpts.postBuild`）**：产物链含构建
@@ -15,9 +55,12 @@
   「升级待 freshness 支持构建后置钩子」未竟边界关闭；warnStaleExe 删除
   （双臂均硬门禁后零消费方）。VITRO_WASM_MOD 显式指定面跳过（外部产物
   不在本地构建链管辖，与存在性检查同款语义）。真跑实证：touch 引擎源 →
-  触发「旧于源——跑构建复核」→ moon 内容 hash 增量秒过（假阳性消化）→
-  wasmopt 后置重写实锤（产物 mtime 刷新、size 保持优化态 907754 而非
-  裸产物 1121825）→ 判定 SAME=865 不回归；native 臂同步回归 SAME=865。
+  触发「旧于源——跑构建复核」→ [PR #518 审阅 P2-1 勘正：此处为一次真实
+  重建（非「内容 hash 增量秒过」——moon 增量判定同以 mtime 为触发面），
+  本地首跑付重建时长、重建后自愈] → wasmopt 后置重写实锤（产物 mtime
+  刷新、size 保持优化态 907754 而非裸产物 1121825——后置链承重，审阅
+  注入「postBuild 跳过」后端到端留裸产物）→ 判定 SAME=865 不回归；
+  native 臂同步回归 SAME=865。
 - **editorconfig gitignored 豁免 cwd 锚定修复（红→绿）**：loadGitIgnored
   的 `git ls-files` 无 cwd 锚定——输出相对进程 cwd 的路径，与 walk 的
   仓库根 rel 前缀失配 → gitignored 豁免静默失效。CI 干净检出无 cargo
@@ -41,13 +84,16 @@
   第 2 行但**不阻断**，vm_diff 产出 DIFF=2 假红（三提交 worktree 归因才闭环）。
   native 臂升级 `ensureFresh`（freshness.mts 单源——clang_direct/rundiff 等
   九处现役同源）：stale → 自动复核构建（`MOON_CC=clang moon build --release
-  --target native cmd/run`）→ **mtime 只作触发、内容 hash 由 moon 增量把关**
-  （checkout 刷源 mtime 的 S05-C2 假阳性顾虑由此消化——touch 实测复核秒过、
-  判定照常 SAME）；真陈旧自动重建，假红根除；构建失败红（陈旧产物假红/假绿
-  由此封死）。wasm 臂维持软警告（产物链含 wasmopt 后置覆盖，自动重建会以
-  裸产物覆盖优化产物——升级待 freshness 支持构建后置钩子另批）。
-  J9 场景实测：touch 源 →「旧于源——跑构建复核」触发 → moon 增量 up-to-date
-  秒过 → 判定 SAME。
+  --target native cmd/run`）→ 真陈旧自动重建，假红根除；构建失败红（陈旧
+  产物假红/假绿由此封死）。wasm 臂维持软警告（产物链含 wasmopt 后置覆盖，
+  自动重建会以裸产物覆盖优化产物——升级待 freshness 支持构建后置钩子另批）。
+  J9 场景实测：touch 源 →「旧于源——跑构建复核」触发 → 复核后判定 SAME。
+  [PR #518 审阅 P2-1 勘正] 本条原述「mtime 只作触发、内容 hash 由 moon 增量
+  把关——checkout 假阳性秒过」与实测不符：mtime 触发的是一次**真实重建**
+  （moon 增量判定同以 mtime 为触发面——touch 后 native 37.6s / wasm 链
+  66.8s 含 wasmopt 48.8s，产物 907754→1121825→907754 证真重编），本地
+  checkout/生成器刷源后首跑付此税（重建后 mtime 自愈后续零税、CI 干净构建
+  不触发）。
 
 ### feat(vm+gateway+cli+scripts): REHOST 批 3——step 态切换 + time_travel 采集适配 + ci_checklist 驱动集盲区根治（2026-11-14）
 
@@ -87,6 +133,11 @@
   #511/批 2/批 3 三方无嫌疑）；flag on/off 帧流逐位一致（端到端 + gateway
   wbtest 帧流同构锚）；native 全量冷构建（MOONBIT_NEW_NATIVE=0
   MOON_CC=clang）数字见 facts。
+  [PR #518 rebase 后复验口径] rebase 到 master f4264274 后全防线复跑同绿，
+  计数面随 #514 收案语料平移：moon test 裸 **1463/1463** + native
+  **1539/1539**；STEP-INV **1035 语料 / 2,087,483 帧** RED 0 ZOMBIE 0；
+  W4 **1081 cases** AGREE identical；rundiff **919**；vm_diff **865/865**；
+  驱动 .mts 口径 **67→70**（批 3 时点 64→69 + #513 green_probe +1）。
 
 ### fix(wasmenc+bytecode+scripts): PR #512 审阅处置——P1×1 + P2×1 + P3×6（2026-11-13）
 

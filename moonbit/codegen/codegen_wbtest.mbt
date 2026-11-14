@@ -1973,9 +1973,19 @@ test "skeleton: ptr-to-struct deref as byval arg passes address through (#147)" 
   assert_eq(errors.length(), 0)
   let o = output.unwrap()
   let f_meta = o.func_table.get("f").unwrap()
-  let body_len = 32 // 防御上界——计数遍历窗口（#193 同款形态）
+  // P3-1（审阅处置批，2026-11-14）：计数窗口边界 = func_table 中 f 之后
+  // 最近函数的 ip（f 为表末段则 code 长度兜底）——锚语义「f 函数体恰 N 次
+  // LoadMem」与实现语义一致；弃固定 32 窗口（f 体膨胀漏计假绿 / 别函数
+  // 指令混入假红——审阅 P3-1 点名形态；#193/#162/#330 旧锚同款窗口属
+  // 既有形态，本批不动）
+  let mut end_ip = o.code.length()
+  for _, m in o.func_table {
+    if m.ip > f_meta.ip && m.ip < end_ip {
+      end_ip = m.ip
+    }
+  }
   let mut load_mem_count = 0
-  for i in f_meta.ip..<(f_meta.ip + body_len) {
+  for i in f_meta.ip..<end_ip {
     if i < o.code.length() && o.code[i].op is @opcode.OpCode::LoadMem {
       load_mem_count = load_mem_count + 1
     }

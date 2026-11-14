@@ -58,3 +58,4 @@ moon check && moon test    # 1460 测试（裸口径，facts 键 moonbit_test_pa
 SourceLoc { line, column, file_id }  // column = 行内 UTF-8 字节偏移 + 1
 Pos { byte_off, col_scalar, col_utf16 }  // 双坐标预留，三值同源派生
 ```
+；2026-11-14 审阅处置批（PR #514）+1 native（cli i400 非法 JSON 响应帧锚——P3-2）

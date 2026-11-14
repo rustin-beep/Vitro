@@ -177,3 +177,4 @@ moon info                  # .mbti 接口面（API 变更信号；2026-11-02 #17
 ## 上游与对拍
 
 本 module 是 [Vitro 项目](https://github.com/rustin-beep/Vitro)（C 教学引擎，MIT）MoonBit 迁移的第一阶段产物。迁移期经 Rust oracle 逐字节对拍锁定（诊断目录 canonicalize 归一一致、AST dump 与 mangle 黄金串同源断言）；oracle 已于 2026-10-05 删区退役，现役防线 = Clang golden 直拍 + 三臂（js/native/wasm-gc）冻结 digest 对拍。迁移路线与差分锚点见上游仓库 `docs/current/`。
+；2026-11-14 审阅处置批（PR #514）+1 native（cli i400 非法 JSON 响应帧锚——P3-2）

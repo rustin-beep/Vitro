@@ -1365,3 +1365,50 @@ test "i400_单帧信封层rc判定" {
   )
   assert_eq(rc_fail, 1, msg="单帧信封 ok:false 须 rc=1")
 }
+
+///|
+/// #400 P3-2（审阅处置批，2026-11-14）：响应帧非法 JSON（协议破损形态）
+/// ——解析失败不改 rc（帧已透传 stdout，下游自判——与 run --json 臂同源；
+/// step/run-文本臂的 fail loud rc=1 是不同款）+ stderr 留痕。锚断 rc 态
+/// （say 走真 stderr 流，wbtest 不捕获——可观测性由 smoke #129 通道分立锚守）。
+fn i400_raw_channel(raw : String) -> EngineChannel {
+  {
+    invoke: fn(_line : String) -> String { raw },
+    invoke_parsed: fn(_line : String) -> Json? { None },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(file : String, src : String) -> String {
+      "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
+    },
+  }
+}
+
+///|
+test "i400_非法JSON响应帧rc不变_两臂" {
+  // 垃圾文本不含 "ok":false——旧 contains 同样不命中，rc=0 行为等价；
+  // 新结构化路径解析失败也不改 rc（锚防「修过头把协议破损也算失败」）
+  let raw = "not-json {{ garbage"
+  let rc_batch = api(
+    ["--batch"],
+    () => b"{\"id\":1,\"method\":\"ping\",\"params\":{}}\n",
+    write_stdout=noop_write,
+    channel=i400_raw_channel(raw),
+  )
+  assert_eq(
+    rc_batch,
+    0,
+    msg="batch 臂响应帧非法 JSON 须 rc=0（协议破损帧已透传，stderr 留痕）",
+  )
+  let rc_single = api(
+    ["ping"],
+    () => b"",
+    write_stdout=noop_write,
+    channel=i400_raw_channel(raw),
+  )
+  assert_eq(
+    rc_single,
+    0,
+    msg="单帧臂响应帧非法 JSON 须 rc=0（同款）",
+  )
+}

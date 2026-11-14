@@ -115,13 +115,19 @@ pub fn api(
       let resp = (channel.invoke)(l)
       out_line(write_stdout, resp)
       // #400（2026-11-13）：rc 判定走信封层结构化（json_parse_opt + jfield
-      // 顶层 ok 位——与 run/step 臂同源）。旧 contains 子串宽判定把 run 帧
+      // 顶层 ok 位——判定 helper 与 run/step 臂共用；**解析失败处置与
+      // run --json 臂同源**〔P3-2 审阅处置批勘正：step/run-文本臂是
+      // fail loud rc=1 的不同款〕）。旧 contains 子串宽判定把 run 帧
       // result 内嵌的 "ok":false（run 语义位八字段之一，trap 形态必现）
       // 误当信封失败——三帧信封全 ok 的 UAF trap 序列必假红。解析失败不
-      // 记红（帧已透传 stdout，下游自判——run 臂同款）
+      // 记红（帧已透传 stdout，下游自判）+ stderr 留可观测痕迹（#129
+      // 通道分立）
       match json_parse_opt(resp) {
         Some(f) => if jfield(f, "ok") is False { rc = 1 }
-        None => ()
+        None =>
+          say(
+            "vitro api: 响应帧解析失败（协议破损形态，rc 不受影响——帧已透传）",
+          )
       }
     }
     return rc
@@ -153,10 +159,14 @@ pub fn api(
   )
   out_line(write_stdout, resp)
   // #400：单帧臂同病同修——run 单帧 result 内嵌 ok:false（trap 语义位）
-  // 不再误报 rc=1；判定源与 batch 臂同款（信封层结构化）
+  // 不再误报 rc=1；判定源与 batch 臂同款（信封层结构化；解析失败处置
+  // 与 run --json 臂同源——stderr 留痕、rc 不变，P3-2 审阅处置批）
   match json_parse_opt(resp) {
     Some(f) => if jfield(f, "ok") is False { return 1 }
-    None => ()
+    None =>
+      say(
+        "vitro api: 响应帧解析失败（协议破损形态，rc 不受影响——帧已透传）",
+      )
   }
   0
 }

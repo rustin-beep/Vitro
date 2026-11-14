@@ -171,10 +171,10 @@
       "memory_sha": "2ccad357a5d122ac"
     },
     "baseline/binsearch_float_ulp_chain.c": {
-      "src_sha": "833522c3",
+      "src_sha": "ed0ab056",
       "exit_code": 0,
-      "stdout_sha": "e2379e423b4d2948",
-      "memory_sha": "54bff48d00f725eb"
+      "stdout_sha": "ce6cebc6e0e74e88",
+      "memory_sha": "a5cf68f9af0fd62a"
     },
     "baseline/bit_not_zero.c": {
       "src_sha": "01df9ebd",

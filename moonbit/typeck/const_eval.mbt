@@ -621,6 +621,13 @@ fn TypeChecker::warn_const_eval_failure(
   if !ce_pure_const_tree(init) {
     return
   }
+  // #517 CI 连坐修正（2026-11-14）：逗号表达式是 const_eval 的**设计性
+  // 拒折**（Comma 非常量——ce_bin_op 返 None），非运算失败——纯常量
+  // 逗号 `(3, 4)` 曾被误报 W3098（comma_expr_stmt.c 实锤）；树含 Comma
+  // 一律跳过（`(1/0, 2)` 因此漏报——保守方向，可接受）。
+  if ce_tree_contains_comma(init) {
+    return
+  }
   match self.const_eval(init) {
     Some(_) => ()
     None =>
@@ -629,6 +636,26 @@ fn TypeChecker::warn_const_eval_failure(
         init.loc(),
         W3098_ConstDivZero,
       )
+  }
+}
+
+///|
+/// 树内是否含逗号二元（W3098 的设计性拒折排除面）。
+fn ce_tree_contains_comma(e : @ast.Expr) -> Bool {
+  match e {
+    Binary(op, l, r, _, _) =>
+      if op is Comma {
+        true
+      } else {
+        ce_tree_contains_comma(l) || ce_tree_contains_comma(r)
+      }
+    Unary(_, inner, _, _) => ce_tree_contains_comma(inner)
+    Ternary(c, t, el, _, _) =>
+      ce_tree_contains_comma(c) ||
+      ce_tree_contains_comma(t) ||
+      ce_tree_contains_comma(el)
+    Cast(inner, _, _, _) => ce_tree_contains_comma(inner)
+    _ => false
   }
 }
 

@@ -571,6 +571,7 @@ vitro/engine/time_travel vitro/engine/teaching/steps infer_algorithm_step
 vitro/engine/time_travel vitro/engine/teaching/steps is_swap_assign_line
 vitro/engine/time_travel vitro/engine/teaching/steps swap_index_pair
 vitro/engine/time_travel vitro/engine/util render_template
+vitro/engine/time_travel vitro/engine/vm CallFrame
 vitro/engine/time_travel vitro/engine/vm Delta
 vitro/engine/time_travel vitro/engine/vm Full
 vitro/engine/time_travel vitro/engine/vm VMSnapshot

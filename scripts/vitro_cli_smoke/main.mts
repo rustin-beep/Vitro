@@ -623,11 +623,13 @@ export function runMain(argv: readonly string[]): number {
     process.stdout.write(`ok  B[api help] ${c.name}（rc=${c.wantRc} 同形+内容锚）\n`);
   }
 
-  // B 组附 3：api 失败形态三臂 rc 对拍（#227 机判锚）——spec §4.5 两层判据的
-  // 回归锚：编译错帧〔外层 ok:true + result.ok:false〕rc=1、协议错帧〔外层
-  // ok:false〕rc=1、成功帧 rc=0。三臂必须同码。
+  // B 组附 3：api 失败形态三臂 rc 对拍（#227 机判锚；**#400（2026-11-13）
+  // 期望值翻面**）——spec §4.5 信封层单判的回归锚：编译错帧〔外层 ok:true +
+  // result.ok:false 语义位〕rc=0（#227 旧两层判据曾锚 rc=1，随 #400 收窄翻面
+  // ——批式含 trap/编译错序列的子串宽判定必假红）、协议错帧〔外层 ok:false〕
+  // rc=1、成功帧 rc=0。三臂必须同码。
   for (const c of [
-    { name: "api 编译错帧（result.ok:false）", args: ["api", "compile", '{"source":"int main(){ int a = ; }"}'], want: 1 },
+    { name: "api 编译错帧（result.ok:false 语义位，rc 不计）", args: ["api", "compile", '{"source":"int main(){ int a = ; }"}'], want: 0 },
     { name: "api 协议错帧（外层 ok:false）", args: ["api", "output.delta", '{"cursor":0,"stream":"nope"}'], want: 1 },
     { name: "api 成功帧", args: ["api", "compile", '{"source":"int main(){return 0;}"}'], want: 0 },
   ]) {

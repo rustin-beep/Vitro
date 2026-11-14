@@ -170,6 +170,12 @@
       "stdout_sha": "2fed29bb974c3cfe",
       "memory_sha": "2ccad357a5d122ac"
     },
+    "baseline/binsearch_float_ulp_chain.c": {
+      "src_sha": "ed0ab056",
+      "exit_code": 0,
+      "stdout_sha": "ce6cebc6e0e74e88",
+      "memory_sha": "a5cf68f9af0fd62a"
+    },
     "baseline/bit_not_zero.c": {
       "src_sha": "01df9ebd",
       "exit_code": 0,
@@ -637,6 +643,12 @@
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
       "memory_sha": "93026d260c2e08c1"
+    },
+    "baseline/deref_struct_byval_arg.c": {
+      "src_sha": "0158a913",
+      "exit_code": 0,
+      "stdout_sha": "f97438de741fa39b",
+      "memory_sha": "b4b00abb4cfd7b82"
     },
     "baseline/designated_init.c": {
       "src_sha": "1bb9fd6b",

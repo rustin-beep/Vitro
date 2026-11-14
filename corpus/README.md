@@ -6,7 +6,7 @@ LLM 生成语料一律经 clang 对拍防线验收（clang golden + 三臂 js/na
 
 | 目录 | 规模 | 来源 | 命名规约 |
 |:---|:---|:---|:---|
-| `baseline/` | 560 `.c` + 15 `.h` + 13 `.in` | 自写基线语料（`.in` 为 scanf/stdio 输入面对拍语料） | 主题式 snake_case；多数文件带 `@category` 头注 |
+| `baseline/` | 578 `.c` + 15 `.h` + 13 `.in` | 自写基线语料（`.in` 为 scanf/stdio 输入面对拍语料） | 主题式 snake_case；多数文件带 `@category` 头注 |
 | `chibicc_port/` | 36 | **移植自 [chibicc](https://github.com/rui314/chibicc) 测试集（MIT, © 2019 Rui Ueyama）**——唯一上游来源目录，许可义务由**逐文件头注**（`source:` 字段注明上游文件与 © 行）+ 目录内 [`LICENSE.upstream`](chibicc_port/LICENSE.upstream)（MIT 全文）共同承接 | 沿用上游测试名 |
 | `codegen_skeleton/` | 13 | 自写（代码生成骨架用例：无穷字面量、标识符、字符数组等边界面） | 主题式 snake_case |
 | `cpp/` | 83 | 自写 C++ 特性/经典算法小例 | `cpp_<主题>.cpp` |
@@ -27,4 +27,4 @@ LLM 生成语料一律经 clang 对拍防线验收（clang golden + 三臂 js/na
 
 `scripts/realcode_diff/corpus/`（chibicc fork 批、`RC-MF-*` 工程批）与本目录**物理隔离**（防线扫描域不含对拍域）。其来源三级核验、上游 sha、义务链（五步）与合规闸（`-check` 三向对账）单源见 [`scripts/realcode_diff/README.corpus.md`](../scripts/realcode_diff/README.corpus.md)；许可分流规则（MIT/BSD/Apache/PD 进主仓、GPL 外置孤儿分支、无 license 排除）见 `docs/current/07-质量与裁定/实机勘探语料扩充方案——许可分流与gcc分桶裁判.md`。
 
-> 口径：表内规模为 2026-11-10 实测的 `.c/.h` 主口径；`baseline` 另有 13 个 `.in` 对拍输入文件。
+> 口径：表内规模为 2026-11-14 实测的 `.c/.h` 主口径；`baseline` 另有 13 个 `.in` 对拍输入文件。

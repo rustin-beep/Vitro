@@ -77,9 +77,9 @@ test("readKeys：并集去重（多正则命中同一文件）", () => {
   assert.deepEqual([...keys].sort(), ["bubble", "kruskal"]);
 });
 
-test("真实仓库：collectNotes 解析 8 课 frontmatter（id/kind 齐、目录升序）", () => {
+test("真实仓库：collectNotes 解析 9 课 frontmatter（id/kind 齐、目录升序）", () => {
   const notes = collectNotes();
-  assert.equal(notes.length, 8);
+  assert.equal(notes.length, 9);
   const dirs = notes.map((n) => n.dir);
   assert.deepEqual(dirs, [...dirs].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b))));
   for (const n of notes) {
@@ -129,7 +129,7 @@ test("lesson.c 双臂对拍：临时课绿 + 坏 lesson.c 红", (t) => {
 
     const green = run();
     assert.equal(green.status, 0, green.out);
-    assert.match(green.out, /全部通过：9 课叙述对账 \+ 1 个 lesson\.c 对拍/);
+    assert.match(green.out, /全部通过：10 课叙述对账 \+ 1 个 lesson\.c 对拍/);
 
     // 坏 lesson.c：vitro 臂编译失败 → 判红（闸有牙，非空转）
     fs.writeFileSync(path.join(dir, "lesson.c"), "int main(void) { return this_is_not_c; }\n");
@@ -139,8 +139,8 @@ test("lesson.c 双臂对拍：临时课绿 + 坏 lesson.c 红", (t) => {
   } finally {
     fs.rmSync(path.join(root, "course", "__j9_lesson__"), { recursive: true, force: true });
   }
-  // 清理可验证：课目数回到 8
-  assert.equal(collectNotes().length, 8);
+  // 清理可验证：课目数回到 9
+  assert.equal(collectNotes().length, 9);
 });
 
 test("J9 红：未知 id / 未知 kind 各自成条，且文案带定位", () => {
@@ -173,7 +173,7 @@ test("真实仓库端到端：默认绿 / selftest 绿 / 未知参数 exit 2", (
   };
   const green = run([]);
   assert.equal(green.status, 0, green.out);
-  assert.match(green.out, /全部通过：8 课叙述对账 \+ 0 个 lesson\.c 对拍/);
+  assert.match(green.out, /全部通过：9 课叙述对账 \+ 0 个 lesson\.c 对拍/);
 
   const self = run(["-selftest"]);
   assert.equal(self.status, 0, self.out);

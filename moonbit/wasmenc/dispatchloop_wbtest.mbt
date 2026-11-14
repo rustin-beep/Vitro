@@ -109,18 +109,16 @@ test "dispatch_call_ret_protocol" {
   })
   let r = assemble_dispatch_body(input)
   guard r is Ok(body) else { fail("组装须绿") }
-  // ①返回点块首 load G_RV：块「gip2」以 WGlobalGet(G_RV) 开场（步锚后）
-  //   ——body 序列里存在 [global.get G_RV] 于块 1 体的步锚之后
-  let mut rv_load_after_block = false
-  for i = 1; i < body.length(); i = i + 1 {
-    // 块边界特征：WEnd 后紧跟步锚四条（get G_STEPS/const/add/set）+
-    // G_RV load——扫「步锚后直接 G_RV load」
-    if body[i - 1] is WGlobalSet(_) && body[i] is WGlobalGet(G_RV) {
-      // 步锚尾 set 后紧跟 load（返回点块形态）
-      rv_load_after_block = true
+  // ①返回点 load G_RV：非 void 调用一次 → 序列里 WGlobalGet(G_RV)
+  //   恰 2 次（返回点块首 1 + 出口块 1）——fill(h_in) 插在步锚与 load
+  //   之间（溢出池架构修正后的块首序：步锚 → fill → load）
+  let mut rv_gets = 0
+  for w in body {
+    if w is WGlobalGet(G_RV) {
+      rv_gets = rv_gets + 1
     }
   }
-  assert_true(rv_load_after_block, msg="返回点块首 load G_RV 必在")
+  assert_eq(rv_gets, 2, msg="返回点 load + 出口 return 各一次")
   // ②Ret 展开含帧头三读（三个 i32.load 序列特征：G_FB 相关 load ≥3）
   let mut fb_loads = 0
   for i = 0; i < body.length() - 1; i = i + 1 {

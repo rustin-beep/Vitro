@@ -1,5 +1,28 @@
 ## [Unreleased]
 
+### feat(wasmenc+vm): REHOST 批 4b-1——溢出池架构修正（libc 实锤）+ 投影层 DCE（2026-11-14）
+
+- **溢出池架构修正（libc 实锤驱动）**：jit PoC「块边界栈空」假设被
+  libc 真实字节码推翻——短路求值 `Dup+JumpIfZero` 落空后留值跨块
+  （`||` 形态 Call 返回值被块内消费同族）。修正：出口高度静态化
+  （`blocks_exit_heights` 增量口径 + 联立下溢判定
+  `blocks_underflow_with_entry`）+ 块图前驱会合（**不动点迭代**——
+  函数头 h_in=0 预置/Call 目标边/返回点边 = h_out + 非 void 的 G_RV
+  load 项/有效出口高含返回点 load）+ **wasm locals 溢出池**（L_S×8
+  i32 槽——跨块值恒 i32 契约由 JumpIf 模板 L_A i32 槽佐证；块尾
+  spill/块首 fill；超限 NotSupportedHeight 禁译）。
+- **投影层 `vm/dispatch_setup.mbt`**：全程序 → `DispatchInput`——
+  **DCE**（libc 只拼被引用函数闭包：全拼 3485 组死代码既撑大产物又
+  让个别函数形态缺陷全程序传染——剪后局部化到实际调用者）+ ip 重
+  映射表统一重写 Jump/Call 目标 + **Call operand 重写**（func_idx →
+  目标 ip——VM do_call 语义与载体 ip 域的桥）+ 变参禁译 + data blob
+  （稀疏写集稠密投影、空洞零铺——宿主写 memory 与 VM 装载期
+  set_globals_*/write_cstring 同语义）。
+- 锚 14 件（块划分 6 + 组装器 4 + 投影层 4，J9 五红：越界/下溢/
+  CallPtr/变参/调用点缺失）；wasmenc 49/49、vm 125/125、**全仓
+  1476/1476**；surface 边表 +11（vm→wasmenc 投影链）/白名单 +6/-2
+  （assemble_dispatch_module 出表进边）。
+
 ### feat(wasmenc): REHOST 批 4a——dispatch-loop 语义模块组装器（V8/wasmtime 可执行载体，2026-11-14）
 
 - **指令件三新增**：`WBrTable`（0x0E 标签向量分发）+ `WIf`/`WReturn`

@@ -166,29 +166,32 @@ pub fn control_pop_words(op : @opcode.OpCode) -> Int32 {
 }
 
 ///|
-/// 块出口栈空验证（装载期闸——PoC 假设的机检升格）：逐块从空值栈模拟，
-/// 块尾净高非零 → Err。模拟口径：
-/// - A/B 类组：模板字节真效应（emit_group + 效应模拟器——与垫收组装
-///   同源单源）；
-/// - C 类组：`control_pop_words` 显式声明（微缩模板的效应与执行形态
-///   不一致〔批 1b 微缩只设 pc 不消费参数〕——执行形态口径在本侧）。
-/// `call_arg_words(gip)` = Call/CallVar 组的参数 word 数（调用方按
-/// func_table meta 算好供给——组装器职责域）。
-pub fn blocks_exit_stacks_empty(
+/// 块出口高度表（批 4a 架构修正：**跨块留值合法化**——短路求值的
+/// Dup+JumpIfZero 落空后留值跨块〔libc 真实字节码实锤，gip6/7 形态〕，
+/// jit PoC 无短路语料未暴露——「块边界栈空」假设放宽为「出口高度
+/// 静态已知 + 前驱会合一致」：出口值经 **wasm locals 溢出池**（L_S
+/// i32 槽——跨块条件值恒 i32 的契约由 JumpIf 模板 L_A i32 槽佐证）
+/// spill/fill，由 dispatchloop 组装器发射）。
+///
+/// 逐块模拟组净效应（C 类组执行形态消费〔control_pop_words +
+/// call_arg_words〕、A/B 类组模板真效应），返回每块**出口高增量**
+/// （h_out = h_in + heights[k]——线性口径：0 基模拟即增量，与入口高
+/// 无关）。**下溢判定不在本函数**（0 基模拟对 h_in>0 的块假红——跨块
+/// 留值撑住的合法形态；真实下溢判定在 dispatchloop 块图联立后按
+/// h_in + 逐组累计做——批 4a 架构修正的配套口径）。
+pub fn blocks_exit_heights(
   ops : Array[@opcode.OpCode],
   operands : Array[Int32],
   blocks : BlockTable,
   call_arg_words : (Int32) -> Int32,
   ctx : EmitCtx,
-) -> Result[Unit, BlocksError] {
+) -> Result[Array[Int32], BlocksError] {
   let n = ops.length()
   let ns = blocks.starts.length()
+  let heights : Array[Int32] = []
   for k = 0; k < ns; k = k + 1 {
     let start = blocks.starts[k]
     let end = if k + 1 < ns { blocks.starts[k + 1] } else { n }
-    // 块内逐组模拟（高水位计数——i32/i64/f64 统一按「项」计，块尾判
-    // 归零；项计数比类型计数弱的形态登记：类型混排错序的块越界形态
-    // 由 wasm-validate 兜底〔4b 闸〕，本闸只锁「高度」不变量）
     let mut height = 0
     for gip = start; gip < end; gip = gip + 1 {
       let op = ops[gip]
@@ -200,15 +203,56 @@ pub fn blocks_exit_stacks_empty(
               _ => 0
             })
           height = height - pops
-          if height < 0 {
-            return Err(ExitStackNonEmpty(gip, height, 0))
-          }
         }
         _ => {
           // A/B 类组：模板真效应（模拟器单源）——净效应 = drops − pads
-          //（垫收协议：前垫 p + 组体 + drop d 恰平衡 ⇒ 净产 = d − p；
-          // 连续拼接形态：入口高 ≥ p 即合法直落，欠垫形态〔入口高不足〕
-          // 由 wasm-validate 兜底〔4b 闸〕，本闸只锁「高度」不变量）
+          let group = match emit_group(op, operands[gip], ctx) {
+            Ok(g) => g
+            Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
+            Err(BadOperand(m)) => return Err(Emit("BadOperand: " + m))
+          }
+          let (pads, drops) = match seq_net_effect(group) {
+            Ok(t) => t
+            Err(e) => return Err(Effect(e))
+          }
+          height = height + drops - pads.length()
+        }
+      }
+    }
+    heights.push(height)
+  }
+  Ok(heights)
+}
+
+///|
+/// 块内下溢判定（真实口径——h_in + 逐组累计下穿 0 即不可执行形态；
+/// 组装器在块图 h_in 联立后调用）。
+pub fn blocks_underflow_with_entry(
+  ops : Array[@opcode.OpCode],
+  operands : Array[Int32],
+  blocks : BlockTable,
+  entry_heights : Array[Int32],
+  call_arg_words : (Int32) -> Int32,
+  ctx : EmitCtx,
+) -> Result[Unit, BlocksError] {
+  let n = ops.length()
+  let ns = blocks.starts.length()
+  for k = 0; k < ns; k = k + 1 {
+    let start = blocks.starts[k]
+    let end = if k + 1 < ns { blocks.starts[k + 1] } else { n }
+    let mut height = entry_heights[k]
+    for gip = start; gip < end; gip = gip + 1 {
+      let op = ops[gip]
+      match op {
+        Jump | JumpIfZero | JumpIfNotZero | Call | CallVar | Ret | RetVoid => {
+          let pops = control_pop_words(op) +
+            (match op {
+              Call | CallVar => call_arg_words(gip)
+              _ => 0
+            })
+          height = height - pops
+        }
+        _ => {
           let group = match emit_group(op, operands[gip], ctx) {
             Ok(g) => g
             Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
@@ -222,11 +266,8 @@ pub fn blocks_exit_stacks_empty(
         }
       }
       if height < 0 {
-        return Err(ExitStackNonEmpty(gip, height, 0))
+        return Err(ExitStackNonEmpty(gip, height, k))
       }
-    }
-    if height != 0 {
-      return Err(ExitStackNonEmpty(start, height, k))
     }
   }
   Ok(())

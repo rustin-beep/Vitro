@@ -9,6 +9,7 @@ import {
   "vitro/engine/host",
   "vitro/engine/memory",
   "vitro/engine/opcode",
+  "vitro/engine/wasmenc",
 }
 
 // Values
@@ -21,6 +22,10 @@ pub const MAX_STACK_DEPTH : Int32 = 10_000
 pub const SNAPSHOT_INTERVAL : Int32 = 100_000
 
 pub const VIS_EVENT_LIMIT : Int32 = 1024
+
+pub fn build_dispatch_input(@bytecode.CompileOutput, Int32) -> Result[@wasmenc.DispatchInput, DispatchProjectError]
+
+pub fn build_dispatch_product(@bytecode.CompileOutput, Int32) -> Result[DispatchProduct, String]
 
 pub fn load_libc_artifact() -> LibcArtifact
 
@@ -47,6 +52,24 @@ pub(all) struct CallFrame {
 pub fn CallFrame::equal(Self, Self) -> Bool
 pub fn CallFrame::not_equal(Self, Self) -> Bool
 pub fn CallFrame::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DispatchProduct {
+  module : Array[Byte]
+  entry_ip : Int32
+  stack_start : Int32
+  group_count : Int32
+  data_blob : Array[Byte]
+  data_base : Int32
+}
+
+#derive(Eq, @debug.Debug)
+pub(all) enum DispatchProjectError {
+  NotSupported(String)
+  FuncMissing(Int32)
+}
+pub fn DispatchProjectError::equal(Self, Self) -> Bool
+pub fn DispatchProjectError::not_equal(Self, Self) -> Bool
+pub fn DispatchProjectError::to_repr(Self) -> @debug.Repr
 
 #derive(Eq, @debug.Debug)
 pub(all) enum ExecMode {

@@ -58,10 +58,10 @@ test {
 ///|
 test {
   let json = @diag.export_catalog_json()
-  // {"catalog":[{...},…]} 码升序 122 条（SWEEP1 +1 + B9 三批 +5 卡；#426 批 1：+W3090 卡；#50 批③ 77→102；病 15/19 +2；#96 +1；#178 +1；#214 +2；PR #284 审阅 P3 +1〔W1023〕；#256/#261 闭合批 +14〔E0/E1012/E3074–E3082/E3086–E3088〕退役 9〔E1022/E2001/E3026/W3056/E4100–E4104〕；#223 +E3089）——E4 出口为
+  // {"catalog":[{...},…]} 码升序 125 条（#517 P3 +3 卡；SWEEP1 +1 + B9 三批 +5 卡；#426 批 1：+W3090 卡；#50 批③ 77→102；病 15/19 +2；#96 +1；#178 +1；#214 +2；PR #284 审阅 P3 +1〔W1023〕；#256/#261 闭合批 +14〔E0/E1012/E3074–E3082/E3086–E3088〕退役 9〔E1022/E2001/E3026/W3056/E4100–E4104〕；#223 +E3089）——E4 出口为
   // canonicalize 归一单源口径（迁移期与 Rust oracle 逐字节对拍锁定；oracle 已退役，现役锚 = wbtest 数量断言 + gen_diag -check 单源不漂移）
   assert_true(json.has_prefix("{\"catalog\":["))
-  assert_true(@diag.catalog_codes().length() == 122) // 合并基线 122：SWEEP1 +1（master）+ B9 三批 +5（挪位补卡）
+  assert_true(@diag.catalog_codes().length() == 125) // #517 P3 批：122→125（+E3097/W3098/W3099 卡）；SWEEP1 +1（master）+ B9 三批 +5（挪位补卡）
 }
 ```
 

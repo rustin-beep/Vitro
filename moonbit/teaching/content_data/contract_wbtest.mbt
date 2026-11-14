@@ -82,7 +82,11 @@ test "catalog_presence_per_code" {
 /// 2026-11-12 B9 三批（#433）+E3092–E3096 卡——tag 冲突/label 重定义/自引用/designator 两面）。
 test "catalog_content_escape_probe" {
   install_baked()
-  assert_eq(@diag.catalog_texts.length(), 122, msg="122 卡基线")
+  assert_eq(
+    @diag.catalog_texts.length(),
+    125,
+    msg="125 卡基线（#517 P3 批 +E3097/W3098/W3099）",
+  )
   let e2 = @diag.ErrorCode::from_code(1002).unwrap().catalog().unwrap()
   assert_eq(e2.title, "字符串未闭合")
   assert_eq(e2.icon, "string")

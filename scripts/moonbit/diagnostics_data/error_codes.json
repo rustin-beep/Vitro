@@ -504,6 +504,18 @@
     {
       "name": "E3096_DesignatorIndexNotConstant",
       "code": 3096
+    },
+    {
+      "name": "E3097_IntOverflow",
+      "code": 3097
+    },
+    {
+      "name": "W3098_ConstDivZero",
+      "code": 3098
+    },
+    {
+      "name": "W3099_UninitializedRead",
+      "code": 3099
     }
   ]
 }

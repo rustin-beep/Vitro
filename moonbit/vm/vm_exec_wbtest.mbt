@@ -67,10 +67,13 @@ test "exec_add_overflow_traps" {
   assert_true(r2 is Ok)
   let r3 = vm.step()
   assert_true(r3 is Trap)
+  // #517 P3-15：溢出 trap 升格 [overflow] 前缀 + E3097 码（形态对齐
+  // E3086/E3088 家族——修前裸文本单句）
   assert_eq(
     vm.error,
-    "整数加法溢出。两个很大的正数（或很小的负数）相加超出了 int 能表示的范围。\n[location] 发生在第 1 行 第 1 列",
+    "[overflow] 整数加法溢出 (E3097)：两个很大的正数（或很小的负数）相加超出了 int 能表示的范围。\n\n[cause] 原因：有符号整数溢出在 C 中是未定义行为——Vitro 采用受检语义，溢出即停（可教学观察）而非静默回绕。\n[fix] 检查方法：确认操作数的量级；大数累加请改用 long long。\n[location] 发生在第 1 行 第 1 列",
   )
+  assert_eq(vm.trap_code, "E3097")
 }
 
 ///|
@@ -467,7 +470,9 @@ test "exec_neg_overflow_traps" {
   ignore(vm.step())
   let r = vm.step()
   assert_true(r is Trap)
-  assert_true(vm.error.contains("整数取反溢出。-INT_MIN"))
+  // #517 P3-15 连坐：句号形态变 (E3097) 形态
+  assert_true(vm.error.contains("整数取反溢出 (E3097)：-INT_MIN"))
+  assert_eq(vm.trap_code, "E3097")
 }
 
 ///|

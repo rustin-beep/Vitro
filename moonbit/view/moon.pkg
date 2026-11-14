@@ -1,0 +1,5 @@
+// L0 零依赖·视图语义包（批 D，2026-11-14）：ViewDoc v0.1.1 的投影器词表。
+// 真源 = 本目录 projectors.json；两个 @generated 产物由 scripts/gen_view_projectors
+// 发射：本包 projectors_gen.mbt（引擎 MoonBit 数据面）+ demo/src/lib/projectors.ts
+// （demo TS 词表）。宿主（demo / MCP）只实现绘制，不各自定义序列条数与维度约束。
+// 分层登记：scripts/moonbit/pkg_deps/rules.json（L0）。

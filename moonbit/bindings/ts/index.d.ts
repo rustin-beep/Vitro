@@ -44,6 +44,7 @@ export interface ArraySnapshot {
   element_ty: string;
   elements: string[];
   truncated: boolean;
+  dims: number[];
 }
 
 /// `PointerSnapshot`（源：moonbit/protocol/types.mbt）

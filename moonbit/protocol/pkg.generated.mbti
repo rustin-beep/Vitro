@@ -135,6 +135,7 @@ pub(all) struct ArraySnapshot {
   element_ty : String
   mut elements : Array[String]
   truncated : Bool
+  dims : Array[Int32]
 }
 pub fn ArraySnapshot::to_repr(Self) -> @debug.Repr
 
@@ -144,6 +145,7 @@ pub(all) struct ArraySnapshotRef {
   element_ty_idx : Int32
   elements : Array[String]
   truncated : Bool
+  dims : Array[Int32]
 }
 pub fn ArraySnapshotRef::to_repr(Self) -> @debug.Repr
 

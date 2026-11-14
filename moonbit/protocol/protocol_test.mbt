@@ -108,6 +108,7 @@ test "blackbox_dto_surface" {
     element_ty: "int",
     elements: [],
     truncated: false,
+    dims: [0],
   }
   let frame : @protocol.ApiFrameInfo = { func_name: "main", return_line: 0, }
   let payload : @protocol.StepPayload = {

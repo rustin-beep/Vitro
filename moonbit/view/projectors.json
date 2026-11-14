@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "_comment": "ViewDoc v0.1.1 投影器词表真源（引擎侧单源，2026-11-14 批 D，refs #470/#517）。宿主只实现绘制，不各自定义语义：序列条数 / 维度约束 / 已知选项键由本表下发。新增投影器改本文件后跑 node scripts/gen_view_projectors/main.mts 重生成两个产物。",
+  "default": "cells",
+  "projectors": [
+    {
+      "id": "cells",
+      "seriesMin": 1,
+      "seriesMax": 1,
+      "minDims": 0,
+      "opts": [],
+      "note": "索引格：默认形态，逐元素一格"
+    },
+    {
+      "id": "bars",
+      "seriesMin": 1,
+      "seriesMax": 1,
+      "minDims": 0,
+      "opts": ["baseline", "gain"],
+      "note": "柱状：幅值 / 频谱幅度"
+    },
+    {
+      "id": "line",
+      "seriesMin": 1,
+      "seriesMax": -1,
+      "minDims": 0,
+      "opts": ["gain"],
+      "note": "折线：多条序列叠加同一坐标系"
+    },
+    {
+      "id": "grid2d",
+      "seriesMin": 1,
+      "seriesMax": 1,
+      "minDims": 2,
+      "opts": [],
+      "note": "二维网格：须有 dims 维度表"
+    },
+    {
+      "id": "polar",
+      "seriesMin": 2,
+      "seriesMax": 2,
+      "minDims": 0,
+      "opts": ["group", "gain"],
+      "note": "相量图：两条序列为实部/虚部"
+    },
+    {
+      "id": "spectrum",
+      "seriesMin": 1,
+      "seriesMax": 1,
+      "minDims": 0,
+      "opts": ["axis", "gain"],
+      "note": "频谱：幅值柱 + 频率轴刻度"
+    }
+  ]
+}

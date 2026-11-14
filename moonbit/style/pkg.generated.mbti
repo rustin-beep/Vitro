@@ -1,0 +1,34 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/style"
+
+// Values
+pub fn css_base() -> String
+
+pub fn css_block(StylePack, String) -> String
+
+pub fn css_text() -> String
+
+pub fn pack(String) -> StylePack?
+
+pub fn slot(StylePack, String) -> String?
+
+pub fn style_base() -> Array[(String, String)]
+
+pub fn style_digest() -> String
+
+pub fn style_packs() -> Array[StylePack]
+
+pub fn style_sizes() -> Array[(String, Array[(String, String)])]
+
+// Errors
+
+// Types and methods
+pub(all) struct StylePack {
+  id : String
+  scheme : String
+  slots : Array[(String, String)]
+}
+
+// Type aliases
+
+// Traits

@@ -17,7 +17,7 @@ import { DEFAULT_PROGRAM } from "../program.ts";
 import { defaultLesson, findLesson, noteKeyOf, type CourseLesson } from "./courseIndex.ts";
 import { loadLessonNote } from "./lessonNotes.ts";
 import { resolveScenes } from "./scenes.ts";
-import type { Block, Scene } from "./lessonMd.ts";
+import type { Block, Scene, VizDecl } from "./lessonMd.ts";
 import { progress } from "./progress.svelte.ts";
 import { ensureClosedForLesson } from "./workspace.svelte.ts";
 
@@ -33,8 +33,10 @@ export interface OpenOpts {
 class LessonSessionState {
   /** 编辑器源码（唯一真源；CM6 bind 双向同步）。 */
   source = $state(DEFAULT_PROGRAM);
-  /** 当前课叙述（course/<chap>/<id>/lesson.md 懒加载产物；null = 无叙述）。 */
-  note = $state<{ title: string; blocks: Block[]; scenes: Scene[] } | null>(null);
+  /** 当前课叙述（course/<chap>/<id>/lesson.md 懒加载产物；null = 无叙述）。
+   *  vizs = 课源 `<!-- vitri-viz v1 -->` 的投影器声明（无声明课 = []，
+   *  工作区据此退回默认 cells 索引格——批 D，refs #470 v0.1.1）。 */
+  note = $state<{ title: string; blocks: Block[]; scenes: Scene[]; vizs: VizDecl[] } | null>(null);
 
   /** 当前课分镜（#238 单点解析出口）：v2 锚点幕在帧流上动态求值
    *  （未命中该幕不猜）、v1 数字课幂等直通——**消费方一律取本属性**，
@@ -76,7 +78,7 @@ class LessonSessionState {
       : { id: l.id, label: l.title, source: l.source };
     // 叙述懒加载（无此课叙述 = null，诚实空态——不渲染假课文）
     const doc = await loadLessonNote(noteKeyOf(l));
-    this.note = doc ? { title: l.title, blocks: doc.blocks, scenes: doc.scenes } : null;
+    this.note = doc ? { title: l.title, blocks: doc.blocks, scenes: doc.scenes, vizs: doc.vizs } : null;
     ui.screen = "work";
     ui.mode = "exec";
     progress.markDone(l.id);

@@ -39,6 +39,7 @@ test "step_payload_all_fourteen_fields_constructible" {
         element_ty: "int",
         elements: ["1", "2", "3"],
         truncated: false,
+        dims: [3],
       },
     ],
     pointer_snapshots: [

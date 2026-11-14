@@ -1,0 +1,6 @@
+// L0 零依赖·风格包资产包（批 A，2026-11-14）：ViewDoc 内置统一风格的引擎侧数据面
+// （五主题 × 语义槽 + 基座 + 字号档），真源 = 本目录 tokens.json（与 demo 主题同一份）。
+// style_gen.mbt 由 scripts/gen_style 生成（digest 绑 tokens.json 字节，禁手改）；
+// CSS 侧同源产物 = demo/src/tokens.css（scripts/gen_demo_tokens 发射）。
+// 消费面：cmd/mcp_js 参考后端内嵌 CSS（MCP 交付页换肤）；demo 走生成的 tokens.css。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L0）。

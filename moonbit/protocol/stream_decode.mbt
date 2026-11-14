@@ -55,6 +55,7 @@ pub fn decode_batch(batch : StepStreamBatch) -> Array[StepPayload] {
     element_ty: get_sym(batch.symbol_table, a.element_ty_idx),
     elements: a.elements,
     truncated: a.truncated,
+    dims: a.dims,
   })
   let current_pointers : Array[PointerSnapshot] = base.pointer_snapshots.map(p => {
     name: get_sym(batch.symbol_table, p.name_idx),
@@ -185,6 +186,7 @@ pub fn decode_batch(batch : StepStreamBatch) -> Array[StepPayload] {
             element_ty: get_sym(batch.symbol_table, a.element_ty_idx),
             elements: a.elements,
             truncated: a.truncated,
+            dims: a.dims,
           }
           replace_or_push_array(current_arrays, decoded)
         }
@@ -254,6 +256,7 @@ pub fn decode_batch(batch : StepStreamBatch) -> Array[StepPayload] {
         element_ty: a.element_ty,
         elements: a.elements.map(e => e),
         truncated: a.truncated,
+        dims: a.dims,
       }),
       pointer_snapshots: current_pointers.map(p => {
         name: p.name,
@@ -315,6 +318,7 @@ fn decode_step_payload_ref(
       element_ty: get_sym(sym, a.element_ty_idx),
       elements: a.elements,
       truncated: a.truncated,
+      dims: a.dims,
     }),
     pointer_snapshots: base.pointer_snapshots.map(p => {
       name: get_sym(sym, p.name_idx),

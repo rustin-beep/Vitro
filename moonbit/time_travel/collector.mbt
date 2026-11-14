@@ -17,6 +17,11 @@
 ///   直供」先例的落地形态）。
 
 ///|
+/// 调用栈快照深度上限（#517 P1-1，2026-11-14）——与 MAX_ARRAY_SNAPSHOT_
+/// ELEMENTS 同级的防御性观测截断锚；超限保顶部（当前帧优先）。
+const MAX_CALL_STACK_SNAPSHOT : Int32 = 256
+
+///|
 /// 算法步骤推断上下文（Rust session.unified_{row_entry_vars,last_line,
 /// last_frame_vars} 三字段 + algorithm_matches 的引擎侧内聚；批四号接线
 /// 裁定——跨 seek 不回滚，与 Rust session 字段「重放连续演化」同语义）。
@@ -154,9 +159,20 @@ pub fn[P : SourceLineProvider] collect(
       value: value_str,
     })
   }
-  // 调用栈（return_line=0 MVP 简化照搬）
+  // 调用栈（return_line=0 MVP 简化照搬）。#517 P1-1（2026-11-14）：深栈
+  // 采集截断——保**顶部** MAX_CALL_STACK_SNAPSHOT 层（当前帧上下文优先）。
+  // 无限递归下每帧快照 O(深度) × 20000 步采集 = O(n²) 膨胀（实测 232s
+  // 阻塞 server 主循环，深度上限 10000）；≤256 层的正常教学程序零影响。
+  // 已知限制：超 256 层后栈视图封顶，依赖 c.length() 的深度判定（mcp
+  // annotations 的 call/return、关键帧权重）在封顶段停止新增——深递归
+  // 场景教学价值趋零，换取单帧常数化。
   let call_stack : Array[@protocol.ApiFrameInfo] = []
-  let mut fi = 0
+  let cs_first : Int32 = if cs_len > MAX_CALL_STACK_SNAPSHOT {
+    cs_len - MAX_CALL_STACK_SNAPSHOT
+  } else {
+    0
+  }
+  let mut fi = cs_first
   while fi < cs_len {
     let f = vm.call_stack_at(fi)
     call_stack.push({ func_name: f.func_name, return_line: 0, })

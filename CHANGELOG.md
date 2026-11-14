@@ -138,6 +138,77 @@
   **1539/1539**；STEP-INV **1035 语料 / 2,087,483 帧** RED 0 ZOMBIE 0；
   W4 **1081 cases** AGREE identical；rundiff **919**；vm_diff **865/865**；
   驱动 .mts 口径 **67→70**（批 3 时点 64→69 + #513 green_probe +1）。
+### fix(vm+time_travel+teaching+mcp+cmd): 缺陷猎杀批 #517——P1×4 修 + P2×6 修/登记（2026-11-14）
+
+- **P1-1 无限递归阻塞 server 主循环 232s（C3）双修复**：① collector
+  call_stack 快照**深栈截断**（`MAX_CALL_STACK_SNAPSHOT=256` 保顶部——
+  深递归每帧 O(深度)×20000 步 = O(n²) 膨胀实测 232s 全池阻塞；≤256 层
+  正常程序零影响；超限段 annotations 深度判定封顶登记已知限制）；②
+  mcp 采集**墙钟预算** `COLLECT_TIME_BUDGET_MS=20s`（`PHASE_CAPPED_TIME`
+  终态 + stopped `capped@time` + render warning；collect_all/advance/
+  run_to/step_next 全链传 deadline，step_next 循环共享一份防逐次重置）。
+  真机：无限递归 animate 232s→20.3s（capped@time 收口，产物 5.4MB→
+  322KB）。锚：`collect_call_stack_deep_truncation`（红→绿）+
+  `mcp_collect_time_budget_capped`（红→绿，拨假钟 300ms/批）。
+- **P1-3 数组参数帧作用域解析坏（B2/A1-A4）双修复**：①
+  `get_array_snapshots` 补**作用域过滤**（与 get_variable_snapshot 同源
+  三判据——修前无过滤，被调帧把 main 的数组符号按当前帧 locals_base
+  连读，舞台首格=形参指针值 1048560、后续=lo/hi/pivot 冒充）；② 数组
+  形参**解引用视图**（形参 ty=int* decay，指针值→全局/活跃帧地址覆盖
+  数组取长度〔slot_covers 单源〕→按元素类型读真身；malloc 堆/悬垂无
+  覆盖符号不产——诚实空态；双指针只解一层）。教学正收益：bubble_sort
+  帧的 arr 舞台从恒定垃圾恢复为逐步真变。锚：
+  `observe_array_snapshot_scoping` + `observe_array_param_deref_view`
+  （双双红→绿）；mcp_smoke PLAYER swap 锚 5→3 重锚（缺陷形态基线
+  〔被调帧数组恒定→关键帧权重集小〕随修复翻转——301 预算下 hi 集均匀
+  抽稀保留 3）。
+- **P1-5 队列饥饿/30s 超时丢响应（A1+B3）**：仓内可修面 = P1-1② 墙钟
+  预算（慢请求 20s 硬收口，不再吞满共享池）；宿主侧形态（宿主 30s 超时
+  丢响应不快速失败、server 完成后落盘）登记 issue #517——MCP stdio 协
+  议下单请求同步语义，无中断通道。
+- **P1-6 interactive 页内 wasm 引擎不可用（实拍）**：引擎本体健康
+  （CDP 实测 stdout 全对、invoke 响应）——坏在 INTERACTIVE 模板三处：
+  ①自动引导「有数组即停」停在 main 序幕 4 帧全 0 → 改采 16 关键帧/终
+  态；②「运行到底」按钮每点一次只推进 1 关键帧（stepOnce 的关键帧
+  break）→ 改 tick 循环（20s 预算 + setTimeout 让出主线程 + 终态禁用）；
+  ③播放键只回放已采帧 → 到达已采末帧时自动 `__VITRO_STEP__` 拉新帧续
+  播（static 模式行为不变）。真机：4/4 卡死 → 16 帧开场 + 运行到底
+  468 帧（抽稀自 1126 步）+ 终态按钮禁用。
+- **P1-2 产物假绿×2+批量删除窗口（B1+哨兵）**：定性**环境侧**——grep
+  全仓无删除 vitro-out 产物的代码路径；哨兵实录 04:12:07.286-.370 六
+  文件毫秒级连删 = 外部进程（共享工作区并发代理 shell）`rm vitro-out/*`
+  形态；server 侧写盘+statSync 真实成功（哨兵录到 61571B 落盘后 10s 被
+  删）。登记 issue #517；连坐缓解 = P2-11 唯一化（互吃面消除）。
+- **P1-4 L1 解锁链宿主侧断裂（A5+D2-D8）**：定性**宿主侧**——server 侧
+  `notifications/tools/list_changed` 通知在 session_open 响应帧之前正
+  确发出（mcp_disclosure_flow 锚锁），宿主 agent 会话内工具清单不刷新
+  属宿主 tools/list 重拉缺失；登记 issue #517（7 题 blocked 的根因）。
+- **P2-7 swap 字幕双向失真（A2/A3+B3/B7）**：误报臂修——is_swap_
+  assign_line v4：RHS 下标访问臂**再要求纯下标整体 + 与 LHS 同数组名**
+  （跨数组拷贝 `tmp[k]=a[i]` 338 帧 / 前缀和表达式 `pre[i]=pre[i-1]+dp[i]`
+  225 帧误标「交换」清零；主行/回写行维持）。锚：
+  `semantic_swap_v4_cross_array_copy_not_swap`（stash 证红→绿）。漏报臂
+  （heap_sort 真交换零字幕）当前基线不复现（176 交换字幕+循环字幕正
+  常——A3 实测疑旧产物），不修不登记。
+- **P2-8 2D 数组舞台压平（A7）**：PLAYER 从 fr.v 的 ty_name 尾两维解析
+  维度（`arrDims`），header `2×3 矩阵`、grid 列数=列宽、下标 `r,c` 形
+  态；3D+ 回落一维。真机：m[2][3]/t[3][2] 双数组 cols=3/2 可区分。
+- **P2-9 focus 无效名 fail-silent（D6）**：显式 focus 数组名不存在 →
+  -32602 报错（含可用名清单），不再静默产出空舞台坏产物。锚：
+  `mcp_render_focus_unknown_name_fails_loud`（红→绿）。
+- **P2-10 多文件 overview 行号错乱（D1）**：files 工程末函数 end 修前
+  取主文件区间 end_line（util.c 函数越界 mul=[12,8] end<start）→ 取
+  拼接流全末行；帧行号与 dump 同基拼接流坐标锚不变。锚：
+  `mcp_files_overview_last_func_end_spliced_stream`（红→绿）。
+- **P2-11 产物文件名分钟粒度覆盖+跨代理截图竞态（A/B 覆盖链+B5）**：
+  时间戳秒级 + `pid36-随机4` 后缀（同分钟/同秒并发实例各产各物，
+  preview_png 与 html 一一对应——截图互吃面消除）。
+- **P2-12 Gen UI 内嵌纵向拉长**：产物 CSS `html,body{height:100%}` →
+  `html{height:100%}+body{min-height:100%}`（iframe 卡片语境解循环
+  依赖；直接打开满屏形态不变）。
+- 验收：moon test 全量 **1467**（js）/native/wasm-gc 受影响四包 288+288
+  全绿（三臂口径）；mcp_smoke 18/18（PLAYER 锚重锚 3）；facts
+  `--run --strict` 漂移 0（moonbit_check_warnings 98 持平零新增）。
 
 ### fix(wasmenc+bytecode+scripts): PR #512 审阅处置——P1×1 + P2×1 + P3×6（2026-11-13）
 

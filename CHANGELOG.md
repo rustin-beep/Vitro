@@ -1,128 +1,81 @@
 ## [Unreleased]
 
-### ci: 主 CI 单文件拆分——编排层 + 8 called 单元 + 夜间哨兵独立（2026-11-14）
+### fix(scripts+vm+ci+docs): PR #518 审阅处置——P2×2 + P3×6 全收口（2026-11-14）
 
-- **动机**：ci.yml 2353 行单文件超 agent/人整读阈值（只能 grep 定位——
-  缺漏面，防线接线漏项的温床）；拆后每文件 ≤550 行可整读。GitHub 无
-  include 机制，唯一不破防线语义的拆法 = **reusable workflow**
-  （`workflow_call`）：called job 与 caller 同 run 执行，build-products
-  artifact 同域共享、红态向 caller job 传导、单点 concurrency 不变。
-- **形态**：ci.yml 收敛为编排层（~185 行：on/concurrency 原样 + 8 个
-  called 分组 + ci-summary）；job 实体搬迁——ci-build（build-artifacts）
-  / ci-diff（gates-diff + corpus-fuzz + green_probe）/ ci-engine-gates
-  （gates-native + gates-wasm + arm4-wasmtime）/ ci-static / ci-hygiene /
-  ci-frontends（demo + desktop）/ ci-tools（backend-triage +
-  cli-smoke-linux + release-preflight + scripts-ts）/ ci-mutation；
-  三 sentinel（schedule-only）独立 nightly.yml——主 CI push/PR 轮从此
-  不再挂三个恒 skipped job。
-- **语义保真三条不变式**：① 原 `needs: build-artifacts` 的 job 全进
-  caller `needs: build` 分组；② 原无 needs 的 job（static/hygiene/
-  tools 族）保持无 needs——build 红时健康面仍可见（红遮红治理保真）；
-  ③ mutation 独立 caller job 不入 ci-summary needs（2026-10-31
-  report-only 观察期拍板不被分组连坐）。workflow_dispatch 的 refresh
-  逃生门经 `with:` 透传 ci-diff（表达式恒输出布尔）。
-- **等价证明**：19 个搬运 job 归一化后**逐字节等价**（tmp/verify_split
-  一次性对账：唯一 diff = 删跨文件无效的 `needs: build-artifacts` 行；
-  本地 YAML parse ×12 / ci_checklist PASS / 保险丝域名收敛 OK /
-  node:test 20 锚全绿含新增拆分形态 J9 锚〔旧单文件扫描形态四目标
-  缺口红实证后复绿〕）。
-- **连坐**：ci_checklist ④ moon test 目标面改扫全部 workflow 文件
-  （原只扫 ci.yml——hygiene 拆出后必假红）+ ⑤ 豁免表键 mutation-gate
-  → caller id `mutation`；gen_svg 图 K 对账指引文本与 wasmtime_arm
-  头注的 ci.yml 引用改指新文件（产物随 all 重生成，-check 绿）。
-  已知代价：check run 显示名多一级分组前缀（required checks 子串
-  匹配不受影响）。
+- **P2-1 触发语义勘正（诚实记录）**：freshness「mtime 只作触发、内容 hash
+  由 moon 增量把关、touch 复核秒过 / 假阳性已消化」与实测不符——审阅实测
+  touch 后 native `moon build` 37.6s、wasm 触发链 66.8s（wasmopt 48.8s），
+  产物 907754→1121825→907754 证真重编（moon 增量判定同以 mtime 为触发
+  面）。本地 checkout/生成器刷源后首跑付重建时长（重建后 mtime 自愈后续
+  零税；CI 干净构建不触发）。freshness 头注 / vm.mts 两段注 / 本 PR 两条
+  CHANGELOG 的不实表述全部勘正（保留原述 + 勘正括注，不抹史）。
+- **P2-2 findStaleSource 补 `*_gen.mbt` 排除**：被删 warnStaleExe 的该
+  排除（「均实测误报过」）在双臂统一走 findStaleSource 时丢失——实测
+  触发源正是 `moonbit/vm/libc_data_gen.mbt`（构建刷 mtime），每次构建后
+  多一轮重建。回搬排除 + J9 锚先红后绿（红证：现状返回 `error_code_gen.mbt`
+  路径非空）。
+- **P3-1 editorconfig hermetic 回归锚**：cwd 锚定修复（追加批）原无
+  hermetic 锚——干净 CI 检出撤掉不红。补 git init fixture 锚（cwd≠base
+  形态，正是 CI npm test 在 scripts/ 下跑的失配形态）；撤修复红证
+  （`ignored\bad.txt（缺末行换行）` 漏豁免）→ 恢复绿。
+- **P3-2 b3 锚值自指修复**：`gip_on==gip_off` 两侧同源（各自 snap.gip），
+  gip:0 注入不红（审阅注入实验实锤——靠既有 gate3/seek 两锚才红）。补
+  独立来源互证：drive 逐步收集 (snapshot.gip, vm.ip) 对外层逐对断言 +
+  restore 前互证；gip:0 注入红证（「flag on 快照 gip ≡ 执行态 ip（步 0）」
+  FAILED）→ 恢复 121/121 绿（vm 包，测试数不变）。
+- **P3-3 CLI 手册同步**：step 用法行补 `--wasm-rehost`（含 stderr 标记行
+  说明）；`step.begin` 参数格补 `wasm_rehost`（bool 缺省 false）。
+- **P3-4 CHANGELOG 数字回填**：批 3 条目补 rebase 后复验口径（1463/1539、
+  1035 语料/2,087,483 帧、W4 1081、rundiff 919、vm_diff 865、驱动 67→70）。
+- **P3-5 ci_checklist 双形态计数**：双形态目录（go+mts 同目录，clang_direct
+  实形）walk 序 go 先占 driverSet rel 时 mts 漏计（71 个 main.mts 摘要报
+  70）。go/mts 形态各自独立收集（`双形态目录各计其形`尾注——形态和可大于
+  驱动总数）；J9 锚先红（`.mts 0`）后绿；真实摘要 `驱动 72（.go 2 /
+  .mts 71）`。
+- **P3-6 CI 接线 `--rehost`**：PR 轮 step_invariant 加 `--sample 40
+  --rehost` 活行（此前 CI 无该旗标，覆盖只剩 wbtest 两锚）；本地同款实测
+  绿（40 语料 RED 0 ZOMBIE 0）。
+- 验收（亲跑）：node:test 全量 877/0（freshness/editorconfig/ci_checklist
+  各 +1 处置锚 + prelude_fail 连坐零回归）；tsc 0 err /
+  oxlint 0 err；moon test 裸 1463/1463 + native 1539/1539（vm_wbtest 锚
+  加固不加数）；facts `--strict check` EXIT=0；vm_diff 双臂 SAME=865。
 
-### fix(wasmenc+vm+scripts): PR #520 审阅处置——P1×1 + P2×5 + P3×4（2026-11-14）
+### feat(scripts): vm_diff wasm 臂新鲜度硬门禁收口——freshness 构建后置钩子 + editorconfig gitignored 豁免 cwd 锚定修复（REHOST 批 3 收尾追加，PR #518，2026-11-14）
 
-- **P1 dispatch 模块产物非法 wasm（三结构错，validate 锚闭环）**：
-  按 J9 纪律先落 WebAssembly.validate 外部证人（wasmenc wbtest 三
-  fixture dump〔最小/带调用/短路〕+ watcheck 抓行验证——**证红实锤
-  后修**）：① G_RV i64→i32（Ret 塞 i32 值类型错）；② 入口 FB 置
-  stack_start（原 0 时顶层 Ret 读 0-12 越界）；③ br_table 出口标签
-  改外层 EXIT block 深度（原 nblocks 指 loop 本身 = 回跳循环首）；
-  ④ P2-4 main 无参化（entry 烧死 i32.const——param 占 local 0 致模板
-  L_V=0..5 全体错位）；⑤ P2-3 预算检查移块首安全点（原只挂
-  fallthrough 块尾——循环块以 Jump 结尾永不检查，max_steps 形同虚设）；
-  ⑥ **JumpIf 族改 if 直译 + 零栈 spill**（微缩模板 block+br_if 双臂
-  形态在验证器栈多态下不稳定——m1/m3/m4/if-else 四变体最小复现链
-  全红；短路留值=条件值=L_A 已存，臂内 spill 从 L_A 直读入池零栈
-  操作；fallthrough 用真实 gip+1，弃 ctx 单值 77）。
-- **P2**：① wide-param 禁译（word/value 口径混用——i64/double 参数
-  word=2 值=1 必错位静默产非法字节，任何 word>1 参数 fail loud）；
-  ② step_invariant rehost 轮 rc=4 计红（原 rc 豁免分支吞掉「旗标未
-  生效即红」——fail-open 实锤修复）；③ 投影层 Blocks(Emit) 禁译理由
-  透传（原 unclassified 吞原因）。
-- **P3**：libc_setup 头注叙事连坐（两态独立接线）；**CI --rehost
-  接线**（ci-engine-gates 两档全加——step 态 rehost 回归有闸）；设计
-  单批 2 实测记录补回；探针清理。
-- 验收：三 fixture validate 全绿（F0 276B/F1 470B/F2 379B）；
-  wasmenc 51/51、vm 125/125；watcheck 40 PASS + 覆盖对账 150/150；
-  tsc/oxlint/node:test 四件套绿。
-
-### feat(wasmenc+vm): REHOST 批 4b-1——溢出池架构修正（libc 实锤）+ 投影层 DCE（2026-11-14）
-
-- **溢出池架构修正（libc 实锤驱动）**：jit PoC「块边界栈空」假设被
-  libc 真实字节码推翻——短路求值 `Dup+JumpIfZero` 落空后留值跨块
-  （`||` 形态 Call 返回值被块内消费同族）。修正：出口高度静态化
-  （`blocks_exit_heights` 增量口径 + 联立下溢判定
-  `blocks_underflow_with_entry`）+ 块图前驱会合（**不动点迭代**——
-  函数头 h_in=0 预置/Call 目标边/返回点边 = h_out + 非 void 的 G_RV
-  load 项/有效出口高含返回点 load）+ **wasm locals 溢出池**（L_S×8
-  i32 槽——跨块值恒 i32 契约由 JumpIf 模板 L_A i32 槽佐证；块尾
-  spill/块首 fill；超限 NotSupportedHeight 禁译）。
-- **投影层 `vm/dispatch_setup.mbt`**：全程序 → `DispatchInput`——
-  **DCE**（libc 只拼被引用函数闭包：全拼 3485 组死代码既撑大产物又
-  让个别函数形态缺陷全程序传染——剪后局部化到实际调用者）+ ip 重
-  映射表统一重写 Jump/Call 目标 + **Call operand 重写**（func_idx →
-  目标 ip——VM do_call 语义与载体 ip 域的桥）+ 变参禁译 + data blob
-  （稀疏写集稠密投影、空洞零铺——宿主写 memory 与 VM 装载期
-  set_globals_*/write_cstring 同语义）。
-- 锚 14 件（块划分 6 + 组装器 4 + 投影层 4，J9 五红：越界/下溢/
-  CallPtr/变参/调用点缺失）；wasmenc 49/49、vm 125/125、**全仓
-  1476/1476**；surface 边表 +11（vm→wasmenc 投影链）/白名单 +6/-2
-  （assemble_dispatch_module 出表进边）。
-
-### feat(wasmenc): REHOST 批 4a——dispatch-loop 语义模块组装器（V8/wasmtime 可执行载体，2026-11-14）
-
-- **指令件三新增**：`WBrTable`（0x0E 标签向量分发）+ `WIf`/`WReturn`
-  （骨架 trap/出口件）——编码 + 效应臂连坐；**解码器不跟**（dispatch
-  模块字节是执行产物、非折叠管线对象——winstr_decode 遇之 fail loud
-  即路径边界，垫收证人模块不含此类指令）。
-- **块划分器 `blocks.mbt`**：leader 规则（入口/函数头/跳转目标/控制流
-  后继）+ **块出口栈空闸**（jit_survey PoC 对 15 产物的人工假设升格为
-  装载期机检——出口净高非零 fail loud 进禁译面）；CallPtr 首版禁译
-  （运行期 func meta 查表的参数搬运不可静态展开）。
-- **组装器 `dispatchloop.mbt`**：PoC `bodyDispatch`（实测 299×）通用化
-  ——loop + n 层 block + `br_table[ip→块索引]`（标签向量逐 ip 填、
-  运行期 pc 天然支持；default=unreachable）+ 出口哨兵块（main Ret →
-  return G_RV）+ 块首批量步锚（组粒度恒等）+ 块尾预算检查（overshoot
-  ≤1 块——预算 trap 语料 steps 对拍面 4b 登记豁免）。**两条发射路径
-  分离**（拍板）：往返路径字节（批 2/3 已锁）不动；A/B 类组字节同源
-  复用、C 类组展开完整执行协议。
-- **软件调用栈（方案 B'）**：12B 帧头内嵌帧底〔return_ip|orig_top|
-  caller_fb〕——Ret 静态可定位；代价 = 局部地址较 VM 差 12×深度
-  （`&x`/%p/VLA 语料进已知分叉豁免面，R4 残余风险同族——结果级三锚
-  不含地址）。**返回值走 G_RV 通道**（Ret 存、返回点块首 load 回
-  wasm 栈——块边界栈空由该约定保持；void 不 load）。深度上限教学
-  trap + NULL 下界双保险（堆碰撞检查首版不做，4b 对拍实测定）。
-- 锚 9 件（块划分 5 + 组装器 4，含 J9 四红：越界/栈非空/CallPtr/
-  调用点元数据缺失）；`assemble_dispatch_body` 拆 pub（WInstr 层结构
-  锚——骨架/深度/步锚/G_RV 通道指令级断言；实跑验证归 4b）。
-  wasmenc 48/48、全仓 1471/1471、surface 白名单 +6（4b 接线时出表）。
-
-### docs(设计单): §3.2 批次序修订——V8/wasmtime 对拍提前为批 4、退役挪链尾批 6 三重前置（2026-11-14 用户拍板）
-
-- **动机**：批 4' 不可逆退役（code 字段停发）的决策依据原全是同源自证证人（往返恒等/
-  wasm-validate/wat/softstack——批 2b 审阅 P2-1 实锤模板语义错对此四面隐形），真 runtime
-  执行级独立证人（V8/wasmtime 执行用户载体 vs 引擎）原排在退役之后的批 5——时序倒置。
-- **修订**：①批 4'（新插）= dispatch-loop 语义模块 + node 宿主胶水（host call 回接同进程
-  引擎——host 语义单源）+ 全语料结果级对拍闸（V8+wasmtime 双证人；零禁译函数子集首版，
-  覆盖率入 facts 非静默跳过）；②批 5' 只剩产品面（快路径-确认协议/UI/上报），维持产品
-  触发；③批 6'（退役）前置从一条扩三重（批 2/3 一周期零漂移 + 批 4' 对拍一周期绿 +
-  批 5' 实战分歧归零/未启动时批 4' 连续两周期绿替代）；④防线面与产品面分轨——对拍闸
-  随批 2/3 合入即触发，不等产品需求（§9 豁免条款）。连坐：§6 依赖链/§7.2 工作量
-  （合计 ~7.6–10.2k 行）/§7.3 R5/O2/O6。
+- **freshness 构建后置钩子（`EnsureFreshOpts.postBuild`）**：产物链含构建
+  后覆盖步骤的消费方（wasmopt 后置优化等）传 postBuild——复核构建成功后
+  同批执行后置链，自动重建不再以裸产物覆盖优化产物。失败按「构建链失败」
+  die（`ENSURE_FRESH_FAIL_MARKS` 第四条「后置优化失败」——facts
+  artifactMissingNote 数组遍历匹配自动认得，不误报为防线红）；产物缺失
+  die 的修复命令随链带上后置段。moonbitRoot/rebuildRunner 为测试注入
+  端口（hermetic，findStaleSource 先例同款）。J9 双锚先红后绿（旧代码
+  postBuild 永不被调/不 die，✖✖ 实证后实现转绿）。
+- **vm_diff wasm 臂软警告退役**：`ensureFresh` + postBuild 接线 wasmopt
+  后置链（与 CI build-artifacts 步骤序 build→wasmopt 同链），批 3 登记的
+  「升级待 freshness 支持构建后置钩子」未竟边界关闭；warnStaleExe 删除
+  （双臂均硬门禁后零消费方）。VITRO_WASM_MOD 显式指定面跳过（外部产物
+  不在本地构建链管辖，与存在性检查同款语义）。真跑实证：touch 引擎源 →
+  触发「旧于源——跑构建复核」→ [PR #518 审阅 P2-1 勘正：此处为一次真实
+  重建（非「内容 hash 增量秒过」——moon 增量判定同以 mtime 为触发面），
+  本地首跑付重建时长、重建后自愈] → wasmopt 后置重写实锤（产物 mtime
+  刷新、size 保持优化态 907754 而非裸产物 1121825——后置链承重，审阅
+  注入「postBuild 跳过」后端到端留裸产物）→ 判定 SAME=865 不回归；
+  native 臂同步回归 SAME=865。
+- **editorconfig gitignored 豁免 cwd 锚定修复（红→绿）**：loadGitIgnored
+  的 `git ls-files` 无 cwd 锚定——输出相对进程 cwd 的路径，与 walk 的
+  仓库根 rel 前缀失配 → gitignored 豁免静默失效。CI 干净检出无 cargo
+  target 故未暴露；本地跑过 W4 前置 cargo build（生成 rs/target/，已被
+  .gitignore:156 覆盖）即 node:test 红（数百条「缺末行换行」假红实证）。
+  修复 = spawnSync 锚定 cwd: base；修复后 node:test 全量 874/0（scripts/
+  cwd 同 CI 形态）。
+- **同病面登记（不连坐，后续批接线）**：clang_direct / protocol_frames /
+  replay / serve_smoke / teaching_annotation_diff / teaching_truth 六处
+  wasmMod `ensureFresh` 触发复核时同样以裸产物覆盖优化产物——行为等价
+  （wasmopt 等价性有 #120 CI vm_diff 背书）零红面，纯产物优化态卫生
+  问题；后续连坐批逐点接 postBuild。
+- 验收（亲跑）：node:test 874/0（freshness 6/6 含新双锚 + prelude_fail
+  10/10 连坐零回归）；tsc 0 err / oxlint 0 err；vm_diff 双臂 SAME=865
+  DIFF=0；触发链实测如上。
 
 ### fix(scripts): vm_diff native 臂新鲜度软警告升级 ensureFresh 复核构建硬门禁（REHOST 批 3 连坐，2026-11-14）
 
@@ -131,13 +84,16 @@
   第 2 行但**不阻断**，vm_diff 产出 DIFF=2 假红（三提交 worktree 归因才闭环）。
   native 臂升级 `ensureFresh`（freshness.mts 单源——clang_direct/rundiff 等
   九处现役同源）：stale → 自动复核构建（`MOON_CC=clang moon build --release
-  --target native cmd/run`）→ **mtime 只作触发、内容 hash 由 moon 增量把关**
-  （checkout 刷源 mtime 的 S05-C2 假阳性顾虑由此消化——touch 实测复核秒过、
-  判定照常 SAME）；真陈旧自动重建，假红根除；构建失败红（陈旧产物假红/假绿
-  由此封死）。wasm 臂维持软警告（产物链含 wasmopt 后置覆盖，自动重建会以
-  裸产物覆盖优化产物——升级待 freshness 支持构建后置钩子另批）。
-  J9 场景实测：touch 源 →「旧于源——跑构建复核」触发 → moon 增量 up-to-date
-  秒过 → 判定 SAME。
+  --target native cmd/run`）→ 真陈旧自动重建，假红根除；构建失败红（陈旧
+  产物假红/假绿由此封死）。wasm 臂维持软警告（产物链含 wasmopt 后置覆盖，
+  自动重建会以裸产物覆盖优化产物——升级待 freshness 支持构建后置钩子另批）。
+  J9 场景实测：touch 源 →「旧于源——跑构建复核」触发 → 复核后判定 SAME。
+  [PR #518 审阅 P2-1 勘正] 本条原述「mtime 只作触发、内容 hash 由 moon 增量
+  把关——checkout 假阳性秒过」与实测不符：mtime 触发的是一次**真实重建**
+  （moon 增量判定同以 mtime 为触发面——touch 后 native 37.6s / wasm 链
+  66.8s 含 wasmopt 48.8s，产物 907754→1121825→907754 证真重编），本地
+  checkout/生成器刷源后首跑付此税（重建后 mtime 自愈后续零税、CI 干净构建
+  不触发）。
 
 ### feat(vm+gateway+cli+scripts): REHOST 批 3——step 态切换 + time_travel 采集适配 + ci_checklist 驱动集盲区根治（2026-11-14）
 
@@ -177,6 +133,11 @@
   #511/批 2/批 3 三方无嫌疑）；flag on/off 帧流逐位一致（端到端 + gateway
   wbtest 帧流同构锚）；native 全量冷构建（MOONBIT_NEW_NATIVE=0
   MOON_CC=clang）数字见 facts。
+  [PR #518 rebase 后复验口径] rebase 到 master f4264274 后全防线复跑同绿，
+  计数面随 #514 收案语料平移：moon test 裸 **1463/1463** + native
+  **1539/1539**；STEP-INV **1035 语料 / 2,087,483 帧** RED 0 ZOMBIE 0；
+  W4 **1081 cases** AGREE identical；rundiff **919**；vm_diff **865/865**；
+  驱动 .mts 口径 **67→70**（批 3 时点 64→69 + #513 green_probe +1）。
 
 ### fix(wasmenc+bytecode+scripts): PR #512 审阅处置——P1×1 + P2×1 + P3×6（2026-11-13）
 

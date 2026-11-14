@@ -266,9 +266,9 @@ jobs:
             .clang_cache_cd
           # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
           # #273 迁移批（2026-10-25）：clang_direct 主驱动已 .mts（node 直跑），
-          # key 取 main.mts + internal 双语侧（.mts 现役 / .go 回退面）+
-          # diff_gate TS 源码——回退面变更同样影响口径可比性。
-          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.mts', 'scripts/clang_direct/main.go', 'scripts/internal/**/*.go', 'scripts/internal/**/*.mts', 'scripts/diff_gate/**/*.mts') }}
+          # key 取 main.mts（现役）+ main.go（回退面，internal Go 双轨已随
+          # 清理批删除——.mts 内化完成）+ diff_gate TS 源码——回退面变更同样影响口径可比性。
+          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.mts', 'scripts/clang_direct/main.go', 'scripts/internal/**/*.mts', 'scripts/diff_gate/**/*.mts') }}
           restore-keys: |
             clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
 

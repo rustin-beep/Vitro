@@ -1,5 +1,39 @@
 ## [Unreleased]
 
+### feat(scripts): vm_diff wasm 臂新鲜度硬门禁收口——freshness 构建后置钩子 + editorconfig gitignored 豁免 cwd 锚定修复（REHOST 批 3 收尾追加，PR #518，2026-11-14）
+
+- **freshness 构建后置钩子（`EnsureFreshOpts.postBuild`）**：产物链含构建
+  后覆盖步骤的消费方（wasmopt 后置优化等）传 postBuild——复核构建成功后
+  同批执行后置链，自动重建不再以裸产物覆盖优化产物。失败按「构建链失败」
+  die（`ENSURE_FRESH_FAIL_MARKS` 第四条「后置优化失败」——facts
+  artifactMissingNote 数组遍历匹配自动认得，不误报为防线红）；产物缺失
+  die 的修复命令随链带上后置段。moonbitRoot/rebuildRunner 为测试注入
+  端口（hermetic，findStaleSource 先例同款）。J9 双锚先红后绿（旧代码
+  postBuild 永不被调/不 die，✖✖ 实证后实现转绿）。
+- **vm_diff wasm 臂软警告退役**：`ensureFresh` + postBuild 接线 wasmopt
+  后置链（与 CI build-artifacts 步骤序 build→wasmopt 同链），批 3 登记的
+  「升级待 freshness 支持构建后置钩子」未竟边界关闭；warnStaleExe 删除
+  （双臂均硬门禁后零消费方）。VITRO_WASM_MOD 显式指定面跳过（外部产物
+  不在本地构建链管辖，与存在性检查同款语义）。真跑实证：touch 引擎源 →
+  触发「旧于源——跑构建复核」→ moon 内容 hash 增量秒过（假阳性消化）→
+  wasmopt 后置重写实锤（产物 mtime 刷新、size 保持优化态 907754 而非
+  裸产物 1121825）→ 判定 SAME=865 不回归；native 臂同步回归 SAME=865。
+- **editorconfig gitignored 豁免 cwd 锚定修复（红→绿）**：loadGitIgnored
+  的 `git ls-files` 无 cwd 锚定——输出相对进程 cwd 的路径，与 walk 的
+  仓库根 rel 前缀失配 → gitignored 豁免静默失效。CI 干净检出无 cargo
+  target 故未暴露；本地跑过 W4 前置 cargo build（生成 rs/target/，已被
+  .gitignore:156 覆盖）即 node:test 红（数百条「缺末行换行」假红实证）。
+  修复 = spawnSync 锚定 cwd: base；修复后 node:test 全量 874/0（scripts/
+  cwd 同 CI 形态）。
+- **同病面登记（不连坐，后续批接线）**：clang_direct / protocol_frames /
+  replay / serve_smoke / teaching_annotation_diff / teaching_truth 六处
+  wasmMod `ensureFresh` 触发复核时同样以裸产物覆盖优化产物——行为等价
+  （wasmopt 等价性有 #120 CI vm_diff 背书）零红面，纯产物优化态卫生
+  问题；后续连坐批逐点接 postBuild。
+- 验收（亲跑）：node:test 874/0（freshness 6/6 含新双锚 + prelude_fail
+  10/10 连坐零回归）；tsc 0 err / oxlint 0 err；vm_diff 双臂 SAME=865
+  DIFF=0；触发链实测如上。
+
 ### fix(scripts): vm_diff native 臂新鲜度软警告升级 ensureFresh 复核构建硬门禁（REHOST 批 3 连坐，2026-11-14）
 
 - **S05-C2 降软的代价实锤**：本地 release run.exe 陈旧（exe 日期早于 #511 的

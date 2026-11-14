@@ -48,9 +48,15 @@ const JSON_EXEMPT_PREFIXES = [
   "scripts/parser_diff",
 ];
 
-function loadGitIgnored(): Set<string> | null {
+// cwd 必须锚定 base（PR #518 追加批实锤修复）：git ls-files 输出相对 cwd 的
+// 路径——无 cwd 锚定时继承进程 cwd（CI 的 npm test 在 scripts/ 下跑），输出
+// `wasmtime_arm/rs/target/` 而 walk 的 rel 是 `scripts/wasmtime_arm/rs/target`
+// ——前缀失配 → gitignored 豁免静默失效。CI 干净检出无 cargo target 故未
+// 暴露；本地跑过 W4 前置 cargo build（生成 rs/target/）即 node:test 红。
+function loadGitIgnored(cwd: string): Set<string> | null {
   const r = spawnSync("git", ["ls-files", "--ignored", "--exclude-standard", "--others", "--directory"], {
     encoding: "utf8",
+    cwd,
   });
   if (r.status !== 0) {
     process.stderr.write(`editorconfig_check: git 不可用（${r.stderr.trim()}）——gitignored 豁免降级为硬编码清单\n`);
@@ -120,7 +126,7 @@ export function jsonIndentCheck(raw: Buffer): string {
 
 export function checkTree(baseArg: string): string[] {
   const base = path.resolve(baseArg);
-  const gitIgnored = makeGitIgnored(loadGitIgnored());
+  const gitIgnored = makeGitIgnored(loadGitIgnored(base));
   const offenders: string[] = [];
 
   const walk = (dir: string): void => {

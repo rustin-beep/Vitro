@@ -19,21 +19,47 @@ export const ENSURE_FRESH_FAIL_MARKS = [
   "不存在——先跑",
   "构建失败——修好构建前不给判定",
   "仍缺失",
+  "后置优化失败——修好构建链前不给判定",
 ] as const;
 
-// #483/PR #487 审阅 P3-3·P3-4：三种「环境前置未就绪」die 的判别标记单源——
-// die 文案以常量引用拼装，下游检测器与测试只引此处（防手写字面量脱钩 fail-open）。
-export function ensureFresh(prefix: string, artifact: string, buildArgs: string[]): void {
+// 构建后置钩子端口（PR #518 追加批：vm_diff wasm 臂硬门禁前置）——产物链含
+// 构建后覆盖步骤（wasmopt 后置优化等）的消费方必须传 postBuild：自动重建
+// 只跑 moon build 会以裸产物覆盖优化产物（gateway/wasm 链实锤），后置链
+// 与构建同批执行才保链完整。moonbitRoot/rebuildRunner 为测试注入端口
+// （hermetic——同 findStaleSource 的 moonbitRoot 先例），生产调用省略。
+export interface EnsureFreshOpts {
+  postBuild?: (artifact: string) => boolean;
+  moonbitRoot?: string;
+  rebuildRunner?: (buildArgs: string[]) => boolean;
+}
+
+// #483/PR #487 审阅 P3-3·P3-4：「环境前置未就绪」die 的判别标记单源——
+// die 文案以常量引用拼装，下游检测器（facts artifactMissingNote——数组遍历
+// 匹配，第四条自动认得）与测试只引此处（防手写字面量脱钩 fail-open）。
+export function ensureFresh(
+  prefix: string,
+  artifact: string,
+  buildArgs: string[],
+  opts?: EnsureFreshOpts,
+): void {
   try {
     fs.statSync(artifact);
   } catch {
-    die(`${prefix}: ${artifact} ${ENSURE_FRESH_FAIL_MARKS[0]} cd moonbit && moon ${buildArgs.join(" ")}`);
+    const postNote =
+      opts?.postBuild !== undefined ? " && node scripts/wasmopt/main.mts <产物>（后置链）" : "";
+    die(
+      `${prefix}: ${artifact} ${ENSURE_FRESH_FAIL_MARKS[0]} cd moonbit && moon ${buildArgs.join(" ")}${postNote}`,
+    );
   }
-  const stale = findStaleSource(artifact);
+  const stale = findStaleSource(artifact, opts?.moonbitRoot);
   if (stale !== "") {
     process.stderr.write(`${prefix}: ${artifact} 旧于源 ${stale}——跑构建复核（moon 内容 hash 增量）...\n`);
-    if (!rebuild(buildArgs)) {
+    const runner = opts?.rebuildRunner ?? rebuild;
+    if (!runner(buildArgs)) {
       die(`${prefix}: ${ENSURE_FRESH_FAIL_MARKS[1]}（陈旧产物假红/假绿由此封死）`);
+    }
+    if (opts?.postBuild !== undefined && !opts.postBuild(artifact)) {
+      die(`${prefix}: ${ENSURE_FRESH_FAIL_MARKS[3]}（构建成功但后置链失败——裸产物已覆盖优化产物，重跑链或手跑 node scripts/wasmopt/main.mts ${artifact}）`);
     }
     try {
       fs.statSync(artifact);

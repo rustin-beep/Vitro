@@ -296,4 +296,38 @@ int main() {
     referenceOutput: "got 42",
     referenceKind: "stdout",
   },
+  {
+    id: "fourier",
+    label: "傅里叶变换（DFT）· 相量图与频谱",
+    blurb: "double 数组 + math.h：re/im 画相量图、mag 画频谱（vitri-viz 试点课）",
+    source: `#include <math.h>
+#include <stdio.h>
+
+#define N 8
+
+int main(void) {
+  double x[N] = {1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0};
+  double re[N];
+  double im[N];
+  double mag[N];
+  for (int k = 0; k < N; k++) {
+    re[k] = 0.0;
+    im[k] = 0.0;
+    for (int n = 0; n < N; n++) {
+      double angle = 2.0 * 3.141592653589793 * (double)k * (double)n / (double)N;
+      re[k] = re[k] + x[n] * cos(angle);
+      im[k] = im[k] - x[n] * sin(angle);
+    }
+    mag[k] = sqrt(re[k] * re[k] + im[k] * im[k]);
+  }
+  for (int k = 0; k < N; k++) {
+    printf("%d %.3f %.3f %.3f\\n", k, re[k], im[k], mag[k]);
+  }
+  return 0;
+}
+`,
+    referenceOutput:
+      "0 0.000 0.000 0.000\n1 2.000 -4.828 5.226\n2 -0.000 -0.000 0.000\n3 2.000 -0.828 2.165\n4 0.000 0.000 0.000\n5 2.000 0.828 2.165\n6 0.000 0.000 0.000\n7 2.000 4.828 5.226\n",
+    referenceKind: "stdout",
+  },
 ];

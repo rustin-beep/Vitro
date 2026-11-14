@@ -47,6 +47,14 @@ export interface ArraySnapshot {
   name: string;
   element_ty: string;
   elements: string[];
+  /** 元素序列是否被引擎截断（gateway/serve_step.mbt 恒下发；与生成绑定
+   *  `@vitro/protocol` 的 `ArraySnapshot.truncated` 对齐——demo 手写 DTO
+   *  此前漏收，批 B 的 E-08 typed 用例把它照出来）。 */
+  truncated: boolean;
+  /** 维度表（外→内；`int m[2][3]` = [2, 3]，一维 = [N]）。2026-11-14 批 B
+   *  additive（refs #517 P2-08）：`elements` 恒为扁平序列，宿主按 dims 还原
+   *  行列；旧产物无此字段时按 [elements.length] 兜底为一行。 */
+  dims?: number[];
 }
 
 export interface StepPayload {

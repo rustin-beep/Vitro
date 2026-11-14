@@ -12,7 +12,7 @@ fn main {
   let srv = @mcp.Server::new(host=@mcp.Host::{
     clock_ms: () => js_clock(),
     render: data => {
-      let out = js_render_hook(data.stringify())
+      let out = js_render_hook(data.stringify(), @style.css_text())
       @util.json_parse(out) catch {
         _ => Json::null()
       }
@@ -72,11 +72,14 @@ extern "js" fn js_stdin_line_loop(
 /// 键）；出参 {ok,html_path,size_bytes,frame_count,mode_used,warnings[],
 /// preview_png_path?,preview_png_b64?,error?}。interactive 无 wasm 时回落
 /// static（mbt 侧恒传关键帧——回落即用，无双源分叉）。
-extern "js" fn js_render_hook(data_json : String) -> String =
-  #| function(dataJson) {
+/// 批 E（2026-11-14，refs #470）：第二入参 = @style.css_text()（StylePack 五主题
+/// CSS，与 demo/src/tokens.css 同源同值）——产物换肤走引擎单源，壳不再自持色板。
+extern "js" fn js_render_hook(data_json : String, style_css : String) -> String =
+  #| function(dataJson, styleCss) {
   #| const fs = process.getBuiltinModule("fs");
   #| const path = process.getBuiltinModule("path");
   #| const o = JSON.parse(dataJson);
+  #| const STYLE = String(styleCss);
   #| const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   #| const jstr = (v) => JSON.stringify(v).replace(/</g, "\\u003c").replace(/\u2028|\u2029/g, (c) => (c === "\u2028" ? "\\u2028" : "\\u2029"));
   #| const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -107,11 +110,10 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| return r;
   #| }
   #| const CSS = `
-  #| :root{--bg:#0f1117;--fg:#e6e8ee;--panel:#171a23;--line:#262b38;--muted:#8b93a7;--accent:#5b9dff;--swap:#ff8a4c;--changed:#ffd166;--ok:#3ecf8e;--err:#ff5d73;--code-bg:#12141c;--code-cur:#1f2941;--code-err:#3a1c22}
-  #| [data-theme=light]{--bg:#f7f8fa;--fg:#1c2030;--panel:#ffffff;--line:#e3e6ee;--muted:#667;--accent:#2563eb;--swap:#d2601a;--changed:#9a7b00;--ok:#0e8a5f;--err:#d13438;--code-bg:#f2f3f7;--code-cur:#dbe7ff;--code-err:#ffe1e3}
+  #| :root{--bg:var(--vr-bg);--fg:var(--vr-ink);--panel:var(--vr-panel);--line:var(--vr-rule);--muted:var(--vr-ink-3);--accent:var(--vr-amber);--swap:var(--vr-swap);--changed:var(--vr-amber-2);--ok:var(--vr-green);--err:var(--vr-red);--code-bg:var(--vr-code-bg);--code-cur:var(--vr-sel);--code-err:var(--vr-red-tint)}
   #| *{box-sizing:border-box}
   #| html,body{margin:0;height:100%}
-  #| body{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,"Segoe UI","Microsoft YaHei",sans-serif;display:flex;flex-direction:column}
+  #| body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--vr-sans);display:flex;flex-direction:column}
   #| header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
   #| header h1{font-size:16px;margin:0;flex:1;min-width:200px}
   #| .badge{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:1px 10px;font-size:12px}
@@ -121,7 +123,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| @media(max-width:900px){main{grid-template-columns:1fr;overflow:auto}}
   #| section,aside{background:var(--panel);border:1px solid var(--line);border-radius:10px;min-height:0;display:flex;flex-direction:column}
   #| .sec-t{padding:8px 12px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);flex:none}
-  #| #codeWrap{flex:1;overflow:auto;background:var(--code-bg);border-radius:0 0 10px 10px;font:12.5px/1.65 ui-monospace,Consolas,monospace}
+  #| #codeWrap{flex:1;overflow:auto;background:var(--code-bg);border-radius:0 0 10px 10px;font:12.5px/1.65 var(--vr-mono)}
   #| .ln{display:flex;white-space:pre;padding:0 8px 0 0}
   #| .ln .no{width:3.2em;flex:none;text-align:right;color:var(--muted);padding-right:10px;user-select:none}
   #| .ln code{flex:1}
@@ -132,7 +134,20 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| #stage{padding:12px;gap:12px;overflow:auto}
   #| .arr{margin-bottom:14px}
   #| .arr-h{font:600 13px ui-monospace,monospace;color:var(--muted);margin-bottom:6px}
+  #| .viz{margin-bottom:14px}
+  #| .viz-h{font:600 13px ui-monospace,monospace;color:var(--muted);margin-bottom:6px}
+  #| .viz-svg{width:100%;max-width:420px;height:auto;display:block}
+  #| .viz-axis{stroke:var(--line);stroke-width:1}
+  #| .viz-ring{fill:none;stroke:var(--line);stroke-dasharray:3 4}
+  #| .viz-bar{fill:color-mix(in srgb,var(--accent) 45%,transparent);stroke:var(--accent);stroke-width:1}
+  #| .viz-line{fill:none;stroke-width:2}
+  #| .viz-line.s0{stroke:var(--accent)}.viz-line.s1{stroke:var(--swap)}.viz-line.s2{stroke:var(--changed)}.viz-line.s3{stroke:var(--ok)}.viz-line.s4{stroke:var(--err)}
+  #| .viz-ray{stroke:var(--accent);stroke-width:1;opacity:.55}
+  #| .viz-dot{fill:var(--accent)}
+  #| .viz-text{fill:var(--muted)}
+  #| .viz-err{color:var(--err);font-size:12.5px;margin:0;padding:8px 10px;border:1px dashed var(--err);border-radius:8px}
   #| .cells{position:relative;display:grid;gap:6px;grid-template-columns:repeat(var(--n),var(--cw))}
+  #| .cells.grid2d{grid-template-columns:repeat(var(--cols,1),var(--cw))}
   #| .cell{position:relative;width:var(--cw);height:52px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font:600 15px ui-monospace,monospace;transition:transform .18s,background .3s,border-color .3s}
   #| .cell .bar{position:absolute;left:6px;right:6px;bottom:4px;height:calc(var(--v)*30%);max-height:34px;background:color-mix(in srgb,var(--accent) 25%,transparent);border-radius:4px;transition:height .25s}
   #| .cell .idx{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:10px;color:var(--muted)}
@@ -140,6 +155,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| .cell.changed{animation:flash .6s}
   #| @keyframes flash{0%{background:color-mix(in srgb,var(--changed) 55%,var(--bg));border-color:var(--changed)}100%{}}
   #| .ptrs{display:grid;gap:6px;grid-template-columns:repeat(var(--n),var(--cw));margin-top:4px;min-height:20px}
+  #| .ptrs.grid2d{grid-template-columns:repeat(var(--cols,1),var(--cw))}
   #| .ptr{font:11px ui-monospace,monospace;color:var(--accent);text-align:center}
   #| .arc{position:absolute;pointer-events:none;overflow:visible}
   #| #diag{display:flex;flex-direction:column;gap:10px}
@@ -193,27 +209,76 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| h+='<div class="'+cls+'" data-l="'+n+'"><span class="no">'+n+'</span><code>'+esc(lines[n-1]||" ")+'</code></div>'}
   #| $("codeWrap").innerHTML=h}
   #| function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+  #| var DOC=D.doc||{pv:"",default:"cells",projectors:[],series_decl:[]};
+  #| function projSpec(id){var ps=DOC.projectors||[];for(var i=0;i<ps.length;i++){if(ps[i].id===id)return ps[i]}return null}
+  #| function arrHtml(fr,pv,nm){var els=(fr.r||{})[nm]||[];if(!els.length)return"";
+  #| var pels=pv&&(pv.r||{})[nm]||[];
+  #| var dm=((fr.rd||{})[nm])||null;var cols=dm?(dm[dm.length-1]||1):els.length;
+  #| var sp=swapPair(fr,nm,els.length);
+  #| var max=1;for(var q=0;q<els.length;q++){var fv=parseFloat(els[q]);if(isFinite(fv)&&Math.abs(fv)>max)max=Math.abs(fv)}
+  #| var h='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> \u00b7 '+els.length+' \u5143\u7d20'+(dm?' ['+dm.join('x')+']':'')+'</span></div><div class="cells'+(dm?' grid2d':'')+'" style="--n:'+els.length+';--cw:64px'+(dm?';--cols:'+cols:'')+'">';
+  #| for(var i2=0;i2<els.length;i2++){var cls2="cell";var sp2=sp&&(i2===sp.i||i2===sp.j);
+  #| if(sp2)cls2+=" swap";else if(pels.length&&pels[i2]!==els[i2])cls2+=" changed";
+  #| var v=parseFloat(els[i2]);var ratio=isFinite(v)?Math.max(.06,Math.abs(v)/max):.3;
+  #| var lab=dm?('['+Math.floor(i2/cols)+']['+(i2%cols)+']'):i2;
+  #| h+='<div class="'+cls2+'" style="--v:'+ratio.toFixed(2)+'"><span class="idx">'+lab+'</span>'+esc(els[i2])+'<span class="bar"></span></div>'}
+  #| h+="</div>";
+  #| h+='<div class="ptrs'+(dm?' grid2d':'')+'" style="--n:'+els.length+';--cw:64px'+(dm?';--cols:'+cols:'')+'">';
+  #| for(var i3=0;i3<els.length;i3++){var p2="";for(var vi=0;vi<fr.v.length;vi++){var va=fr.v[vi];var num=parseInt(va[2]);
+  #| if(isFinite(num)&&num===i3&&/^int$/.test(va[1]))p2+=(p2?" ":"")+"\u25be"+va[0]+"="+va[2]}
+  #| h+='<div class="ptr">'+p2+'</div>'}
+  #| return h+"</div></div>"}
+  #| function vizErr(label,msg){return '<div class="viz"><div class="viz-h">'+esc(label)+'</div><p class="viz-err" role="status">'+esc(msg)+"</p></div>"}
+  #| function vizVals(decl,found,idx){var g=parseFloat((decl.opts||{}).gain||"1");if(!isFinite(g)||g<=0)g=1;
+  #| var out=[];var els=found[idx];for(var i=0;i<els.length;i++){var v=parseFloat(els[i]);out.push((isFinite(v)?v:0)*g)}return out}
+  #| function vizSvg(decl,found){
+  #| var W=320,H=132,PAD=16,INW=W-2*PAD,INH=H-2*PAD;
+  #| var out='<svg class="viz-svg" viewBox="0 0 '+W+' '+H+'" role="img" preserveAspectRatio="xMidYMid meet"><line class="viz-axis" x1="'+PAD+'" y1="'+(H-PAD)+'" x2="'+(W-PAD)+'" y2="'+(H-PAD)+'"/>';
+  #| var i,j,first=vizVals(decl,found,0);
+  #| if(decl.projector==="bars"||decl.projector==="spectrum"){var mx=1;for(i=0;i<first.length;i++)mx=Math.max(mx,Math.abs(first[i]));
+  #| var bw=INW/first.length;
+  #| for(i=0;i<first.length;i++){var bh=Math.abs(first[i])/mx*INH;out+='<rect class="viz-bar" x="'+(PAD+i*bw+1).toFixed(1)+'" y="'+(H-PAD-bh).toFixed(1)+'" width="'+Math.max(1,bw-2).toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="2"/>'}
+  #| if(decl.projector==="spectrum"){var step=first.length>12?Math.ceil(first.length/6):1;
+  #| for(i=0;i<first.length;i+=step){out+='<text class="viz-text" x="'+(PAD+(i+0.5)*bw).toFixed(1)+'" y="'+(H-3)+'" font-size="9" text-anchor="middle">'+i+"</text>"}}}
+  #| else if(decl.projector==="line"){var all=[];
+  #| for(j=0;j<found.length;j++){var vs=vizVals(decl,found,j);for(i=0;i<vs.length;i++)all.push(vs[i])}
+  #| var lo=Math.min.apply(null,[0].concat(all)),hi=Math.max.apply(null,[1].concat(all)),span=hi-lo||1;
+  #| for(j=0;j<found.length;j++){var vv=vizVals(decl,found,j),pts=[];
+  #| for(i=0;i<vv.length;i++){var x=PAD+(vv.length===1?INW/2:i*INW/(vv.length-1));var y=H-PAD-(vv[i]-lo)/span*INH;pts.push(x.toFixed(1)+","+y.toFixed(1))}
+  #| out+='<polyline class="viz-line s'+(j%5)+'" points="'+pts.join(" ")+'"/>'}}
+  #| else if(decl.projector==="polar"&&found.length>=2){var re=vizVals(decl,found,0),im=vizVals(decl,found,1);
+  #| var cx=W/2,cy=H/2,rad=Math.min(W,H)/2-PAD,mag=1;
+  #| for(i=0;i<re.length;i++)mag=Math.max(mag,Math.hypot(re[i],im[i]||0));
+  #| out+='<line class="viz-axis" x1="'+cx+'" y1="'+PAD+'" x2="'+cx+'" y2="'+(H-PAD)+'"/><line class="viz-axis" x1="'+PAD+'" y1="'+cy+'" x2="'+(W-PAD)+'" y2="'+cy+'"/><circle class="viz-ring" cx="'+cx+'" cy="'+cy+'" r="'+rad+'"/>';
+  #| var sc=rad/mag;
+  #| for(i=0;i<re.length;i++){var px=cx+re[i]*sc,py=cy-(im[i]||0)*sc;
+  #| out+='<line class="viz-ray" x1="'+cx+'" y1="'+cy+'" x2="'+px.toFixed(1)+'" y2="'+py.toFixed(1)+'"/><circle class="viz-dot" cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="2.5"/>'}}
+  #| else{return vizErr(decl.projector,"\u5bbf\u4e3b\u672a\u5b9e\u73b0\u6295\u5f71\u5668 "+decl.projector)}
+  #| return out+"</svg>"}
+  #| function vizHtml(fr,pv,decl){
+  #| var label=decl.projector+" \u00b7 "+(decl.series||[]).join(" + ");
+  #| var spec=projSpec(decl.projector);
+  #| if(!spec)return vizErr(label,"\u672a\u77e5\u6295\u5f71\u5668 "+decl.projector+"\uff08\u5f15\u64ce\u8bcd\u8868\u672a\u767b\u8bb0\uff09");
+  #| var names=decl.series||[],found=[],missing=[];
+  #| for(var i=0;i<names.length;i++){var els=(fr.r||{})[names[i]];if(els&&els.length)found.push(els);else missing.push(names[i])}
+  #| if(missing.length)return vizErr(label,"\u5e8f\u5217\u672a\u51fa\u73b0\u5728\u672c\u5e27\u5feb\u7167\u4e2d\uff1a"+missing.join("\u3001"));
+  #| if(found.length<spec.seriesMin)return vizErr(label,"\u9700\u81f3\u5c11 "+spec.seriesMin+" \u6761\u5e8f\u5217\uff0c\u5b9e\u5f97 "+found.length);
+  #| if(spec.seriesMax>=0&&found.length>spec.seriesMax)return vizErr(label,"\u81f3\u591a "+spec.seriesMax+" \u6761\u5e8f\u5217\uff0c\u5b9e\u5f97 "+found.length);
+  #| var dm=((fr.rd||{})[names[0]])||null;var dims=dm?dm.length:1;
+  #| if(dims<spec.minDims)return vizErr(label,"\u9700 "+spec.minDims+" \u7ef4\u7ef4\u5ea6\u8868\uff08dims\uff09\uff0c\u5f53\u524d "+dims+" \u7ef4");
+  #| if(decl.projector==="cells"||decl.projector==="grid2d"){var h="";for(var j=0;j<names.length;j++)h+=arrHtml(fr,pv,names[j]);return h}
+  #| return '<div class="viz"><div class="viz-h">'+esc(label)+'</div>'+vizSvg(decl,found)+"</div>"}
   #| function renderFrame(){var k=S.cur,fr=S.frames[k],pv=k>0?S.frames[k-1]:null;
   #| if(!fr)return;
   #| var cur=document.querySelector(".ln.cur");if(cur)cur.classList.remove("cur");
   #| var row=document.querySelector('.ln[data-l="'+fr.l+'"]');if(row){row.classList.add("cur");row.scrollIntoView({block:"nearest"})}
   #| var names=D.focus||Object.keys(fr.r||{});
-  #| var h="";
-  #| for(var ai=0;ai<names.length;ai++){var nm=names[ai],els=(fr.r||{})[nm]||[];
-  #| if(!els.length)continue;var pels=pv&&(pv.r||{})[nm]||[];
-  #| var sp=swapPair(fr,nm,els.length);
-  #| var max=1;for(var q=0;q<els.length;q++){var fv=parseFloat(els[q]);if(isFinite(fv)&&Math.abs(fv)>max)max=Math.abs(fv)}
-  #| h+='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> \u00b7 '+els.length+' \u5143\u7d20</span></div><div class="cells" style="--n:'+els.length+';--cw:64px">';
-  #| for(var i2=0;i2<els.length;i2++){var cls2="cell";var sp2=sp&&(i2===sp.i||i2===sp.j);
-  #| if(sp2)cls2+=" swap"; else if(pels.length&&pels[i2]!==els[i2])cls2+=" changed";
-  #| var v=parseFloat(els[i2]);var ratio=isFinite(v)?Math.max(.06,Math.abs(v)/max):.3;
-  #| h+='<div class="'+cls2+'" style="--v:'+ratio.toFixed(2)+'"><span class="idx">'+i2+'</span>'+esc(els[i2])+'<span class="bar"></span></div>'}
-  #| h+="</div>";
-  #| h+='<div class="ptrs" style="--n:'+els.length+';--cw:64px">';
-  #| for(var i3=0;i3<els.length;i3++){var p2="";for(var vi=0;vi<fr.v.length;vi++){var va=fr.v[vi];var num=parseInt(va[2]);
-  #| if(isFinite(num)&&num===i3&&/^int$/.test(va[1]))p2+=(p2?" ":"")+"\u25be"+va[0]+"="+va[2]}
-  #| h+='<div class="ptr">'+p2+'</div>'}
-  #| h+="</div></div>"}
+  #| var h="";var declared={};
+  #| var ds=DOC.series_decl||[];
+  #| for(var di=0;di<ds.length;di++){var dc=ds[di];if(!dc||!dc.series)continue;
+  #| for(var sj=0;sj<dc.series.length;sj++)declared[dc.series[sj]]=true;
+  #| h+=vizHtml(fr,pv,dc)}
+  #| for(var ai=0;ai<names.length;ai++){var nm=names[ai];if(declared[nm])continue;h+=arrHtml(fr,pv,nm)}
   #| if(D.run&&D.run.status){h+='<div class="ver" style="margin-top:4px">run: '+esc(D.run.status)+' \u00b7 \u8fd4\u56de\u503c '+D.run.return_value+' \u00b7 \u5f15\u64ce\u6b65\u6570 '+D.run.steps_executed+'</div>'}
   #| $("stage").innerHTML=h;
   #| var vh="";for(var x=0;x<fr.v.length;x++){var ch2=pv&&pv.v[x]&&pv.v[x][2]!==fr.v[x][2];
@@ -244,7 +309,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| $("btnPlay").onclick=togglePlay;$("btnPrev").onclick=function(){stopPlay();stepTo(S.cur-1)};$("btnNext").onclick=function(){stopPlay();stepTo(S.cur+1)};
   #| $("slider").oninput=function(){stopPlay();stepTo(+this.value)};
   #| $("speed").onchange=function(){S.speed=+this.value;if(S.playing){stopPlay();togglePlay()}};
-  #| $("theme").onclick=function(){var r=document.documentElement;r.dataset.theme=r.dataset.theme==="dark"?"light":"dark"};
+  #| $("theme").onclick=function(){var r=document.documentElement;var dk={"soft":1,"blueprint":1};r.dataset.theme=dk[r.dataset.theme]?"ice":"soft"};
   #| var spk=$("speak");if(spk&&window.speechSynthesis){spk.onclick=function(){S.speakOn=!S.speakOn;spk.textContent=S.speakOn?"\ud83d\udd0a \u6717\u8bfb:\u5f00":"\ud83d\udd07 \u6717\u8bfb:\u5173";if(!S.speakOn)speechSynthesis.cancel()}}
   #| document.onkeydown=function(e){if(e.target.tagName==="INPUT"&&e.target.type==="number")return;
   #| if(e.key===" "){e.preventDefault();togglePlay()}else if(e.key==="ArrowLeft"){stopPlay();stepTo(S.cur-1)}else if(e.key==="ArrowRight"){stopPlay();stepTo(S.cur+1)}else if(e.key==="Home"){stopPlay();stepTo(0)}else if(e.key==="End"){stopPlay();stepTo(S.frames.length-1)}};
@@ -309,8 +374,8 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| return true;
   #| }
   #| function compactFrame(p, focusSet) {
-  #| const r = {};
-  #| for (const a of p.array_snapshots ?? []) if (!focusSet || focusSet.has(a.name)) r[a.name] = a.elements;
+  #| const r = {}; const rd = {};
+  #| for (const a of p.array_snapshots ?? []) if (!focusSet || focusSet.has(a.name)) { r[a.name] = a.elements; if (a.dims && a.dims.length > 1) rd[a.name] = a.dims; }
   #| return {
   #| i: p.step_index,
   #| l: p.code_line,
@@ -320,7 +385,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| v: (p.local_vars ?? []).map((x) => [x.name, x.ty_name, x.value]),
   #| c: (p.call_stack ?? []).map((x) => x.func_name),
   #| e: (p.vis_events ?? []).map((x) => [x.ty, x.line, x.extra0, x.extra1, x.extra2, x.context]),
-  #| r,
+  #| r, rd,
   #| h: p.root_cause_hint ? { c: p.root_cause_hint.category, o: p.root_cause_hint.one_liner, ls: p.root_cause_hint.related_lines, fx: p.root_cause_hint.suggested_fix_desc } : null,
   #| };
   #| }
@@ -338,6 +403,8 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| const EMBED_SRC = [arrEq, compactFrame, keyWeight].map((f) => f.toString()).join("\n");
   #| function renderHtml(o) {
   #| const { mode, title, source, frames = [], theme = "auto", audio = false, wasmB64 = null } = o;
+  #| const PACK = { light: "ice", dark: "soft" };
+  #| const themeRaw = PACK[theme] || theme;
   #| const focus = o.focus ?? [];
   #| const algoBadge = o.algo
   #| ? `<span class="badge">\u2726 ${esc(o.algo.display_name || o.algo.name)} \u00b7 \u7f6e\u4fe1\u5ea6 ${esc(String(o.algo.confidence ?? ""))}</span>`
@@ -348,15 +415,16 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| mode, source, frames, focus, algo: o.algo ?? null, run: o.run ?? null, outputs: o.outputs ?? { stdout: "", stderr: "" },
   #| diagnostics: o.compileOk ? (o.warnings || []) : (o.diagnostics || []), thinned: o.thinned ?? false, rawCount: o.rawCount ?? frames.length,
   #| errLines: (o.diagnostics || []).filter((d) => String(d.severity ?? "error").toLowerCase() !== "hint").map((d) => d.line),
+  #| doc: o.doc ?? null,
   #| wasmB64: o.wasmB64 ?? null,
   #| };
   #| return `<!doctype html>
-  #| <html lang="zh-CN" data-theme="${theme === "auto" ? "dark" : theme}">
+  #| <html lang="zh-CN" data-theme="${themeRaw}">
   #| <head>
   #| <meta charset="utf-8">
   #| <meta name="viewport" content="width=device-width,initial-scale=1">
   #| <title>${esc(title)}</title>
-  #| <style>${CSS}</style>
+  #| <style>${STYLE}${CSS}</style>
   #| </head>
   #| <body>
   #| <header>
@@ -387,7 +455,10 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| </div>
   #| </footer>
   #| <script>
-  #| ${theme === "auto" ? "if(matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.dataset.theme='light';\n" : ""}window.__VITRO__=${jstr(data)};
+  #| (function(){var t=${jstr(theme)},r=document.documentElement;
+  #| if(t==="auto")r.dataset.theme=matchMedia('(prefers-color-scheme: light)').matches?"ice":"soft";
+  #| else if(t==="light")r.dataset.theme="ice";else if(t==="dark")r.dataset.theme="soft";else r.dataset.theme=t;})();
+  #| window.__VITRO__=${jstr(data)};
   #| ${PLAYER}
   #| ${mode === "interactive" ? EMBED_SRC + "\nvar __LASTN__=0;\n" + INTERACTIVE : ""}
   #| init();
@@ -412,6 +483,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| diagnostics: o.diagnostics ?? [], compileOk: !!o.compile_ok,
   #| warnings: o.warnings ?? [], theme: o.theme ?? "auto", audio: !!o.audio,
   #| thinned: !!o.thinned, rawCount: o.raw_count ?? 0,
+  #| doc: o.doc ?? null,
   #| versions: o.versions ?? {}, wasmB64,
   #| };
   #| const html = renderHtml(ro);

@@ -29,7 +29,7 @@ import {
   SHARE_URL_WARN,
   SHARE_VERSION,
 } from "../js/share.ts";
-import { LessonParseError, parseLessonMd, type Block, type Scene } from "../src/lib/lessonMd.ts";
+import { LessonParseError, parseLessonMd, type Block, type Scene, type VizDecl } from "../src/lib/lessonMd.ts";
 import {
   resolveAnchor,
   resolveScenes,
@@ -44,9 +44,17 @@ import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotati
 import { statementEvents, swapPairs, type EventFrame } from "../src/lib/visEvents.ts";
 import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS, parseCssMs } from "../src/lib/motionTokens.ts";
 import { planRelay, scalePlan } from "../src/lib/relayPlan.ts";
+import { PROJECTORS } from "../src/lib/projectors.ts";
+import {
+  RENDERERS,
+  rendererIds,
+  planViews,
+  declError,
+  FALLBACK_PROJECTOR,
+} from "../src/lib/viewProjection.ts";
 import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
 import { flushPendingOnClose, isTransientNavigationError } from "./cdp.mts";
-import type { VisEvent } from "../js/types.ts";
+import type { VisEvent, ArraySnapshot } from "../js/types.ts";
 
 /** noUncheckedIndexedAccess 下的显式断言点（测试夹具已知在界内）。 */
 function must<T>(v: T | undefined, msg = "预期值存在"): T {
@@ -325,7 +333,181 @@ title: 坏课
   assert.throws(() => parseLessonMd(md), LessonParseError);
 });
 
-// ── annotations：本幕逐行注记（#222 P1 第五片：08 t ← 5 / 09 a[1] ← 1）
+// ── vitri-viz：课程侧可视化声明（2026-11-14 批 B，refs #470 v0.1.1）──
+test("lessonMd：vitri-viz 声明解析（系列 / 投影器 / 选项 / 块内注释）", () => {
+  const md = `---
+id: fft
+kind: case
+order: 1
+title: 傅里叶
+---
+
+<!-- vitri-viz v1
+// 复数序列合成相量图
+series re im -> polar group=z gain=2
+series mag -> bars
+-->
+## 正文
+`;
+  const doc = parseLessonMd(md);
+  assert.equal(doc.vizs.length, 2);
+  assert.deepEqual(must(doc.vizs[0]).series, ["re", "im"]);
+  assert.equal(must(doc.vizs[0]).projector, "polar");
+  assert.deepEqual(must(doc.vizs[0]).opts, { group: "z", gain: "2" });
+  assert.equal(must(doc.vizs[0]).line, 3, "块内行号（注释行计入）");
+  assert.deepEqual(must(doc.vizs[1]).series, ["mag"]);
+  assert.equal(must(doc.vizs[1]).projector, "bars");
+  // 声明块必须剥离：第一块仍是正文 h2
+  assert.equal(must(doc.blocks[0]).type, "h2");
+  assert.equal(doc.blocks.some((b) => b.type === "p" && b.text.includes("vitri-viz")), false);
+});
+
+test("lessonMd：viz 与 scenes 顺序无关（两种排列都剥净）", () => {
+  const head = `---
+id: order
+kind: case
+order: 1
+---
+`;
+  const viz = "<!-- vitri-viz v1\nseries a -> cells\n-->\n";
+  const scenes = "<!-- vitri-scenes v1\n01 | 幕 | 0..4 | 1..2 | 注\n-->\n";
+  for (const [name, two] of [
+    ["viz 在前", viz + scenes],
+    ["scenes 在前", scenes + viz],
+  ] as const) {
+    const doc = parseLessonMd(`${head}\n${two}\n## 正文\n`);
+    assert.equal(doc.vizs.length, 1, name);
+    assert.equal(doc.scenes.length, 1, name);
+    assert.equal(must(doc.blocks[0]).type, "h2", name);
+  }
+});
+
+test("lessonMd：viz 格式错误 fail loud（缺版本 / 未闭合 / 行形态 / 选项 / 版本 / 空块）", () => {
+  const wrap = (body: string): string => `---
+id: bad
+kind: case
+order: 1
+---
+
+${body}
+## 正文
+`;
+  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz\nseries a -> cells\n-->")), /viz 元数据缺版本行/);
+  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\nseries a -> cells")), /viz 元数据未闭合/);
+  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\nbad line\n-->")), /viz 行不是/);
+  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\nseries -> cells\n-->")), /viz 行不是/);
+  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\nseries a -> cells k\n-->")), /viz 选项须为 k=v/);
+  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v2\nseries a -> cells\n-->")), /不支持的 viz 版本/);
+  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\n-->\n")), /viz 元数据为空/, "顶格闭合的空块");
+  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\n// 只有注释\n-->\n")), /viz 元数据为空/, "纯注释块");
+  assert.deepEqual(parseLessonMd(wrap("## 无声明\n")).vizs, [], "无 viz 块的课 = 空声明（宿主退回默认投影）");
+});
+
+// ── 视图分派计划（批 D：viz 声明 → 宿主绘制；refs #470 v0.1.1）────────
+const snap = (name: string, elements: string[], dims?: number[]): ArraySnapshot => ({
+  name,
+  element_ty: "double",
+  elements,
+  truncated: false,
+  ...(dims ? { dims } : {}),
+});
+const decl = (
+  series: string[],
+  projector: string,
+  opts: Record<string, string> = {},
+  line = 1,
+): VizDecl => ({ series, projector, opts, line });
+
+test("viewProjection：宿主绘制器注册表覆盖词表全族（新增 id 不改表即红）", () => {
+  assert.deepEqual(rendererIds(), PROJECTORS.map((p) => p.id).sort());
+  assert.equal(FALLBACK_PROJECTOR, "cells");
+  assert.equal(RENDERERS[FALLBACK_PROJECTOR], "cells", "默认回退须有宿主实现");
+  assert.equal(RENDERERS.polar, "svg");
+  assert.equal(RENDERERS.grid2d, "cells");
+});
+
+test("viewProjection：无 viz 声明 = 全量 cells（旧渲染面不变）", () => {
+  const views = planViews([], [snap("a", ["1", "2"]), snap("b", ["3"])]);
+  assert.equal(views.length, 2);
+  assert.deepEqual(views.map((v) => v.kind), ["cells", "cells"]);
+  assert.deepEqual(views.map((v) => (v.kind === "cells" ? v.snap.name : "")), ["a", "b"]);
+});
+
+test("viewProjection：傅里叶声明 polar + 未声明序列各自归位", () => {
+  const views = planViews(
+    [decl(["re", "im"], "polar", { group: "z", gain: "2" }, 3), decl(["mag"], "bars")],
+    [snap("re", ["1", "0", "-1"]), snap("im", ["0", "1", "0"]), snap("mag", ["1", "1", "1"])],
+  );
+  assert.equal(views.length, 2, "两条声明消费三条序列，不留重复格");
+  const polar = must(views[0]);
+  assert.equal(polar.kind, "decl");
+  if (polar.kind === "decl") {
+    assert.equal(polar.error, null);
+    assert.equal(polar.renderer, "svg");
+    assert.deepEqual(polar.snaps.map((s) => s.name), ["re", "im"]);
+  }
+  const bars = must(views[1]);
+  assert.equal(bars.kind, "decl");
+  if (bars.kind === "decl") assert.equal(bars.error, null);
+});
+
+test("viewProjection：cells / grid2d 声明展开为索引格，不重复渲染", () => {
+  const flat = planViews([decl(["a"], "cells")], [snap("a", ["1", "2"]), snap("b", ["3"])]);
+  assert.deepEqual(flat.map((v) => v.kind), ["cells", "cells"]);
+  assert.deepEqual(flat.map((v) => (v.kind === "cells" ? v.snap.name : "")), ["a", "b"]);
+  const grid = planViews([decl(["m"], "grid2d")], [snap("m", ["1", "2", "3", "4"], [2, 2])]);
+  assert.equal(grid.length, 1);
+  assert.equal(must(grid[0]).kind, "cells");
+});
+
+test("viewProjection：声明不合法 fail loud（不静默降级为 cells）", () => {
+  const re = snap("re", ["1", "2"]);
+  const im = snap("im", ["0", "1"]);
+  const err = (v: string | null): string => v ?? "";
+  assert.equal(declError(decl(["re", "im"], "polar"), [re, im], []), null, "两条序列齐 = 合法");
+  assert.match(err(declError(decl(["x"], "nope"), [re], [])), /未知投影器 nope/);
+  assert.match(err(declError(decl(["re", "im"], "polar"), [re], ["im"])), /未出现/);
+  assert.match(err(declError(decl(["re"], "polar"), [re], [])), /至少 2 条/);
+  assert.match(err(declError(decl(["m"], "grid2d"), [snap("m", ["1"])], [])), /维度表/);
+  const views = planViews([decl(["re", "im"], "polar")], [re]);
+  assert.equal(views.length, 1);
+  const v = must(views[0]);
+  assert.equal(v.kind, "decl", "坏声明保留错误面板，不偷偷画成索引格");
+  if (v.kind === "decl") assert.match(err(v.error), /未出现|至少 2 条/);
+});
+
+test("fourier 试点课：真源声明 → polar/spectrum 视图计划（内容-引擎契约锚）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const md = readFileSync(path.resolve(here, "../../course/basic/fourier/lesson.md"), "utf8");
+  const doc = parseLessonMd(md);
+  assert.equal(doc.meta.id, "fourier");
+  assert.deepEqual(
+    doc.vizs.map((v) => [v.series, v.projector]),
+    [
+      [["re", "im"], "polar"],
+      [["mag"], "spectrum"],
+    ],
+  );
+  const views = planViews(doc.vizs, [
+    snap("re", ["1", "0", "-1", "0"]),
+    snap("im", ["0", "1", "0", "-1"]),
+    snap("mag", ["1", "1", "1", "1"]),
+    snap("x", ["1", "1", "-1", "-1"]),
+  ]);
+  assert.deepEqual(
+    views.map((v) => v.kind),
+    ["decl", "decl", "cells"],
+    "两条声明消费三条序列，x 走默认索引格（不重复渲染）",
+  );
+  for (const v of views.slice(0, 2)) {
+    assert.equal(v.kind, "decl");
+    if (v.kind === "decl") {
+      assert.equal(v.error, null);
+      assert.equal(v.renderer, "svg");
+    }
+  }
+});
+
 test("annotations：只记本幕内的变化（局部量 + 数组元素），首帧无前态不猜", () => {
   const frames: StepLike[] = [
     { code_line: 5, func_name: "main", local_vars: [{ name: "i", value: "0" }, { name: "a", value: "{3, 1, 4, 2, 5}", ty_name: "int[5]" }], array_snapshots: [{ name: "a", elements: ["3", "1", "4", "2", "5"] }] },
@@ -562,7 +744,7 @@ test("lessonMd：bubble_sort scene 为 v2 锚点形态（六幕全锚点化，#2
 // （同一单源，不再手抄），故三者不会各错一次。
 test("tokens：五主题集合 = THEME_KEYS，且每主题都有 token", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const tokens = JSON.parse(readFileSync(path.resolve(here, "../tokens.json"), "utf8"));
+  const tokens = JSON.parse(readFileSync(path.resolve(here, "../../moonbit/style/tokens.json"), "utf8"));
   const persisted = readFileSync(path.resolve(here, "../src/persisted.svelte.ts"), "utf8");
   const m = persisted.match(/THEME_KEYS\s*=\s*\[([^\]]+)\]/);
   assert.ok(m, "persisted.svelte.ts 里找不到 THEME_KEYS");
@@ -591,7 +773,7 @@ test("tokens：五主题集合 = THEME_KEYS，且每主题都有 token", () => {
 // 漏改兜底会静默分叉（只在 CSS 变量读不到时显影）。这里把两面包死。
 test("motionTokens：兜底时长/缓动与 tokens.json 等值（防 JS 抄本静默分叉）", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const tokens = JSON.parse(readFileSync(path.resolve(here, "../tokens.json"), "utf8")) as {
+  const tokens = JSON.parse(readFileSync(path.resolve(here, "../../moonbit/style/tokens.json"), "utf8")) as {
     base?: { tokens?: Record<string, { $value: string }> };
   };
   const base = tokens.base?.tokens ?? {};

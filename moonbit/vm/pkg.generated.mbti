@@ -32,6 +32,7 @@ pub(all) struct ArraySnapshotData {
   element_ty : String
   elements : Array[String]
   truncated : Bool
+  dims : Array[Int32]
 }
 
 #derive(Eq, @debug.Debug)

@@ -54,7 +54,7 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 
 ## 设计契约与主题 token（P0 契约批，2026-10-21）
 
-- **token 单源 = `demo/tokens.json`**（W3C DTCG 子集：每 token = `{$value, $type}`；`base` 字体/尺寸/动效 + `themes` 五主题色板〔`colorScheme` + `tokens`〕+ `sizes` 三字号档；`themeOrder` 定序）。
+- **token 单源 = `moonbit/style/tokens.json`**（2026-11-14 批 A 起从 `demo/tokens.json` 迁入引擎资产目录，随 mooncakes 包发布；W3C DTCG 子集：每 token = `{$value, $type}`；`base` 字体/尺寸/动效 + `themes` 五主题色板〔`colorScheme` + `tokens`〕+ `sizes` 三字号档；`themeOrder` 定序）。
 - 产物 `demo/src/tokens.css` 由 `scripts/gen_demo_tokens` 生成（`@generated` 禁手改），`app.css` 顶部只 `@import`。改色板流程：改 `tokens.json` → `node scripts/gen_demo_tokens/main.mts` → `-check` 绿 → `node demo/tests/style_contract.mts` 比对（computed 值；像素闸已退役，不再以截图作门）。
 - 门：`node scripts/gen_demo_tokens/main.mts -check`（逐字节，CRLF 归一）+ `-selftest`（同集绿 + 篡改必红，J9）；`ci.yml` demo 段同步步。意图 / Do-Don't / 五主题语义见 [DESIGN.md](DESIGN.md)（不复制数值——数值只在 tokens.json）。
 - 本批迁移实测（一次性取证，非门）：五主题 1440×900 截图迁移前后逐字节一致（ice / rose / soft / paper / blueprint 五张 PNG 的 sha256 全等）；像素闸已于 2026-10-22 退役。

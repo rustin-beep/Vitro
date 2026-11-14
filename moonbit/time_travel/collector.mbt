@@ -132,6 +132,7 @@ pub fn[P : SourceLineProvider] collect(
       element_ty: a.element_ty,
       elements: a.elements,
       truncated: a.truncated,
+      dims: a.dims,
     })
   }
   // local_vars（ty 显示名走 ast 单源；数组条目用元素摘要）

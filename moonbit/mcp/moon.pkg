@@ -13,10 +13,14 @@
 // 多会话零 wasm 实例依赖；wasm 实例 #external 句柄持有形态探针亦通，
 // 作备选路径登记于批报告）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L9——消费 gateway L8）。
+// 批 E（2026-11-14）：视图声明消费——import @view（L0）做声明文法解析与
+// ViewDoc v0.1.1 出口（doc.series_decl + 投影器全族规格下发壳层）。
 import {
   "vitro/engine/gateway",
   "vitro/engine/session",
+  "vitro/engine/style",
   "vitro/engine/util",
+  "vitro/engine/view",
 }
 
 // wasm（非 gc）目标无交付面（产物走 cmd/mcp_js 的 js 单文件）——与 gateway

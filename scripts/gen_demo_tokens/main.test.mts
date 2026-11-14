@@ -62,7 +62,7 @@ test("sortedSizes：数值序（'9' < '14'，字典序会反）", () => {
 
 test("真实真源：load + render ≡ 入库产物（逐字节）", () => {
   const root = projectRoot();
-  const doc = load(path.join(root, "demo/tokens.json"));
+  const doc = load(path.join(root, "moonbit/style/tokens.json"));
   const css = fs.readFileSync(path.join(root, "demo/src/tokens.css"), "utf8");
   assert.equal(render(doc), css.replace(/\r\n/g, "\n"));
 });

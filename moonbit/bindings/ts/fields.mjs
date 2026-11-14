@@ -21,7 +21,7 @@ export const FIELDS = {
   ApiVariableSnapshot: ["name", "addr", "is_local", "ty_name", "value"],
   ApiFrameInfo: ["func_name", "return_line"],
   AccessedVar: ["name", "access_type"],
-  ArraySnapshot: ["name", "element_ty", "elements", "truncated"],
+  ArraySnapshot: ["name", "element_ty", "elements", "truncated", "dims"],
   PointerSnapshot: ["name", "addr", "ty_name", "target_addr", "target_name", "status"],
   VisEvent: ["ty", "line", "extra0", "extra1", "extra2", "context"],
   RootCauseHint: ["category", "one_liner", "related_lines", "suggested_fix_kind", "suggested_fix_line", "suggested_fix_desc"],

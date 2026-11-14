@@ -1688,15 +1688,37 @@ jobs:
         run: node scripts/demo_assemble_check/main.mts demo
         shell: bash
 
-      # #222 P0 契约批（2026-10-21）：demo 主题 token 单源 = demo/tokens.json，
-      # 产物 demo/src/tokens.css 由 scripts/gen_demo_tokens 生成（@generated 禁手改，
-      # app.css 只 @import）。-check 逐字节比对（CRLF 归一）；-selftest 先证比对面
-      # 会红（J9 埋雷义务）——两行都跑，闸与自证同在。
+      # #222 P0 契约批（2026-10-21）：demo 主题 token 单源 = moonbit/style/tokens.json
+      # （2026-11-14 批 A 起迁入引擎资产目录，参与 mooncakes 包），产物 demo/src/
+      # tokens.css 由 scripts/gen_demo_tokens 生成（@generated 禁手改，app.css 只
+      # @import）。-check 逐字节比对（CRLF 归一）；-selftest 先证比对面会红（J9
+      # 埋雷义务）——两行都跑，闸与自证同在。
       - name: demo tokens gate (tokens.json → tokens.css, -check)
         if: always()
         run: |
           node scripts/gen_demo_tokens/main.mts -selftest
           node scripts/gen_demo_tokens/main.mts -check
+        shell: bash
+
+      # 批 A（2026-11-14，refs #470 v0.1.1 前置）：风格包引擎侧数据面 = 同一份
+      # moonbit/style/tokens.json，产物 moonbit/style/style_gen.mbt 由 scripts/
+      # gen_style 生成（digest 绑真源字节）。两生成器共用 load 完备性断言，
+      # 与本步骤互为同源双产物；同样 -selftest + -check 双跑。
+      - name: style pack gate (tokens.json → style_gen.mbt, -check)
+        if: always()
+        run: |
+          node scripts/gen_style/main.mts -selftest
+          node scripts/gen_style/main.mts -check
+        shell: bash
+
+      # 批 D（2026-11-14，refs #470 v0.1.1）：投影器词表 = 引擎侧语义单源，
+      # 一份 projectors.json 同时发射 MoonBit 数据面与 demo TS 词表；demo 与
+      # MCP 只实现绘制。两产物各自 -check 对账，杜绝两端语义漂移。
+      - name: view projector gate (projectors.json → mbt + ts, -check)
+        if: always()
+        run: |
+          node scripts/gen_view_projectors/main.mts -selftest
+          node scripts/gen_view_projectors/main.mts -check
         shell: bash
 
       # F4 前端框架批（Svelte 5 + Vite）闸门：svelte-check（类型+A11y 面，

@@ -20,6 +20,8 @@
   import Editor from "../lib/Editor.svelte";
   import Timeline from "../lib/Timeline.svelte";
   import ArrayCells from "../lib/ArrayCells.svelte";
+  import SeriesView from "../lib/SeriesView.svelte";
+  import { planViews } from "../lib/viewProjection.ts";
   import CallTree from "../lib/CallTree.svelte";
   import VarsList from "../lib/VarsList.svelte";
   import OutputView from "../lib/OutputView.svelte";
@@ -47,6 +49,9 @@
   const dataFrame = $derived(frameAt(dataIdx));
   const heldFrom = $derived(dataIdx !== session.idx ? dataIdx : -1);
   const snaps = $derived(dataFrame?.array_snapshots ?? []);
+  /** 课程 viz 声明 → 视图计划（无声明课 = 全量 cells，与旧渲染面逐字节同形）。 */
+  const vizs = $derived(lessonSession.note?.vizs ?? []);
+  const views = $derived(planViews(vizs, snaps));
   const n = $derived(session.viewFrames.length);
   const lesson = $derived(lessonSession.lesson);
   const errCount = $derived(session.diagnostics.filter((d) => d.severity === "error").length);
@@ -310,8 +315,12 @@
 
     <DiagBand onjump={(ln) => editorRef?.revealLine(ln)} />
     {#if snaps.length > 0}
-      {#each snaps as s, si (s.name + "#" + si)}
-        <ArrayCells snap={s} frame={dataFrame} before={dataIdx > 0 ? frameAt(dataIdx - 1) : undefined} heldFrom={heldFrom} frameIdx={dataIdx} {source} />
+      {#each views as v (v.key)}
+        {#if v.kind === "cells"}
+          <ArrayCells snap={v.snap} frame={dataFrame} before={dataIdx > 0 ? frameAt(dataIdx - 1) : undefined} heldFrom={heldFrom} frameIdx={dataIdx} {source} />
+        {:else}
+          <SeriesView decl={v.decl} snaps={v.snaps} error={v.error} />
+        {/if}
       {/each}
     {:else}
       <section class="vr-block" aria-label="数组可视化">

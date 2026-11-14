@@ -8,6 +8,9 @@
 > 实现锚点（冻结时点 = Rust 区，2026-09-12；该区已随 2026-10-05 删区退役，tag `rust-oracle-freeze` 可回溯）：`native/src/unified/types.rs`（类型定义）、`collector.rs`（字段来源）、`engine.rs`（窗口与 seek）、`stream.rs`（差分编码）、`contracts.rs`（版本轨道与行为契约）、`vocabulary.rs`（受控词汇表）、`native/src/capi/first_batch.rs`（出口序列化）。**现役 MoonBit 锚**：`moonbit/protocol/`（types.mbt 权威生成源 + schema.mbt 台账/契约 + vocabulary）、`moonbit/time_travel/engine.mbt`（窗口与 seek）、`moonbit/gateway/serve_step.mbt`（出口装配）——TS 类型生成链 gen_protocol_ts 的双向对账随批在役
 > 消费者（冻结时点）：capi 第一批（`vitro_step_next_json` / `vitro_get_step_payloads_json`）、`vitro_cli serve`（均已随删区退役）。**现役消费者**：serve `step.next`/`payload.get` 帧族（`cmd/serve` / `vitro api` / 三臂 CLI 的 step 流）、`@vitro/protocol` TS 包、demo 前端、任何第三方语言
 > 最后核对日期：2026-09-14
+> 修订说明（2026-11-14，批 B）：§2.4 `ArraySnapshot` 新增 `dims`（int32[]，
+> additive——旧流缺省空/单维即退化原行为）；观测面 `ArraySnapshotData.dims`
+> 与流层 `ArraySnapshotRef.dims` 同批下发，出口 `serve_step` emitter 同步。
 > 修订说明（2026-09-14，U2#10）：§2.4 `ArraySnapshot` 新增 `truncated`（bool，
 > serde default 缺省 false——旧流/旧消费方零影响，字段只增不改语义纪律内）；
 > 元素数超过引擎上限 256 时 `elements` 为截断视图。字段冻结测试白名单同步。
@@ -135,6 +138,7 @@
 | `element_ty` | string | 元素类型名 |
 | `elements` | string[] | 元素值（字符串化，规则同 `value`） |
 | `truncated` | bool | U2#10（2026-09-14）：元素数超出引擎上限（256）时置位——`elements` 为前 256 个元素的截断视图，消费方不得当全量。旧流缺省 `false`（serde default，向后兼容） |
+| `dims` | int32[] | 2026-11-14 批 B（additive，refs #517 P2-08）：数组维度表，外→内——`int m[2][3]` = `[2, 3]`，一维 = `[N]`。`elements` 恒为**扁平**序列，宿主按 `dims` 还原行列；此前观测面在 `base_element_type` 处剥掉维度，下游只能画一维。维度是静态类型属性、跨帧恒定，不入流差分判据；旧读者忽略本字段即退化为原一维行为 |
 
 ### 2.5 `PointerSnapshot` — 指针快照
 

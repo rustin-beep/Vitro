@@ -342,6 +342,62 @@ fn union_array_names(a : Frame?, b : Frame) -> Array[String] {
 }
 
 ///|
+/// 解析 render/animate 的 `viz` 参数（多行 `series …` 声明；缺省/空白 = 无）。
+/// 文法单源在 @view（与课源 vitri-viz 同形），本包只做「非空却零声明」兜底。
+fn parse_viz_arg(args : Json) -> Result[Array[@view.SeriesDecl], String] {
+  let text = jstr_or(jget(args, "viz"), "")
+  if text.trim().to_owned() == "" {
+    return Ok([])
+  }
+  match @view.parse_series_decl_block(text) {
+    Err(m) => Err(m)
+    Ok(ds) =>
+      if ds.length() == 0 {
+        Err("文本非空但无有效声明行（只有空行/注释？）")
+      } else {
+        Ok(ds)
+      }
+  }
+}
+
+///|
+/// 声明序列必须进 focus（否则帧投影里没有数组数据、宿主画不出来）：
+/// 显式 focus 在前追加缺项；自动模式以声明序打底、再按频次补到 4 条。
+fn focus_with_decls(
+  auto : Array[String],
+  explicit : Array[String],
+  decls : Array[@view.SeriesDecl],
+) -> Array[String] {
+  let out : Array[String] = []
+  if explicit.length() > 0 {
+    for n in auto {
+      out.push(n)
+    }
+    for d in decls {
+      for n in d.series {
+        if !out.contains(n) {
+          out.push(n)
+        }
+      }
+    }
+    return out
+  }
+  for d in decls {
+    for n in d.series {
+      if !out.contains(n) {
+        out.push(n)
+      }
+    }
+  }
+  for n in auto {
+    if out.length() < 4 && !out.contains(n) {
+      out.push(n)
+    }
+  }
+  out
+}
+
+///|
 /// 渲染参数校验 + 壳层钩子调用（animate / render 共用；ms_engine = 引擎侧
 /// 已耗时，由调用方传入）。
 fn Server::render_entry(
@@ -355,8 +411,10 @@ fn Server::render_entry(
     return Proto(-32602, "参数 mode 须为 \"static\" 或 \"interactive\"")
   }
   let theme = jstr_or(jget(args, "theme"), "auto")
-  if !(theme == "auto" || theme == "light" || theme == "dark") {
-    return Proto(-32602, "参数 theme 须为 auto | light | dark")
+  if !theme_values().contains(theme) {
+    return Proto(
+      -32602, "参数 theme 须为 auto | light | dark 或 StylePack 主题 id（ice/rose/soft/paper/blueprint）",
+    )
   }
   let budget = match jint(jget(args, "budget")) {
     Some(b) =>
@@ -401,7 +459,17 @@ fn Server::render_entry(
   for i = from; i < to; i = i + 1 {
     slice.push(e.frames[i])
   }
-  let focus = pick_focus_arrays(slice, jstr_arr(jget(args, "focus")))
+  let decls = match parse_viz_arg(args) {
+    Ok(d) => d
+    Err(m) => return Proto(-32602, "参数 viz 无法解析：\{m}")
+  }
+  let explicit_focus = jstr_arr(jget(args, "focus"))
+  let auto_focus = pick_focus_arrays(slice, explicit_focus)
+  let focus = if decls.length() == 0 {
+    auto_focus
+  } else {
+    focus_with_decls(auto_focus, explicit_focus, decls)
+  }
   // 关键帧恒算（interactive 亦算——壳层无 wasm 回落 static 时「回落即用」，
   // 消「回落成无帧空壳」的双源分叉；真 interactive 时壳层不嵌帧）
   let (idx, thinned) = if slice.length() > 0 {
@@ -415,6 +483,13 @@ fn Server::render_entry(
   }
   // 警告（v1 口径：编译成功带 warning 级诊断；采集提前停注明）
   let warnings : Array[String] = []
+  for d in decls {
+    if @view.projector(d.projector) is None {
+      warnings.push(
+        "viz: 未知投影器 \{d.projector}（该声明在产物中显示错误面板）",
+      )
+    }
+  }
   for d in jarr(jget(e.compile_result, "diagnostics")) {
     let sev = jint_or(jget(d, "severity"), 0)
     if sev > 0 {
@@ -466,6 +541,7 @@ fn Server::render_entry(
     .s("source", e.source)
     .a("frames", frames_json)
     .sa("focus", focus)
+    .j("doc", @view.doc_value(decls))
     .j("algo", algo)
     .j("run", run_summary_json(e))
     .j("outputs", outputs_json(e))

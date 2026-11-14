@@ -413,3 +413,52 @@ test "swap_event_runtime_extras_b51" {
   assert_eq(vm4.vis_event_queue[0].extra1, 0)
   assert_eq(vm4.vis_event_queue[0].extra2, 0)
 }
+
+///|
+/// 锚六（2026-11-14 批 B，refs #517 P2-08）：二维数组维度表下发——
+/// `int m[2][3]` 的 `elements` 是扁平 6 元素，`dims` = [2, 3] 由 typeck
+/// 直读（`Type::dims()`）。此前观测面在 `base_element_type` 处把维度剥掉，
+/// 下游只能画成一维 6 格（P2-08 形态）；本锚锁「维度不在观测面丢失」。
+test "observe_array_snapshots_dims_2d" {
+  let vm = VitroVM::new()
+  let m_ty : @ast.Type = Array(Int(false, false), 6, [2, 3], false, false, [])
+  let v_ty : @ast.Type = Array(Int(false, false), 3, [3], false, false, [])
+  vm.set_symbols([
+    mksym("m", 0U, false, m_ty, "", 0),
+    mksym("v", 512U, false, v_ty, "", 0),
+  ])
+  let base = @bytecode.GLOBAL_START
+  for i = 0; i < 6; i = i + 1 {
+    ignore(
+      vm.memory.store_u32(
+        vm.mem_map,
+        base + i.reinterpret_as_uint() * 4U,
+        (i + 1).reinterpret_as_uint(),
+      ),
+    )
+  }
+  ignore(vm.memory.store_u32(vm.mem_map, base + 512U, 42U))
+  let snaps = vm.get_array_snapshots()
+  let mut m : ArraySnapshotData? = None
+  let mut v : ArraySnapshotData? = None
+  for s in snaps {
+    if s.name == "m" {
+      m = Some(s)
+    }
+    if s.name == "v" {
+      v = Some(s)
+    }
+  }
+  guard m is Some(mm) else { fail("m 必在") }
+  guard v is Some(vv) else { fail("v 必在") }
+  assert_eq(mm.dims.length(), 2)
+  assert_eq(mm.dims[0], 2)
+  assert_eq(mm.dims[1], 3)
+  assert_eq(mm.elements.length(), 6, msg="elements 仍是扁平序列")
+  assert_eq(mm.elements[0], "1")
+  assert_eq(mm.elements[5], "6")
+  // 一维对照：dims 单元素（旧形态的合法值，宿主按 [N] 画一行）
+  assert_eq(vv.dims.length(), 1)
+  assert_eq(vv.dims[0], 3)
+  assert_eq(vv.elements[0], "42")
+}

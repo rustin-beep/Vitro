@@ -1,0 +1,121 @@
+# ── CI 拆分批（2026-11-14）：本文件 = 主 CI（ci.yml）的 called 单元 ──────────
+# hygiene job 自 ci.yml 逐字搬迁（步骤/注释裁定资产零改动），唯一机械变换 =
+# 删跨文件无效的 `needs: build-artifacts` 行（时序由 caller 侧 needs 承接，
+# 语义等价）。called job 与 caller 同 run 执行：artifact / cache /
+# needs 红态传导 / github 上下文（event_name 等触发事件面）全同域。
+# 编排与汇总（ci-summary）见 ci.yml；夜间哨兵见 nightly.yml。
+name: CI hygiene
+on:
+  workflow_call:
+jobs:
+  hygiene:
+    name: Hygiene (fmt & four-target tests & toolchain)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 2026-10-23 提速批：Go vet/test 从 build job 迁来——测试红归 hygiene，
+      # build 只负责产物，避免「测试红 → artifact 不产出 → 下游全 skipped」。
+      - name: Go vet (scripts)
+        run: go vet ./scripts/...
+      - name: Go test (scripts)
+        run: go test ./scripts/...
+      # P3-3（2026-10-30 处置批）保险丝：「内联安装清零」原是一次性计数无闸
+      # 把守（ci_checklist 只扫 scripts/ 包）——下一个 job 照抄三行内联安装
+      # 会静默复活。断言：workflows 目录零内联安装（动词锚定 irm|curl + 域名
+      # ——正则形态防自噬：本步自身只以字面量形态携带域名，不被命中；唯一
+      # 合法实现点 = .github/actions/setup-moonbit 双形态）。
+      # 诊断版（首红 run 41042777552 复盘：本地 Git Bash/WSL/脚本逐字节三路
+      # 复刻皆绿、merge ref 文件等价——环境因子未定位，故 fail 时全量证据
+      # 打印 + 计数为空显式红，两路径可分辨）。
+      - name: Workflow install convergence (no inline moon installs)
+        shell: bash
+        run: |
+          # 修复注（run 41045815814 定案）：GitHub 的 shell:bash 默认 -eo
+          # pipefail，而 grep 零命中（=本断言的**正确态**）退出码为 1
+          # ——管道被 pipefail 判死、-e 杀 step ⇒ 零命中必红（本地裸 bash
+          # 无此二旗故三路复刻皆绿）。修法：grep/管道组内一律 `|| true`
+          # 消退出码，判定只认变量内容（2026-11-01 S13b-P4 白名单升格后
+          # 从「awk 汇总计数」改为「$bad 非空即红」）。
+          echo "== workflows/actions 目录清单："; ls -1 .github/workflows/ .github/actions/
+          # 收敛判据 = 域名出现位置白名单断言（2026-11-01 审阅 v2 S13b-P4 升格）：
+          # 原形态只锚 irm|curl 两个动词且只扫 workflows/——iwr/Invoke-WebRequest/
+          # wget 形态与 .github/actions/ 新建 composite action 内联安装均漏网。
+          # 白名单断言与动词无关：moon 安装域字面量在 .github/ 下的任何出现
+          # （含注释——防「注释贴安装命令被人照抄」，即本保险丝使命）必须
+          # 位于 .github/actions/setup-moonbit/（唯一合法实现点）之内。
+          # DOM 拆串写法 = 防自咬：grep 命令行若含完整域名字面量，本步扫
+          # ci.yml 自身时必命中自己（首次接线即实测自咬）。
+          DOM="cli.moonbitlang".com
+          hits=$({ grep -rnF "$DOM" .github/ || true; })
+          echo "-- 域名字面量全量出现："
+          if [ -n "$hits" ]; then echo "$hits"; else echo "（零字面量命中）"; fi
+          # fail-open 封堵 + 正向锚（PR #416 审阅 P2-1，2026-11-02）：白名单升格时删掉了原
+          # `n 为空即红` 保护——grep 目标目录不存在/grep 异常时 hits 空 ⇒ bad 空 ⇒ 恒绿
+          # （探针实锤）。且原断言只防「外溢」不防「锚点丢失」：唯一合法点的域名被改
+          # （换 CDN/改命令）照样绿。两层：① hits 空即红；② setup-moonbit 内至少一处命中。
+          if [ -z "$hits" ]; then
+            echo "::error::moon 安装域字面量在 .github/ 下零命中——grep 异常或 setup-moonbit 锚点丢失（唯一合法实现点必须含安装域）"
+            exit 1
+          fi
+          good=$({ echo "$hits" | grep '^\.github/actions/setup-moonbit/' || true; })
+          if [ -z "$good" ]; then
+            echo "::error::setup-moonbit 内零命中（安装域被改/实现点迁移）——正向锚失守，先对齐 .github/actions/setup-moonbit 再改本断言"
+            exit 1
+          fi
+          bad=$({ echo "$hits" | grep -v '^\.github/actions/setup-moonbit/' || true; })
+          if [ -n "$bad" ]; then
+            echo "::error::setup-moonbit 之外发现 moon 安装域引用（任意动词形态均算——收敛到 .github/actions/setup-moonbit 的 uses 引用）："
+            echo "$bad"
+            exit 1
+          fi
+          echo "convergence OK: moon 安装域唯一且确实出现在 setup-moonbit（$(echo "$good" | grep -c .) 处）"
+      - name: Install MoonBit toolchain
+        uses: ./.github/actions/setup-moonbit
+
+      - name: MoonBit toolchain health probe (A8 automation)
+        # 2026-09-21 E-06 窄增量：工具链故障显式化（版本锁定/索引预检/
+        # F8 ICE 特征/退出码 fail loud）。归 hygiene（2026-09-23 用户裁定）：
+        # 工具链追新是既定策略（MoonBit 未到 1.0，breaking 跟着走），版本
+        # 漂移红的含义是「该走 --update-baseline + 全门禁迁移流程」，不是
+        # 代码坏了。处置手册见 memory / a592f60、2f5d5d4 先例。
+        shell: bash
+        run: |
+          node scripts/toolchain_probe/toolchain_probe.mts
+
+      - name: MoonBit format check (moon fmt --check)
+        # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前
+        # ci.yml 零 fmt 步骤）；gen_* 生成器内置 fmt 与手工编辑的格式
+        # 差异会在再生成路径持续产生噪声。归 hygiene（2026-09-23）：格式账。
+        shell: bash
+        run: |
+          cd moonbit
+          moon fmt
+          if ! git diff --exit-code -- .; then
+            echo "::error::moon fmt 漂移——本地 cd moonbit && moon fmt 后提交"
+            git diff --stat -- .
+            exit 1
+          fi
+
+      - name: MoonBit tests (four targets)
+        # js 目标接线（2026-10-15）：三后端批落地 js 后端（38f63d42）但测试
+        # 面漏接——js 入口只做产物（build-artifacts 的 artifact 源），行为锚
+        # （fs_js 等 js 后端专属文件的锚，全量 907 例）零 CI 覆盖，与三臂
+        # 强制纪律（AGENTS §14）不符。本地实证 907/907 全绿后接线。
+        run: |
+          cd moonbit
+          moon test
+          moon test --target native
+          moon test --target wasm-gc
+          moon test --target js
+
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: wasm-gc gateway artifact + Node host smoke
+        run: |
+          cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
+          node scripts/wasm_gateway/host.mts
+# ── hygiene 域尾注（随拆分批从 ci.yml 文件尾逐字迁入）──────────────────
+

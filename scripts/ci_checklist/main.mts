@@ -220,19 +220,23 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
       failed = true;
     }
   }
-  // ④ moon test 目标面
+  // ④ moon test 目标面（2026-11-14 CI 拆分批连坐：原判据只扫 ci.yml 单文件
+  // ——hygiene job（四 target moon test 活行宿主）拆至 ci-hygiene.yml 后
+  // 扫描面失真必假红。改扫全部 workflow 文件，与 ①②③ 活行对账同源 wfBytes。）
   const targetUnion = new Set<string>();
-  for (const line of ciBytes.match(MOON_TEST_RE) ?? []) {
-    if (line.includes("--target ")) {
-      for (const m of line.matchAll(TARGET_RE)) targetUnion.add(m[1] ?? "");
-    } else {
-      targetUnion.add("wasm"); // 裸 moon test 默认目标 = wasm
+  for (const wb of wfBytes.values()) {
+    for (const line of wb.match(MOON_TEST_RE) ?? []) {
+      if (line.includes("--target ")) {
+        for (const m of line.matchAll(TARGET_RE)) targetUnion.add(m[1] ?? "");
+      } else {
+        targetUnion.add("wasm"); // 裸 moon test 默认目标 = wasm
+      }
     }
   }
   for (const want of MOON_TARGETS) {
     if (!targetUnion.has(want)) {
       lines.push(
-        `目标面缺口: ci.yml 全部 moon test 活行的目标并集缺 --target ${want}（后端集加员须连坐测试面——AGENTS §14 三臂强制）`,
+        `目标面缺口: workflows 全部 moon test 活行的目标并集缺 --target ${want}（后端集加员须连坐测试面——AGENTS §14 三臂强制）`,
       );
       failed = true;
     }
@@ -248,10 +252,12 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
   //      「needs 11 而循环 10」失衡形态）；
   //   C. pairs 条数 == needs 数。
   // 豁免面：schedule-only job（if: github.event_name == 'schedule'——PR/push
-  // 面不触发，needs 它们会恒 skipped 假红）自动免；mutation-gate 观察期
-  // 显式豁免（ci.yml ci-summary 段注记），复活时摘除。
+  // 面不触发，needs 它们会恒 skipped 假红）自动免；mutation 观察期
+  // 显式豁免（ci.yml ci-summary 段注记），复活时摘除。拆分批（2026-11-14）
+  // 连坐：job id `mutation-gate` → caller 编排层 id `mutation`（job 实体在
+  // ci-mutation.yml，⑤ 只扫 ci.yml 的 caller job 集）。
   const SUMMARY_EXEMPT = new Map<string, string>([
-    ["mutation-gate", "观察期不入 needs（ci.yml ci-summary 段注记 2026-10-31）"],
+    ["mutation", "观察期不入 needs（ci.yml ci-summary 段注记 2026-10-31；拆分批 2026-11-14 起豁免键 = caller id）"],
   ]);
   const summaryResult = checkCiSummary(ciBytes, SUMMARY_EXEMPT);
   if (summaryResult !== null) {

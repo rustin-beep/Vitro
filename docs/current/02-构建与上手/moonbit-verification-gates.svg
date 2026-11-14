@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 940" role="img" aria-label="vitro MoonBit 自建验证防线全景">
   <title>MoonBit 自建验证防线 · 对拍链与闸卫</title>
-  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml hygiene job；结构图无数字锚（测试数见 README 机判行） -->
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci-hygiene.yml hygiene job（CI 拆分批 2026-11-14 起 job 实体迁 called 文件）；结构图无数字锚（测试数见 README 机判行） -->
   <style>
     .bg     { fill: #FFFFFF; }
     .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }

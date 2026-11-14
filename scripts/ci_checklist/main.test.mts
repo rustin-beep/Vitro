@@ -205,7 +205,7 @@ function summaryCi(needs: string, envJobs: string[], pairs: string[]): string {
   ].join("\n");
 }
 
-const EXEMPT = new Map<string, string>([["mutation-gate", "观察期"]]);
+const EXEMPT = new Map<string, string>([["mutation", "观察期"]]);
 
 test("⑤ 绿：gate job 全入 needs/env/pairs + schedule-only 自动豁免", () => {
   const ci = summaryCi("build-artifacts, gate-a", ["build-artifacts", "gate-a"], ["build", "gatea"]);
@@ -230,17 +230,40 @@ test("⑤ J9 pairs 失衡：循环数 != needs 数 → 红（2026-10-30 同形�
   assert.match(r as string, /pairs 1 != needs 2/);
 });
 
-test("⑤ 显式豁免表：mutation-gate 不入 needs 不红（观察期注记）", () => {
+test("⑤ 显式豁免表：mutation（caller id，拆分批 2026-11-14 起）不入 needs 不红（观察期注记）", () => {
   const ci = [
     "on: {push: {branches: [master]}}",
     "jobs:",
-    "  mutation-gate:",
-    "    runs-on: ubuntu-latest",
+    "  mutation:",
+    "    uses: ./.github/workflows/ci-mutation.yml",
     "  ci-summary:",
     "    needs: []",
     "    runs-on: ubuntu-latest",
   ].join("\n");
   assert.equal(checkCiSummary(ci, EXEMPT), null);
+});
+
+// ④ 拆分形态锚（2026-11-14 CI 拆分批）：moon test 活行随 hygiene 拆至
+// ci-hygiene.yml 后，目标面判据须扫全部 workflow——只扫 ci.yml 单文件必
+// 假红（修复前形态：fixture 无 moon test 行 → 四目标全缺口）。本锚 J9：
+// 修复前跑必红（目标面缺口 x4）。
+test("④ J9 拆分形态：moon test 活行在非 ci.yml 文件也能扫到（四目标跨文件并集）", () => {
+  const f = makeFixture((x) => {
+    // ci.yml 里只留活行，moon test 四行全部挪到拆分后的 called 文件
+    x.edit(".github/workflows/ci.yml", ["steps:", "  - run: go run ./scripts/alpha", ""].join("\n"));
+    x.edit(".github/workflows/ci-hygiene.yml", [
+      "steps:",
+      "  - run: |",
+      "      moon test --target js",
+      "      moon test --target native",
+      "      moon test",
+      "      moon test --target wasm-gc",
+      "",
+    ].join("\n"));
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+  assert.match(r.summary, /moon test 目标面（4 目标齐）/);
 });
 
 test("J9 ①漏登记（.mts 无 shebang 形态，2026-11-14 #512 彻查）：main.mts 文件名即驱动——shebang 缺失不得逃逸驱动集", () => {

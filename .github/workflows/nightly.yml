@@ -1,0 +1,128 @@
+# ── CI 拆分批（2026-11-14）：夜间哨兵独立 workflow ─────────────────────────
+# 三 sentinel（toolchain-latest / toolchain-prerelease / coverage）自 ci.yml
+# 逐字搬迁——原 `if: github.event_name == 'schedule'` 条件保留（本文件仅
+# schedule 触发，恒真；若未来加 workflow_dispatch 逃生门该行立即恢复判别力）。
+# 拆分前它们在主 CI 的 push/PR 轮恒 skipped（视觉噪声），夜间轮与主 CI
+# 同 run；拆分后主 CI 不再挂三个恒 skipped job，夜间独立成 run（公开仓
+# 额度免费，防线面等价：三哨兵照跑、无下游 needs、红不阻塞主线的语义不变）。
+# 主 CI 的 schedule 轮（fuzz 缓存强制重算 / clang golden 重算 / step_invariant
+# 全量档）仍在本文件之外的主 CI——与哨兵分属两 run，互不取消（见两文件
+# concurrency）。
+name: Nightly sentinels
+on:
+  schedule:
+    # 夜间（北京时间 02:00）——与主 CI schedule 轮同一 cron 源，语义不变
+    - cron: '0 18 * * *'
+
+# schedule 轮保护语义照抄主 CI（cancel=false 的分流后缀形态）：夜间哨兵
+# 不被任何 run 取消；本文件无 push 触发，恒不取消他人。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  # ── toolchain-latest-sentinel（#132 追新哨兵，2026-10-16）────────────────
+  # 主线八处 pin .moonbit-version（可复现、不被上游发布劫持——2026-10-16
+  # 三笔连红 4021 教训）；追新职能由本 job 独立承载：夜间裸 latest 跑核心面，
+  # 红 = 上游新版有兼容面变化，走 vitro-toolchain-upgrade 流程（修警告 →
+  # --update-baseline → bump .moonbit-version 推进主线）。刻意不设
+  # MOONBIT_INSTALL_VERSION = latest；仅 schedule 触发，无下游 needs——
+  # 红不阻塞任何主线 job。
+  toolchain-latest-sentinel:
+    name: Toolchain latest sentinel (nightly chase-new)
+    runs-on: windows-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain (latest — sentinel deliberately unpinned)
+        uses: ./.github/actions/setup-moonbit
+        with:
+          version: latest
+      - name: moon check (latest compatibility probe)
+        run: cd moonbit && moon check
+        shell: bash
+      - name: moon test (latest compatibility probe)
+        run: cd moonbit && moon test
+        shell: bash
+      - name: Test-count reconciliation (README declared vs latest moon test truth)
+        # #338 批一（2026-10-27）：哨兵此前只看 rc——上游行为漂移（计数变化
+        # 但不红不崩）零感知通道。复用现役 testcount 闸（v3 双口径实跑对账
+        # 两 README 声明，本地 CI 均已 J9 双锚）：latest 实跑计数 != master
+        # README 声明即红 = 上游有兼容面外行为变化，走
+        # vitro-toolchain-upgrade 流程。期望值单源 = master README（pin
+        # 口径声明数），零新增单值文件；测试数变更批的 README 连坐义务
+        # 不变（testcount 闸主线本已强制）。node 用 runner 预装版（闸只
+        # 用 node:fs/path/child_process，无版本面）。
+        run: node scripts/moonbit/testcount/main.mts
+        shell: bash
+  # ── toolchain-prerelease-sentinel（审阅 v2 A8 批，refs #438，2026-11-02）──
+  # pre-release channel 前瞻门（官方 x 仓 check.yml「pre-release-version-check
+  # + pre-release-build」/core 仓信息轨的 Vitro 对位；R5d 件①处方）。缺口：
+  # toolchain-latest-sentinel 只追 stable channel 的 latest——0.9.0 断供事故的
+  # 完整时间线里，删 API 的 moonc 在 pre-release channel 期间 Vitro 零感知，
+  # stable 一发布即在架包被打死。本 job 把感知点前移到上游预发布期
+  # （pre-release → stable 通常有数天至数周差）。红 = 上游预发布有兼容面
+  # 变化，走 vitro-toolchain-upgrade 流程——信息轨语义与 stable 哨兵一致：
+  # 仅 schedule 触发、无下游 needs，红不阻塞任何主线 job。
+  # 形态裁定（R5d 件①适配点）：①ubuntu 省额度（非门禁面，x/core 同款定位）；
+  # ②步面 = check + test（不带 testcount——上游行为漂移零 rc 变化的感知通道
+  # 是 stable 轨的分工，pre-release 轨要的是「最早的暴露点」）；③安装走
+  # setup-moonbit version: pre-release——channel 名与 core 仓 pre-release-check
+  # 同款（官方双仓现役实证，安装器 MOONBIT_INSTALL_VERSION 直透
+  # binaries/pre-release/）；④Windows 兼容面不在本轨重复（stable 轨防线的事）。
+  # J9：步面判别力 = 0.9.0 断供形态本地复刻实证（time_travel import
+  # core/abort 注入 → moon check 即红 Cannot find import rc=127，还原绿）。
+  toolchain-prerelease-sentinel:
+    name: Toolchain pre-release sentinel (nightly, ahead-of-stable)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain (pre-release — sentinel deliberately unpinned)
+        uses: ./.github/actions/setup-moonbit
+        with:
+          version: pre-release
+      - name: Report channels (pin vs pre-release)
+        # 不判红的前置探针：两 channel 版本串并排落日志，首查红时先看
+        # 「上游动了什么」。pre-release 与 pin 同串 = 上游静默期，步面跑的
+        # 是已知绿面（零增量信息，正常现象非故障）。
+        run: |
+          echo "pin    : $(tr -d '[:space:]' < .moonbit-version)"
+          echo "pre-rel: $(cd moonbit && moonc -v)"
+        shell: bash
+      - name: moon check (pre-release compatibility probe)
+        run: cd moonbit && moon check
+        shell: bash
+      - name: moon test (pre-release compatibility probe)
+        run: cd moonbit && moon test
+        shell: bash
+  # ── coverage-sentinel（#338 批二，2026-10-27；A8 批 2026-11-02 升级逐包快照基线）──
+  # 行覆盖率记账观察面（默认 wasm 轮裸单测域）。A8 批（refs #438）起由
+  # scripts/coverage_snapshot 接管：full_summary 逐文件闭合聚合 → 逐包快照 +
+  # vs baseline.json 趋势报告（入库基线 scripts/coverage_snapshot/baseline.json，
+  # 首采 2026-11-02 @ 5233ad65：18480/30648 = 60.3%，29 包；重锚须显式
+  # --update-baseline）。按拍板**快照基线语义不设涨跌门**——B 轮修复进行中
+  # 先建测量基线，门限留后续批；趋势表经 $GITHUB_STEP_SUMMARY 直达 run 页。
+  # 仍 observe-only：仅 schedule 触发、无下游 needs——红不阻塞任何主线 job
+  # （红面只剩 fail loud：采集失败/解析不到 Total/逐文件之和与 Total 不闭合
+  # ——口径陷阱①的机判，防误用 summary 族聚合低估）。coverage 仍属实验特性
+  # （MOON_COVE 双引擎并存），报告形态冻结在本 job 的产物上。
+  coverage-sentinel:
+    name: Coverage sentinel (nightly, snapshot baseline + trend)
+    runs-on: windows-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain (pinned)
+        uses: ./.github/actions/setup-moonbit
+      - name: Coverage snapshot (collect + per-package aggregate + trend vs baseline)
+        # 冷态 instrumentation 全量重编（分钟级）+ 插桩跑全量裸单测
+        # （moon test --enable-coverage，R5g 实证链）+ full_summary 逐文件
+        # 解析（闭合校验内建于脚本——用错口径当场红）+ 逐包聚合 + 趋势。
+        run: node scripts/coverage_snapshot/main.mts --out tmp/coverage_snapshot
+        shell: bash
+      - name: Upload coverage snapshot (full_summary / per_package / trend)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-snapshot-${{ github.run_id }}
+          path: tmp/coverage_snapshot

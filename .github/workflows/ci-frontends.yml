@@ -1,0 +1,476 @@
+# ── CI 拆分批（2026-11-14）：本文件 = 主 CI（ci.yml）的 called 单元 ──────────
+# demo / desktop 两 job 自 ci.yml 逐字搬迁（步骤/注释裁定资产零改动），唯一机械变换 =
+# 删跨文件无效的 `needs: build-artifacts` 行（时序由 caller 侧 needs 承接，
+# 语义等价）。called job 与 caller 同 run 执行：artifact / cache /
+# needs 红态传导 / github 上下文（event_name 等触发事件面）全同域。
+# 编排与汇总（ci-summary）见 ci.yml；夜间哨兵见 nightly.yml。
+name: CI frontends
+on:
+  workflow_call:
+jobs:
+  demo:
+    name: Demo front-end gates (tsc / smoke / TS tests)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install MoonBit toolchain (differential anchors)
+        uses: ./.github/actions/setup-moonbit
+
+
+
+      # ── gen_api_help rules.json（#125 收尾，2026-10-15）───────────
+      # gen_api_help 内容批收敛（rules.json ≡ 原 .json.mbt 零漂移）后随
+      # jsonmbt 退场翻转出库——scripts 侧 .json.mbt 清零，本 job 的
+      # .json.mbt static gate 步随之摘除（moon 需求由差分驱动内嵌
+      # moon run 承担，工具链安装保留）。
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      # 2026-10-30 审计批接线：examples/demo.mbtx 是 README 快速开始第 0 步的
+      # 门面，此前 CI 零引用——示例脚本烂了没人知道。零克隆形态（moon run
+      # demo.mbtx 拉 mooncakes 发布包）曾被 0.9.0 的 time_travel→core/abort
+      # 解析病挡住（#374/#402），0.9.1（2026-10-31）已自愈——2026-11-08 本地
+      # 实测 rc=0；smoke 维持 workspace 臂免 registry 抖动。import 块已迁
+      # 文件头 ---- frontmatter（moonc 0.10.20 unfenced_import 弃用警告清墙
+      # ——零克隆第一跑不再见警告块）：此处剥首对 ---- 围栏（含 import 块）
+      # 成临时 main 包跑 wasm-gc，护住示例与 gateway API 的同步（跑完即删，
+      # 不入库）。约束：demo.mbtx 正文禁用 ---- 行（围栏区间匹配）。
+      - name: demo.mbtx quickstart smoke (workspace arm)
+        if: always()
+        run: |
+          set -e
+          pkg=cmd/demo_mbtx_smoke
+          mkdir -p "moonbit/$pkg"
+          sed '/^----$/,/^----$/d' examples/demo.mbtx > "moonbit/$pkg/main.mbt"
+          cat > "moonbit/$pkg/moon.pkg" <<'PKGEOF'
+          // CI 冒烟临时包（demo.mbtx workspace 臂）——跑完即删，不入库。
+          import {
+            "moonbitlang/core/json",
+            "vitro/engine/gateway",
+          }
+
+          supported_targets = "wasm-gc"
+
+          pkgtype(kind: "executable")
+          PKGEOF
+          cd moonbit
+          out=$(moon run "$pkg" --target wasm-gc 2>&1)
+          echo "$out" | tail -5
+          echo "$out" | grep -q '全程.*帧' || { echo '::error::demo.mbtx 冒烟输出缺回放主标记'; exit 1; }
+          cd ..
+          rm -rf "moonbit/$pkg"
+        shell: bash
+
+      # 防遮蔽（2026-10-23）：tsc 及之后每道 demo 闸 always()——此前 E-08 一红
+      # 直接 skipped smoke/E2E/pure，后面的红看不到；现在逐闸跑完再汇总。
+      - name: demo TS check (tsc --noEmit = js/ 模块类型面)
+        if: always()
+        # F4 收尾（2026-10-17）：app.ts 退役 → emit 无对象，只留 --noEmit
+        # （js/ 八个物理保留模块的类型面；src/ 由 svelte-check 覆盖）
+        run: |
+          cd demo && npm ci && npx tsc -p tsconfig.json --noEmit
+        shell: bash
+
+      # 算法侧栏数据发射（2026-10-04 refs #28 建，同日发射化）：产物不入库
+      # （与 js/*.js、wasm.wasm 同形态）——发射即检查闸（分组并集 ==
+      # rules.json 43 族、82 模板全集对账，断言失败即红）。assemble check
+      # 与 demo_smoke 消费盘上 algorithms.js，本步必须排在其前。
+      - name: demo algorithms data emit (generator assertions = gate)
+        if: always()
+        run: node scripts/gen_demo_algorithms/main.mts
+        shell: bash
+
+      # 课程内容防线（#120 补充 + #125 批 A 形态修正，2026-10-15）：
+      # course_catalog = 叙述→课目对账 + lesson.c 双臂对拍（vitro ≡ clang，
+      # 独立于 corpus/ 语料线）。**gen_course -check 步已摘**——#125 补充
+      # 「资产链自举」判据驳回生成器进资产链（当时为 Go；#273 批二已迁 .mts，
+      # 仍不入资产链/CI），gen_course 的 lessons.ts 渲染角色退役为失败回退
+      # 预案（本体保留，头注标注）；
+      # 课程叙述的现役呈现路线 = #125 补充宿主侧运行时方案（parser.c 随包
+      # 发布 + demo 运行时喂引擎解析）。
+      - name: course catalog gate (reconcile + lesson.c dual-arm diff)
+        if: always()
+        run: node scripts/course_catalog/main.mts
+        shell: bash
+
+      # 2026-10-04 审阅 P3-②：组装自检原先只在 push-master 的 pages.yml——PR
+      # 侧拷贝面缺口（历史白屏同类）无闸。单源脚本（demo_assemble_check）对
+      # demo/ 跑同一断言集（不带 --no-ts：源目录 .ts 合法；F4 收尾后断言
+      # index.html 入口 = src/main.ts + 本地资源面）。
+      - name: demo assemble check (asset existence, HTML-face sentinel)
+        if: always()
+        run: node scripts/demo_assemble_check/main.mts demo
+        shell: bash
+
+      # #222 P0 契约批（2026-10-21）：demo 主题 token 单源 = demo/tokens.json，
+      # 产物 demo/src/tokens.css 由 scripts/gen_demo_tokens 生成（@generated 禁手改，
+      # app.css 只 @import）。-check 逐字节比对（CRLF 归一）；-selftest 先证比对面
+      # 会红（J9 埋雷义务）——两行都跑，闸与自证同在。
+      - name: demo tokens gate (tokens.json → tokens.css, -check)
+        if: always()
+        run: |
+          node scripts/gen_demo_tokens/main.mts -selftest
+          node scripts/gen_demo_tokens/main.mts -check
+        shell: bash
+
+      # F4 前端框架批（Svelte 5 + Vite）闸门：svelte-check（类型+A11y 面，
+      # 比 tsc 宽）+ vite build（构建成功性）。demo/src 在 tsc include 外、
+      # demo_smoke 跑 js 面，不加这两步则 demo/src 在 CI 零覆盖（裸奔）。
+      - name: F4 svelte-check (type + a11y gate)
+        if: always()
+        run: cd demo && npm run check
+        shell: bash
+
+      # #132 能力层（2026-10-16）：oxlint 1.88.0 零 error 门（实测 5 warn 不
+      # 阻塞；devDep 精确 pin + npm ci 锁定链）。CallTree.svelte:150/156 两处
+      # 逗号表达式 warning 已知不碰。oxfmt/Biome 不接——能力层分散判据（#132）。
+      - name: F4 oxlint (zero-error gate)
+        if: always()
+        run: cd demo && npm run lint:all
+        shell: bash
+
+      # wasm 是构建期资产（engine.worker.ts ?url——#139 同款 fail loud）：
+      # build-products artifact 已含 wasm-gc 产物，vite build 前就位。
+      # 此前漏本 job 的 cp → CI vite build 红；Pages job 因有前置 cp 而绿
+      # ——同坑两处只堵一处的教训（62f75d3d CI 首跑实锤）。
+      - name: demo wasm asset in place (build-time asset)
+        if: always()
+        shell: bash
+        run: cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
+
+      # 语言包懒加载产物（#130 批② demo 接线）：复用 build-artifacts 的
+      # teaching/langpack（2026-10-23 提速批——此前 demo 重装工具链再编一遍，
+      # 与 build 的全量 js 构建重复）。artifact 缺失即 cp 红，与 wasm 同款 fail loud。
+      - name: demo langpack asset (build artifact → cp)
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p demo/teaching/langpack
+          cp moonbit/_build/js/release/build/teaching/langpack/langpack.js demo/teaching/langpack/langpack.js  # 仅 .js——d.ts 相对引用 moonbit.d.ts 拖类型错
+
+      - name: F4 vite build (build success gate)
+        if: always()
+        run: cd demo && npm run build
+        shell: bash
+
+      # E-08 快照闸（#122 闸门批，2026-10-16）：《出口分档与宿主策略》§6.2
+      # 末条防线义务「golden payload → 渲染输出」快照测试——UI 重建启动时
+      # 立即生效。vite --ssr 编译纯展示组件 bundle（dist-e08/ 不入库）→
+      # node --test 对冻结 golden（demo/e08/golden/*.html）逐字节比对；
+      # 刷新走 tests/e08-update.mts 显式人工令（E-04：快照不得测试内动态
+      # 生成）。组件面↔用例表↔golden 目录三方全等锚防快照僵死。覆盖面
+      # 边界（动画/交互/浏览器态不入快照语义）见 demo/src/e08/entry.ts 头注。
+      - name: F4 E-08 snapshot gate (SSR render vs frozen golden)
+        if: always()
+        run: |
+          cd demo && npx vite build --ssr src/e08/entry.ts --outDir dist-e08
+          cd .. && node --test demo/tests/e08.test.mts
+        shell: bash
+
+      # E-08 夹具同形性闸（#324 治本批，2026-10-31）：payloads/core.json 与
+      # 引擎实产形态机判对拍——现场以 demo/e08/bubble.c 跑 js 臂（artifact
+      # 的 vitro_js.js，经 tests/e08_live.mts api --batch 通道，前端 worker
+      # 同款方法序列），帧字段集/label 与 phase 值域/labels 段/capabilities/
+      # catalog 任一形态漂移即红。根除「手写夹具与实产形态相反、闸恒绿」
+      # 的假绿面（J9 已证红：旧夹具 6+1 项断点全数命中）。重导走
+      # tests/e08-export.mts 人工令（E-04 同款纪律：审定 diff 再入库）。
+      - name: F4 E-08 fixture shape gate (payload ≡ engine live shape)
+        if: always()
+        run: node --test demo/tests/e08-shape.test.mts
+        shell: bash
+
+      # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
+      # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
+      # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。J9 证红：篡改
+      # cases.js golden 即红（已留痕）。（原注释随 gates-wasm 拆分批从该
+      # job 尾部迁来——步骤实排历来在本 job，2026-10-17）
+      - name: demo page smoke (protocol-level, cases golden + field keys)
+        if: always()
+        run: node scripts/demo_smoke/main.mts
+        shell: bash
+
+      # F4 浏览器 E2E（107 锚：诊断带 S1-S5（18）+ 工作区/回放/设置/主链面
+      # W1-W17（38）+ 会话族 F1-F8 + B0-B11 + D0/D1/D1b/D2/D3（35）+ 编辑器（10）+
+      # 装载失败（6）〔2026-10-18 实测立账批防线锚：
+      # 坏 hash 横幅/argv 克隆崩/语句级口径/播完 status/char 数组全帧 sweep/
+      # E 码联动/目录全章重名 id 防护；D0/D1/D1b/D2：交换双格+连线+编辑分色、
+      # 动效开关/预算/reduced-motion 旁路、变量行/脉冲、深树 raw 映射+相机、
+      # 多数组归属接线、播放头连续补间/seek 短滑/scrub 与 reduced 瞬时、播放期事件拍抽稀、多数组事件拍〕，
+      # 含断点行为链/stdin 喂入/golden 对照/统计卡）
+      # ——2026-10-18 前端改造批按新 IA（三态 + vr-* 类名）重定向
+      # 选择器，锚语义不变（旧 .pilot-head/.tab/.bars 锚已退役，旧脚本会在
+      # boot 等待即超时，非回归）；
+      # 「CI 无 Edge 不进流水线」的旧既定收口（2026-10-17 收口批）：runner
+      # 预装浏览器 CDP 直连，脚本零改动；vite build 产物起本地静态服。
+      # 2026-10-18 连红处置：本 job runs-on windows-latest 而启动命令写死
+      # ubuntu 命令名 google-chrome——command not found → Chrome 未起 →
+      # CDP 9222 ECONNREFUSED，该闸自 62f75d3d 进 CI 起从未绿过。改为
+      # 探测链：PATH google-chrome（ubuntu 形态）→ Windows Chrome 标准
+      # 安装路径（runner 镜像自带）→ Edge 兜底（CDP 同源，注释既定口径）。
+      # 闸内显式回显所用浏览器——静默兜底违反 fail loud 纪律。
+      - name: F4 browser E2E (headless chrome, 107 anchors)
+        if: always()
+        run: |
+          CHROME_BIN="$(command -v google-chrome || true)"
+          if [ -z "$CHROME_BIN" ]; then
+            for p in "/c/Program Files/Google/Chrome/Application/chrome.exe" "/c/Program Files (x86)/Google/Chrome/Application/chrome.exe" "/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"; do
+              if [ -f "$p" ]; then CHROME_BIN="$p"; break; fi
+            done
+          fi
+          if [ -z "$CHROME_BIN" ]; then
+            echo "E2E 闸 fail loud：runner 无 Chrome/Edge 可用" >&2
+            exit 1
+          fi
+          echo "E2E browser: $CHROME_BIN"
+          # 2026-10-23 连红处置：CDP 30s 在 runner 冷启动/Chrome 更新时不够
+          # （run 39939871737 实测 30s 内未 listen，E2E 整段红）。改为：
+          # ①profile 放 RUNNER_TEMP 且每 run 唯一（不继承 workspace 旧 profile）；
+          # ②首启最多等 90s；③仍未就绪则清 profile 重启一次再等 90s；
+          # ④失败回显日志 + 进程态，不把「浏览器没起来」伪装成断言失败。
+          PROFILE="${RUNNER_TEMP:-$PWD}/chrome-e2e-$$"
+          LOG="${RUNNER_TEMP:-$PWD}/chrome-e2e-$$.log"
+          rm -rf "$PROFILE" "$LOG"
+          taskkill //F //IM chrome.exe >/dev/null 2>&1 || true
+          start_chrome() {
+            ("$CHROME_BIN" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PROFILE" --no-first-run about:blank >>"$LOG" 2>&1 &)
+          }
+          wait_cdp() {
+            for i in $(seq 1 90); do
+              if curl -sf --max-time 1 http://127.0.0.1:9222/json/version >/dev/null 2>&1; then return 0; fi
+              sleep 1
+            done
+            return 1
+          }
+          start_chrome
+          (cd demo && node tests/serve_static.mts 8931 &)
+          if ! wait_cdp; then
+            echo "E2E：CDP 首启 90s 未就绪，清 profile 重启一次…" >&2
+            taskkill //F //IM chrome.exe >/dev/null 2>&1 || true
+            rm -rf "$PROFILE"
+            sleep 2
+            start_chrome
+            if ! wait_cdp; then
+              echo "E2E 闸 fail loud：CDP 9222 重启后 90s 仍未就绪（$CHROME_BIN）" >&2
+              echo "---- chrome log ($LOG) ----" >&2
+              tail -40 "$LOG" >&2 || true
+              echo "---- chrome 进程 ----" >&2
+              (tasklist //FI "IMAGENAME eq chrome.exe" 2>/dev/null || ps aux | grep -i chrome | grep -v grep) >&2 || true
+              exit 1
+            fi
+          fi
+          # 样式契约闸（#222 P0 第二批，2026-10-21）：五主题 × 19 选择器 × 9
+          # computed 属性（颜色/字体族/连字/字距/大小写）。取的是跨 OS 确定值
+          # （不经栅格化），基线 demo/tests/style_contract.json 入库。
+          # -selftest 先证完整性判定（残缺 doc 判红），再跑真比对。
+          node demo/tests/style_contract.mts --selftest
+          node demo/tests/style_contract.mts http://127.0.0.1:8931/
+          node demo/tests/e2e_diagcard.mts http://127.0.0.1:8931/
+          node demo/tests/e2e_workspace.mts http://127.0.0.1:8931/
+          node demo/tests/e2e_session.mts http://127.0.0.1:8931/
+          node demo/tests/e2e_editor.mts http://127.0.0.1:8931/
+          # bootfail 末位跑：临时改名 dist wasm 产物造装载失败（finally 还原），
+          # 串行步骤内安全；若前置步骤红，本步不执行无遗留改名。
+          node demo/tests/e2e_bootfail.mts http://127.0.0.1:8931/
+        shell: bash
+
+      # demo UI 字符串契约对账（2026-10-02，防线维护）：JS↔CSS 类名/CSS
+      # skill 手册引用路径存在性闸（2026-10-07 接线；缺陷形态 03 E11/E13 同族面
+      # 「手册改写引用面按脑测填迁移目标」的机判面）：.agents/skills/** 内的
+      # 仓库路径引用（围栏代码块 + 行内反引号 span，首段 = 仓库根一级条目）
+      # 必须实存；退役/反例语境死路径经 rules.json dead_paths 过闸（新增须在
+      # 提交信息写明语境）；min_hits 下限守卫防抽取面塌缩（D8）。
+      # -selftest 九路注入证红（J9）。首跑战果：11 处缺失全数人工定性
+      # （2 陈旧路径修正 + 1 笔误前缀修正 + 1 占位符化 + 1 注释粘连 +
+      # 6 退役/反例语境收编 dead_paths）。
+      - name: skill docs referenced-path existence
+        if: always()
+        run: |
+          node scripts/skill_path_check/main.mts -selftest
+          node scripts/skill_path_check/main.mts
+        shell: bash
+
+      # 变量/id 三路文本对账——demo UI 批三实锤 bug 中两个的归因面
+      # （stdin-row 死类 + --fg-muted 幽灵变量；HEAD 版证红留痕：bug 版
+      # 三件套复现 5 条。TS 类型系统对这两类零感知，故走文本闸）。
+      # 规则外置 rules.json（动态类簇/动态 id 前缀，僵尸条目无条件红）。
+      # TS 重写批：扫描面 = app.ts + js/*.ts（源=审阅对象）。
+      # #292 终局批：Go 版已删；双轨对拍闸同批退役（等价性证据 = 冻结 golden/sha 基线自证）。
+      - name: demo UI string-contract lint (class/var/id reconciliation)
+        if: always()
+        run: |
+          node scripts/demo_ui_lint/main.mts -selftest
+          node scripts/demo_ui_lint/main.mts
+        shell: bash
+
+      # #51 批①（2026-10-17，refs #122 F3）：phase 受控词表冻结闸——
+      # teaching/steps/infer_*.mbt 的 build_step 字面量 ↔ rules.json 双向全等
+      # （未登记扩张红 / 僵尸条目红 / family 漂移红 / 非字面量调用红）；
+      # 抽取面下限防正则失能，-selftest 内存注入四路证红（J9）。
+      - name: teaching phase vocabulary freeze gate (infer literals ↔ rules.json)
+        if: always()
+        run: |
+          node scripts/teaching_phase_vocab/main.mts -selftest
+          node scripts/teaching_phase_vocab/main.mts
+        shell: bash
+
+      # 拆分批（2026-10-04，refs #28）→ TS 重写批：纯函数层 node --test——
+      # 黄一批评「demo 层无自己测试」的正解药方。node 25 type stripping
+      # 直跑 .ts（零发射依赖——源在即跑，比发射更早的红）。锚位对历史
+      # bug 窝点：buildCallTree trie / isArrayAnimCase 紧凑声明存量 bug
+      # 锁 / latin1ToUtf8 / tokenizeC / highlightLines / heapSpanOf / esc。
+      # DOM 交互层不硬测，维持浏览器实测纪律。
+      # 2026-10-04 审阅 P3-④：tests 此前不在主 tsconfig include——只有
+      # 「能跑」保证无类型保证。独立 tests/tsconfig.json（@types/node）
+      # 补类型面，直跑前先过 tsc。
+      - name: demo pure-function tests (node --test on .ts)
+        if: always()
+        run: |
+          cd demo && npx tsc -p tests/tsconfig.json && cd ..
+          node --test demo/tests/pure.test.mts
+        shell: bash
+  # ── desktop（proton 捉虫壳，P 线前进拍板 2026-11-02）──────────────────
+  # 定位：独立下游 module（desktop/，与 demo/ 并列），`import vitro/engine@pin`
+  # 消费 **mooncakes 已发布包**——非发包面、不在 moonbit/moon.work 成员里、
+  # 引擎 publish 流程零涉及（零污染语义与依赖方向见 desktop/README.md）。
+  # 本 job 红的含义 = 已发布 vitro/engine@pin 在下游独立 module 装不上/
+  # 解析不过（0.9.0 core/abort 断供事故的事前哨兵形态——该事故当时零 CI
+  # 信号，靠下游报告才知）。
+  desktop:
+    name: Desktop shell gates (check / build / CEF CDP smoke)
+    # 全量批（2026-11-02 PR #417 CI 绿后升格，用户拍板「上全量测试防线」）：
+    # check-only 轻形态退役。smoke 需要 demo 的构建期资产（wasm.wasm/langpack
+    # ——vite 模块图静态资产，缺失即 dev/build 红，与 demo job 同款 fail loud
+    # cp），故 needs build-artifacts（此前「不消费本仓产物」的注记随之作废）。
+    # timeout：CEF 下载在坏网络可长停滞（PR #417 审阅 P3）——25min 硬顶防挂死。
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain
+        uses: ./.github/actions/setup-moonbit
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      # ── mooncakes 零自拉（CI 离线化，2026-11-03 拍板：下载只允许发版彩排
+      #    两次 + 依赖 pin 变化时人工预热）——自家 CI 每轮全量拉 13 包
+      #    （vitro/engine@pin + proton 族）会机械刷高 mooncakes 下载量
+      #    （riantr 同款机制形态，用户上站实证计数上涨）。机制依据（moon
+      #    源码 crates/mooncake/src/registry/client.rs）：registry cache zip
+      #    命中走 Using cached 分支零网络，miss 才 Downloading。三层缓存：
+      #    registry/cache（zip 层——零 GET 的关键）+ registry/index（moon
+      #    update 索引增量）+ cache/deps（sources 展开层）。key 锚
+      #    desktop/moon.mod（依赖 pin 变=换 key）+ proton_cli 版本字面。
+      #    save-always：miss 预热轮回填后 post 也保存（否则「miss 即红」与
+      #    post save 的 success() 门互锁成死循环）。
+      - name: mooncakes package cache (zero self-pull)
+        id: moonpkgs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\.moon\registry\cache
+            ~\.moon\registry\index
+            ~\.moon\cache\deps
+          key: moon-pkgs-v1-${{ hashFiles('desktop/moon.mod') }}-pc0.6.0
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      # ── demo 构建期资产（与 demo job 两 cp 同款——engine.worker 模块图的
+      #    vite 静态资产；桌面 IPC 通道不消费 wasm，但模块图在即资产必须在）──
+      - name: demo wasm asset in place (build-time asset)
+        shell: bash
+        run: cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
+      - name: demo langpack asset (build artifact → cp)
+        shell: bash
+        run: |
+          mkdir -p demo/teaching/langpack
+          cp moonbit/_build/js/release/build/teaching/langpack/langpack.js demo/teaching/langpack/langpack.js
+      # moon update 刷注册表索引后按 moon.mod pin 拉 vitro/engine + proton 族；
+      # check 不编 C stub、不碰 CEF runtime——P 线实测 ~2s（91 任务）。
+      - name: desktop moon check (native; vitro/engine@pin from mooncakes)
+        shell: bash
+        run: |
+          cd desktop
+          moon update
+          moon check --target native --diagnostic-limit 80 2>&1 | tee /tmp/moon_pull_check.log
+      # hygiene job 的 moon fmt --check 只扫 moonbit/——独立 module 自带一道
+      - name: desktop moon fmt --check
+        shell: bash
+        run: cd desktop && moon fmt --check
+      - name: desktop probe TS gates (tsc strict + oxlint)
+        shell: bash
+        run: cd desktop && npm ci && npm run check:all
+      # ── 全量段：CEF 真窗口 CDP smoke（P 线四形态/捉虫/端到端的 CI 化）──
+      - name: Install proton_cli (mooncakes 0.6.0)
+        shell: bash
+        run: moon install moonbit-community/proton_cli@0.6.0 2>&1 | tee /tmp/moon_pull_install.log
+      # CEF runtime store 缓存（869MB 解压物——key 双锚 proton 版本 + CEF
+      # 版本号；失配重下属正确行为。helper 不缓存：14s 原生构建且随 pin 变）
+      - name: CEF runtime store cache
+        uses: actions/cache@v4
+        with:
+          path: ~\.proton\store
+          key: proton-store-win32-x64-0.6.0-cef-150.0.19
+      - name: cef setup (download + assemble on cache miss)
+        shell: bash
+        run: cd desktop && proton_cli cef setup 2>&1 | tee /tmp/moon_pull_cef.log
+      - name: demo deps (vite dev server)
+        shell: bash
+        run: cd demo && npm ci
+      # algorithms.js 是 gitignored 生成物（.gitignore:185），vite 的
+      # demoGlobals 插件构建期 readFileSync 硬依赖——本地盘上有产物故
+      # dev 绿，CI 全新 checkout 缺席即 ENOENT（二轮红根因）。与 demo job
+      # 的发射步同款；生成器内部 ensureFresh 自跑 vitro_js 构建（#36 三真值
+      # 源机判），moon 工具链本 job 已装。
+      - name: demo algorithms data emit (generator assertions = gate)
+        shell: bash
+        run: node scripts/gen_demo_algorithms/main.mts
+      - name: desktop release build (proton + vitro/engine in-process)
+        shell: bash
+        run: cd desktop && proton_cli build -- --release 2>&1 | tee /tmp/moon_pull_build.log
+      # 注意 smoke 的 formC 段会再构建一次 release（临时 debug=false 源）——
+      # 本步产物供 dev 形态起窗 + 给 formC 段预热构建缓存（冷树 formC build
+      # 可分钟级，600s 超时按冷树设）。
+      # 断言集：CDP 就绪 / transport=ipc / demo 完整采集（golden ✓ 42 帧
+      # 引擎 0.9.1 stdout）/ 无 DevTools 窗口捉虫 ≥3 / R3b 形态 C（debug=false
+      # 重建直跑 + env 钉端口 → CDP 可达 + proton.localhost 指纹 + 三虫）+
+      # 负向对照（同产物无 env ⇒ find_cdp 扫零 CDP——「patch 真生效」的判别
+      # 锚，审阅 P2-1）——tools/smoke.mts 头注。基线数字漂移（帧数/版本）须
+      # 连坐更新 smoke.mts 断言与 README 基线表。
+      - name: CDP smoke (real CEF window, pinned ports)
+        shell: bash
+        run: cd desktop && node tools/smoke.mts 9335 9336
+      # ── 零自拉断言（fail loud）：缓存命中轮全程不得出现 Downloading
+      #    （zip GET=mooncakes 计数入账动作）。miss 轮=预热显形（warning +
+      #    回填，post save 后下轮起严格）——绝不静默重下；驱逐/换 pin 同
+      #    形态回落一轮预热。
+      - name: zero self-pull assertion (cache hit => 0 Downloading)
+        if: always()
+        shell: bash
+        run: |
+          pulls=$(cat /tmp/moon_pull_*.log 2>/dev/null | grep -c "Downloading" || true)
+          if [ "${{ steps.moonpkgs.outputs.cache-hit }}" = "true" ]; then
+            if [ "$pulls" != "0" ]; then
+              echo "::error::缓存命中却发生 ${pulls} 次 mooncakes 拉取（缓存驱逐/缺包）——本轮回填已保存，重跑即绿；持续红=依赖 pin 变化，按需人工预热（拍板口径：下载只允许彩排两次）"
+              exit 1
+            fi
+            echo "零自拉 ✓ 缓存命中且全程 0 次 Downloading（mooncakes 计数不动）"
+          else
+            echo "::warning::预热跑——本轮自 mooncakes 拉取回填缓存（${pulls} 次 Downloading），save-always 保存后下轮起零自拉"
+          fi
+      # 兜底清树（CEF 子进程模型：dev 树收不净的残余同名进程）。
+      # MSYS_NO_PATHCONV=1：/IM 是 taskkill 旗标非路径——Git Bash 的 MSYS
+      # 路径转换会把它吃成盘符路径（二轮 cleanup 红 rc=1 根因）。
+      - name: cleanup stray processes
+        if: always()
+        shell: bash
+        run: |
+          export MSYS_NO_PATHCONV=1
+          taskkill /IM app.exe /IM cef_process.exe /IM proton_cli.exe /F 2>/dev/null || true

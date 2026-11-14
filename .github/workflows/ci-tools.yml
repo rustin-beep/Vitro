@@ -1,0 +1,184 @@
+# ── CI 拆分批（2026-11-14）：本文件 = 主 CI（ci.yml）的 called 单元 ──────────
+# backend-triage / cli-smoke-linux / release-preflight / scripts-ts 四 job 自 ci.yml 逐字搬迁（步骤/注释裁定资产零改动），唯一机械变换 =
+# 删跨文件无效的 `needs: build-artifacts` 行（时序由 caller 侧 needs 承接，
+# 语义等价）。called job 与 caller 同 run 执行：artifact / cache /
+# needs 红态传导 / github 上下文（event_name 等触发事件面）全同域。
+# 编排与汇总（ci-summary）见 ci.yml；夜间哨兵见 nightly.yml。
+name: CI tools
+on:
+  workflow_call:
+jobs:
+  # ── backend-triage（#349 三面编译语义对拍臂，2026-10-28）──────────────
+  # 同一份 MoonBit 源（cmd/backend_triage runner——gateway 四导出帧源级形态）
+  # 在三个编译后端下执行、stdout 逐字节对拍：
+  #   native（MOON_CC=clang）/ js（node）/ wasm-gc（moonrun——moon 自带）
+  # 任两臂分叉 ⇒ 直接归因编译后端（现役 js/wasm 两臂同宿主 node，宿主层
+  # bug 两臂同报不可分——本臂 wasm 侧宿主异构）。新增不替换：现役
+  # gates-wasm 各 slice 不动，跑绿一阶段后另议收敛（#349 落地形态）。
+  backend-triage:
+    name: Backend triage (native-clang / js-node / wasm-gc-moonrun)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install MoonBit toolchain (moon run 三连 + moonrun)
+        uses: ./.github/actions/setup-moonbit
+      - name: Refresh MoonBit registry index
+        shell: bash
+        run: cd moonbit && moon update
+      - name: Three-backend semantic triage (#349)
+        shell: bash
+        run: node scripts/backend_triage/main.mts
+  # ── cli-smoke-linux（PR #367 审阅 P1-1，2026-10-28）───────────────────
+  # #366 锚的 Linux 判别力 lane：vitro_cli_smoke 的 B[大帧管道]/B[stderr
+  # 通道] 锚依赖 POSIX 管道的异步写丢弃机理——Windows 上 libuv 对 stdio
+  # 管道走同步句柄（WriteFile 直通、不排队），锚在 windows-latest lane
+  # 恒绿无牙（审阅反向突变实测：out_line→println 回退后 Windows 锚仍
+  # 绿、CI 全绿）。本 job 在 ubuntu 上重跑同一 smoke 全集，管道口径锚
+  # 自此有 Linux 判别力；Windows lane 保留（平台面双覆盖）。产物四件 +
+  # serve 同 cli_smoke slice 自建形态。
+  cli-smoke-linux:
+    name: CLI smoke (ubuntu — pipe anchors need POSIX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      # P2-1（2026-10-30 处置批）：内联 unix.sh 三行副本收敛——action 补
+      # POSIX 分支后此处统一 uses 引用（.moonbit-version pin 单源不变）。
+      - name: Install MoonBit toolchain (action, POSIX arm)
+        uses: ./.github/actions/setup-moonbit
+      - name: Refresh MoonBit registry index
+        run: cd moonbit && moon update
+      - name: Build four arms + serve exe
+        run: |
+          cd moonbit
+          moon build --release --target js cmd/vitro_js
+          moon build --release --target js cmd/vitro_wasm
+          moon build --release --target wasm-gc gateway/wasm
+          MOON_CC=clang moon build --release --target native cmd/vitro
+          MOON_CC=clang moon build --release --target native cmd/serve
+      # ── #500 批（2026-11-12）：C stub 隐式声明防线 ─────────────────────
+      # cmd 下全部 .c 的严格声明扫描。为何是独立步而非构建旗标注入：
+      # ① moon 无 CFLAGS/MOON_CFLAGS 环境变量透传（moon.exe strings 实证
+      #   ——旗标入口只有 moon.pkg 的 cc-flags/stub-cc-flags 配置面）；
+      # ② 即便注入 -Werror=implicit-function-declaration，x86_64 的
+      #   moonbit.h emmintrin→mm_malloc→stdlib 链会意外供给 malloc 族声明
+      #   （arm64 走 arm_neon 分支无此巧合——Apple clang 21/gcc14+ 隐式
+      #   声明默认 error 即断供，#500），构建照绿抓不住；须
+      #   -DMOONBIT_NATIVE_NO_SYS_HEADER（moonbit.h 官方宏）还原「文件自身
+      #   显式 include 集」，而该宏改变 v128 typedef——不能进真实构建，
+      #   只能进扫描。J9：删任一 host_clock_stub.c 的 stdlib.h → 四份当步
+      #   红（malloc:56 隐式声明，WSL clang 21 实证同形态）。
+      - name: C stub strict-declaration scan (moonbit/cmd .c set — #500)
+        # P3-6（PR #504 审阅处置）边界声明：本步只对 ubuntu 宿主有牙——
+        # Windows 宿主下 windows.h 头链仍供给 malloc 声明（删 stdlib.h 照
+        # 绿假阴性），Windows 本地复跑不能当 J9 证据；J9 证红须 Linux 分支
+        # （-U_WIN32 模拟或 WSL，#500 批实录见 PR 描述）。
+        run: |
+          set -e
+          cd moonbit
+          files=$(find cmd -name '*.c' | sort)
+          [ -n "$files" ] || { echo '::error::扫描文件集为空（find 失败？）'; exit 1; }
+          echo "扫描 $(echo "$files" | wc -l) 个 C stub（-DMOONBIT_NATIVE_NO_SYS_HEADER = 文件自身显式声明集口径）"
+          for f in $files; do
+            clang -fsyntax-only -Werror=implicit-function-declaration -Werror=implicit-int \
+              -DMOONBIT_NATIVE_NO_SYS_HEADER -I "$HOME/.moon/include" "$f" \
+              || { echo "::error::$f 隐式声明扫描红——缺显式 include（对照 #500）"; exit 1; }
+          done
+          echo "C stub 严格声明扫描：全部通过"
+        shell: bash
+      - name: unified CLI smoke (ubuntu lane, #366 anchors with teeth)
+        run: node scripts/vitro_cli_smoke/main.mts --corpus 30
+      # A7 批连坐（2026-11-02）：CLI 参数面对称性冒烟 ubuntu 臂——与 gates-wasm
+      # cli_smoke slice 的 windows 跑同一声明表；三臂对称性双 OS 覆盖（#388 教训：
+      # 本地 Windows 绿排除不了 ubuntu 调度差异）。产物由上一步四臂构建提供。
+      - name: CLI argument-face symmetry (ubuntu lane)
+        run: node scripts/cli_symmetry/main.mts -check
+        shell: bash
+  # ── release-preflight（ds 批③：发布前置闸，2026-10-31）──────────────────
+  # moon package 非退化闸 + 根级四件 + 版本状态探针（**闸进程零网络零
+  # login**——dry-run 在 CI 无 moon login 会被「Registry login is required」
+  # 拦，故只进 release 档〔发版本机〕；本 job 的 registry 刷新属 job 依赖面
+  # 非闸行为）。import 断供防线由 moon check/test 的 Hygiene job 承担，本
+  # job 增量 = 发布件面（**模块目录被 .gitignore 覆盖时 22 字节空 zip rc=0
+  # 静默成功实锤**——审阅批 2026-10-31 勘正归因：与是否 git 仓库无关〔无
+  # git 目录打包正常〕，CI 在 checkout 树里跑，本闸 CI 可达形态 = 忽略规则
+  # 误伤 moonbit/）。**反刷量约束（用户拍板）**：零 vitro/engine zip GET；
+  # 干净消费验收（moon add + build = 真实下载计数）不进 CI，人工步骤落
+  # vitro-release-playbook。A8 批（refs #438）起加**解压树 check**（件③，
+  # 0.9.0 断供的下游视角拦截）：moon package → 零依赖手写解压 → 解压树上
+  # moon check——解压树 deps 由 moon 解析（moonbitlang/core 族，缓存缺席会
+  # 拉依赖包——非 vitro/engine 计数面，R5d 件③适配点 3 诚实登记：本步非
+  # 「零网络」，与前置 moon update 同属 job 依赖面）。J9：解压树删
+  # time_travel/checkpoint.mbt → Error [4024]×3 rc=1（本地实证）。
+  release-preflight:
+    name: Release preflight (package integrity + unzip consumer check)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install MoonBit toolchain (action)
+        uses: ./.github/actions/setup-moonbit
+      - name: Refresh MoonBit registry index
+        run: cd moonbit && moon update
+      - name: Package integrity gate (non-degenerate zip + root files + version probe + unzip-tree check)
+        run: node scripts/release_preflight/main.mts --unzip-check
+  # ── scripts-ts（#273 批一：四件套门，2026-10-22）────────────────────────
+  # 判定型脚本默认 .mts 后的最小入库门：node 直跑（无发射）+ tsc 严格档 +
+  # oxlint（.mts 目录扫描缺口——显式列文件）+ node:test（Windows 目录模式
+  # 缺口——显式列文件）。依赖钉版本 = scripts/package-lock.json（npm ci）。
+  scripts-ts:
+    name: Scripts TS gate (tsc / oxlint / node:test)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      # gen_svg 的「真实仓库 -check」用例读 reports/facts.json（包切分图的实/虚
+      # 线与在架徽标全部 facts 派生）——该文件 gitignored，CI 检出态不存在，
+      # 故本 job 自带采集（`facts facts` 只采集落盘不判红，判红归 bookkeeping）。
+      - name: npm ci (lockfile pinned)
+        run: npm ci
+        shell: bash
+      - name: tsc strict (strict + noUncheckedIndexedAccess)
+        run: npm run check
+        shell: bash
+      - name: oxlint (explicit file list)
+        run: npm run lint
+        shell: bash
+
+      # 生成器簇「真实仓库 -check」用例内置 `moon fmt` 归一（gen_stubs /
+      # gen_protocol_fields / gen_host_route / gen_libc_data / gen_icons 五例），
+      # 归一后再比对产物、比对后无条件还原——moon 不在 PATH 时**必须红**
+      # （fail loud，不做 skip 兜底：环境缺口静默通过就是假绿）。
+      # 2026-10-23 首轮 CI 实锤五红同根 = moon 缺席（exit null），非代码缺陷。
+      # 安装置于 node:test 前、tsc/oxlint 后：类型/风格面仍先快失败。
+      - name: Install MoonBit toolchain (generator -check runs moon fmt)
+        uses: ./.github/actions/setup-moonbit
+
+      # gen_svg -check 的 facts 输入。放在 moon 之后：
+      # 采集链含 moon 相关项，缺工具链会把可用键降级成 unavailable。
+      # working-directory 必须覆盖回仓库根——本 job 默认在 scripts/ 下跑，
+      # 直接相对路径会变成 scripts/scripts/facts
+      #（2026-10-23 CI 红实锤：stat D:\a\Vitro\Vitro\scripts\scripts\facts）。
+      # 2026-10-25 #273 迁移批：Go→.mts，命令切 node。
+      - name: facts collect (gen_svg -check input)
+        working-directory: ${{ github.workspace }}
+        run: node scripts/facts/main.mts facts
+        shell: bash
+
+      - name: node:test (explicit file list)
+        run: npm run test
+        shell: bash

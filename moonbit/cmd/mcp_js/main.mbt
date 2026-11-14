@@ -133,6 +133,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| .arr{margin-bottom:14px}
   #| .arr-h{font:600 13px ui-monospace,monospace;color:var(--muted);margin-bottom:6px}
   #| .cells{position:relative;display:grid;gap:6px;grid-template-columns:repeat(var(--n),var(--cw))}
+  #| .cells.grid2d{grid-template-columns:repeat(var(--cols,1),var(--cw))}
   #| .cell{position:relative;width:var(--cw);height:52px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font:600 15px ui-monospace,monospace;transition:transform .18s,background .3s,border-color .3s}
   #| .cell .bar{position:absolute;left:6px;right:6px;bottom:4px;height:calc(var(--v)*30%);max-height:34px;background:color-mix(in srgb,var(--accent) 25%,transparent);border-radius:4px;transition:height .25s}
   #| .cell .idx{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:10px;color:var(--muted)}
@@ -140,6 +141,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| .cell.changed{animation:flash .6s}
   #| @keyframes flash{0%{background:color-mix(in srgb,var(--changed) 55%,var(--bg));border-color:var(--changed)}100%{}}
   #| .ptrs{display:grid;gap:6px;grid-template-columns:repeat(var(--n),var(--cw));margin-top:4px;min-height:20px}
+  #| .ptrs.grid2d{grid-template-columns:repeat(var(--cols,1),var(--cw))}
   #| .ptr{font:11px ui-monospace,monospace;color:var(--accent);text-align:center}
   #| .arc{position:absolute;pointer-events:none;overflow:visible}
   #| #diag{display:flex;flex-direction:column;gap:10px}
@@ -201,15 +203,17 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| var h="";
   #| for(var ai=0;ai<names.length;ai++){var nm=names[ai],els=(fr.r||{})[nm]||[];
   #| if(!els.length)continue;var pels=pv&&(pv.r||{})[nm]||[];
+  #| var dm=((fr.rd||{})[nm])||null;var cols=dm?(dm[dm.length-1]||1):els.length;
   #| var sp=swapPair(fr,nm,els.length);
   #| var max=1;for(var q=0;q<els.length;q++){var fv=parseFloat(els[q]);if(isFinite(fv)&&Math.abs(fv)>max)max=Math.abs(fv)}
-  #| h+='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> \u00b7 '+els.length+' \u5143\u7d20</span></div><div class="cells" style="--n:'+els.length+';--cw:64px">';
+  #| h+='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> \u00b7 '+els.length+' \u5143\u7d20'+(dm?' ['+dm.join('x')+']':'')+'</span></div><div class="cells'+(dm?' grid2d':'')+'" style="--n:'+els.length+';--cw:64px'+(dm?';--cols:'+cols:'')+'">';
   #| for(var i2=0;i2<els.length;i2++){var cls2="cell";var sp2=sp&&(i2===sp.i||i2===sp.j);
   #| if(sp2)cls2+=" swap"; else if(pels.length&&pels[i2]!==els[i2])cls2+=" changed";
   #| var v=parseFloat(els[i2]);var ratio=isFinite(v)?Math.max(.06,Math.abs(v)/max):.3;
-  #| h+='<div class="'+cls2+'" style="--v:'+ratio.toFixed(2)+'"><span class="idx">'+i2+'</span>'+esc(els[i2])+'<span class="bar"></span></div>'}
+  #| var lab=dm?('['+Math.floor(i2/cols)+']['+(i2%cols)+']'):i2;
+  #| h+='<div class="'+cls2+'" style="--v:'+ratio.toFixed(2)+'"><span class="idx">'+lab+'</span>'+esc(els[i2])+'<span class="bar"></span></div>'}
   #| h+="</div>";
-  #| h+='<div class="ptrs" style="--n:'+els.length+';--cw:64px">';
+  #| h+='<div class="ptrs'+(dm?' grid2d':'')+'" style="--n:'+els.length+';--cw:64px'+(dm?';--cols:'+cols:'')+'">';
   #| for(var i3=0;i3<els.length;i3++){var p2="";for(var vi=0;vi<fr.v.length;vi++){var va=fr.v[vi];var num=parseInt(va[2]);
   #| if(isFinite(num)&&num===i3&&/^int$/.test(va[1]))p2+=(p2?" ":"")+"\u25be"+va[0]+"="+va[2]}
   #| h+='<div class="ptr">'+p2+'</div>'}
@@ -309,8 +313,8 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| return true;
   #| }
   #| function compactFrame(p, focusSet) {
-  #| const r = {};
-  #| for (const a of p.array_snapshots ?? []) if (!focusSet || focusSet.has(a.name)) r[a.name] = a.elements;
+  #| const r = {}; const rd = {};
+  #| for (const a of p.array_snapshots ?? []) if (!focusSet || focusSet.has(a.name)) { r[a.name] = a.elements; if (a.dims && a.dims.length > 1) rd[a.name] = a.dims; }
   #| return {
   #| i: p.step_index,
   #| l: p.code_line,
@@ -320,7 +324,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| v: (p.local_vars ?? []).map((x) => [x.name, x.ty_name, x.value]),
   #| c: (p.call_stack ?? []).map((x) => x.func_name),
   #| e: (p.vis_events ?? []).map((x) => [x.ty, x.line, x.extra0, x.extra1, x.extra2, x.context]),
-  #| r,
+  #| r, rd,
   #| h: p.root_cause_hint ? { c: p.root_cause_hint.category, o: p.root_cause_hint.one_liner, ls: p.root_cause_hint.related_lines, fx: p.root_cause_hint.suggested_fix_desc } : null,
   #| };
   #| }

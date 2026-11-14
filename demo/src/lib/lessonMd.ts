@@ -60,6 +60,24 @@ export interface LessonDoc {
   blocks: Block[];
   /** 无 scene 元数据的课 = []，消费方回退现有长文。 */
   scenes: Scene[];
+  /** 无 viz 声明的课 = []（宿主按默认投影器画）。 */
+  vizs: VizDecl[];
+}
+
+/** 可视化声明（`<!-- vitri-viz v1 … -->` 块，2026-11-14 批 B，refs #470 v0.1.1）。
+ *
+ *  课程侧声明「哪几条序列用什么投影器画」——引擎与宿主都不做领域推断：
+ *  傅里叶/频谱这类形态由课源显式点名（`series re im -> polar`），引擎只保证
+ *  `series` 的名字/形状/维度到位（`array_snapshots.dims`）。 */
+export interface VizDecl {
+  /** 参与同一投影的序列名（同组即同图；顺序 = 绘制顺序）。 */
+  series: string[];
+  /** 投影器 id：cells / bars / line / grid2d / polar / spectrum（宿主实现）。 */
+  projector: string;
+  /** 额外选项（`k=v` 形态，如 `axis=x`、`gain=2`）；未知键宿主原样保留。 */
+  opts: Record<string, string>;
+  /** 声明在整个 viz 注释块内的行号（1 起；版本行=1、块内注释计入；报错定位用）。 */
+  line: number;
 }
 
 // ── 行内样式 token（v2 兑现——头注 schema 留的演进位）──────────────
@@ -125,8 +143,28 @@ export function parseLessonMd(src: string): LessonDoc {
   if (!meta.id || !meta.kind) throw new LessonParseError("frontmatter 缺 id 或 kind");
 
   const body = rest.slice(end + 4).replace(/^\n+/, "");
-  const sceneDoc = extractScenes(body);
-  return { version: 1, meta, blocks: parseBlocks(sceneDoc.body.split("\n")), scenes: sceneDoc.scenes };
+  // 两个声明块都在 body 顶部（顺序不限，各至多一次）——循环剥到不再命中。
+  // 固定顺序会在「viz 写在 scenes 前」时把 viz 块当正文静默吞掉（md 注释
+  // 渲染上不可见，坏课源不会自己叫），故按命中逐个剥。
+  let cur = body;
+  let scenes: Scene[] = [];
+  let vizs: VizDecl[] = [];
+  for (let guard = 0; guard < 2; guard += 1) {
+    if (/^<!--\s*vitri-scenes\b/.test(cur)) {
+      const r = extractScenes(cur);
+      scenes = r.scenes;
+      cur = r.body;
+      continue;
+    }
+    if (/^<!--\s*vitri-viz\b/.test(cur)) {
+      const r = extractViz(cur);
+      vizs = r.vizs;
+      cur = r.body;
+      continue;
+    }
+    break;
+  }
+  return { version: 1, meta, blocks: parseBlocks(cur.split("\n")), scenes, vizs };
 }
 
 /** 从 body 顶部剥离 `<!-- vitri-scenes v1|v2 ... -->` 并解析。
@@ -211,6 +249,53 @@ function extractScenes(body: string): { body: string; scenes: Scene[] } {
   }
   if (scenes.length === 0) throw new LessonParseError("scene 元数据为空");
   return { body: rest, scenes };
+}
+
+/** 从 body 顶部剥离 `<!-- vitri-viz v1 ... -->` 并解析（2026-11-14 批 B）。
+ *
+ *  行形态：`series <名…> -> <投影器> [k=v …]`；`//` 起首为块内注释。
+ *  解析只做形态校验（名字须标识符、投影器 id 须标识符、选项须 k=v），
+ *  **不校验投影器是否存在**——注册表在宿主侧，课程声明与宿主能力的对账
+ *  留给消费点（fail loud 报「未知投影器」而不是解析期拒收，否则课程与
+ *  宿主版本会互相锁死）。 */
+function extractViz(body: string): { body: string; vizs: VizDecl[] } {
+  const prefix = body.match(/^<!--\s*vitri-viz\b/);
+  if (!prefix) return { body, vizs: [] };
+  const head = body.match(/^<!--\s*vitri-viz\s+v(\d+)[^\n]*\n/);
+  if (!head) throw new LessonParseError("viz 元数据缺版本行（vitri-viz v1）");
+  if (head[1] !== "1") throw new LessonParseError(`不支持的 viz 版本 v${head[1]}`);
+  // 闭合栏按行识别（顶格或带缩进均可）：空声明块的 `-->` 紧跟版本行、
+  // 没有前导 `\n`，只找 "\n-->" 会把「空块」误报成「未闭合」。
+  const tail = body.slice(head[0].length).split("\n");
+  const closeLine = tail.findIndex((l) => l.trim() === "-->");
+  if (closeLine < 0) throw new LessonParseError("viz 元数据未闭合");
+  const raw = tail.slice(0, closeLine).join("\n");
+  const rest = tail.slice(closeLine + 1).join("\n").replace(/^\n+/, "");
+  const vizs: VizDecl[] = [];
+  // 版本行（`<!-- vitri-viz v1`）是块内第 1 行：报错定位给的是课源里的
+  // 真实行号，不是 raw 片段里的相对行（raw 从版本行之后才开始）。
+  let lineNo = 1;
+  for (const line of raw.split("\n")) {
+    lineNo += 1;
+    const t = line.trim();
+    if (!t || t.startsWith("//")) continue;
+    // 选项段只做「标识符（可带 =值）」的形态收拢，值是否存在由下方
+    // opts 解析逐项 fail loud——否则裸 `k` 会在整行正则处被误报成
+    // 「行形态不对」，报错指不到真正的错处。
+    const m = t.match(/^series\s+([A-Za-z_]\w*(?:\s+[A-Za-z_]\w*)*)\s*->\s*([A-Za-z_]\w*)((?:\s+[A-Za-z_]\w*(?:=\S+)?)*)$/);
+    if (!m) throw new LessonParseError(`viz 行不是 series <名…> -> <投影器> 形态: ${t}`);
+    const series = groupAt(m, 1).split(/\s+/).filter((x) => x !== "");
+    const projector = groupAt(m, 2);
+    const opts: Record<string, string> = {};
+    for (const kv of groupAt(m, 3).trim().split(/\s+/).filter((x) => x !== "")) {
+      const eq = kv.indexOf("=");
+      if (eq <= 0) throw new LessonParseError(`viz 选项须为 k=v: ${kv}`);
+      opts[kv.slice(0, eq)] = kv.slice(eq + 1);
+    }
+    vizs.push({ series, projector, opts, line: lineNo });
+  }
+  if (vizs.length === 0) throw new LessonParseError("viz 元数据为空");
+  return { body: rest, vizs };
 }
 
 function trimQuotes(v: string): string {

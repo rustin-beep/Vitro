@@ -47,6 +47,11 @@ pub(all) struct ArraySnapshotData {
   elements : Array[String]
   /// U2#10：超出 256 截断标记（payload 级可见，消费方不得当全量）。
   truncated : Bool
+  /// 数组维度表（外→内，如 `int m[2][3]` = [2, 3]；一维 = [N]）。
+  /// 2026-11-14 批 B（#517 P2-08）：`elements` 是扁平元素，维度信息此前
+  /// 在观测面即丢失（`base_element_type` 把 `int m[2][3]` 剥成 int），
+  /// 宿主只能画成一维 6 格。`dims` 由 `Type::dims()` 直读，零推算。
+  dims : Array[Int32]
 }
 
 ///|
@@ -342,6 +347,7 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
       element_ty: @ast.type_display_name(@ast.base_element_type(sym.ty)),
       elements,
       truncated,
+      dims: sym.ty.dims().copy(),
     })
   }
   result

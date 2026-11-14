@@ -104,3 +104,23 @@ vitro/engine/wasmenc L_V
 # REHOST 批 1c（2026-11-13）：bytecode 投影层 wasm_triples（code→组三元组
 # 直投影——build_wasm_product 内部消费；跨包消费方批 2 装载协议接线时补边）
 vitro/engine/bytecode wasm_triples
+# 绘制下沉批 A/D（2026-11-14）：StylePack / 投影器词表两个 L0 资产包——
+# 消费面在包外宿主（demo TS 词表由同源生成器发射、MCP 换肤后续接线），
+# MoonBit 包内当前无跨包 import；pub 面保留为宿主可读的资产出口
+# （refs #470 v0.1.1 / #517）。接线后出现消费边时按闸提示撤销本段。
+vitro/engine/style css_base
+vitro/engine/style css_block
+vitro/engine/style css_text
+vitro/engine/style pack
+vitro/engine/style slot
+vitro/engine/style style_base
+vitro/engine/style style_digest
+vitro/engine/style style_packs
+vitro/engine/style style_sizes
+vitro/engine/view check_decl
+vitro/engine/view default_projector
+vitro/engine/view known_opt
+vitro/engine/view projector
+vitro/engine/view projector_digest
+vitro/engine/view projector_ids
+vitro/engine/view projectors

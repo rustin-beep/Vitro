@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/view"
+
+// Values
+pub fn check_decl(String, Int32, Int32) -> String?
+
+pub fn default_projector() -> String
+
+pub fn known_opt(String, String) -> Bool
+
+pub fn projector(String) -> Projector?
+
+pub fn projector_digest() -> String
+
+pub fn projector_ids() -> Array[String]
+
+pub fn projectors() -> Array[Projector]
+
+// Errors
+
+// Types and methods
+pub(all) struct Projector {
+  id : String
+  series_min : Int32
+  series_max : Int32
+  min_dims : Int32
+  opts : Array[String]
+  note : String
+}
+
+// Type aliases
+
+// Traits

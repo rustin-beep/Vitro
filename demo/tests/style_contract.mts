@@ -5,7 +5,7 @@
 // ——由 CSS/token 决定，不经过栅格化。像素闸已于 2026-10-22 按用户裁定退役
 // （PNG 基线入库为噪声），本闸是画面样式的主力机判面。
 //
-// 覆盖面：五主题（清单读 demo/tokens.json `themeOrder`，不在脚本里手抄）×
+// 覆盖面：五主题（清单读 moonbit/style/tokens.json `themeOrder`，不在脚本里手抄）×
 // 固定选择器集 × 固定属性集——抓「组件没用上主题 token / 某主题漏定义 /
 // 连字没关」。边界（显式登记）：只在工作态 exec 首课 DOM 取样；目录/手册/
 // 内存/协议/专注页不在选择器集内，由 E2E 结构锚 + ui_lint 守（审查 P3 项）。
@@ -34,7 +34,7 @@ const UPDATE = process.argv.includes("--update");
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BASELINE = resolve(HERE, "style_contract.json");
 // 主题清单单源 = tokens.json（审查 P3：旧脚本硬编码五主题，新增主题会漏测）
-const TOKENS = JSON.parse(readFileSync(new URL("../tokens.json", import.meta.url), "utf8")) as {
+const TOKENS = JSON.parse(readFileSync(new URL("../../moonbit/style/tokens.json", import.meta.url), "utf8")) as {
   themeOrder?: unknown;
   themes?: Record<string, unknown>;
 };
@@ -42,7 +42,7 @@ const THEMES: string[] = Array.isArray(TOKENS.themeOrder)
   ? TOKENS.themeOrder.filter((x): x is string => typeof x === "string")
   : Object.keys(TOKENS.themes ?? {});
 if (!THEMES.length) {
-  console.error("style_contract: demo/tokens.json 无 themeOrder/themes，拒绝空转");
+  console.error("style_contract: moonbit/style/tokens.json 无 themeOrder/themes，拒绝空转");
   process.exit(2);
 }
 

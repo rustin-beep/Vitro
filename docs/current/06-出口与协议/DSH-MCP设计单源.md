@@ -29,7 +29,28 @@ DSH 侧暴露名 = `mcp__vitro__<name>`。
 ## 3. L0 永驻层（无会话即挂，4 工具，≈700 token schema）
 
 ### 3.1 `animate(source, options?)`
-编排糖：open→惰性全采→render。返回 `{ok, html_path, frame_count, raw_step_count, algorithm_detected, arrays_focused, outputs, run, warnings[], size_bytes, ms}`；编译错产诊断卡 HTML。options 同 v1（mode/budget/focus/theme/audio_description/preview_png/title/out_dir）。
+编排糖：open→惰性全采→render。返回 `{ok, html_path, frame_count, raw_step_count, algorithm_detected, arrays_focused, outputs, run, warnings[], size_bytes, ms}`；编译错产诊断卡 HTML。options 同 v1（mode/budget/focus/viz/theme/audio_description/preview_png/title/out_dir）。
+
+**ViewDoc v0.1.1 出口（2026-11-14 批 E，refs #470）**：`viz` 参数收多行
+`series <名…> -> <投影器> [k=v …]` 声明（与课源 `<!-- vitri-viz v1 -->` 同形，
+文法单源 = `vitro/engine/view`）；声明序列强制进 `focus`（否则帧投影里没有
+数组数据）。渲染钩子 data 恒带 `doc` 字段：
+```json
+{"pv":"0.1.1","default":"cells",
+ "projectors":[{"id":"bars","seriesMin":1,"seriesMax":1,"minDims":0,"opts":["baseline","gain"],"note":"…"}],
+ "series_decl":[{"series":["re","im"],"projector":"polar","opts":{"gain":"1"}}]}
+```
+`projectors` 发全族规格（宿主消费同一词表，不自带序列条数/维度约束副本）；
+`series_decl` 缺省为空数组（旧宿主忽略即退化为一维索引格行为）。解析只校验
+形态，未知投影器 → `warnings` 点名 + 产物内错误面板（不静默降级）；声明序列
+在当前帧缺失 / 条数不符 / 缺 dims → 该帧错误面板。协议全文见
+[VIEW_DOC_SCHEMA_V0_1_1](../../../moonbit/docs/spec/VIEW_DOC_SCHEMA_V0_1_1.md)。
+
+**StylePack 换肤（同批）**：产物 CSS 直接内嵌 `@style.css_text()`（与
+`demo/src/tokens.css` 同源同值，`gen_style` golden 闸管束），壳层只留
+`--vr-*` → MCP 语义变量（`--bg`/`--accent`/…）的别名层；`theme` 参数在
+`auto|light|dark` 之外接受 StylePack 主题 id（`ice/rose/soft/paper/blueprint`，
+`light`/`dark` 分别解析为 `ice`/`soft`）。五主题与 demo 同一色板，不再两套漂移。
 
 ### 3.2 `diagnose(source)` → `{ok, diagnostics[], algorithm_matches[], ms}`
 纯诊断，无会话、无产物。
@@ -90,8 +111,8 @@ DSH 侧暴露名 = `mcp__vitro__<name>`。
 
 ### 4.7 `step_next({n?})` → 推进 n 个关键帧（推进式采集的细粒度档）
 
-### 4.8 `render({mode, focus?, budget?, from?, to?, theme?, audio_description?, preview_png?, title?, out_dir?})`
-**渲染与执行分离**：渲染会话缓冲的帧（可区间 `from/to`），不重跑引擎。返回同 v1 animate 的产物字段。
+### 4.8 `render({mode, focus?, viz?, budget?, from?, to?, theme?, audio_description?, preview_png?, title?, out_dir?})`
+**渲染与执行分离**：渲染会话缓冲的帧（可区间 `from/to`），不重跑引擎。返回同 v1 animate 的产物字段；`viz` 与 ViewDoc `doc` 出口同 §3.1。
 
 ## 5. 渐进披露机制（MCP 原生）
 

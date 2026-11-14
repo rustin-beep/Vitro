@@ -30,6 +30,30 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 /// 同名条目——几条一组是常态形态，单条=特例）。覆盖：A 84 + B 50 + C 13
 /// 的全部可发射条目（147 组，其中 PushConstD/Q 双形态与 TrapBounds 字面量
 /// 形态各占第二组；A 84 含 CastD2UQ〔#471，opcode 156〕）。
+///
+/// operand 编码边界值域口径（2026-11-14 勘探沉淀，operand 边界审计批）：
+/// - operand **不直接对应 wasm 立即数**——按 op 分四类进字节：直接 const
+///   （PushConst 8→`41 08`、Jump 99→`41 e3 00`、CallHost 1007→`41 ef 07`）、
+///   融合地址常量（LoadLocal 8→加法臂 `i32.const 8`、LoadGlobal 8→
+///   `i32.const 4104`〔globals 基址 4096+8〕）、常量池下标（PushConstD/Q 0/1
+///   →EmitCtx 池值 1.5/-0.25/42/-1）、无符号转换（TrapBounds -3→`i32.const 3`
+///   不进 sleb）；CallPtr 的 operand **不进字节**（effect 行语义值，wat 侧
+///   无对应编码段——组内字节只有 fallthrough_pc 77）。
+/// - 现有 rows（witness_dump_wbtest.mbt 硬编码 150 条）已覆盖的 LEB 边界：
+///   sleb 1B 正（8/42/5）、sleb 2B 正 5 样本（99→`e3 00`〔bit6 置位强制续写
+///   终止字节 00 形态〕、77→`cd 00`、1007→`ef 07`、4104→`88 20`、4112→`90 20`）、
+///   sleb 3B（20480=host_argv_ptr→`80 a0 01`）、sleb 1B 负（-1→`7f`，
+///   PushConstQ 池值）、f32 位模式内联（0x3FC00000=1.5f 小端）、f64 小端正负
+///   （1.5/-0.25）。
+/// - 值域扩张被**双向锁死**：CASES (op,operand) 集 == dump key 集（dump 缺
+///   条目 throw + 覆盖对账 missing 红），新增 operand 边界值（128/16384/-65/
+///   -8192/INT32_MIN、f64 特殊位模式等）须先在 witness_dump_wbtest.mbt rows
+///   加行（MoonBit 批次连坐）。wabt 侧可表达性已探针证实（local.get
+///   63/64/127/128/199 与 i32.const 127/128/16383/16384/-65/-8192/-2147483648
+///   的编码与 leb128.mbt sleb_encode 语义同构——127→`ff 00`、-8192→`80 40`、
+///   INT32_MIN→5 字节 `80 80 80 80 78`）；另注意 parseWat 空选项**不验证
+///   local 槽号越界**（6 locals 下 local.get 8 照编），对拍只涉指令区字节
+///   故无影响。
 const CASES: ReadonlyArray<{ wat: string; groups: ReadonlyArray<readonly [string, number]> }> = [
   { wat: "uadd.wat", groups: [["UAdd", 0]] },
   { wat: "loadlocal.wat", groups: [["LoadLocal", 8]] },

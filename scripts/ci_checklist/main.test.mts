@@ -228,6 +228,8 @@ test("⑤ 显式豁免表：mutation-gate 不入 needs 不红（观察期注记�
     "    runs-on: ubuntu-latest",
   ].join("\n");
   assert.equal(checkCiSummary(ci, EXEMPT), null);
+});
+
 test("J9 ①漏登记（.mts 无 shebang 形态，2026-11-14 #512 彻查）：main.mts 文件名即驱动——shebang 缺失不得逃逸驱动集", () => {
   // 前科：gen_course（S08-6 2026-11-01 补 shebang 个案）/wasmenc_emitgate
   // /wasmenc_rundiff（#505/#512）无 shebang 落库，三向对账对它们零检出力

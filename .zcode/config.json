@@ -1,0 +1,28 @@
+{
+  "mcp": {
+    "servers": {
+      "playwright": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "@playwright/mcp@latest"
+        ]
+      },
+      "codedb": {
+        "type": "stdio",
+        "command": "C:\\Users\\liangjingwei\\.local\\bin\\codedb.exe",
+        "args": [
+          "mcp",
+          "D:\\code\\Vitro"
+        ]
+      },
+      "vitro": {
+        "type": "stdio",
+        "command": "node",
+        "args": [
+          "D:\\code\\Vitro\\moonbit\\_build\\js\\release\\build\\cmd\\mcp_js\\mcp_js.js"
+        ]
+      }
+    }
+  }
+}

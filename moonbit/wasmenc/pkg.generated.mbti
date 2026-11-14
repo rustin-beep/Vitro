@@ -26,6 +26,8 @@ pub const L_A : Int32 = 1
 
 pub const L_N : Int32 = 2
 
+pub const L_SPILL_BASE : Int32 = 7
+
 pub const L_T64 : Int32 = 3
 
 pub const L_TF : Int32 = 4
@@ -33,6 +35,8 @@ pub const L_TF : Int32 = 4
 pub const L_TF32 : Int32 = 5
 
 pub const L_V : Int32 = 0
+
+pub const SPILL_SLOTS : Int32 = 8
 
 pub const WT_F32 : Byte = 0x7D
 
@@ -50,7 +54,9 @@ pub fn assemble_dispatch_module(DispatchInput) -> Result[Array[Byte], DispatchEr
 
 pub fn assemble_witness_module(GroupTable, Array[Byte]) -> Result[Array[Byte], AssembleError]
 
-pub fn blocks_exit_stacks_empty(Array[@opcode.OpCode], Array[Int32], BlockTable, (Int32) -> Int32, EmitCtx) -> Result[Unit, BlocksError]
+pub fn blocks_exit_heights(Array[@opcode.OpCode], Array[Int32], BlockTable, (Int32) -> Int32, EmitCtx) -> Result[Array[Int32], BlocksError]
+
+pub fn blocks_underflow_with_entry(Array[@opcode.OpCode], Array[Int32], BlockTable, Array[Int32], (Int32) -> Int32, EmitCtx) -> Result[Unit, BlocksError]
 
 pub fn build_group_table(Array[(@opcode.OpCode, Int32, @source.SourceLoc)], EmitCtx) -> Result[(GroupTable, Array[Byte]), EmitError]
 
@@ -153,6 +159,7 @@ pub(all) enum DispatchError {
   Emit(String)
   Effect(EffectError)
   BadReturnPoint(Int32, Int32)
+  NotSupportedHeight(Int32)
 }
 pub fn DispatchError::equal(Self, Self) -> Bool
 pub fn DispatchError::not_equal(Self, Self) -> Bool

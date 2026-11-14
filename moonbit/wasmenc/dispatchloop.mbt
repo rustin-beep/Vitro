@@ -49,8 +49,10 @@ pub(all) enum DispatchError {
   Emit(String)
   /// 效应复核失败（指令流级栈平衡——组装器自产流的第二道闸）
   Effect(EffectError)
-  /// 返回点信息不自洽（Call gip+1 越界等结构性不可达）
+  /// 返回点/前驱会合信息不自洽（目标块、实际高——结构性不对称）
   BadReturnPoint(Int32, Int32)
+  /// 跨块留值深度超溢出池（L_S 槽上限——首版 8；扩池随实测）
+  NotSupportedHeight(Int32)
 }
 
 ///|
@@ -123,15 +125,9 @@ pub fn assemble_dispatch_body(
       None => 0
     }
   }
-  match
-    blocks_exit_stacks_empty(
-      ops,
-      input.operands,
-      blocks,
-      arg_words_of,
-      input.ctx,
-    ) {
-    Ok(_) => ()
+  let heights = match
+    blocks_exit_heights(ops, input.operands, blocks, arg_words_of, input.ctx) {
+    Ok(h) => h
     Err(e) => return Err(Blocks(e))
   }
   // 2. 返回点映射（Call gip → gip+1 是返回点块首；非 void 前插 G_RV load）
@@ -156,6 +152,200 @@ pub fn assemble_dispatch_body(
   // 块索引表（ip → 块索引——br_table 标签向量）；starts 升序
   let starts = blocks.starts
   let nblocks = starts.length()
+  // 2.5 块入口高度（前驱会合——跨块留值的 fill 深度）：控制流边 =
+  //     Jump/JumpIf taken（目标块）+ 全控制流组 fallthrough（后继块）；
+  //     Call 返回点块唯一前驱 = 调用点块（h_in = 调用点出口高）；入口
+  //     块 h_in = 0。多前驱出口高分歧 → Err（结构性不对称——理论
+  //     不可达：JumpIf 弹判定后两侧天然同高；防御面保留）。
+  let block_of : Map[Int32, Int32] = Map([]) // ip → 块索引（leader 才入表）
+  for k2 = 0; k2 < nblocks; k2 = k2 + 1 {
+    block_of.set(starts[k2], k2)
+  }
+  // h_in 迭代求值（worklist 不动点——前驱出口高传播；块图 DAG +
+  //   回边，出口高不依赖 h_in〔每块出口高 = h_in + 组净效应——线性〕
+  //   ⇒ h_in = 前驱出口高，一轮回边即可收敛：两轮扫描取一致）
+  let h_in : Array[Int32] = []
+  for k2 = 0; k2 < nblocks; k2 = k2 + 1 {
+    h_in.push(-1) // -1 = 未定
+  }
+  let entry_block = match block_of.get(input.entry_ip) {
+    Some(kb) => kb
+    None => 0
+  }
+  h_in[entry_block] = 0
+  // 函数头块 h_in 恒 0 预置（被调语义：新帧空栈——含无人调用的
+  // 「死函数」块〔libc 叶子函数常态〕：其调用边缺席时按 0 基传播，
+  // 否则死块链后继 h_in 未知被兜底 0 造成下溢假红）
+  for ip in input.func_entry_ips {
+    match block_of.get(ip) {
+      Some(fb) => h_in[fb] = 0
+      None => ()
+    }
+  }
+  // 不动点迭代（短路链的留值入口块 0 基增量为负——h_in 须先由前驱
+  // 出口撑住才可判；固定两轮对长链/回边不足，libc 实锤。传播至稳定，
+  // 上限 nblocks+1 轮〔每轮至少定一块，高度线性 ⇒ 收敛保证〕）
+  let mut changed = true
+  let mut rounds = 0
+  while changed && rounds < nblocks + 1 {
+    changed = false
+    rounds = rounds + 1
+    for k2 = 0; k2 < nblocks; k2 = k2 + 1 {
+      let start_k = starts[k2]
+      let end_k = if k2 + 1 < nblocks { starts[k2 + 1] } else { n }
+      // 有效出口高 = h_in + 增量 + 返回点 load 项（G_RV 压回 wasm 栈
+      // 被块内/后继消费——\|\| 短路条件的 libc 实锤形态）
+      let rv0 = if ret_points.get(starts[k2]) == Some(true) { 1 } else { 0 }
+      let h_out = h_in[k2] + heights[k2] + rv0
+      if h_in[k2] < 0 {
+        continue
+      }
+      if h_out < 0 {
+        // 出口高为负 = 块内下溢的等价形态（联立判定的块图前置拦截——
+        // 负值传入后继会污染整链）
+        return Err(BadReturnPoint(k2, h_out))
+      }
+      // 块尾组的后继边
+      let last = end_k - 1
+      if last < start_k {
+        continue
+      }
+      match ops[last] {
+        Jump => {
+          let t = match block_of.get(input.operands[last]) {
+            Some(tb) => tb
+            None => -1
+          }
+          if t >= 0 {
+            let cur = h_in[t]
+            if cur < 0 {
+              h_in[t] = h_out
+              changed = true
+            } else if cur != h_out {
+              return Err(BadReturnPoint(t, h_out))
+            }
+          }
+        }
+        JumpIfZero | JumpIfNotZero => {
+          // 两侧同高（弹判定后）——taken 与 fallthrough 均 h_out
+          let t = match block_of.get(input.operands[last]) {
+            Some(tb) => tb
+            None => -1
+          }
+          if t >= 0 {
+            let cur = h_in[t]
+            if cur < 0 {
+              h_in[t] = h_out
+              changed = true
+            } else if cur != h_out {
+              return Err(BadReturnPoint(t, h_out))
+            }
+          }
+          if last + 1 < n {
+            let f = match block_of.get(last + 1) {
+              Some(fb) => fb
+              None => -1
+            }
+            if f >= 0 {
+              let cur = h_in[f]
+              if cur < 0 {
+                h_in[f] = h_out
+                changed = true
+              } else if cur != h_out {
+                return Err(BadReturnPoint(f, h_out))
+              }
+            }
+          }
+        }
+        Call | CallVar => {
+          // 目标块（被调函数头）：h_in = 0（新帧空栈——软件调用栈语义）
+          if input.call_sites.get(last) is Some(m0) {
+            let t0 = match block_of.get(m0.target_ip) {
+              Some(tb) => tb
+              None => -1
+            }
+            if t0 >= 0 {
+              let cur0 = h_in[t0]
+              if cur0 < 0 {
+                h_in[t0] = 0
+                changed = true
+              } else if cur0 != 0 {
+                return Err(BadReturnPoint(t0, 0))
+              }
+            }
+          }
+          // 返回点块：h_in = 调用点出口高 + 非 void 的 G_RV load 项
+          //（返回值经通道压回 wasm 栈被块内消费——\|\|/\&\& 短路条件
+          // 即 Call 返回值的 libc 实锤形态）
+          let rv1 = match input.call_sites.get(last) {
+            Some(m1) => if m1.is_void { 0 } else { 1 }
+            None => 0
+          }
+          if last + 1 < n {
+            let f = match block_of.get(last + 1) {
+              Some(fb) => fb
+              None => -1
+            }
+            if f >= 0 {
+              let want = h_out + rv1
+              let cur = h_in[f]
+              if cur < 0 {
+                h_in[f] = want
+                changed = true
+              } else if cur != want {
+                return Err(BadReturnPoint(f, want))
+              }
+            }
+          }
+        }
+        Ret | RetVoid => () // 后继运行期（return_ip 块）——Ret 出口高恒 0
+        _ =>
+          // fallthrough 块（尾组非控制流——组装器补尾）h_out 传递
+          if last + 1 < n {
+            let f = match block_of.get(last + 1) {
+              Some(fb) => fb
+              None => -1
+            }
+            if f >= 0 {
+              let cur = h_in[f]
+              if cur < 0 {
+                h_in[f] = h_out
+                changed = true
+              } else if cur != h_out {
+                return Err(BadReturnPoint(f, h_out))
+              }
+            }
+          }
+      }
+    }
+  }
+  for k2 = 0; k2 < nblocks; k2 = k2 + 1 {
+    if h_in[k2] < 0 {
+      // 不可达块（无前驱且非入口——死块）h_in 取 0（fill 零——不可达
+      // 不发射副作用；出口高仍按 0 基模拟口径，见 heights 注）
+      h_in[k2] = 0
+    }
+    if h_in[k2] > SPILL_SLOTS {
+      return Err(NotSupportedHeight(h_in[k2]))
+    }
+    if h_in[k2] + heights[k2] > SPILL_SLOTS {
+      return Err(NotSupportedHeight(h_in[k2] + heights[k2]))
+    }
+  }
+  // 联立下溢判定（真实口径：h_in + 逐组累计下穿 0——blocks_exit_
+  // heights 的 0 基增量不含此面，见其头注）
+  match
+    blocks_underflow_with_entry(
+      ops,
+      input.operands,
+      blocks,
+      h_in,
+      arg_words_of,
+      input.ctx,
+    ) {
+    Ok(_) => ()
+    Err(e) => return Err(Blocks(e))
+  }
   // 标签向量：逐 ip（0..exit_ip）填块索引；非 leader 填 default 臂
   //（不可达域——只有 leader 可被跳到；default = unreachable 兜底）
   let default_label = nblocks // 出口块前专用 trap 块索引？——出口块独立追加（索引 nblocks）
@@ -185,6 +375,8 @@ pub fn assemble_dispatch_body(
     let body : Array[WInstr] = []
     // 块首步锚（steps += 块长——组粒度恒等的批量形态）
     push_step_add(body, end - start)
+    // 块首 fill（跨块留值从溢出池回栈——短路 Dup 形态）
+    push_fill(body, h_in[k])
     // 返回点 load（非 void 调用的返回点——G_RV → wasm 栈）
     if ret_points.get(start) == Some(true) {
       body.push(WGlobalGet(G_RV))
@@ -197,7 +389,14 @@ pub fn assemble_dispatch_body(
       match op {
         Jump | JumpIfZero | JumpIfNotZero => {
           // 微缩模板形态 + BrAny 深度重编（执行语义同构——探针 3 结论）
-          push_jump_with_depth(body, op, operand, input.ctx, depth)
+          push_jump_with_depth(
+            body,
+            op,
+            operand,
+            input.ctx,
+            depth,
+            h_in[k] + heights[k],
+          )
           ended_by_control = true
         }
         Call | CallVar => {
@@ -205,11 +404,18 @@ pub fn assemble_dispatch_body(
             Some(m) => m
             None => return Err(BadReturnPoint(gip, n))
           }
-          push_call_expand(body, meta, gip, input.call_depth_limit, depth)
+          push_call_expand(
+            body,
+            meta,
+            gip,
+            input.call_depth_limit,
+            depth,
+            h_in[k] + heights[k],
+          )
           ended_by_control = true
         }
         Ret | RetVoid => {
-          push_ret_expand(body, op, depth)
+          push_ret_expand(body, op, depth, h_in[k] + heights[k])
           ended_by_control = true
         }
         // CallHost：微缩模板即执行语义（H2 import + 返回值压栈同块消费）
@@ -240,7 +446,8 @@ pub fn assemble_dispatch_body(
       }
     }
     if !ended_by_control {
-      // 块尾：预算检查 + fallthrough（pc = 下一块 leader ip）
+      // 块尾：spill（跨块留值入池）+ 预算检查 + fallthrough
+      push_spill(body, h_in[k] + heights[k])
       push_budget_check(body, input.max_steps)
       let next_ip = if k + 1 < nblocks { starts[k + 1] } else { exit_ip }
       body.push(WI32Const(next_ip))
@@ -314,7 +521,13 @@ pub fn assemble_dispatch_module(
   let t_host = b.add_type([WT_I32, WT_I32], [WT_I64])
   let _ = b.add_import("env", "vitro_host_call", 0, t_host)
   let main_idx = b.add_func(t_main, {
-    locals: [(3, WT_I32), (1, WT_I64), (1, WT_F64), (1, WT_F32)],
+    locals: [
+      (3, WT_I32),
+      (1, WT_I64),
+      (1, WT_F64),
+      (1, WT_F32),
+      (SPILL_SLOTS, WT_I32),
+    ],
     body: main_body,
   })
   let _ = b.add_memory(16, Some(16))
@@ -335,6 +548,33 @@ pub fn assemble_dispatch_module(
 ///|
 /// G_DEPTH global 索引（批 1b 六槽之后第 7——垫收证人模块不含本槽）。
 pub const G_DEPTH : Int32 = 6
+
+///|
+/// 跨块留值溢出池槽位数（L_S0.. 段——短路求值 Dup 留值跨块的
+/// spill/fill 通道，i32 契约见 blocks.mbt 头注；超限禁译）。
+pub const SPILL_SLOTS : Int32 = 8
+
+///|
+/// 溢出池 local 基址（locals 段批 1b 四 runs 后追加 (SPILL_SLOTS,
+/// WT_I32) run——槽号 = L_SPILL_BASE + i；0..6 为 L_V/L_A/L_N/
+/// L_T64/L_TF/L_TF32/保留）。
+pub const L_SPILL_BASE : Int32 = 7
+
+///|
+/// 块尾 spill（出口高 h：栈顶 h 项逐个 local.set 入池——顶先）。
+fn push_spill(body : Array[WInstr], h : Int32) -> Unit {
+  for k = h - 1; k >= 0; k = k - 1 {
+    body.push(WLocalSet(L_SPILL_BASE + k))
+  }
+}
+
+///|
+/// 块首 fill（入口高 h：池中 h 项逆序 local.get 回栈——底先）。
+fn push_fill(body : Array[WInstr], h : Int32) -> Unit {
+  for k = 0; k < h; k = k + 1 {
+    body.push(WLocalGet(L_SPILL_BASE + k))
+  }
+}
 
 ///|
 /// 块首步锚：`steps += len`（global.get/const/add/set）。
@@ -368,6 +608,7 @@ fn push_jump_with_depth(
   operand : Int32,
   ctx : EmitCtx,
   depth : Int32,
+  spill_h : Int32,
 ) -> Unit {
   // 逐 SeqItem 发射（模板单源）——BrAny → WBr(depth 调整)
   let s = template_spec(op)
@@ -388,8 +629,8 @@ fn push_jump_with_depth(
       Some(w) => body.push(w)
       None =>
         if item is BrAny {
-          // 顶层 br 深度 = depth；微缩模板的块内 br（JumpIf 族）不变
-          // ——微缩形态 br 均在顶层或块外，块内只有 br_if（Fixed 形态）
+          // 顶层 br 前 spill（出口留值入池——Jump 族弹后栈顶恰 spill_h 项）
+          push_spill(body, spill_h)
           body.push(WBr(depth))
         }
     }
@@ -413,6 +654,7 @@ fn push_call_expand(
   gip : Int32,
   depth_limit : Int32,
   br_depth : Int32,
+  spill_h : Int32,
 ) -> Unit {
   // ①深度上限（教学 trap——unreachable 形态，文案不比对〔结果级三锚〕）
   body.push(WGlobalGet(G_DEPTH))
@@ -483,7 +725,8 @@ fn push_call_expand(
   body.push(WI32Const(1))
   body.push(WI32Add)
   body.push(WGlobalSet(G_DEPTH))
-  // ⑥pc + br（分发循环回边——骨架深度由调用方供给）
+  // ⑥spill（出口留值——参数弹后的剩余）+ pc + br
+  push_spill(body, spill_h)
   body.push(WI32Const(meta.target_ip))
   body.push(WGlobalSet(G_PC))
   body.push(WBr(br_depth))
@@ -497,6 +740,7 @@ fn push_ret_expand(
   body : Array[WInstr],
   op : @opcode.OpCode,
   br_depth : Int32,
+  spill_h : Int32,
 ) -> Unit {
   if op is Ret {
     body.push(WGlobalSet(G_RV))
@@ -523,5 +767,7 @@ fn push_ret_expand(
   body.push(WI32Const(-1))
   body.push(WI32Add)
   body.push(WGlobalSet(G_DEPTH))
+  // Ret 出口高恒 0（返回值走 G_RV）——spill(0) 防御性空操作
+  push_spill(body, spill_h)
   body.push(WBr(br_depth))
 }

@@ -21,4 +21,5 @@ import {
   "vitro/engine/source",
   "vitro/engine/util",
   "vitro/engine/teaching/assets",
+  "vitro/engine/wasmenc",
 }

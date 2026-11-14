@@ -912,3 +912,15 @@ vitro/engine/wasmenc vitro/engine/opcode TrapBoundsVla
 vitro/engine/wasmenc vitro/engine/opcode TruncUByte
 vitro/engine/wasmenc vitro/engine/opcode TryBegin
 vitro/engine/wasmenc vitro/engine/opcode TryEnd
+# REHOST 批 4b-1（2026-11-14）：vm 投影层消费 wasmenc 组装器/bytecode EmitCtx/util 位拼装
+vitro/engine/vm vitro/engine/bytecode wasm_emit_ctx
+vitro/engine/vm vitro/engine/util i64_to_i32_bits
+vitro/engine/vm vitro/engine/wasmenc BadReturnPoint
+vitro/engine/vm vitro/engine/wasmenc BadTarget
+vitro/engine/vm vitro/engine/wasmenc Blocks
+vitro/engine/vm vitro/engine/wasmenc CallPtrUnsupported
+vitro/engine/vm vitro/engine/wasmenc CallSiteMeta
+vitro/engine/vm vitro/engine/wasmenc DispatchInput
+vitro/engine/vm vitro/engine/wasmenc ExitStackNonEmpty
+vitro/engine/vm vitro/engine/wasmenc NotSupportedHeight
+vitro/engine/vm vitro/engine/wasmenc assemble_dispatch_module

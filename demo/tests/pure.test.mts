@@ -476,6 +476,38 @@ test("viewProjection：声明不合法 fail loud（不静默降级为 cells）",
   if (v.kind === "decl") assert.match(err(v.error), /未出现|至少 2 条/);
 });
 
+test("fourier 试点课：真源声明 → polar/spectrum 视图计划（内容-引擎契约锚）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const md = readFileSync(path.resolve(here, "../../course/basic/fourier/lesson.md"), "utf8");
+  const doc = parseLessonMd(md);
+  assert.equal(doc.meta.id, "fourier");
+  assert.deepEqual(
+    doc.vizs.map((v) => [v.series, v.projector]),
+    [
+      [["re", "im"], "polar"],
+      [["mag"], "spectrum"],
+    ],
+  );
+  const views = planViews(doc.vizs, [
+    snap("re", ["1", "0", "-1", "0"]),
+    snap("im", ["0", "1", "0", "-1"]),
+    snap("mag", ["1", "1", "1", "1"]),
+    snap("x", ["1", "1", "-1", "-1"]),
+  ]);
+  assert.deepEqual(
+    views.map((v) => v.kind),
+    ["decl", "decl", "cells"],
+    "两条声明消费三条序列，x 走默认索引格（不重复渲染）",
+  );
+  for (const v of views.slice(0, 2)) {
+    assert.equal(v.kind, "decl");
+    if (v.kind === "decl") {
+      assert.equal(v.error, null);
+      assert.equal(v.renderer, "svg");
+    }
+  }
+});
+
 test("annotations：只记本幕内的变化（局部量 + 数组元素），首帧无前态不猜", () => {
   const frames: StepLike[] = [
     { code_line: 5, func_name: "main", local_vars: [{ name: "i", value: "0" }, { name: "a", value: "{3, 1, 4, 2, 5}", ty_name: "int[5]" }], array_snapshots: [{ name: "a", elements: ["3", "1", "4", "2", "5"] }] },

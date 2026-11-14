@@ -413,3 +413,98 @@ test "swap_event_runtime_extras_b51" {
   assert_eq(vm4.vis_event_queue[0].extra1, 0)
   assert_eq(vm4.vis_event_queue[0].extra2, 0)
 }
+
+///|
+/// #517 P1-3（B2/A1-A4）：数组快照作用域过滤——被调函数帧曾把 main 的
+/// 数组符号按**当前帧** locals_base 连读，舞台首格=形参指针值、后续=被调
+/// 局部变量冒充（quick_sort 帧 a = [1048560, lo, hi, pivot] 实录）。可见性
+/// 判据与 get_variable_snapshot 同源（函数归属 + 声明行未到不入）。
+test "observe_array_snapshot_scoping" {
+  let vm = VitroVM::new()
+  let arr_ty : @ast.Type = Array(Int(false, false), 4, [4], false, false, [])
+  vm.set_symbols([
+    mksym("g", 0U, false, arr_ty, "", 0),
+    mksym("a", 4U, true, arr_ty, "main", 9),
+  ])
+  // show 帧：base+4 起是被调函数局部区（形参指针 + n/lo/hi —— 修前 a 的
+  // 四格恰好读到这里）
+  vm.call_stack.push(mkframe("show", 0x6000U, 0))
+  vm.current_line = 5
+  ignore(vm.memory.store_u32(vm.mem_map, 0x6000U + 4U, 1048556U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x6000U + 8U, 4U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x6000U + 12U, 0U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x6000U + 16U, 0U))
+  // 全局 g 真身
+  ignore(vm.memory.store_u32(vm.mem_map, @bytecode.GLOBAL_START + 0U, 7U))
+  ignore(vm.memory.store_u32(vm.mem_map, @bytecode.GLOBAL_START + 4U, 8U))
+  ignore(vm.memory.store_u32(vm.mem_map, @bytecode.GLOBAL_START + 8U, 9U))
+  ignore(vm.memory.store_u32(vm.mem_map, @bytecode.GLOBAL_START + 12U, 10U))
+  let names_show : Array[String] = []
+  for s in vm.get_array_snapshots() {
+    names_show.push(s.name)
+  }
+  // show 帧：a 属 main 不得入；g 全局恒入
+  assert_false(
+    names_show.contains("a"),
+    msg="被调帧不得收 main 的数组",
+  )
+  assert_true(names_show.contains("g"), msg="全局数组恒入")
+  // main 帧：a 正常入且元素=真身（非指针冒充）
+  ignore(vm.call_stack.pop())
+  vm.call_stack.push(mkframe("main", 0x5000U, 0))
+  vm.current_line = 11
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 4U, 3U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 8U, 1U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 12U, 4U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 16U, 1U))
+  let mut a_main : ArraySnapshotData? = None
+  for s in vm.get_array_snapshots() {
+    if s.name == "a" {
+      a_main = Some(s)
+    }
+  }
+  guard a_main is Some(am) else { fail("main 帧须含 a") }
+  assert_eq(am.elements, ["3", "1", "4", "1"])
+}
+
+///|
+/// #517 P1-3 后半：数组形参解引用视图——`void show(int a[], ...)` 的形参
+/// 符号 ty=int*（decay），指针值指向调用方数组真身；被调帧的舞台须显示
+/// **实参数组内容**（经指针解引用），而非修前的调用方符号错位垃圾或纯空。
+/// 长度来源 = 全局/活跃帧中地址覆盖 target 的数组符号（slot_covers 单源）。
+test "observe_array_param_deref_view" {
+  let vm = VitroVM::new()
+  let arr_ty : @ast.Type = Array(Int(false, false), 4, [4], false, false, [])
+  let ptr_ty : @ast.Type = Pointer(Int(false, false), false)
+  vm.set_symbols([
+    mksym("a", 4U, true, arr_ty, "main", 3),
+    mksym("p", 8U, true, ptr_ty, "show", 1),
+  ])
+  // 栈：main(0x5000) → show(0x6000)
+  vm.call_stack.push(mkframe("main", 0x5000U, 0))
+  vm.call_stack.push(mkframe("show", 0x6000U, 5))
+  vm.current_line = 6
+  // main 数组真身 0x5004..0x5013 = {3,1,4,1}
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 4U, 3U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 8U, 1U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 12U, 4U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 16U, 1U))
+  // show 形参 slot = 0x6008，存指针值 0x5004
+  ignore(vm.memory.store_u32(vm.mem_map, 0x6000U + 8U, 0x5004U))
+  let snaps = vm.get_array_snapshots()
+  // show 帧：p 经解引用显示实参数组内容；a 属 main 不直接入
+  let mut p_view : ArraySnapshotData? = None
+  let mut has_a = false
+  for s in snaps {
+    if s.name == "p" {
+      p_view = Some(s)
+    }
+    if s.name == "a" {
+      has_a = true
+    }
+  }
+  guard p_view is Some(pv) else { fail("形参 p 须有解引用数组视图") }
+  assert_eq(pv.elements, ["3", "1", "4", "1"])
+  assert_false(has_a, msg="调用方数组符号不直接入被调帧快照")
+  assert_eq(pv.element_ty, "int")
+}

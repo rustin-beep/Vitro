@@ -255,8 +255,28 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
   } else {
     None
   }
+  // #517 P1-3（2026-11-14，B2/A1-A4）：作用域过滤与 get_variable_snapshot
+  // 同源——修前无函数归属过滤，被调函数帧把 main 的数组符号按**当前帧**
+  // locals_base 连读：舞台首格=形参指针值（1048560 实录）、后续格=被调
+  // 局部变量冒充（quick_sort 帧 a = [ptr, lo, hi, pivot]）。数组形参的
+  // 本体在调用方帧/全局——长度经指针解引用视图（下方第二段）恢复，
+  // 全局数组恒入（A2 实测全局 tmp 在被调帧数据真实）。
+  let current_func : String = match frame {
+    Some(f) => f.func_name
+    None => ""
+  }
+  let current_line = self.get_current_line()
   for sym in self.symbols {
     if !(sym.ty.kind() is TK_Array) {
+      continue
+    }
+    if sym.func_name != "" && sym.func_name != current_func {
+      continue
+    }
+    if sym.is_local && current_line <= 0 {
+      continue
+    }
+    if sym.decl_line > 0 && current_line > 0 && sym.decl_line > current_line {
       continue
     }
     let vaddr : UInt32 = if sym.is_local {
@@ -271,72 +291,11 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
     if array_size <= 0 {
       continue
     }
-    // 审阅 P2 修复（2026-10-01）：宽度与取值按 `base_kind`（先解一层指针、
-    // 数组递归剥层——oracle memory.rs:398 同源）；element_ty 显示名仍走
-    // `base_element_type`（只剥数组不解指针，oracle 显示层同款）。原误用
-    // base_element_type 兼任语义宽度：int*[2] 落 "?"、char*[2] 步长 4。
-    // 病 81：struct/union 元素按真实布局步长（原兜底 4）
-    let elem_size : UInt32 = self.elem_size_of_kind(sym.ty)
-    // 元素类型判定（显示与取值分支——宽度已由上面 helper 决定）
-    let bk = sym.ty.base_kind()
-    // U2#10：声明长度超 256 → 截断 + 标记
-    let truncated = array_size > MAX_ARRAY_SNAPSHOT_ELEMENTS
-    let take_elems = if array_size > MAX_ARRAY_SNAPSHOT_ELEMENTS {
-      MAX_ARRAY_SNAPSHOT_ELEMENTS
-    } else {
-      array_size
-    }
-    let elements : Array[String] = []
-    for i = 0; i < take_elems; i = i + 1 {
-      let addr = vaddr + i.reinterpret_as_uint() * elem_size
-      // NULL 区检查；上界在后续读的 Err 防御兜底（Rust break 同位）
-      if addr < @bytecode.NULL_TRAP_SIZE {
-        break
-      }
-      match bk {
-        TK_Char => {
-          let b = match self.memory.load_i8(self.mem_map, addr) {
-            Ok(v) => v
-            Err(_) => break
-          }
-          if b >= 32 && b <= 126 {
-            // 可打印：'c' 形态（b 已是码点；unsafe_to_char——域内已判）
-            elements.push("'\{b.unsafe_to_char()}'")
-          } else {
-            elements.push("\{b}")
-          }
-        }
-        TK_Int => {
-          let v = match self.memory.load_u32(self.mem_map, addr) {
-            Ok(bits) => bits.reinterpret_as_int()
-            Err(_) => break
-          }
-          elements.push("\{v}")
-        }
-        TK_Float => {
-          let v = match self.memory.load_u32(self.mem_map, addr) {
-            Ok(bits) => Float::reinterpret_from_uint(bits)
-            Err(_) => break
-          }
-          elements.push(@host.format_fixed(v.to_double(), 2))
-        }
-        TK_Double => {
-          let v = match self.memory.load_u64(self.mem_map, addr) {
-            Ok(bits) => bits.reinterpret_as_double()
-            Err(_) => break
-          }
-          elements.push(@host.format_fixed(v, 2))
-        }
-        TK_LongLong => {
-          let v = match self.memory.load_u64(self.mem_map, addr) {
-            Ok(bits) => bits.reinterpret_as_int64()
-            Err(_) => break
-          }
-          elements.push("\{v}")
-        }
-        _ => elements.push("?")
-      }
-    }
+    let (elements, truncated) = self.snapshot_elements(
+      vaddr,
+      array_size,
+      sym.ty,
+    )
     result.push({
       name: sym.name,
       element_ty: @ast.type_display_name(@ast.base_element_type(sym.ty)),
@@ -344,7 +303,169 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
       truncated,
     })
   }
+  // #517 P1-3 后半：数组形参解引用视图——`void f(int a[], n)` 的形参符号
+  // ty=int*（decay），指针值指向实参数组真身；被调帧舞台显示**实参内容**
+  // （主冒烟锚 bubble_sort 帧的 arr 即此形态——纯过滤会把排序动画舞台清
+  // 空）。长度来源 = 全局/活跃帧中地址覆盖 target 的数组符号（slot_covers
+  // 单源，由内向外）；找不到覆盖符号（malloc 堆数组/悬垂）不产快照——
+  // 诚实空态；双指针（int**）只解一层不产。
+  if current_line > 0 {
+    for sym in self.symbols {
+      if !(sym.ty.kind() is TK_Pointer) {
+        continue
+      }
+      if !sym.is_local || sym.func_name != current_func {
+        continue
+      }
+      if sym.decl_line > 0 && sym.decl_line > current_line {
+        continue
+      }
+      guard frame is Some(f) else { continue }
+      // 双指针不解（base 指针 = 元素也是指针——快照无元素语义）
+      if sym.ty.base_kind() is TK_Pointer {
+        continue
+      }
+      let slot = f.locals_base + sym.addr
+      if slot + 4U > @bytecode.MEM_SIZE || slot < @bytecode.NULL_TRAP_SIZE {
+        continue
+      }
+      let target = match self.memory.load_u32(self.mem_map, slot) {
+        Ok(t) => t
+        Err(_) => continue
+      }
+      if target < @bytecode.NULL_TRAP_SIZE || target + 4U > @bytecode.MEM_SIZE {
+        continue
+      }
+      match self.find_covering_array(target) {
+        None => ()
+        Some(count) => {
+          if count <= 0 {
+            continue
+          }
+          let pointee : @ast.Type = match sym.ty {
+            Pointer(p, _) => p
+            _ => sym.ty
+          }
+          let (elements, truncated) = self.snapshot_elements(
+            target, count, pointee,
+          )
+          result.push({
+            name: sym.name,
+            element_ty: @ast.type_display_name(@ast.base_element_type(pointee)),
+            elements,
+            truncated,
+          })
+        }
+      }
+    }
+  }
   result
+}
+
+///|
+/// 元素批量读取（主循环与形参解引用视图共用单源）：按 base_kind 宽度逐
+/// 元素文本化（Char 可打印形态 / Int·LongLong 位模式 / Float·Double 定点
+/// 两位）；256 截断置 truncated；读失败（freed 堆等）中断——防御跳过。
+fn VitroVM::snapshot_elements(
+  self : VitroVM,
+  vaddr : UInt32,
+  count : Int32,
+  ty : @ast.Type,
+) -> (Array[String], Bool) {
+  // 审阅 P2 修复（2026-10-01）：宽度与取值按 `base_kind`（先解一层指针、
+  // 数组递归剥层——oracle memory.rs:398 同源）；病 81：struct/union 元素
+  // 按真实布局步长（原兜底 4）
+  let elem_size : UInt32 = self.elem_size_of_kind(ty)
+  let bk = ty.base_kind()
+  // U2#10：声明长度超 256 → 截断 + 标记
+  let truncated = count > MAX_ARRAY_SNAPSHOT_ELEMENTS
+  let take_elems = if count > MAX_ARRAY_SNAPSHOT_ELEMENTS {
+    MAX_ARRAY_SNAPSHOT_ELEMENTS
+  } else {
+    count
+  }
+  let elements : Array[String] = []
+  for i = 0; i < take_elems; i = i + 1 {
+    let addr = vaddr + i.reinterpret_as_uint() * elem_size
+    // NULL 区检查；上界在后续读的 Err 防御兜底（Rust break 同位）
+    if addr < @bytecode.NULL_TRAP_SIZE {
+      break
+    }
+    match bk {
+      TK_Char => {
+        let b = match self.memory.load_i8(self.mem_map, addr) {
+          Ok(v) => v
+          Err(_) => break
+        }
+        if b >= 32 && b <= 126 {
+          // 可打印：'c' 形态（b 已是码点；unsafe_to_char——域内已判）
+          elements.push("'\{b.unsafe_to_char()}'")
+        } else {
+          elements.push("\{b}")
+        }
+      }
+      TK_Int => {
+        let v = match self.memory.load_u32(self.mem_map, addr) {
+          Ok(bits) => bits.reinterpret_as_int()
+          Err(_) => break
+        }
+        elements.push("\{v}")
+      }
+      TK_Float => {
+        let v = match self.memory.load_u32(self.mem_map, addr) {
+          Ok(bits) => Float::reinterpret_from_uint(bits)
+          Err(_) => break
+        }
+        elements.push(@host.format_fixed(v.to_double(), 2))
+      }
+      TK_Double => {
+        let v = match self.memory.load_u64(self.mem_map, addr) {
+          Ok(bits) => bits.reinterpret_as_double()
+          Err(_) => break
+        }
+        elements.push(@host.format_fixed(v, 2))
+      }
+      TK_LongLong => {
+        let v = match self.memory.load_u64(self.mem_map, addr) {
+          Ok(bits) => bits.reinterpret_as_int64()
+          Err(_) => break
+        }
+        elements.push("\{v}")
+      }
+      _ => elements.push("?")
+    }
+  }
+  (elements, truncated)
+}
+
+///|
+/// 地址覆盖归属的数组长度查找（#517 P1-3 形参解引用视图的长度源）：
+/// 全局先行、活跃帧由内向外（find_variable_name_at_addr 同序）；命中 =
+/// target 落在数组元素区间（slot_covers 单源——含首地址精确命中）。
+fn VitroVM::find_covering_array(self : VitroVM, target : UInt32) -> Int32? {
+  for sym in self.symbols {
+    if !sym.is_local && sym.ty.kind() is TK_Array {
+      if slot_covers(self, sym, @bytecode.GLOBAL_START + sym.addr, target) {
+        return Some(sym.ty.array_size())
+      }
+    }
+  }
+  let n = self.call_stack.length()
+  let mut idx = n - 1
+  while idx >= 0 {
+    let f = self.call_stack[idx]
+    for sym in self.symbols {
+      if sym.is_local &&
+        sym.ty.kind() is TK_Array &&
+        sym.func_name == f.func_name {
+        if slot_covers(self, sym, f.locals_base + sym.addr, target) {
+          return Some(sym.ty.array_size())
+        }
+      }
+    }
+    idx = idx - 1
+  }
+  None
 }
 
 ///|

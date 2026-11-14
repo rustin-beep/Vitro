@@ -314,3 +314,81 @@ test "semantic_definition_name_space_before_paren" {
     "调用 defLine",
   )
 }
+
+///|
+/// #517 P1-1（C3）：深栈采集截断——无限递归 animate 实测 232s（20000 步 ×
+/// 每帧调用栈快照 O(深度)→ 深度 10000 的 O(n²) 膨胀，server 主循环全池
+/// 阻塞）。call_stack 快照保**顶部** MAX_CALL_STACK_SNAPSHOT 层（当前帧
+/// 上下文优先），≤256 深度的正常教学程序零影响。
+test "collect_call_stack_deep_truncation" {
+  let vm = @vm.VitroVM::new()
+  // 300 层帧：第 0 层 main、其余 f（模拟 f(){f();} 递归 300 层）
+  vm.call_stack.push(mk_call_frame("main"))
+  for i = 0; i < 299; i = i + 1 {
+    vm.call_stack.push(mk_call_frame("f"))
+  }
+  let p = collect(
+    vm,
+    fake_src(),
+    0UL,
+    0,
+    AlgoInferCtx::new(),
+    code_line=Some(3),
+  )
+  // 截断锚：快照 ≤ MAX（顶部优先——末层必是当前函数 f）
+  assert_true(p.call_stack.length() <= 256, msg="深栈快照须截断到 256")
+  assert_eq(p.call_stack[p.call_stack.length() - 1].func_name, "f")
+}
+
+///|
+/// 帧构造 helper（#517 P1-1 截断锚用——observe_wbtest mkframe 的跨包形态）。
+fn mk_call_frame(name : String) -> @vm.CallFrame {
+  {
+    return_ip: Some(0),
+    locals_base: 0U,
+    local_count: 0,
+    func_name: name,
+    original_stack_top: 0U,
+    caller_line: 0,
+    local_buffers: [],
+  }
+}
+
+///|
+/// #517 P2-7（A2/B7 实录，2026-11-14）：交换字幕误报面 v4 收紧——跨数组
+/// 拷贝（merge 的 `tmp[k] = a[i];`）与前缀和表达式（`pre[i] = pre[i - 1]
+/// + dp[i];`）不标交换（无同数组互换证据），回落循环上下文；同名主行
+/// （`arr[j] = arr[j + 1];`）维持交换。
+test "semantic_swap_v4_cross_array_copy_not_swap" {
+  let vars : Array[@protocol.ApiVariableSnapshot]? = Some([
+    mkvar("k", "0"),
+    mkvar("i", "1"),
+    mkvar("j", "2"),
+  ])
+  // A2 形态：跨数组拷贝（LHS tmp / RHS a）——不是交换
+  assert_eq(
+    infer_semantic_label(6, vars, "merge", "            tmp[k] = a[i];", false),
+    "循环 k=0, i=1, j=2",
+  )
+  // B7 形态：前缀和表达式赋值（RHS 非纯下标）——不是交换
+  assert_eq(
+    infer_semantic_label(
+      6, vars, "main", "        pre[i] = pre[i - 1] + dp[i];", false,
+    ),
+    "循环 k=0, i=1, j=2",
+  )
+  // 主行（同数组互换）——维持交换
+  assert_eq(
+    infer_semantic_label(
+      7, vars, "bubble_sort", "            arr[j] = arr[j + 1];", false,
+    ),
+    "交换 arr[2]↔arr[3]",
+  )
+  // 回写行（暂存名白名单）——维持交换
+  assert_eq(
+    infer_semantic_label(
+      8, vars, "bubble_sort", "            arr[j + 1] = t;", false,
+    ),
+    "交换 arr[2]↔arr[3]",
+  )
+}

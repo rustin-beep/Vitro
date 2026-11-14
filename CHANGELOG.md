@@ -1,5 +1,65 @@
 ## [Unreleased]
 
+### ci: 主 CI 单文件拆分——编排层 + 8 called 单元 + 夜间哨兵独立（2026-11-14）
+
+- **动机**：ci.yml 2353 行单文件超 agent/人整读阈值（只能 grep 定位——
+  缺漏面，防线接线漏项的温床）；拆后每文件 ≤550 行可整读。GitHub 无
+  include 机制，唯一不破防线语义的拆法 = **reusable workflow**
+  （`workflow_call`）：called job 与 caller 同 run 执行，build-products
+  artifact 同域共享、红态向 caller job 传导、单点 concurrency 不变。
+- **形态**：ci.yml 收敛为编排层（~185 行：on/concurrency 原样 + 8 个
+  called 分组 + ci-summary）；job 实体搬迁——ci-build（build-artifacts）
+  / ci-diff（gates-diff + corpus-fuzz + green_probe）/ ci-engine-gates
+  （gates-native + gates-wasm + arm4-wasmtime）/ ci-static / ci-hygiene /
+  ci-frontends（demo + desktop）/ ci-tools（backend-triage +
+  cli-smoke-linux + release-preflight + scripts-ts）/ ci-mutation；
+  三 sentinel（schedule-only）独立 nightly.yml——主 CI push/PR 轮从此
+  不再挂三个恒 skipped job。
+- **语义保真三条不变式**：① 原 `needs: build-artifacts` 的 job 全进
+  caller `needs: build` 分组；② 原无 needs 的 job（static/hygiene/
+  tools 族）保持无 needs——build 红时健康面仍可见（红遮红治理保真）；
+  ③ mutation 独立 caller job 不入 ci-summary needs（2026-10-31
+  report-only 观察期拍板不被分组连坐）。workflow_dispatch 的 refresh
+  逃生门经 `with:` 透传 ci-diff（表达式恒输出布尔）。
+- **等价证明**：19 个搬运 job 归一化后**逐字节等价**（tmp/verify_split
+  一次性对账：唯一 diff = 删跨文件无效的 `needs: build-artifacts` 行；
+  本地 YAML parse ×12 / ci_checklist PASS / 保险丝域名收敛 OK /
+  node:test 20 锚全绿含新增拆分形态 J9 锚〔旧单文件扫描形态四目标
+  缺口红实证后复绿〕）。
+- **连坐**：ci_checklist ④ moon test 目标面改扫全部 workflow 文件
+  （原只扫 ci.yml——hygiene 拆出后必假红）+ ⑤ 豁免表键 mutation-gate
+  → caller id `mutation`；gen_svg 图 K 对账指引文本与 wasmtime_arm
+  头注的 ci.yml 引用改指新文件（产物随 all 重生成，-check 绿）。
+  已知代价：check run 显示名多一级分组前缀（required checks 子串
+  匹配不受影响）。
+
+### fix(wasmenc+vm+scripts): PR #520 审阅处置——P1×1 + P2×5 + P3×4（2026-11-14）
+
+- **P1 dispatch 模块产物非法 wasm（三结构错，validate 锚闭环）**：
+  按 J9 纪律先落 WebAssembly.validate 外部证人（wasmenc wbtest 三
+  fixture dump〔最小/带调用/短路〕+ watcheck 抓行验证——**证红实锤
+  后修**）：① G_RV i64→i32（Ret 塞 i32 值类型错）；② 入口 FB 置
+  stack_start（原 0 时顶层 Ret 读 0-12 越界）；③ br_table 出口标签
+  改外层 EXIT block 深度（原 nblocks 指 loop 本身 = 回跳循环首）；
+  ④ P2-4 main 无参化（entry 烧死 i32.const——param 占 local 0 致模板
+  L_V=0..5 全体错位）；⑤ P2-3 预算检查移块首安全点（原只挂
+  fallthrough 块尾——循环块以 Jump 结尾永不检查，max_steps 形同虚设）；
+  ⑥ **JumpIf 族改 if 直译 + 零栈 spill**（微缩模板 block+br_if 双臂
+  形态在验证器栈多态下不稳定——m1/m3/m4/if-else 四变体最小复现链
+  全红；短路留值=条件值=L_A 已存，臂内 spill 从 L_A 直读入池零栈
+  操作；fallthrough 用真实 gip+1，弃 ctx 单值 77）。
+- **P2**：① wide-param 禁译（word/value 口径混用——i64/double 参数
+  word=2 值=1 必错位静默产非法字节，任何 word>1 参数 fail loud）；
+  ② step_invariant rehost 轮 rc=4 计红（原 rc 豁免分支吞掉「旗标未
+  生效即红」——fail-open 实锤修复）；③ 投影层 Blocks(Emit) 禁译理由
+  透传（原 unclassified 吞原因）。
+- **P3**：libc_setup 头注叙事连坐（两态独立接线）；**CI --rehost
+  接线**（ci-engine-gates 两档全加——step 态 rehost 回归有闸）；设计
+  单批 2 实测记录补回；探针清理。
+- 验收：三 fixture validate 全绿（F0 276B/F1 470B/F2 379B）；
+  wasmenc 51/51、vm 125/125；watcheck 40 PASS + 覆盖对账 150/150；
+  tsc/oxlint/node:test 四件套绿。
+
 ### feat(wasmenc+vm): REHOST 批 4b-1——溢出池架构修正（libc 实锤）+ 投影层 DCE（2026-11-14）
 
 - **溢出池架构修正（libc 实锤驱动）**：jit PoC「块边界栈空」假设被

@@ -127,6 +127,25 @@ pub fn build_dispatch_input(
         ),
       )
     }
+    // PR #520 审阅 P2-1：word/value 口径混用禁译——Call 搬运按 word 逐个
+    // local.set（i32 槽），i64/double 参数（word=2、wasm 值=1）必错位且
+    // 静默产非法字节；任何 word 数 >1 的参数即 NotSupported（fail loud）。
+    // 全 1 word 的参数仍可能是 f32（FuncMeta 无参数类型——4b-2 胶水全语料
+    // 实测兜底，登记）
+    for pw in m.param_sizes {
+      if pw > 1 {
+        return Err(
+          NotSupported(
+            "wide-param func_idx=" +
+            func_idx.to_string() +
+            " word=" +
+            pw.to_string() +
+            " gip=" +
+            gip.to_string(),
+          ),
+        )
+      }
+    }
     let param_words : Array[Int32] = []
     let mut arg_words = 0
     for w in m.param_sizes {
@@ -408,6 +427,8 @@ pub fn build_dispatch_product(
         " height=" +
         h.to_string(),
       )
+    Err(@wasmenc.Blocks(@wasmenc.Emit(m))) =>
+      Err("dispatch-not-supported: " + m)
     Err(_) => Err("dispatch-assemble-failed: unclassified")
   }
 }

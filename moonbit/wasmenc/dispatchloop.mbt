@@ -347,13 +347,15 @@ pub fn assemble_dispatch_body(
     Err(e) => return Err(Blocks(e))
   }
   // 标签向量：逐 ip（0..exit_ip）填块索引；非 leader 填 default 臂
-  //（不可达域——只有 leader 可被跳到；default = unreachable 兜底）
-  let default_label = nblocks // 出口块前专用 trap 块索引？——出口块独立追加（索引 nblocks）
+  //（不可达域——只有 leader 可被跳到；default 同出口——PR #520 审阅
+  // P1-c：出口标签 = nblocks+1〔穿过 n 块 + loop 指向外层 EXIT block〕，
+  // 原值 nblocks 指向 loop 本身 = 回跳循环首的静默无限空转）
+  let default_label = nblocks + 1 // 外层 EXIT block（loop 之外）
   let labels : Array[Int32] = []
   let mut bi = 0
   for ip = 0; ip <= exit_ip; ip = ip + 1 {
     if ip == exit_ip {
-      labels.push(nblocks) // 出口块
+      labels.push(nblocks + 1) // 出口块（EXIT block 深度）
     } else {
       // ip 所在块：starts 升序找（双指针——ip 递增单调）
       while bi + 1 < nblocks && starts[bi + 1] <= ip {
@@ -375,6 +377,10 @@ pub fn assemble_dispatch_body(
     let body : Array[WInstr] = []
     // 块首步锚（steps += 块长——组粒度恒等的批量形态）
     push_step_add(body, end - start)
+    // 块首预算安全点（P2-3：覆盖全部块——原挂 fallthrough 块尾时，
+    // 循环块以 Jump/JumpIf 结尾永不检查，max_steps 形同虚设、死循环
+    // 挂死而非 step-limit trap；块首检查的 overshoot = 前一块，有限）
+    push_budget_check(body, input.max_steps)
     // 块首 fill（跨块留值从溢出池回栈——短路 Dup 形态）
     push_fill(body, h_in[k])
     // 返回点 load（非 void 调用的返回点——G_RV → wasm 栈）
@@ -393,7 +399,7 @@ pub fn assemble_dispatch_body(
             body,
             op,
             operand,
-            input.ctx,
+            gip,
             depth,
             h_in[k] + heights[k],
           )
@@ -446,9 +452,9 @@ pub fn assemble_dispatch_body(
       }
     }
     if !ended_by_control {
-      // 块尾：spill（跨块留值入池）+ 预算检查 + fallthrough
+      // 块尾：spill（跨块留值入池）+ fallthrough（预算检查已移块首
+      // 安全点——全块覆盖含控制流结尾块，P2-3）
       push_spill(body, h_in[k] + heights[k])
-      push_budget_check(body, input.max_steps)
       let next_ip = if k + 1 < nblocks { starts[k + 1] } else { exit_ip }
       body.push(WI32Const(next_ip))
       body.push(WGlobalSet(G_PC))
@@ -462,9 +468,12 @@ pub fn assemble_dispatch_body(
   //    组序列粗验（步骤 1 的 blocks_exit_stacks_empty）仍是装载期前置。）
   // 6. 骨架拼装（PoC bodyDispatch 同构）
   let main_body : Array[WInstr] = []
-  // 入口初始化：pc = start_ip；哨兵帧头 [exit_ip | stack_start | 0]
-  // @ stack_start-12；SPT/FB/DEPTH 复位
-  main_body.push(WLocalGet(0)) // start_ip 参数（local 0）
+  // 入口初始化：pc = entry（编译期烧死——PR #520 审阅 P2-4：main 无参
+  // 化，param 占 local 0 会让模板 L_V=0..5 全体错位撞 param 槽）；
+  // 哨兵帧头 [exit_ip | stack_start | stack_start] @ stack_start-12
+  //（caller_fb 亦置 stack_start——P1-b：FB 初值 = stack_start，顶层
+  // Ret 读 FB-12 = 哨兵帧头；原 FB=0 时读 0-12 必越界 trap）
+  main_body.push(WI32Const(input.entry_ip))
   main_body.push(WGlobalSet(G_PC))
   main_body.push(WI32Const(input.stack_start - 12))
   main_body.push(WGlobalSet(G_SPT))
@@ -476,12 +485,15 @@ pub fn assemble_dispatch_body(
   main_body.push(WI32Const(input.stack_start))
   main_body.push(WI32Store)
   main_body.push(WI32Const(input.stack_start - 4))
-  main_body.push(WI32Const(0))
+  main_body.push(WI32Const(input.stack_start))
   main_body.push(WI32Store)
-  main_body.push(WI32Const(0))
+  main_body.push(WI32Const(input.stack_start))
   main_body.push(WGlobalSet(G_FB))
   main_body.push(WI32Const(0))
   main_body.push(WGlobalSet(G_DEPTH))
+  // 外层 EXIT block（P1-c：br_table 出口标签的落点——br 深度
+  // nblocks+1 穿过全部块 + loop 到此；出口体在 loop 之后）
+  main_body.push(WBlock)
   // loop + n blocks + br_table
   main_body.push(WLoop)
   for k = 0; k < nblocks; k = k + 1 {
@@ -496,11 +508,13 @@ pub fn assemble_dispatch_body(
     }
   }
   main_body.push(WEnd) // 关 loop
-  // 出口块（br_table T[exit_ip] 目标 = nblocks 标签——落在最后一个
-  // block 的 end 之后：出口块体在 loop 内、全部块结构外）
+  main_body.push(WEnd) // 关外层 EXIT block（br EXIT 落点 = 此后——
+  // wasm br 到块标签 = 跳到该块 end，出口体若在块内会被跳过致函数
+  // fallthru 栈空〔validate 实锤 F0/F1〕）
+  // 出口体（EXIT block 之外、函数末尾——br_table 出口/default 与 loop
+  // fallthru 两路均达；P1-c 修正的最终形态）
   main_body.push(WGlobalGet(G_RV))
   main_body.push(WReturn)
-  main_body.push(WUnreachable) // loop 尾防御（出口块 return 后不可达）
   Ok(main_body)
 }
 
@@ -517,7 +531,7 @@ pub fn assemble_dispatch_module(
     Err(e) => return Err(e)
   }
   let b = ModuleBuilder::new()
-  let t_main = b.add_type([WT_I32], [WT_I32])
+  let t_main = b.add_type([], [WT_I32]) // P2-4：无参（entry 烧死——param 撞模板 L_* 槽）
   let t_host = b.add_type([WT_I32, WT_I32], [WT_I64])
   let _ = b.add_import("env", "vitro_host_call", 0, t_host)
   let main_idx = b.add_func(t_main, {
@@ -537,7 +551,7 @@ pub fn assemble_dispatch_module(
   let _ = b.add_global(WT_I32, true, WI32Const(0)) // 2: G_STEPS
   let _ = b.add_global(WT_I32, true, WI32Const(0)) // 3: G_SPT
   let _ = b.add_global(WT_I32, true, WI32Const(0)) // 4: G_RET
-  let _ = b.add_global(WT_I64, true, WI64Const(0L)) // 5: G_RV
+  let _ = b.add_global(WT_I32, true, WI32Const(0)) // 5: G_RV（P1-a：i32——Ret 塞 i32 值，i64 槽类型错）
   let _ = b.add_global(WT_I32, true, WI32Const(0)) // 6: G_DEPTH
   b.add_export("main", 0, main_idx)
   b.add_export("memory", 2, 0)
@@ -561,10 +575,14 @@ pub const SPILL_SLOTS : Int32 = 8
 pub const L_SPILL_BASE : Int32 = 7
 
 ///|
-/// 块尾 spill（出口高 h：栈顶 h 项逐个 local.set 入池——顶先）。
+/// 块尾 spill（出口高 h：栈顶 h 项逐个 **local.tee** 入池——顶先）。
+/// tee 而非 set（PR #520 审阅 P1 收口实锤）：set 弹栈——控制流展开器
+/// 双臂（br_if taken/fallthrough）的静态栈态在 wasm 验证器下不对称
+/// 时报「local.set 栈空」；tee 值入池且留栈、由后续 br 的截断语义
+/// 丢弃——两臂恒合法（V8 实测绿）。
 fn push_spill(body : Array[WInstr], h : Int32) -> Unit {
   for k = h - 1; k >= 0; k = k - 1 {
-    body.push(WLocalSet(L_SPILL_BASE + k))
+    body.push(WLocalTee(L_SPILL_BASE + k))
   }
 }
 
@@ -606,34 +624,55 @@ fn push_jump_with_depth(
   body : Array[WInstr],
   op : @opcode.OpCode,
   operand : Int32,
-  ctx : EmitCtx,
+  gip : Int32,
   depth : Int32,
   spill_h : Int32,
 ) -> Unit {
-  // 逐 SeqItem 发射（模板单源）——BrAny → WBr(depth 调整)
-  let s = template_spec(op)
-  guard s.pat is Some(pat) else { return }
-  let items = match pat {
-    Seq(items) => items
-    _ => return
-  }
-  for item in items {
-    let w : WInstr? = match item {
-      Fixed(w) => Some(w)
-      OpI32 => Some(WI32Const(operand))
-      BrAny => None // 下面特判（深度重编）
-      CtxI32(slot) => Some(WI32Const(ctx_slot_value(ctx, slot)))
-      _ => None // Jump 族模板只用 Fixed/OpI32/BrAny/CtxI32 四形态
+  // **PR #520 审阅 P1 收口**：JumpIf 族改 **if 直译**——微缩模板的
+  // block+br_if 双臂形态在 wasm 验证器栈多态下不稳定（最小复现链
+  // m1/m3/m4/if-else 四变体全红：br_if 两臂静态栈高不对称判定，set/
+  // tee/drop 全报栈空）；if 直译两臂出口高天然对称（then 臂 br 终结、
+  // else 空），教科书级结构零验证器怪癖。fallthrough 用真实 gip+1
+  //（控制流组后继恒 leader——partition 规则，br_table T[gip+1] 必中），
+  // 弃微缩模板的 CtxI32(FallthroughPc)（ctx 单值 77 对 dispatch 无意义
+  // ——每块 fallthrough 不同）。
+  match op {
+    Jump => {
+      body.push(WI32Const(operand))
+      body.push(WGlobalSet(G_PC))
+      push_spill(body, spill_h)
+      body.push(WBr(depth))
     }
-    match w {
-      Some(w) => body.push(w)
-      None =>
-        if item is BrAny {
-          // 顶层 br 前 spill（出口留值入池——Jump 族弹后栈顶恰 spill_h 项）
-          push_spill(body, spill_h)
-          body.push(WBr(depth))
-        }
+    JumpIfZero | JumpIfNotZero => {
+      body.push(WLocalSet(L_A)) // 弹条件值（VM JumpIf 弹 1 判定）
+      body.push(WLocalGet(L_A))
+      if op is JumpIfZero {
+        body.push(WI32Eqz) // taken ⇔ 值为 0
+      }
+      body.push(WIf)
+      // taken 臂：pc = 目标 + 零栈 spill + br（if 层内深度 +1）。
+      // **零栈 spill（PR #520 审阅 P1 收口二段）**：短路留值 = 条件值
+      // 本身（Dup 副本 = JumpIf 判定值 = 已存 L_A）——臂内 spill 从
+      // L_A 直读入池（get+set 零栈操作），绕开 if 臂栈多态判定
+      //（tee/set 从栈取在 V8 静态判定下报栈空——四变体最小复现链）
+      for k2 = 0; k2 < spill_h; k2 = k2 + 1 {
+        body.push(WLocalGet(L_A))
+        body.push(WLocalSet(L_SPILL_BASE + k2))
+      }
+      body.push(WI32Const(operand))
+      body.push(WGlobalSet(G_PC))
+      body.push(WBr(depth + 1))
+      body.push(WEnd) // 关 if（else 空——fallthrough 直落）
+      // fallthrough：pc = gip+1 + 零栈 spill（同 L_A 源）+ br
+      for k2 = 0; k2 < spill_h; k2 = k2 + 1 {
+        body.push(WLocalGet(L_A))
+        body.push(WLocalSet(L_SPILL_BASE + k2))
+      }
+      body.push(WI32Const(gip + 1))
+      body.push(WGlobalSet(G_PC))
+      body.push(WBr(depth))
     }
+    _ => ()
   }
 }
 

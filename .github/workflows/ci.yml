@@ -510,9 +510,9 @@ jobs:
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target js cmd/vitro_js && cd ..
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known
+            node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known --rehost
           else
-            node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000 --step-budget 20000
+            node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000 --step-budget 20000 --rehost
           fi
         shell: bash
 

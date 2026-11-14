@@ -38,8 +38,8 @@ test "dispatch_minimal_program_skeleton" {
   //   FB/DEPTH 复位（16 条）+ loop + 块结构
   assert_true(body.length() > 20, msg="骨架非空")
   assert_true(
-    body[0] is WLocalGet(0) && body[1] is WGlobalSet(_),
-    msg="入口首两条 = start_ip 入 pc",
+    body[0] is WI32Const(0) && body[1] is WGlobalSet(_),
+    msg="入口首两条 = entry 烧死入 pc（P2-4 无参化——原 local.get 0 撞模板槽）",
   )
   // ②br_table 在场（分发核心）且标签向量含出口块（末项 = 块数）
   let mut has_br_table = false
@@ -50,8 +50,8 @@ test "dispatch_minimal_program_skeleton" {
       // T[2]=出口块（nblocks=1 → 标签 1）
       assert_eq(
         labels,
-        [0, 1, 1],
-        msg="标签向量（块 0 / default / 出口）",
+        [0, 2, 2],
+        msg="标签向量（P1-c：出口 = EXIT block 深度 nblocks+1）",
       )
     }
   }

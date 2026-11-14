@@ -91,9 +91,14 @@ fn TypeChecker::visit_func_decl(
   self.exit_scope()
   self.current_func_params.clear()
   // #517 P3-14（C7）：未初始化局部标量读取的静态警告（保守数据流——
-  // W3099；挂点与 W3084 同点：函数体定型尾段）
+  // W3099；挂点与 W3084 同点：函数体定型尾段；参数名集传入 = KNR
+  // 参数声明不追踪的 CI 连坐修正）
   if node.body is Some(body_stmt2) {
-    self.check_uninitialized_reads(node.name, body_stmt2)
+    let pnames : Array[String] = []
+    for p in node.params {
+      pnames.push(p.name)
+    }
+    self.check_uninitialized_reads(node.name, pnames, body_stmt2)
   }
   // #214（2026-10-22）：非 void 函数的未返回路径教学警告——所有出口
   // 路径缺 return 时返回值未定义（C 标准不保证任何值，得 0 只是巧合）；

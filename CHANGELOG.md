@@ -138,6 +138,34 @@
   **1539/1539**；STEP-INV **1035 语料 / 2,087,483 帧** RED 0 ZOMBIE 0；
   W4 **1081 cases** AGREE identical；rundiff **919**；vm_diff **865/865**；
   驱动 .mts 口径 **67→70**（批 3 时点 64→69 + #513 green_probe +1）。
+### fix(typeck+scripts): #517 P3 批 CI 九红连坐处置（2026-11-14 第二轮）
+
+- **W3099 四误报修（语料实测）**：① 函数原型声明（体内 `int f();`
+  以函数指针形态进 VarDecl）→ pointee 链含 Function 不追踪（kr_2_8 把
+  函数名 'wordlength' 误报实锤）；② `CallPtr` callee 按读处理 → 不读
+  （C 输入统一在 CallPtr——第二路径）；③ KNR 参数声明（体内 `int a,b;`
+  与形参同名）→ 挂点传形参名集不追踪（kr_5_8/kr_5_14 实锤）；④
+  `(void)u` 惯用法 → 显式抑制不报（clang 同款；chibicc attribute.c/
+  const_qualified_basic.c 实锤）。
+- **W3098 逗号误报修**：常量逗号 `(3, 4)` 是 const_eval 的**设计性
+  拒折**（Comma 非常量）非运算失败——树含 Comma 一律跳过
+  （comma_expr_stmt.c 实锤）；`(1/0, 2)` 因此漏报（保守方向）。
+- **golden/gold/基线连坐**：typeck_diff `--freeze-mb` 重冻 2 hash
+  （jit_nested×2——嵌套 for-init 赋值被外层循环快照回滚后的真未初始化
+  读，clang 同款方向）；realcode gold_chibicc.json 手改 1 条（extern.c
+  +W3099——体内 extern 是 C 子集不支持形态〔E2003 在案〕错误恢复期的
+  级联警告，Stmt 层无存储类位 + typeck 无 parser 错可见 + 恢复造点
+  不改三重不可达，_meta 登记已知形态）；protocol_frames
+  `--update-baseline`（catalog 帧纳入三新码）。
+- **testcount 漏数三处**：moonbit/README.md 裸口径 1460→1472 + 两文档
+  native 全量 1536→1548（P3 批 +12 测试连坐）。
+- **surface 边表**：time_travel→vm 的 CallFrame 消费边登记
+  （P1-1 深栈截断锚的帧构造 helper 跨包类型引用）。
+- 验收：typeck_diff 六套件 / realcode 双 corpus / protocol_frames 双臂 /
+  testcount / surface / facts --strict / mcp_smoke 18 / catalog_closure /
+  libc_boot / consumer / demo_smoke 197 / replay wasm 61 全绿；三臂
+  moon test 1472(js)+579+579。
+
 ### fix(diag+typeck+vm+time_travel+cmd): #517 缺陷猎杀批余项——P3×4 全修（2026-11-14）
 
 - **诊断码表 +3**（E3097/W3098/W3099——全补教学卡闭合，catalog_closure

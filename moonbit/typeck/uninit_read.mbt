@@ -16,31 +16,68 @@
 //   （首次读取点），警告后不再重复报。
 
 ///|
-/// 追踪状态：未初始化且未警告的标量局部（name → 声明 loc）+ 已警告名集。
+/// 追踪状态：未初始化且未警告的标量局部（name → 声明 loc）+ 已警告名集
+/// + 错误行集（错误恢复期的声明不追踪）。
 priv struct UninitState {
   mut pending : Map[String, @source.SourceLoc]
   warned : Set[String]
+  error_lines : Set[Int32]
 }
 
 ///|
 /// 标量判定（追踪面）：整族/浮族/char/long long/指针；数组/struct/
-/// union/void/函数指针以外全收。
+/// union/void/函数指针以外全收。#517 CI 连坐修正（2026-11-14）：函数
+/// 原型声明（体内 `int f();`）以函数指针形态进 VarDecl——追踪它会在
+/// 后续调用点把**函数名**误报为未初始化读取（kr_2_8 实锤）；pointee
+/// 链含 Function 一律不收（函数指针未初始化调用属罕见形态，漏报方向安全）。
 fn uninit_trackable(ty : @ast.Type) -> Bool {
   match ty.kind() {
-    TK_Int | TK_Char | TK_Float | TK_Double | TK_LongLong | TK_Pointer => true
+    TK_Int | TK_Char | TK_Float | TK_Double | TK_LongLong => true
+    TK_Pointer => !uninit_pointee_is_function(ty)
+    _ => false
+  }
+}
+
+///|
+/// pointee 链是否含函数类型（函数指针/函数原型形态）。
+fn uninit_pointee_is_function(ty : @ast.Type) -> Bool {
+  match ty {
+    Pointer(pointee, _) =>
+      match pointee.kind() {
+        TK_Function => true
+        TK_Pointer => uninit_pointee_is_function(pointee)
+        _ => false
+      }
     _ => false
   }
 }
 
 ///|
 /// 入口：函数体顶层（挂点 = check_function 尾段，W3084 同点）。
+/// param_names：**函数形参名集**——KNR 风格定义的参数声明（`int f(a, b)
+/// int a; int b; {...}`）在函数体内以 VarDecl 无初始化形态出现、与参数
+/// 同名——按参数处理不追踪（调用方已传值；kr_5_8/kr_5_14 实锤）。
+/// error_lines：本遍历前已报 error 的行集——**错误恢复期造出的声明不
+/// 追踪**（局部 `extern int x;` 在 C 子集不支持、报 E2003 后恢复出的
+/// VarDecl 上叠 W3099 是级联噪声；chibicc extern.c 实锤）。
 fn TypeChecker::check_uninitialized_reads(
   self : TypeChecker,
   func_name : String,
+  param_names : Array[String],
   body : @ast.Stmt,
 ) -> Unit {
   ignore(func_name)
-  let st : UninitState = { pending: Map([]), warned: Set([]), }
+  let st : UninitState = {
+    pending: Map([]),
+    warned: Set([]),
+    error_lines: Set([]),
+  }
+  for p in param_names {
+    st.warned.add(p)
+  }
+  for e in self.errors {
+    st.error_lines.add(e.line)
+  }
   self.uninit_walk_stmt(body, st)
 }
 
@@ -56,13 +93,25 @@ fn TypeChecker::uninit_walk_stmt(
         self.uninit_walk_stmt(s, st)
       }
     VarDecl(ty, name, init, extras, is_static, _, loc) => {
-      if !is_static && uninit_trackable(ty) && init is None {
+      // #517 CI 连坐修正：挂点在函数作用域出栈后——lookup_var 只会命中
+      // 文件作用域符号；局部 `extern int ext3;` 声明（引用外部定义，非
+      // 未初始化局部）与「局部 shadow 全局同名」一并不追踪（后者漏报
+      // 方向安全；extern.c 实锤）
+      if !is_static &&
+        uninit_trackable(ty) &&
+        init is None &&
+        self.lookup_var(name) is None &&
+        !st.error_lines.contains(loc.line) {
         if !st.pending.contains(name) {
           st.pending.set(name, loc)
         }
       }
       for ex in extras {
-        if !is_static && uninit_trackable(ex.var_type) && ex.init is None {
+        if !is_static &&
+          uninit_trackable(ex.var_type) &&
+          ex.init is None &&
+          self.lookup_var(ex.name) is None &&
+          !st.error_lines.contains(loc.line) {
           if !st.pending.contains(ex.name) {
             st.pending.set(ex.name, loc)
           }
@@ -214,7 +263,10 @@ fn TypeChecker::uninit_walk_expr(
         self.uninit_track_expr(a, st)
       }
     CallPtr(f, args, _, _) => {
-      self.uninit_walk_expr(f, st)
+      // #517 CI 连坐修正：callee 不按读处理——C 输入统一在 CallPtr，
+      // callee 是函数名形态（函数名被报 W3099 的第二路径；函数指针变量
+      // 未初始化调用属罕见形态，漏报方向安全）
+      ignore(f)
       for a in args {
         self.uninit_track_expr(a, st)
       }
@@ -233,7 +285,16 @@ fn TypeChecker::uninit_walk_expr(
       self.uninit_walk_expr(i, st)
     }
     Member(o, _, _, _, _) => self.uninit_walk_expr(o, st)
-    Cast(inner, _, _, _) => self.uninit_walk_expr(inner, st)
+    // (void)u 是 C 惯用的「我知道没用到」显式抑制标记——clang
+    // -Wuninitialized 同款不报（#517 CI 连坐修正：chibicc 语料的
+    // `(void)x;` 形态曾误报；attribute.c 实锤）
+    Cast(inner, target_ty, _, _) =>
+      if target_ty.kind() is TK_Void && inner is Identifier(_, _, _) {
+        // 显式抑制：既不报也不视为初始化
+        ()
+      } else {
+        self.uninit_walk_expr(inner, st)
+      }
     Assign(_, _, _, _, _) => self.uninit_track_expr(e, st)
     _ => ()
   }

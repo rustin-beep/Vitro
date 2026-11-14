@@ -228,4 +228,28 @@ test("⑤ 显式豁免表：mutation-gate 不入 needs 不红（观察期注记�
     "    runs-on: ubuntu-latest",
   ].join("\n");
   assert.equal(checkCiSummary(ci, EXEMPT), null);
+test("J9 ①漏登记（.mts 无 shebang 形态，2026-11-14 #512 彻查）：main.mts 文件名即驱动——shebang 缺失不得逃逸驱动集", () => {
+  // 前科：gen_course（S08-6 2026-11-01 补 shebang 个案）/wasmenc_emitgate
+  // /wasmenc_rundiff（#505/#512）无 shebang 落库，三向对账对它们零检出力
+  // （活行碰巧在场故未爆——防线盲而非行为缺口）。判据修复 = 文件名即驱动
+  //（shebang 只是可执行直跑标记，非驱动身份判据）。修复前形态：无 shebang
+  // 的 main.mts 不进驱动集，本锚「漏登记红」断言 failed=false 即证红。
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, "scripts/noshebang"), { recursive: true });
+    fs.writeFileSync(path.join(x.root, "scripts/noshebang/main.mts"), "// 判定驱动但无 shebang 头\n");
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, true);
+  assert.match(r.lines.join("\n"), /漏登记: scripts\/noshebang/);
+});
+
+test("无 shebang main.mts + 活行在场 → 不误伤（文件名即驱动的正向面）", () => {
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, "scripts/noshebang2"), { recursive: true });
+    fs.writeFileSync(path.join(x.root, "scripts/noshebang2/main.mts"), "// 判定驱动但无 shebang 头\n");
+    x.edit(".github/workflows/ci.yml", "steps:\n  - run: go run ./scripts/alpha\n  - run: node scripts/noshebang2/main.mts\n  - run: |\n      moon test --target js\n      moon test --target native\n      moon test\n      moon test --target wasm-gc\n");
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+  assert.match(r.summary, /\.mts 1/);
 });

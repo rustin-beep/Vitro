@@ -9,12 +9,13 @@
 //
 // **不迁（oracle 侧）**：runOracle / compare 的 oracle 分支 / freezeDigest
 //（需 vivo_cli）。工序④删区后 oracle 永不存在，`--freeze` 必然 fail。
-// **freshness 口径勘正（2026-11-01 审阅 v2 S05-C2）**：本文件自 2026-10-23 起
-// native 臂已改**预编译 run.exe 直跑**（原「moon run 消除假绿死角」的论证随之
-// 失效——exe 直跑不自带构建检查）：CI 由 build-artifacts 每轮重建闭环；本地
-// 侧补**源码 mtime 新于产物即警告**的软检查（warnStaleExe，不判红——mtime 是
-// 提示不是证据）。wasm 臂消费 build 产物（存在性检查 + S05-C1 引擎产物缺件
-// fail loud），mtime 面同警告覆盖。
+// **freshness 口径勘正（2026-11-01 审阅 v2 S05-C2；2026-11-14 批 3 连坐再勘）**：
+// 本文件自 2026-10-23 起 native 臂已改**预编译 run.exe 直跑**（原「moon run
+// 消除假绿死角」的论证随之失效——exe 直跑不自带构建检查）。CI 由 build-
+// artifacts 每轮重建闭环；本地侧 S05-C2 曾以**软警告**（warnStaleExe 不判红）
+// 兜陈旧——2026-11-14 实锤其不阻断形态漏拦（陈旧 run.exe 产出 DIFF=2 假红，
+// 见 341 行段注），native 臂已升级 **ensureFresh 复核构建硬门禁**（mtime 只作
+// 触发、内容 hash 由 moon 增量把关）；wasm 臂因 wasmopt 后置链维持软警告。
 //
 // 三通道（golden 模式 = mb 当前值 ≡ 清单登记值）：
 //   1. stdout：剥引擎标记行后的纯程序输出（sha16）
@@ -30,6 +31,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { makeFail } from "../../internal/genio.mts";
+import { ensureFresh } from "../../internal/freshness.mts";
 import type { DiffTarget } from "../../internal/diffgate.mts";
 
 export function fatal(msg: string): never {
@@ -338,7 +340,27 @@ export function runVm(argv: string[], root: string): number {
   process.stderr.write(
     "vm_diff: [裁判切换] oracle 面已随工序④退役——本判定固定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）\n",
   );
-  warnStaleExe(root, backend);
+  // REHOST 批 3 连坐（2026-11-14）：native 臂新鲜度从 S05-C2 软警告升级为
+  // ensureFresh **复核构建硬门禁**（freshness.mts 单源——clang_direct/
+  // rundiff/step_invariant 等九处现役同源）。本会话实锤：release run.exe
+  // 陈旧（exe 日期早于 #511 的 lexer 改动，依赖面源码变更不触发本地重建）
+  // 混过软警告（打了不阻断）产出 DIFF=2 假红，三提交 worktree 归因才闭环。
+  // 复核构建形态消化 S05-C2 的假阳性顾虑：checkout 刷源 mtime → 触发复核
+  // → moon 增量按内容 hash 判 up-to-date 秒过（mtime 只作触发不作证据）；
+  // 真陈旧 → 自动重建 → 假红根除。wasm 臂维持软警告：其产物链含 wasmopt
+  // 后置覆盖（CI build-artifacts 步骤序 build→wasmopt→-check），自动重建
+  // 会以裸产物覆盖优化产物——升级待 freshness 支持构建后置钩子另批。
+  if (backend === "native") {
+    ensureFresh("vm_diff", path.join(root, RUN_EXE), [
+      "build",
+      "--release",
+      "--target",
+      "native",
+      "cmd/run",
+    ]);
+  } else {
+    warnStaleExe(root, backend);
+  }
 
   const skips = loadJSON<SkipEntry[]>(root, SKIP_REL, fail);
   const known = loadJSON<KnownEntry[]>(root, KNOWN_REL, fail);
@@ -526,10 +548,12 @@ export function runVm(argv: string[], root: string): number {
 }
 
 /**
- * 本地 freshness 软警告（S05-C2，2026-11-01 审阅 v2）：exe 直跑不自带构建
- * 检查——moonbit/ 全树（排除 _build）最新 .mbt mtime 新于被测产物时提示
- * 「测的可能是旧产物」。不判红：mtime 是提示不是证据（checkout 会刷源码
- * mtime）；CI 由 build-artifacts 每轮重建闭环，不触此警告。
+ * 本地 freshness 软警告（S05-C2，2026-11-01 审阅 v2；2026-11-14 批 3 连坐
+ * 后 **wasm 臂专用**——native 臂已升 ensureFresh 复核构建硬门禁，见 341 行
+ * 段注）：exe 直跑不自带构建检查——moonbit/ 全树（排除 _build）最新 .mbt
+ * mtime 新于被测产物时提示「测的可能是旧产物」。不判红：mtime 是提示不是
+ * 证据（checkout 会刷源码 mtime）；CI 由 build-artifacts 每轮重建闭环，
+ * 不触此警告。
  */
 function warnStaleExe(root: string, backend: "native" | "wasm"): void {
   const rel = backend === "native" ? RUN_EXE : WASM_ENGINE;

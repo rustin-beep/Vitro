@@ -1228,3 +1228,107 @@ test "serve_step_next_waiting_no_redelivery_b7b" {
   }
   assert_true(finished, msg="feed 后续跑可完成（清位闭环）")
 }
+
+// ── REHOST 批 3（step 态切换）锚族 ──────────────────────────────────
+// 设计单 §3.2 批 3：step 态装载走 wasm 载体往返（帧参数 wasm_rehost——
+// 与批 2b run 帧独立并行的 flag）；单步=组、断点判定经组表侧车 loc、
+// VMSnapshot gip 换名不换义、StepPayload/帧流发射零变化（协议面冻结）。
+
+///|
+/// 批 3 锚一：step.begin 帧参数 `wasm_rehost` 的状态字段——flag on 返回帧
+/// 携带 `"wasm_rehost":"ok groups=N"`（装载往返成功——折叠重建产物驱动
+/// 取指）；flag off 帧不带该字段（帧面冻结：老消费者零感知，前缀只增
+/// 不改）。J9：接线前（params 忽略形态）flag on 帧无字段即红。
+test "serve_step_begin_wasm_rehost_status_field_b3" {
+  let s = @session.Session::new()
+  let (cresp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { int a = 1; return a; }\\n\"}}",
+  )
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  // flag off：帧不带 wasm_rehost 字段（零扰动——批 3 前形态原样）
+  let (b0, _) = serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}")
+  assert_true(b0.contains("\"ready\":true"))
+  assert_false(
+    b0.contains("\"wasm_rehost\""),
+    msg="flag off 帧面冻结（实得 \{b0}）",
+  )
+  // flag on：状态串字段（ok groups=N——组表装载往返成功）
+  let (b1, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"step.begin\",\"params\":{\"wasm_rehost\":true}}",
+  )
+  assert_true(
+    b1.contains("\"wasm_rehost\":\"ok groups="),
+    msg="flag on 状态字段（实得 \{b1}）",
+  )
+  assert_true(b1.contains("\"ready\":true"), msg="step.begin 语义原样")
+}
+
+///|
+/// 批 3 锚二：flag on/off 两会话**帧流逐位同构**（单步=组语义冻结的
+/// serve 层最强锚——INV3a step_index 严格 +1 的 wbtest 投影：任意一批
+/// 响应串逐位相等 = 帧流发射零变化）。断点行为经组表侧车 loc 同构
+/// （breakpoints.set 同行 → Paused 帧一致——StepEvent 的 operand 行号
+/// 来自折叠重建产物 = 组表侧车）。
+test "serve_step_begin_rehost_frameflow_isomorphic_b3" {
+  // src 行 4 含循环体赋值（StepEvent 行锚——断点行域内）
+  let src = "int main() {\\n  int a = 0;\\n  while (a < 3) {\\n    a = a + 1;\\n  }\\n  return a;\\n}\\n"
+  //（drive 不做断言——test 内嵌 fn 无 raise 面，编译/终止判定外层判）
+  fn drive(flag_on : Bool, id0 : Int32) -> (Array[String], Bool, Bool) {
+    let s = @session.Session::new()
+    let (cresp, _) = serve_handle(
+      s,
+      "{\"id\":\{id0},\"method\":\"compile\",\"params\":{\"source\":\"\{src}\"}}",
+    )
+    let compile_ok = cresp.contains("\"ok\":true")
+    let begin = if flag_on {
+      "{\"id\":\{id0 + 1},\"method\":\"step.begin\",\"params\":{\"wasm_rehost\":true}}"
+    } else {
+      "{\"id\":\{id0 + 1},\"method\":\"step.begin\"}"
+    }
+    let _ = serve_handle(s, begin)
+    // 行 4（a = a + 1）断点——flag on 装载后断点判定经组表侧车 loc/operand
+    let _ = serve_handle(
+      s,
+      "{\"id\":\{id0 + 2},\"method\":\"breakpoints.set\",\"params\":{\"lines\":[4]}}",
+    )
+    let out : Array[String] = []
+    let mut done = false
+    for i = 0; i < 60 && !done; i = i + 1 {
+      let (r, _) = serve_handle(
+        s,
+        "{\"id\":\{id0 + 3},\"method\":\"step.next\"}",
+      )
+      out.push(r)
+      if r.contains("\"finished\":true") ||
+        r.contains("\"trapped\":true") ||
+        r.contains("\"paused\":true") {
+        done = true
+      }
+    }
+    (out, compile_ok, done)
+  }
+  let (legacy, cok0, done0) = drive(false, 1)
+  //（id 段与 legacy 相同——响应帧含 id 字段，逐位比较须同 id；两会话
+  // 各自独立，id 复用无冲突）
+  let (rehost, cok1, done1) = drive(true, 1)
+  assert_true(cok0 && cok1, msg="编译须成功")
+  assert_true(done0 && done1, msg="帧流须三态终止（flag on/off）")
+  assert_eq(
+    rehost.length(),
+    legacy.length(),
+    msg="批数同构（断点暂停点一致）",
+  )
+  for i = 0; i < legacy.length(); i = i + 1 {
+    assert_eq(
+      rehost[i],
+      legacy[i],
+      msg="帧流第 \{i} 批逐位同构（单步=组语义冻结）",
+    )
+  }
+  // 断点确已命中（非平凡通过：末批 paused=true——行 4 StepEvent 暂停）
+  assert_true(
+    legacy.length() > 0 &&
+    legacy[legacy.length() - 1].contains("\"paused\":true"),
+    msg="断点行 4 须命中 Paused（锚非平凡化）",
+  )
+}

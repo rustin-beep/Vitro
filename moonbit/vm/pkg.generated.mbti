@@ -104,7 +104,7 @@ pub(all) struct VMSnapshot {
   mem : @memory.MemorySnapshot
   stack : Array[UInt64]
   call_stack : Array[CallFrame]
-  ip : Int32
+  gip : Int32
   mem_stack_top : UInt32
   step_count : Int32
   current_line : Int32

@@ -165,3 +165,67 @@ test("真实仓库端到端：默认绿 + 未知参数 exit 2", () => {
   const bad = spawnSync(process.execPath, [MAIN, "--nope"], { cwd: root, encoding: "utf8" });
   assert.equal(bad.status, 2);
 });
+
+// ── ⑤ ci-summary 三面对账（2026-11-14 PR #513 审阅 P1-1：第三次同形复发后机判化）──
+import { checkCiSummary } from "./main.mts";
+
+function summaryCi(needs: string, envJobs: string[], pairs: string[]): string {
+  const env = envJobs.map((j) => `          ${j.toUpperCase().replace(/-/g, "_")}: \${{ needs.${j}.result }}`).join("\n");
+  const pairLines = pairs.map((p) => `            "${p}:$${p.toUpperCase().replace(/-/g, "_")}"`).join(" ");
+  return [
+    "on: {push: {branches: [master]}}",
+    "jobs:",
+    "  build-artifacts:",
+    "    runs-on: ubuntu-latest",
+    "  gate-a:",
+    "    runs-on: ubuntu-latest",
+    "  nightly-x:",
+    "    runs-on: ubuntu-latest",
+    "    if: github.event_name == 'schedule'",
+    "  ci-summary:",
+    "    needs: [" + needs + "]",
+    "    runs-on: ubuntu-latest",
+    "    steps:",
+    "      - run: |",
+    env,
+    "          pairs=(" + pairLines + ")",
+  ].join("\n");
+}
+
+const EXEMPT = new Map<string, string>([["mutation-gate", "观察期"]]);
+
+test("⑤ 绿：gate job 全入 needs/env/pairs + schedule-only 自动豁免", () => {
+  const ci = summaryCi("build-artifacts, gate-a", ["build-artifacts", "gate-a"], ["build", "gatea"]);
+  assert.equal(checkCiSummary(ci, EXEMPT), null);
+});
+
+test("⑤ J9 漏 needs：gate job 未入 ci-summary → 红（PR #513 green_probe 同形）", () => {
+  const ci = summaryCi("build-artifacts", ["build-artifacts", "gate-a"], ["build", "gatea"]);
+  const r = checkCiSummary(ci, EXEMPT);
+  assert.match(r as string, /漏 needs: gate-a/);
+});
+
+test("⑤ J9 env 失衡：needs 有而 env 无 → 红", () => {
+  const ci = summaryCi("build-artifacts, gate-a", ["build-artifacts"], ["build", "gatea"]);
+  const r = checkCiSummary(ci, EXEMPT);
+  assert.match(r as string, /env 缺失: gate-a/);
+});
+
+test("⑤ J9 pairs 失衡：循环数 != needs 数 → 红（2026-10-30 同形）", () => {
+  const ci = summaryCi("build-artifacts, gate-a", ["build-artifacts", "gate-a"], ["build"]);
+  const r = checkCiSummary(ci, EXEMPT);
+  assert.match(r as string, /pairs 1 != needs 2/);
+});
+
+test("⑤ 显式豁免表：mutation-gate 不入 needs 不红（观察期注记）", () => {
+  const ci = [
+    "on: {push: {branches: [master]}}",
+    "jobs:",
+    "  mutation-gate:",
+    "    runs-on: ubuntu-latest",
+    "  ci-summary:",
+    "    needs: []",
+    "    runs-on: ubuntu-latest",
+  ].join("\n");
+  assert.equal(checkCiSummary(ci, EXEMPT), null);
+});

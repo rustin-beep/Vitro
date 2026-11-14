@@ -1550,6 +1550,9 @@ jobs:
     name: Green corpus three-arm gate (vitro-green ratchet)
     needs: build-artifacts
     runs-on: windows-latest
+    # PR #513 审阅 P3：外部 clone 无重试 + job 无时限——本机 3.5min / CI 估
+    # 6-10min，15min 封顶防挂死（未来语料面扩大时按需上调）。
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Install Node
@@ -1568,8 +1571,13 @@ jobs:
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && MOON_CC=clang moon build --release --target js cmd/vitro_wasm && cd ..
         shell: bash
-      - name: Clone green corpus branch
-        run: git clone --depth 1 -b vitro-green https://github.com/rustin-beep/C green-repo
+      - name: Clone green corpus branch (retry x3)
+        run: |
+          for i in 1 2 3; do
+            git clone --depth 1 -b vitro-green https://github.com/rustin-beep/C green-repo && break
+            echo "clone 失败（第 ${i} 次），2s 后重试"; rm -rf green-repo; sleep 2
+            [ "$i" = "3" ] && exit 1
+          done
         shell: bash
       - name: green_probe three-arm gate
         run: node scripts/green_probe/main.mts -repo green-repo -timeout 120000
@@ -2285,7 +2293,7 @@ jobs:
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
-    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, arm4-wasmtime, desktop]
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, arm4-wasmtime, desktop, green_probe]
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results
@@ -2304,12 +2312,16 @@ jobs:
           RELEASE_PREFLIGHT: ${{ needs.release-preflight.result }}
           ARM4_WASMTIME: ${{ needs.arm4-wasmtime.result }}
           DESKTOP: ${{ needs.desktop.result }}
+          GREEN_PROBE: ${{ needs.green_probe.result }}
         run: |
           set +e
           # 2026-10-30 审计批：needs/env/循环三面曾失衡（needs 11 而循环 10——
           # backend-triage 红/跳过时汇总不判红）；计数文案改由数组推导防再陈旧。
           # 2026-10-31 审阅批 P2-1：release-preflight 三面连坐补入（mutation-gate
           # 有「观察期不入 needs」豁免注记，本 job 无豁免理由——漏登记即同形复发）。
+          # 2026-11-14 PR #513 审阅 P1-1：green_probe 三面补入（第三次同形复发）；
+          # 同时「gate job 集 ⊆ ci-summary 三面」已机判化进 ci_checklist（④ 后 ⑤ 判据，
+          # schedule-only job 自动豁免 + mutation-gate 显式豁免表）——第四次不会再静默。
           pairs=(
             "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE"
             "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO"
@@ -2318,6 +2330,7 @@ jobs:
             "release-preflight:$RELEASE_PREFLIGHT"
             "arm4-wasmtime:$ARM4_WASMTIME"
             "desktop:$DESKTOP"
+            "green_probe:$GREEN_PROBE"
           )
           bad=0
           for pair in "${pairs[@]}"; do

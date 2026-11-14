@@ -77,7 +77,7 @@ async function runOneArm(
   cfile: string,
   timeoutMs: number,
 ): Promise<ArmResult> {
-  const { spawn } = await import("node:child_process");
+  const { spawn, spawnSync } = await import("node:child_process");
   const vitroSh = path.join(repoRoot, "scripts", "bin", "vitro");
   return new Promise<ArmResult>((resolve) => {
     const child = spawn("sh", [vitroSh, "--backend", arm, "compile", "--json", cfile], {
@@ -85,22 +85,41 @@ async function runOneArm(
       windowsHide: true,
     });
     let out = "";
+    let errOut = ""; // PR #513 审阅 P2-2：stderr 尾部入 detail——产物缺失/崩溃/超时
+    // 在日志里原本长得一样（stdout 空时 detail 全空），判因须靠 stderr。
     let settled = false;
+    // PR #513 审阅 P3：sh → node 孙进程在 Windows 无进程组，child.kill() 只杀
+    // sh 本身——超时路径走 taskkill /T 杀整树（POSIX 无此问题，直接 kill）。
+    const killTree = (): void => {
+      if (process.platform === "win32" && child.pid !== undefined) {
+        spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"]);
+      } else {
+        child.kill();
+      }
+    };
+    const errTail = (): string => errOut.trim().slice(-400);
     const timer = setTimeout(() => {
       if (!settled) {
         settled = true;
-        child.kill();
-        resolve({ ok: false, detail: `timeout(${arm} ${timeoutMs}ms)`, signature: "\0timeout" });
+        killTree();
+        resolve({
+          ok: false,
+          detail: `timeout(${arm} ${timeoutMs}ms) stderr: ${errTail()}`,
+          signature: "!TIMEOUT!",
+        });
       }
     }, timeoutMs);
     child.stdout.on("data", (c: Buffer) => {
       out += c.toString("utf8");
     });
+    child.stderr.on("data", (c: Buffer) => {
+      errOut += c.toString("utf8");
+    });
     child.on("error", (e: Error) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve({ ok: false, detail: `spawn失败: ${e.message}`, signature: "\0spawn" });
+      resolve({ ok: false, detail: `spawn失败: ${e.message} stderr: ${errTail()}`, signature: "!SPAWN!" });
     });
     child.on("close", (code: number | null) => {
       if (settled) return;
@@ -108,13 +127,21 @@ async function runOneArm(
       clearTimeout(timer);
       const parsed = parseDiagLine(out);
       if (parsed === null) {
-        resolve({ ok: false, detail: `出口不可解析(rc=${code}): ${out.trim().slice(0, 120)}`, signature: "\0parse" });
+        resolve({
+          ok: false,
+          detail: `出口不可解析(rc=${code}): ${out.trim().slice(0, 120)} stderr: ${errTail()}`,
+          signature: "!PARSE!",
+        });
         return;
       }
       const errs = errorCount(parsed.diagnostics);
-      if (errs > 0) {
-        const first = parsed.diagnostics.find((d) => d.severity === "error") as Diag;
-        resolve({ ok: false, detail: `${errs} error: ${first.code} ${first.line}:${first.column} ${first.message.slice(0, 60)}`, signature: signatureOf(parsed.diagnostics) });
+      // PR #513 审阅 P3：口径补强——rc!=0 或 frame.ok=false 同判红（历史 #64→#70
+      // 正是「ok:false 但 diagnostics 无 error 级」形态；现路径读码判定不可达，
+      // 防的是未来 ok 语义演进时静默漏网）。
+      if (errs > 0 || code !== 0 || !parsed.ok) {
+        const first = parsed.diagnostics.find((d) => d.severity === "error");
+        const head = first !== undefined ? `${first.code} ${first.line}:${first.column} ${first.message.slice(0, 60)}` : `ok=${parsed.ok} rc=${code}`;
+        resolve({ ok: false, detail: `${errs} error: ${head} stderr: ${errTail()}`, signature: signatureOf(parsed.diagnostics) });
         return;
       }
       resolve({ ok: true, detail: "", signature: signatureOf(parsed.diagnostics) });
@@ -160,6 +187,15 @@ export async function main(argv: readonly string[]): Promise<number> {
   walkCFiles(repoDir, files);
   files.sort((a, b) => byteCompare(a.split(path.sep).join("/"), b.split(path.sep).join("/")));
   if (files.length === 0) fatal(`${repoDir} 内无 .c 文件`);
+  // PR #513 审阅 P3：棘轮机械下限——分支零签名文件（GPL 取舍）意味着「文件被
+  // 删/替换仍全绿」的结构性缺口。**等值断言**（非下限——处置批实测下限形态
+  // 被误指 407 全集目录轻松滑过〔本地 checkout 停在 fix2 态工作区的乌龙〕，
+  // CI 免疫但本地复验无信号）：vitro-green 分支检出必须恰为 MIN_FILES 份；
+  // 晋升新文件时同步上调（2026-11-14 建支态 = 166）。
+  const MIN_FILES = 166;
+  if (files.length !== MIN_FILES) {
+    fatal(`语料面漂移: ${files.length} != MIN_FILES ${MIN_FILES}（vitro-green 分支检出应恰为 ${MIN_FILES} 份——多了=repo 误指他分支/目录〔棘轮分支外还有 fix2 态 407 全集〕，少了=语料缩水；晋升新文件须同步上调常量）`);
+  }
   process.stderr.write(`green_probe: ${files.length} 文件 × ${armList.length} 臂 (${armList.join("/")})\n`);
 
   const failures: string[] = [];

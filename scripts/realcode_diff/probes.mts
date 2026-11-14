@@ -258,10 +258,10 @@ interface ServeResponse {
   result: { diagnostics: Diag[] | null };
 }
 
-async function serveBatch(vitroRoot: string, payload: string, keys: readonly string[]): Promise<Map<string, Diag[]>> {
+async function serveBatch(serveCwd: string, payload: string, keys: readonly string[]): Promise<Map<string, Diag[]>> {
   return new Promise((resolve, reject) => {
     const child = spawn("moon", ["run", "--target", "native", "moonbit/cmd/serve"], {
-      cwd: vitroRoot,
+      cwd: serveCwd,
       stdio: ["pipe", "pipe", "ignore"],
       windowsHide: true,
     });
@@ -335,7 +335,7 @@ async function serveBatch(vitroRoot: string, payload: string, keys: readonly str
 
 /** -repo 模式：每个文件一个 `source + filename` 请求。 */
 export async function serveBatchKeys(
-  vitroRoot: string,
+  serveCwd: string,
   keys: readonly string[],
   paths: readonly string[],
 ): Promise<Map<string, Diag[]>> {
@@ -350,7 +350,7 @@ export async function serveBatchKeys(
     }
     payload += `{"id":${i + 1},"method":"compile","params":{"source":${goJSONString(src)},"filename":${goJSONString(p)}}}\n`;
   }
-  return serveBatch(vitroRoot, payload, keys);
+  return serveBatch(serveCwd, payload, keys);
 }
 
 /**
@@ -358,7 +358,7 @@ export async function serveBatchKeys(
  * quote-include 可解析）。单文件批逐文件一请求；工程批一个请求装全部单元。
  */
 export async function serveBatchFiles(
-  vitroRoot: string,
+  serveCwd: string,
   keys: readonly string[],
   files: readonly CompileFile[],
 ): Promise<Map<string, Diag[]>> {
@@ -378,12 +378,12 @@ export async function serveBatchFiles(
     }
     payload = `{"id":1,"method":"compile","params":{"files":[${units.join(",")}]}}\n`;
   }
-  return serveBatch(vitroRoot, payload, keys);
+  return serveBatch(serveCwd, payload, keys);
 }
 
 // ---------- P5: 运行对比 ----------
 export async function runCompare(
-  vitroRoot: string,
+  serveCwd: string,
   cfile: string,
   tmpDir: string,
   skipNet: boolean,
@@ -407,7 +407,7 @@ export async function runCompare(
     "moon",
     ["run", "--target", "native", "moonbit/cmd/run", "--", cfile],
     120_000,
-    vitroRoot,
+    serveCwd,
   );
   if (vr.error !== null) {
     if (vr.error.message.includes("timeout")) return { verdict: "vitro_timeout", detail: "" };

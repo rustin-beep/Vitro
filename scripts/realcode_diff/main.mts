@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import { fatal } from "../internal/capi.mts";
 import { byteCompare, byteSort, goJSONMarshalIndent } from "../internal/text.mts";
 import { runAggregate } from "./aggregate.mts";
@@ -27,6 +28,8 @@ import {
   runCompare,
   serveBatchFiles,
   serveBatchKeys,
+  diffArmDiags,
+  jsCompileFile,
 } from "./probes.mts";
 import { layerOf, stripStdbool, stripStmtExprs } from "./stmt_expr.mts";
 import type { CompileFile, Diag, FileResult, Project } from "./types.mts";
@@ -50,6 +53,9 @@ export interface CliOptions {
   /** Go 版定义但未消费——保留旗标兼容（不静默改 CLI 面）。 */
   gccOnly: boolean;
   probe: boolean;
+  /** js 臂双臂对账（P2 杂项 2026-11-15）：-corpus 模式追加 js 出口
+   * （cmd/vitro_js compile --json）诊断集 vs native serve 逐文件对账。 */
+  armCheck: boolean;
 }
 
 function usage(): string {
@@ -105,8 +111,9 @@ export function parseArgs(argv: readonly string[], vivoDefault: string): CliOpti
     gcc: "",
     gccOnly: false,
     probe: false,
+    armCheck: false,
   };
-  const bools = new Set(["check", "gcc-only", "probe"]);
+  const bools = new Set(["check", "gcc-only", "probe", "arm-check"]);
   const strings = new Set([
     "repo", "out", "filter", "vitro", "aggregate", "corpus", "gold-out",
     "agg-repo", "agg-source-fork", "agg-source-commit", "gcc",
@@ -130,6 +137,7 @@ export function parseArgs(argv: readonly string[], vivoDefault: string): CliOpti
       const val = inline === null ? true : parseBool(name, inline);
       if (name === "check") o.check = val;
       else if (name === "gcc-only") o.gccOnly = val;
+      else if (name === "arm-check") o.armCheck = val;
       else o.probe = val;
       continue;
     }
@@ -597,6 +605,49 @@ export async function runCorpus(
   }
 
   backfill(results, served);
+
+
+  // ── js 臂双臂对账（P2 杂项，2026-11-15）────────────────────────────
+  // native serve 通道收集的最终诊断集 vs js 出口（cmd/vitro_js compile
+  // --json，CLI 单文件）逐文件四元组（code/line/column/message）一致——
+  // 分叉即 arm_divergence 红（AGENTS §14）。工程键（name/ 形态）跳过：
+  // js CLI 无多文件形态（出口面差异非引擎差异）。产物增量构建（AGENTS
+  // §12 js 臂命令），node 逐文件直跑。
+  if (opts.armCheck) {
+    const mb = spawnSync("moon", ["build", "--release", "--target", "js", "cmd/vitro_js"], {
+      cwd: path.join(vitroRoot, "moonbit"),
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    if ((mb.status ?? -1) !== 0) {
+      fatal(`js 臂产物构建失败: ${((mb.stdout?.toString("utf8") ?? "") + (mb.stderr?.toString("utf8") ?? "")).slice(0, 400)}`);
+    }
+    const jsEntry = path.join(vitroRoot, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js");
+    const jsServed = new Map<string, Diag[]>();
+    for (const p of green) {
+      if (isDir(p)) continue;
+      const k = relOf(repoAbs, p);
+      if (!served.has(k)) continue;
+      try {
+        jsServed.set(k, jsCompileFile(jsEntry, path.resolve(p)));
+      } catch (e) {
+        fatal(`js 臂批跑失败 ${k}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    const projKeys = [...served.keys()].filter((k) => k.endsWith("/"));
+    if (projKeys.length > 0) {
+      process.stdout.write(`realcode arm-check: 工程键 ${projKeys.length} 个跳过（js CLI 单文件出口无多文件形态）
+`);
+    }
+    const bad = diffArmDiags(served, jsServed);
+    if (bad.length > 0) {
+      for (const b of bad) process.stdout.write(`realcode ARM_DIVERGENCE [${b.kind}] ${b.key}: ${b.detail}
+`);
+      fatal(`双臂对账：${bad.length} 文件 js/native 诊断集分叉（arm_divergence 红）`);
+    }
+    process.stdout.write(`realcode arm-check: js≡native（${jsServed.size} 文件诊断集一致）✓
+`);
+  }
+
 
   const probeRows = opts.probe ? await runProbeDiff(vitroRoot, repoAbs, green, served, opts.out) : [];
 

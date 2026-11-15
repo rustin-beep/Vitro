@@ -25,6 +25,36 @@
   30→36 零排队现状下安全。**首跑实测后再滚动 P3-P5**（engine wasm 分片 /
   build 三臂并行 / fuzz 分片）。run 页效果不可本地复现——CI 首跑验收。
 
+### perf(ci)+feat(scripts): CI 提速批 P3 + realcode js 臂双臂化 + P4/P5 评估定界（2026-11-15）
+
+- **P3 engine wasm 臂分片（ci-engine-gates.yml）**：gates-wasm 的
+  vm_diff（6.5min）/ clang_direct（7.1min）按语料目录拆 2/3 片（run 1235
+  实测基线；目录集与 P2 js 臂同构、片标识 {0} 占位形态）。engine 组
+  7.1 → ~3min。
+- **realcode js 臂双臂化（P2 杂项，-arm-check）**：native serve 通道诊断集
+  vs cmd/vitro_js compile --json（type:diag 帧）逐文件四元组
+  （code/line/column/message）一致——分叉即 arm_divergence 红（AGENTS
+  §14 的 realcode 补面）；工程键（multifile 36 个）跳过并注明（js CLI
+  单文件出口无多文件形态——出口面差异非引擎差异）。实测 chibicc 20 文件
+  js≡native ✓；rc 语义坑实录：compile 有诊断错误时 rc=1 但 diag 帧照常
+  输出（CLI_PROTOCOL_V1）——帧到手即数据面。四件套：tsc strict ✓ /
+  oxlint ✓ / node:test +5 锚（diffArmDiags 四态 J9 注入 + -arm-check
+  布尔映射回归锚——曾被他分支静默吞实锤）/ CI realcode_corpus 两跑接线。
+- **P4 build 三臂并行：评估后不做**——build 已有 moon 增量缓存设计
+  （warm 轮增量秒级），拆三 job 破坏「P0 判定缓存与 build 缓存全命中或
+  全不命中」耦合（PR #310 审阅 P2-4 在档）+ artifact 合流复杂化，
+  收益 < 风险。
+- **P5 fuzz 分片：评估后不做（归 fuzz 独立批）**——驱动无分片参数
+  （-freeze/-regen/-rules/-baseline/-probe 而已），分片需改造
+  fuzz_baseline.json 全集对账语义（新指纹/桶恶化/ZOMBIE 全集判定）——
+  与「fuzz wasm 臂留独立批」同病同批（都动 fuzz 判定面）。
+- **libc_boot 双臂化：撞架构墙实测**——cmd/dump_compile
+  supported_targets="native"（extern C exit + fs 依赖），js/wasm 无等价
+  出口壳；编译器核心后端无关性由 hygiene 四目标测试背书。实现后回滚，
+  实测留痕（js 臂调用即 "does not support target backend" 红）。
+- **linux 全量语料（#365）**：拍板锚——四选项（known 平台分支/语料
+  适配/windows-only 声明/Linux 闸）待用户拍板，非 agent 可代决。
+
 ### fix(ci): 红遮红批③——gates-native/static-gates/gates-wasm 步间 if: always() + 聚合步累计失败 + G11 孤儿注释清尾（2026-11-15）
 
 - **gates-native（ci-engine-gates.yml）**：9 检查步原零 always() 串行——

@@ -8,7 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { StringDecoder } from "node:string_decoder";
 import { fatal } from "../internal/capi.mts";
 import { goTrimSpace } from "../internal/text.mts";
@@ -421,4 +421,67 @@ export async function runCompare(
   }
   if (vn.equals(cn)) return { verdict: "match", detail: `输出逐字节一致(${cn.length}B)` };
   return { verdict: "mismatch", detail: `输出不一致: V ${vn.length}B / C ${cn.length}B` };
+}
+
+// ---------- P2 杂项（2026-11-15）：js 臂双臂化 ----------
+// js 出口 = cmd/vitro_js 的 compile --json（CLI 单文件——多文件归 serve/api
+// 的 files 数组，故工程键（name/ 形态）不进对账面，调用方注明跳过）。与
+// serve 通道（native）同引擎两出口壳：臂间诊断集逐文件一致——分叉即
+// arm_divergence 红（AGENTS §14 双臂强制的 realcode 补面）。J9 证红锚 =
+// diffArmDiags 的 set_diff/js_missing 注入（main.test.mts）。
+
+export function jsCompileFile(jsEntry: string, absFile: string): Diag[] {
+  const r = spawnSync(process.execPath, [jsEntry, "compile", absFile, "--json"], {
+    maxBuffer: 64 * 1024 * 1024,
+    windowsHide: true,
+  });
+  const text = (r.stdout?.toString("utf8") ?? "") + (r.stderr?.toString("utf8") ?? "");
+  if (r.error !== undefined) {
+    throw new Error(`js 臂 compile 失败 ${absFile}: ${r.error.message}`);
+  }
+  // 注：compile 有诊断错误时 CLI rc=1 且 diag 帧照常输出（CLI_PROTOCOL_V1
+  // rc 语义）——帧到手即成功数据面；帧缺失才按进程失败 fail loud。
+  for (const line of text.split("\n")) {
+    const l = line.trim();
+    if (!l.startsWith("{")) continue;
+    let f: { type?: string; frame?: { result?: { diagnostics?: Diag[] | null } } };
+    try {
+      f = JSON.parse(l) as typeof f;
+    } catch {
+      continue;
+    }
+    if (f.type === "diag" && f.frame?.result !== undefined) {
+      return (f.frame.result.diagnostics ?? []) as Diag[];
+    }
+  }
+  throw new Error(`js 臂 compile 无 diag 帧 ${absFile}: ${text.slice(0, 300)}`);
+}
+
+/** 臂间诊断集对账：四元组（code/line/column/message）集合排序后比对。 */
+export function diffArmDiags(
+  native: ReadonlyMap<string, Diag[]>,
+  js: ReadonlyMap<string, Diag[]>,
+): { key: string; kind: "js_missing" | "set_diff"; detail: string }[] {
+  const sig = (ds: readonly Diag[]): string[] =>
+    ds.map((d) => `${d.code}:${d.line}:${d.column}:${d.message}`).sort();
+  const bad: { key: string; kind: "js_missing" | "set_diff"; detail: string }[] = [];
+  for (const [k, v] of native) {
+    if (k.endsWith("/")) continue; // 工程键：js CLI 单文件出口无多文件形态
+    const j = js.get(k);
+    if (j === undefined) {
+      bad.push({ key: k, kind: "js_missing", detail: "js 臂未产出该文件诊断集" });
+      continue;
+    }
+    const a = sig(v);
+    const b = sig(j);
+    const firstDiff = a.find((x, i) => x !== b[i]);
+    if (a.length !== b.length || firstDiff !== undefined) {
+      bad.push({
+        key: k,
+        kind: "set_diff",
+        detail: `native=${a.length} 条 / js=${b.length} 条（首差 native: ${firstDiff ?? "-"} | js: ${b.find((x, i) => x !== a[i]) ?? "-"}）`,
+      });
+    }
+  }
+  return bad;
 }

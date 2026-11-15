@@ -202,8 +202,11 @@ jobs:
               # 仓内语料批运行时对拍（#273 迁移批 2026-10-25）：勘探与对账
               # 均已切 TS（main.mts 内嵌 gold 对账 + compare_gold.mts 独立判红，
               # 双跑逐位互证）。
-              node scripts/realcode_diff/main.mts -corpus chibicc -out tmp/rc_ci_chibicc
-              node scripts/realcode_diff/main.mts -corpus multifile -out tmp/rc_ci_multifile
+              # -arm-check（P2 杂项 2026-11-15）：js 臂双臂对账——native serve
+              # 诊断集 vs cmd/vitro_js compile --json 逐文件一致（arm_divergence
+              # 红，AGENTS §14）；工程键跳过（js CLI 单文件出口）。
+              node scripts/realcode_diff/main.mts -corpus chibicc -out tmp/rc_ci_chibicc -arm-check
+              node scripts/realcode_diff/main.mts -corpus multifile -out tmp/rc_ci_multifile -arm-check
               node scripts/realcode_diff/compare_gold.mts chibicc tmp/rc_ci_chibicc/result.json
               node scripts/realcode_diff/compare_gold.mts multifile tmp/rc_ci_multifile/result.json
               ;;

@@ -178,7 +178,7 @@ jobs:
         run: node scripts/serve_smoke/main.mts -moonbit -audit-exemptions
         shell: bash
   gates-wasm:
-    name: wasm-arm gate (${{ matrix.slice }})
+    name: wasm-arm gate (${{ matrix.slice }}${{ matrix.shard && format('/{0}', matrix.shard) || '' }})
     runs-on: windows-latest
     strategy:
       # 闸级可见性全开：四实例互不取消（一红不见其余）——gates-diff 同款
@@ -194,8 +194,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # CI 提速批 P3（2026-11-15）：vm_diff / clang_direct wasm 臂全量
+          # 串行 6.5/7.1min（run 1235 实测）——同 P2 按语料目录拆片（逐例
+          # digest 对拍与目录无关，分片=例集子集判定等价）。run 页步名
+          # 带 /a /b 片标识。
           - slice: vm_diff
+            shard: a
+          - slice: vm_diff
+            shard: b
           - slice: clang_direct
+            shard: a
+          - slice: clang_direct
+            shard: b
+          - slice: clang_direct
+            shard: c
           - slice: cli_smoke
           - slice: serve_channel
     steps:
@@ -361,11 +373,34 @@ jobs:
       # （gap 20/20 + 全量 733/733 两侧 exit 0，与 native 臂同判据）。
       - name: vm_diff wasm arm (gateway product vs frozen golden)
         if: matrix.slice == 'vm_diff'
-        run: node scripts/diff_gate/main.mts vm --backend wasm
+        # P3 分片（2026-11-15）：全量 6.5min（run 1235 实测）按语料目录拆两片；
+        # --corpus 单目录判定与全量同构（逐例 digest 对拍，三臂共享 golden）。
+        run: |
+          rc=0
+          case "${{ matrix.shard }}" in
+            a) dirs="baseline leetcode gap" ;;
+            b) dirs="knr llm_scale chibicc_port" ;;
+          esac
+          for d in $dirs; do
+            node scripts/diff_gate/main.mts vm --backend wasm --corpus "$d" || rc=1
+          done
+          exit $rc
         shell: bash
       - name: clang_direct wasm arm (gateway product vs Clang)
         if: matrix.slice == 'clang_direct'
-        run: node scripts/clang_direct/main.mts --backend wasm
+        # P3 分片（2026-11-15）：全量 7.1min 按语料目录拆三片（目录集与 P2
+        # 的 js 臂分片同构——均衡按例数与文件规模）。
+        run: |
+          rc=0
+          case "${{ matrix.shard }}" in
+            a) dirs="baseline knr" ;;
+            b) dirs="leetcode gap codegen_skeleton template_generated" ;;
+            c) dirs="llm_multifile llm_scale chibicc_port" ;;
+          esac
+          for d in $dirs; do
+            node scripts/clang_direct/main.mts --backend wasm --corpus "$d" || rc=1
+          done
+          exit $rc
         shell: bash
   arm4-wasmtime:
     name: 4th-arm wasmtime parity (gateway wasm x Cranelift vs V8)

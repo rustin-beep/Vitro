@@ -1,4 +1,43 @@
 // main CLI 参数面与报告格式单测（Go flag 语义：-x v / -x=v / --x / 遇位置参数即止）。
+
+// ── js 臂双臂对账（P2 杂项 2026-11-15）：diffArmDiags 四锚（J9——注入分叉
+// 必红：set_diff/js_missing 两负锚 + 一致正锚 + 工程键跳过锚）。 ─────────
+const d = (code: string, line: number, column: number, message: string): Diag => ({
+  severity: "error", code, line, column, message,
+});
+
+test("diffArmDiags: 一致集绿（空 bad）", () => {
+  const native = new Map([["a.c", [d("E2003", 1, 9, "x")]], ["b.c", []]]);
+  const js = new Map([["a.c", [d("E2003", 1, 9, "x")]], ["b.c", []]]);
+  assert.deepEqual(diffArmDiags(native, js), []);
+});
+
+test("diffArmDiags: 注入 set_diff 必红（J9）——js 侧篡改一条 code", () => {
+  const native = new Map([["a.c", [d("E2003", 1, 9, "x"), d("E2005", 2, 3, "y")]]]);
+  const js = new Map([["a.c", [d("E2003", 1, 9, "x"), d("E3023", 2, 3, "y")]]]);
+  const bad = diffArmDiags(native, js);
+  assert.equal(bad.length, 1);
+  assert.equal(bad[0]?.kind, "set_diff");
+  assert.equal(bad[0]?.key, "a.c");
+});
+
+test("diffArmDiags: 注入 js_missing 必红（J9）", () => {
+  const native = new Map([["a.c", [d("E2003", 1, 9, "x")]]]);
+  const bad = diffArmDiags(native, new Map());
+  assert.equal(bad.length, 1);
+  assert.equal(bad[0]?.kind, "js_missing");
+});
+
+test("diffArmDiags: 工程键（name/ 形态）跳过不判", () => {
+  const native = new Map([["proj1/", [d("E2003", 1, 9, "x")]]]);
+  assert.deepEqual(diffArmDiags(native, new Map()), []);
+});
+
+test("parseArgs: -arm-check 布尔映射（曾被他分支静默吞——注入回归锚）", () => {
+  const o = parseArgs(["-corpus", "chibicc", "-arm-check"], repoRoot);
+  assert.equal(o.armCheck, true);
+  assert.equal(o.probe, false);
+});
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -8,7 +47,8 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs, writeReport } from "./main.mts";
-import type { FileResult } from "./types.mts";
+import { diffArmDiags } from "./probes.mts";
+import type { Diag, FileResult } from "./types.mts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const script = path.join(here, "main.mts");

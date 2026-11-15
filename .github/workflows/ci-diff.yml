@@ -35,7 +35,9 @@ jobs:
       # **native 两臂保持全量不动**（vm 1.0 / clang 2.9min）：golden 僵死 +
       # 白名单空转防腐化只在 full 模式触发（vm.mts `if (full)` /
       # clang_direct `fullCorpusRun()`），native 全量继续承担防腐化面——
-      # js 分片零防线损失。片内多目录累计失败（批③样板）。
+      # PR #529 审阅 P3-12 改口：js 分片后 full-only 防腐化面（白名单空
+      # 转/golden 僵死）由 native 全量臂承载——**面未消失、冗余度自三臂
+      # 降为单臂**（非「零防线损失」）。片内多目录累计失败（批③样板）。
       fail-fast: false
       matrix:
         include:
@@ -133,7 +135,7 @@ jobs:
       # TS 版零第三方依赖（只用 node 内置 + scripts/internal/*.mts），故本 job
       # 不需要 npm ci；node 由 runner 自带。Go 版 diff 驱动已于 2026-10-24 删除
       # （scripts/*_diff/main.go 全删，目录仅存冻结 golden 与台账数据）。
-      - name: Run diff driver (full four corpora)
+      - name: Run diff driver (per-driver matrix; js/wasm arms per-shard corpora)
         shell: bash
         run: |
           case "${{ matrix.driver }}" in
@@ -174,6 +176,10 @@ jobs:
               case "${{ matrix.shard }}" in
                 a) dirs="baseline leetcode gap" ;;
                 b) dirs="knr llm_scale chibicc_port" ;;
+          *)
+            echo "::error::未知分片标识 shard=${{ matrix.shard }}（driver=${{ matrix.driver }}）——matrix include 与 case 目录集失同步" >&2
+            exit 2
+            ;;
               esac
               for d in $dirs; do
                 node scripts/diff_gate/main.mts vm --backend js --corpus "$d" || rc=1
@@ -192,6 +198,10 @@ jobs:
                 a) dirs="baseline knr" ;;
                 b) dirs="leetcode gap codegen_skeleton template_generated" ;;
                 c) dirs="llm_multifile llm_scale chibicc_port" ;;
+          *)
+            echo "::error::未知分片标识 shard=${{ matrix.shard }}（driver=${{ matrix.driver }}）——matrix include 与 case 目录集失同步" >&2
+            exit 2
+            ;;
               esac
               for d in $dirs; do
                 node scripts/clang_direct/main.mts --backend js --corpus "$d" || rc=1
@@ -204,9 +214,13 @@ jobs:
               # 双跑逐位互证）。
               # -arm-check（P2 杂项 2026-11-15）：js 臂双臂对账——native serve
               # 诊断集 vs cmd/vitro_js compile --json 逐文件一致（arm_divergence
-              # 红，AGENTS §14）；工程键跳过（js CLI 单文件出口）。
+              # 红，AGENTS §14）；对账面=全部单文件含 Clang 红例（PR #529 审阅
+              # P2-2/P3-7 连坐：分母输出+severity 入签名）。
+              # multifile 不带 -arm-check（PR #529 审阅 P2-3）：该语料全为工程键
+              #（36 个 name/ 形态），js CLI 单文件出口无对账面——挂上即 0 文件
+              # 判绿的空闸。
               node scripts/realcode_diff/main.mts -corpus chibicc -out tmp/rc_ci_chibicc -arm-check
-              node scripts/realcode_diff/main.mts -corpus multifile -out tmp/rc_ci_multifile -arm-check
+              node scripts/realcode_diff/main.mts -corpus multifile -out tmp/rc_ci_multifile
               node scripts/realcode_diff/compare_gold.mts chibicc tmp/rc_ci_chibicc/result.json
               node scripts/realcode_diff/compare_gold.mts multifile tmp/rc_ci_multifile/result.json
               ;;

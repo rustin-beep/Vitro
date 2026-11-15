@@ -1,5 +1,36 @@
 ## [Unreleased]
 
+### fix(ci+scripts+desktop): PR #529 审阅处置——P1×1 + P2×4 + P3×7 全清（2026-11-15）
+
+- **P1-1 package_check 失败路径**：`check(); process.exit(1)` 在 try 内——exit
+  不执行 finally，仓库留双文件篡改 + web/ 镜像残留（审阅实测复现）→ 改
+  throw（穿透 finally）；P3-9 连坐：git 回落补 confRaw 原文双回写。
+- **P2-2 -arm-check 红例进面**：原只收 Clang 绿（chibicc 20/41，51% 零覆盖
+  且无分母）→ 全部单文件进面（native 侧红例补跑 serve 批），实测
+  **41/41（绿 20+红 21）一致** + 分母输出。P3-7：severity 入签名（五元组）。
+  P3-8：-repo 模式入口 fail loud（原静默失效）。
+- **P2-3 multifile 空闸摘除**：36 工程键全跳过=0 文件判绿——CI 该行去
+  -arm-check + 注释。
+- **P2-4/P2-5 always() 语义两病**：① 取消轮仍执行（官方反模式，与 P0
+  cancel 相抵）②「环境红全停」注释误述（always 下检查步照样刷缺产物红）
+  → 三文件 ~90 步统一 `!cancelled() && steps.gate.outcome == 'success'`，
+  末环境步挂 id: gate 作门（环境红⇒检查步 skipped、一屏一条红指向环境）；
+  frontends/build/ci.yml 裸 always 连坐改 !cancelled()；install_skills 的
+  npm ci 反模式随治；被测准备步（E2E setup）保持无门（批① fail loud 语义）。
+- **P3-6**：四处 shard case 补未知分支 guard（`*) exit 2`——加片失同步
+  静默零例绿 → fail loud）。**P3-10**：步骤名改实符（per-driver matrix;
+  per-shard corpora）。**P3-11**：wasmenc 片 npm ci 共享前置（三闸 ~42s×3
+  →×1）。**P3-12**：措辞改口——「零防线损失」→「面未消失、冗余度自三臂
+  降为单臂」（4 处；P0 两处本义成立保留）。
+- **阻塞项 13**：rebase 到 base 最新 ce3304c9（lintlist/testlist 红消）。
+- **演化回灌**：skill 03 缺陷形态清单新增 D26-D28（process.exit 破口 /
+  分片 case 空集静默绿 / always() 与 cancel 冲突+环境红全停误述）+ 07
+  演化日志连坐。
+- 验证：yaml.safe_load ×6 / tsc+oxlint+node:test 10/10（realcode）/
+  arm-check 41/41 实测 / package_check 五断言第三轮全过（失败路径注入两法
+  未触达——PATH 摘除致加载期崩、.cmd 桩不被 spawnSync 解析；P1-1 采信
+  审阅者已实测 throw 处方 + finally 语言语义）。
+
 ### perf(ci): CI 提速批——concurrency PR 轮取消（P0）+ static 五片（P1）+ diff js 臂目录分片（P2）（2026-11-15）
 
 - **实测基线**：run 1229 步级数据——总时长 15.2min ≈ 最长 job
@@ -14,13 +45,15 @@
 - **P1 static-gates 三片→五片（ci-static.yml）**：bookkeeping 独重
   15.1min（rundiff 6.4 + testcount 5.3 + facts 1.9 互不相干）——wasmenc
   三闸独立成片、dispatchdiff（批 4b-3 三方对拍含 cargo 冷编）再独立成片；
-  五片并行 ~8min 封顶。同闸同语料仅并发分片，零语义变化。
+  五片并行 ~8min 封顶。同闸同语料仅并发分片（无 full-only 判定面，
+  行为零变化）。
 - **P2 diff js 臂按语料目录分片（ci-diff.yml）**：clang_direct_js 10.2 /
   vm_diff_js 8.5 是 diff 组长板——matrix 加 shard 维度（vm 6 目录×2 片 /
   clang 9 目录×3 片，片内累计失败），逐例 digest 对拍与目录无关、分片=
   例集子集判定等价。**native 两臂保持全量不动**（vm 1.0 / clang 2.9min）
   ——golden 僵死 + 白名单空转防腐化只在 full 模式触发，native 全量继续
-  承担防腐化面，js 分片零防线损失。
+  承担防腐化面——面未消失、**冗余度自三臂降为单臂**（PR #529 审阅
+  P3-12 改口，非「零防线损失」）。
 - 预期：关键路径 15.2 → ~9.7min（build 4.2 + diff 分片后 ~5）；job 数
   30→36 零排队现状下安全。**首跑实测后再滚动 P3-P5**（engine wasm 分片 /
   build 三臂并行 / fuzz 分片）。run 页效果不可本地复现——CI 首跑验收。

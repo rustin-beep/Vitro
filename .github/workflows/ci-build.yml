@@ -75,7 +75,7 @@ jobs:
           restore-keys: |
             moon-build-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('.moonbit-version') }}-
       - name: Full native release build gate (declared targets must build)
-        if: always()
+        if: ${{ !cancelled() }}
         # 2026-09-29 §12.6 建；同日拆包落地后转硬门（豁免分支已删——
         # gateway 本体改 library，4 导出面在 gateway/wasm 外壳，wasm-gc
         # 单目标）。全量 --target native 是唯一会遍历每个包的形态。
@@ -89,20 +89,20 @@ jobs:
           MOON_CC=clang moon build --release --target native
           echo "全量 native release 构建：通过（每个包都真的被构建过）"
       - name: wasm-gc gateway build (artifact source)
-        if: always()
+        if: ${{ !cancelled() }}
         # 自「wasm-gc gateway build + Node host smoke」拆出（2026-10-11）：
         # 构建归本 job（产物进 artifact），Node smoke 归 gates-wasm。
         shell: bash
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
       - name: Install Node (wasmopt supply)
-        if: always()
+        if: ${{ !cancelled() }}
         # #120 批①（2026-10-17）：wasm-opt 构建后置——binaryen JS API 经
         # node 执行（供给钉版本下载到 tools/cache，sha256 校验）。
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
       - name: wasm-opt post-build (artifact source)
-        if: always()
+        if: ${{ !cancelled() }}
         # 产物出口后置优化（#120 批①）：-19.3% raw / -20.4% gzip（lean
         # 产物实测）；等价性背书 = 下游 gates-wasm 四 slice（vm_diff wasm
         # 全量语料 + cli_smoke 三臂对拍 + serve_channel 体积/通道断言）
@@ -116,7 +116,7 @@ jobs:
           node scripts/wasmopt/main.mts moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
           node scripts/wasmopt/main.mts -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
       - name: Full js target build gate (all packages) + CLI entry (artifact source)
-        if: always()
+        if: ${{ !cancelled() }}
         # 三后端批（2026-10-15）：js 入口产物——gates-wasm 的 smoke 前置
         # 产物检查消费（cmd/vitro_js/vitro_js.js）。
         # 全量 js 编译闸（2026-10-15 补——审阅指出缺口）：此前只编
@@ -127,7 +127,7 @@ jobs:
         shell: bash
         run: cd moonbit && moon build --release --target js
       - name: Upload build products (native release exe set + wasm module + js entry)
-        if: always()
+        if: ${{ !cancelled() }}
         # 拆批基建（2026-10-11 闸级 job 化）：release 全量构建产物供下游
         # gates-diff / gates-native / gates-wasm / demo 消费——四个 job 免重复
         # 构建（此前 core 串行一步红全断；闸间遮挡即此形态）。download 侧

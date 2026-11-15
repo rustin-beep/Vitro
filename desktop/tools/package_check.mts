@@ -44,6 +44,7 @@ if (!/^\d+$/.test(PORT) || Number(PORT) < 1024) {
 
 const MAIN = "app/main.mbt";
 const CONF = "proton.project.json";
+const confRaw = fs.readFileSync(CONF, "utf8");
 const MIRROR_DIR = "web";
 const ASSET_DEV = '"../demo/dist/index.html"';
 const ASSET_PKG = '"web/dist/index.html"';
@@ -96,7 +97,9 @@ try {
   const pkgOut = ((pkg.stdout ?? "").toString() + (pkg.stderr ?? "").toString()).trim();
   if ((pkg.status ?? -1) !== 0) {
     check("pkg-plan", false, `package rc=${String(pkg.status)}：${pkgOut.slice(-300)}`);
-    process.exit(1);
+    // PR #529 审阅 P1-1：throw 而非 process.exit——exit 立即终止不执行
+    // finally，仓库留双重篡改（下轮被脏态自检拦 exit 2 须手工还原）。
+    throw new Error("proton_cli package 失败（finally 还原已执行）");
   }
   const exe = path.resolve(OUT_DIR, "vitro-desktop.exe");
   check(
@@ -169,13 +172,13 @@ try {
   if (pkgPid !== null && pkgPid > 0) {
     spawnSync("taskkill", ["/F", "/T", "/PID", String(pkgPid)], { stdio: "ignore" });
   }
-  // 还原双文件（git checkout——两文件均受 git 管，比手工重写稳：零格式漂移）
-  // + 清理镜像与产物。git 不可用（未检出形态）时回落 mainNow 原文回写。
+  // 还原双文件（git checkout 优先——零格式漂移；P3-9：git 不可用时回落
+  // **双文件原文回写**——启动时的 mainNow/confRaw 文本，非仅 main.mbt）。
   try {
     const g = spawnSync("git", ["checkout", "--", MAIN, CONF], { stdio: "ignore" });
-    if ((g.status ?? -1) !== 0) fs.writeFileSync(MAIN, mainNow);
     if ((g.status ?? -1) !== 0) {
-      throw new Error("git checkout 失败且仅 main.mbt 原文回写成功——proton.project.json 须手工核对");
+      fs.writeFileSync(MAIN, mainNow);
+      fs.writeFileSync(CONF, confRaw);
     }
   } catch (e) {
     process.stderr.write(`package_check: 还原异常（手工核对 ${MAIN}/${CONF}——${e instanceof Error ? e.message : String(e)}）\n`);

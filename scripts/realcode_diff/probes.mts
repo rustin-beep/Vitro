@@ -457,13 +457,14 @@ export function jsCompileFile(jsEntry: string, absFile: string): Diag[] {
   throw new Error(`js 臂 compile 无 diag 帧 ${absFile}: ${text.slice(0, 300)}`);
 }
 
-/** 臂间诊断集对账：四元组（code/line/column/message）集合排序后比对。 */
+/** 臂间诊断集对账：五元组（severity/code/line/column/message——PR #529 审阅
+ * P3-7：severity 入签名，error vs warning 同码同位置不再判等价）集合排序后比对。 */
 export function diffArmDiags(
   native: ReadonlyMap<string, Diag[]>,
   js: ReadonlyMap<string, Diag[]>,
 ): { key: string; kind: "js_missing" | "set_diff"; detail: string }[] {
   const sig = (ds: readonly Diag[]): string[] =>
-    ds.map((d) => `${d.code}:${d.line}:${d.column}:${d.message}`).sort();
+    ds.map((d) => `${d.severity}:${d.code}:${d.line}:${d.column}:${d.message}`).sort();
   const bad: { key: string; kind: "js_missing" | "set_diff"; detail: string }[] = [];
   for (const [k, v] of native) {
     if (k.endsWith("/")) continue; // 工程键：js CLI 单文件出口无多文件形态

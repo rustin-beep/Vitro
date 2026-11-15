@@ -140,7 +140,7 @@ jobs:
   # （mutation 豁免沿袭）；分组内 job 红态向 caller job 传导，判红语义等价。
   ci-summary:
     name: CI summary (all gates must be success)
-    if: always()
+    if: ${{ !cancelled() }}
     needs: [build, diff, engine, static, hygiene, frontends, tools]
     runs-on: ubuntu-latest
     steps:

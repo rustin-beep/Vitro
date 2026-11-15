@@ -622,9 +622,25 @@ export async function runCorpus(
       fatal(`js 臂产物构建失败: ${((mb.stdout?.toString("utf8") ?? "") + (mb.stderr?.toString("utf8") ?? "")).slice(0, 400)}`);
     }
     const jsEntry = path.join(vitroRoot, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js");
+    // PR #529 审阅 P2-2（2026-11-15）：对账面 = **全部单文件（Clang 绿+红）**
+    // ——红例诊断路径最复杂、最易分叉（原面只收 green：chibicc 20/41 即 51%
+    // 零覆盖且输出无分母）。native 侧红例补跑 serve 批（green 已在 served）。
+    const allFiles = files.filter((p) => !isDir(p));
+    const missing = allFiles.filter((p) => !served.has(relOf(repoAbs, p)));
+    for (let i = 0; i < missing.length; i += 25) {
+      const end = Math.min(i + 25, missing.length);
+      const keys = missing.slice(i, end).map((p) => relOf(repoAbs, p));
+      const units = missing.slice(i, end).map((p) => ({ path: p }));
+      try {
+        const res = await serveBatchFiles(vitroRoot, keys, units);
+        for (const [k, v] of res) served.set(k, v);
+      } catch (e) {
+        fatal(`arm-check 红例 serve 补跑失败: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    const greenKeys = new Set(green.map((p) => relOf(repoAbs, p)));
     const jsServed = new Map<string, Diag[]>();
-    for (const p of green) {
-      if (isDir(p)) continue;
+    for (const p of allFiles) {
       const k = relOf(repoAbs, p);
       if (!served.has(k)) continue;
       try {
@@ -644,7 +660,8 @@ export async function runCorpus(
 `);
       fatal(`双臂对账：${bad.length} 文件 js/native 诊断集分叉（arm_divergence 红）`);
     }
-    process.stdout.write(`realcode arm-check: js≡native（${jsServed.size} 文件诊断集一致）✓
+    const redCount = [...jsServed.keys()].filter((k) => !greenKeys.has(k)).length;
+    process.stdout.write(`realcode arm-check: js≡native（${jsServed.size}/${allFiles.length} 文件诊断集一致：Clang 绿 ${jsServed.size - redCount} + 红 ${redCount} 全进面）✓
 `);
   }
 
@@ -812,6 +829,11 @@ export async function main(argv: readonly string[]): Promise<number> {
       sourceFork: opts.aggSourceFork,
       sourceCommit: opts.aggSourceCommit,
     });
+  }
+  // PR #529 审阅 P3-8：-arm-check 在 -repo 模式曾静默失效（只在 runCorpus
+  // 消费）——入口统一 fail loud。
+  if (opts.armCheck && opts.corpus === "") {
+    fatal("-arm-check 仅支持 -corpus 模式（-repo 模式的 arm 对账未实现——fail loud 而非静默跳过）");
   }
   if (opts.corpus !== "") return runCorpus(opts.corpus, opts, root, opts.vitro);
   if (opts.repo === "") fatal("必填 -repo（或用 -aggregate/-check/-corpus 模式）");

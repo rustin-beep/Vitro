@@ -42,7 +42,7 @@ jobs:
       # 成临时 main 包跑 wasm-gc，护住示例与 gateway API 的同步（跑完即删，
       # 不入库）。约束：demo.mbtx 正文禁用 ---- 行（围栏区间匹配）。
       - name: demo.mbtx quickstart smoke (workspace arm)
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           set -e
           pkg=cmd/demo_mbtx_smoke
@@ -70,7 +70,7 @@ jobs:
       # 防遮蔽（2026-10-23）：tsc 及之后每道 demo 闸 always()——此前 E-08 一红
       # 直接 skipped smoke/E2E/pure，后面的红看不到；现在逐闸跑完再汇总。
       - name: demo TS check (tsc --noEmit = js/ 模块类型面)
-        if: always()
+        if: ${{ !cancelled() }}
         # F4 收尾（2026-10-17）：app.ts 退役 → emit 无对象，只留 --noEmit
         # （js/ 八个物理保留模块的类型面；src/ 由 svelte-check 覆盖）
         run: |
@@ -82,7 +82,7 @@ jobs:
       # rules.json 43 族、82 模板全集对账，断言失败即红）。assemble check
       # 与 demo_smoke 消费盘上 algorithms.js，本步必须排在其前。
       - name: demo algorithms data emit (generator assertions = gate)
-        if: always()
+        if: ${{ !cancelled() }}
         run: node scripts/gen_demo_algorithms/main.mts
         shell: bash
 
@@ -95,7 +95,7 @@ jobs:
       # 课程叙述的现役呈现路线 = #125 补充宿主侧运行时方案（parser.c 随包
       # 发布 + demo 运行时喂引擎解析）。
       - name: course catalog gate (reconcile + lesson.c dual-arm diff)
-        if: always()
+        if: ${{ !cancelled() }}
         run: node scripts/course_catalog/main.mts
         shell: bash
 
@@ -104,7 +104,7 @@ jobs:
       # demo/ 跑同一断言集（不带 --no-ts：源目录 .ts 合法；F4 收尾后断言
       # index.html 入口 = src/main.ts + 本地资源面）。
       - name: demo assemble check (asset existence, HTML-face sentinel)
-        if: always()
+        if: ${{ !cancelled() }}
         run: node scripts/demo_assemble_check/main.mts demo
         shell: bash
 
@@ -114,7 +114,7 @@ jobs:
       # @import）。-check 逐字节比对（CRLF 归一）；-selftest 先证比对面
       # 会红（J9 埋雷义务）——两行都跑，闸与自证同在。
       - name: demo tokens gate (tokens.json → tokens.css, -check)
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           node scripts/gen_demo_tokens/main.mts -selftest
           node scripts/gen_demo_tokens/main.mts -check
@@ -125,7 +125,7 @@ jobs:
       # gen_style 生成（digest 绑真源字节）。两生成器共用 load 完备性断言，
       # 与本步骤互为同源双产物；同样 -selftest + -check 双跑。
       - name: style pack gate (tokens.json → style_gen.mbt, -check)
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           node scripts/gen_style/main.mts -selftest
           node scripts/gen_style/main.mts -check
@@ -135,7 +135,7 @@ jobs:
       # 一份 projectors.json 同时发射 MoonBit 数据面与 demo TS 词表；demo 与
       # MCP 只实现绘制。两产物各自 -check 对账，杜绝两端语义漂移。
       - name: view projector gate (projectors.json → mbt + ts, -check)
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           node scripts/gen_view_projectors/main.mts -selftest
           node scripts/gen_view_projectors/main.mts -check
@@ -145,7 +145,7 @@ jobs:
       # 比 tsc 宽）+ vite build（构建成功性）。demo/src 在 tsc include 外、
       # demo_smoke 跑 js 面，不加这两步则 demo/src 在 CI 零覆盖（裸奔）。
       - name: F4 svelte-check (type + a11y gate)
-        if: always()
+        if: ${{ !cancelled() }}
         run: cd demo && npm run check
         shell: bash
 
@@ -153,7 +153,7 @@ jobs:
       # 阻塞；devDep 精确 pin + npm ci 锁定链）。CallTree.svelte:150/156 两处
       # 逗号表达式 warning 已知不碰。oxfmt/Biome 不接——能力层分散判据（#132）。
       - name: F4 oxlint (zero-error gate)
-        if: always()
+        if: ${{ !cancelled() }}
         run: cd demo && npm run lint:all
         shell: bash
 
@@ -162,7 +162,7 @@ jobs:
       # 此前漏本 job 的 cp → CI vite build 红；Pages job 因有前置 cp 而绿
       # ——同坑两处只堵一处的教训（62f75d3d CI 首跑实锤）。
       - name: demo wasm asset in place (build-time asset)
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
 
@@ -170,14 +170,14 @@ jobs:
       # teaching/langpack（2026-10-23 提速批——此前 demo 重装工具链再编一遍，
       # 与 build 的全量 js 构建重复）。artifact 缺失即 cp 红，与 wasm 同款 fail loud。
       - name: demo langpack asset (build artifact → cp)
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           mkdir -p demo/teaching/langpack
           cp moonbit/_build/js/release/build/teaching/langpack/langpack.js demo/teaching/langpack/langpack.js  # 仅 .js——d.ts 相对引用 moonbit.d.ts 拖类型错
 
       - name: F4 vite build (build success gate)
-        if: always()
+        if: ${{ !cancelled() }}
         run: cd demo && npm run build
         shell: bash
 
@@ -189,7 +189,7 @@ jobs:
       # 生成）。组件面↔用例表↔golden 目录三方全等锚防快照僵死。覆盖面
       # 边界（动画/交互/浏览器态不入快照语义）见 demo/src/e08/entry.ts 头注。
       - name: F4 E-08 snapshot gate (SSR render vs frozen golden)
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           cd demo && npx vite build --ssr src/e08/entry.ts --outDir dist-e08
           cd .. && node --test demo/tests/e08.test.mts
@@ -203,7 +203,7 @@ jobs:
       # 的假绿面（J9 已证红：旧夹具 6+1 项断点全数命中）。重导走
       # tests/e08-export.mts 人工令（E-04 同款纪律：审定 diff 再入库）。
       - name: F4 E-08 fixture shape gate (payload ≡ engine live shape)
-        if: always()
+        if: ${{ !cancelled() }}
         run: node --test demo/tests/e08-shape.test.mts
         shell: bash
 
@@ -213,7 +213,7 @@ jobs:
       # cases.js golden 即红（已留痕）。（原注释随 gates-wasm 拆分批从该
       # job 尾部迁来——步骤实排历来在本 job，2026-10-17）
       - name: demo page smoke (protocol-level, cases golden + field keys)
-        if: always()
+        if: ${{ !cancelled() }}
         run: node scripts/demo_smoke/main.mts
         shell: bash
 
@@ -243,7 +243,7 @@ jobs:
       # 步名即脚本名，PR 页扫视即达。setup 红（环境 fail loud）时后续步
       # 各自因 CDP 不可达而红（红不遮红，且每步都指向 setup）。
       - name: E2E setup (headless chrome + static server)
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           CHROME_BIN="$(command -v google-chrome || true)"
           if [ -z "$CHROME_BIN" ]; then
@@ -300,25 +300,25 @@ jobs:
       # （不经栅格化），基线 demo/tests/style_contract.json 入库。
       # -selftest 先证完整性判定（残缺 doc 判红），再跑真比对。
       - name: "E2E: style_contract (selftest + 5 主题 × 19 选择器)"
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           node demo/tests/style_contract.mts --selftest
           node demo/tests/style_contract.mts http://127.0.0.1:8931/
         shell: bash
       - name: "E2E: e2e_diagcard (诊断带 S1-S5)"
-        if: always()
+        if: ${{ !cancelled() }}
         run: node demo/tests/e2e_diagcard.mts http://127.0.0.1:8931/
         shell: bash
       - name: "E2E: e2e_workspace (W1-W17 工作区/回放/设置)"
-        if: always()
+        if: ${{ !cancelled() }}
         run: node demo/tests/e2e_workspace.mts http://127.0.0.1:8931/
         shell: bash
       - name: "E2E: e2e_session (F1-F8 会话族)"
-        if: always()
+        if: ${{ !cancelled() }}
         run: node demo/tests/e2e_session.mts http://127.0.0.1:8931/
         shell: bash
       - name: "E2E: e2e_editor (N1-N9 + 编辑器 10 锚)"
-        if: always()
+        if: ${{ !cancelled() }}
         run: node demo/tests/e2e_editor.mts http://127.0.0.1:8931/
         shell: bash
       # 批②-5（2026-11-14）：浏览器 V8 digest 锚——同 gateway wasm 产物 ×
@@ -329,7 +329,7 @@ jobs:
       # 防全崩假绿；页内 wasm URL = node 侧直读 dist/assets 哈希名（两轮
       # CI 勘误定案：根路径 404 + Worker resource timing 不入主页面表）。
       - name: "E2E: e2e_v8digest (浏览器 V8 ≡ node V8, wasm-gc 帧流)"
-        if: always()
+        if: ${{ !cancelled() }}
         run: node demo/tests/e2e_v8digest.mts http://127.0.0.1:8931/
         shell: bash
       # bootfail 末位：临时改名 dist wasm 产物造装载失败（finally 还原）。
@@ -339,7 +339,7 @@ jobs:
       # vite build 重建产物兜底）；保持末位是采集面习惯序（前面步骤的页面
       # 状态不被本步的装载失败横幅污染）。
       - name: "E2E: e2e_bootfail (装载失败横幅)"
-        if: always()
+        if: ${{ !cancelled() }}
         run: node demo/tests/e2e_bootfail.mts http://127.0.0.1:8931/
         shell: bash
 
@@ -353,7 +353,7 @@ jobs:
       # （2 陈旧路径修正 + 1 笔误前缀修正 + 1 占位符化 + 1 注释粘连 +
       # 6 退役/反例语境收编 dead_paths）。
       - name: skill docs referenced-path existence
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           node scripts/skill_path_check/main.mts -selftest
           node scripts/skill_path_check/main.mts
@@ -366,7 +366,7 @@ jobs:
       # TS 重写批：扫描面 = app.ts + js/*.ts（源=审阅对象）。
       # #292 终局批：Go 版已删；双轨对拍闸同批退役（等价性证据 = 冻结 golden/sha 基线自证）。
       - name: demo UI string-contract lint (class/var/id reconciliation)
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           node scripts/demo_ui_lint/main.mts -selftest
           node scripts/demo_ui_lint/main.mts
@@ -377,7 +377,7 @@ jobs:
       # （未登记扩张红 / 僵尸条目红 / family 漂移红 / 非字面量调用红）；
       # 抽取面下限防正则失能，-selftest 内存注入四路证红（J9）。
       - name: teaching phase vocabulary freeze gate (infer literals ↔ rules.json)
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           node scripts/teaching_phase_vocab/main.mts -selftest
           node scripts/teaching_phase_vocab/main.mts
@@ -393,7 +393,7 @@ jobs:
       # 「能跑」保证无类型保证。独立 tests/tsconfig.json（@types/node）
       # 补类型面，直跑前先过 tsc。
       - name: demo pure-function tests (node --test on .ts)
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           cd demo && npx tsc -p tests/tsconfig.json && cd ..
           node --test demo/tests/pure.test.mts
@@ -530,7 +530,7 @@ jobs:
       #    回填，post save 后下轮起严格）——绝不静默重下；驱逐/换 pin 同
       #    形态回落一轮预热。
       - name: zero self-pull assertion (cache hit => 0 Downloading)
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           pulls=$(cat /tmp/moon_pull_*.log 2>/dev/null | grep -c "Downloading" || true)
@@ -547,7 +547,7 @@ jobs:
       # MSYS_NO_PATHCONV=1：/IM 是 taskkill 旗标非路径——Git Bash 的 MSYS
       # 路径转换会把它吃成盘符路径（二轮 cleanup 红 rc=1 根因）。
       - name: cleanup stray processes
-        if: always()
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           export MSYS_NO_PATHCONV=1

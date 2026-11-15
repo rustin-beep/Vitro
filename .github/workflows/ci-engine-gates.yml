@@ -11,6 +11,19 @@ jobs:
   gates-native:
     name: Native protocol & parity gates (consume exe)
     runs-on: windows-latest
+    # 红遮红批③（2026-11-15 终局治理，批① E2E 同款形态）：本 job 检查步
+    # 原串行零 if: always()——前步红则后续全 skipped（步级红才见、翻日志
+    # 才知谁红，批① run 43686664411 实锤同款观感）。检查步统一加
+    # if: always()：各自独立红绿上 run 页，多步红一屏尽收；job 结论仍红
+    # （闸强度不变）。
+    # PR #529 审阅 P2-4/P2-5 处置（2026-11-15）：`always()` 取消轮仍执行
+    #（与 P0 PR 轮 cancel 相抵的官方反模式）→ 统一 `!cancelled() &&
+    # steps.gate.outcome == 'success'`；本 job 末环境步（Install MoonBit）
+    # 挂 id: gate 作环境门——环境红 => 检查步 skipped，一屏一条红指向环境
+    #（原「环境红全停且各检查步红均指向前置」注释系事实误述，gate 门才
+    # 是该意图的实现）。
+    # 步内多臂/多闸改累计失败（ci-diff.yml 2026-10-18 样板）：全部跑完
+    # 聚齐失败再 exit 非零——单臂红不遮其余臂健康面。
     steps:
       - uses: actions/checkout@v4
       # #273 接线批（2026-10-24）：annotation 对拍已切 .mts（node 直跑）——node
@@ -32,7 +45,10 @@ jobs:
       - name: Install MoonBit toolchain
         uses: ./.github/actions/setup-moonbit
 
+        id: gate
+
       - name: libc bootstrap parity (MoonBit library mode vs golden digest)
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' }}
         # 2026-09-22 S5 尾项『libc 自举』接线：命题是「MoonBit 引擎能否编译
         # 自己的标准库 C 源，且产物与冻结 golden digest 一致」（Rust oracle
         # 已随工序④删区退役——oracle 缺失时自动切 golden 基线比，判定器内
@@ -44,6 +60,7 @@ jobs:
           node scripts/moonbit/libc_boot_diff/main.mts
 
       - name: Protocol first consumer (fields-level validation on real engine output)
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' }}
         # 2026-09-22 接线（架构审阅 v2 A 组 #10 / §8.5「第一个消费者跑通」）：
         # 用**生成的**协议面（moonbit/bindings/ts/fields.mjs）消费**真实的**引擎输出
         # （cmd/serve 的 step 流——MoonBit 侧同协议现役实现），逐字段校验 +
@@ -65,6 +82,7 @@ jobs:
       # （退役时删 rust 臂采集段即成）。前置：release vitro_cli（上一步）+
       # moonbit cmd/serve（本步自建 debug 形态，与 moonbit job 同产物）。
       - name: Protocol frames freeze (canonicalized baseline)
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' }}
         run: |
           cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
           node scripts/protocol_frames/main.mts
@@ -73,6 +91,7 @@ jobs:
       # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
       # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
       - name: MoonBit serve smoke (single host)
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' }}
         run: |
           cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
           node scripts/serve_smoke/main.mts -moonbit
@@ -83,6 +102,7 @@ jobs:
       # moonbit_exemptions.json——主跑即审计：PASS 即 ZOMBIE 红防僵尸）。
       # 复用上一步构建的同一 exe（debug 路径零重建）；Rust 臂在 core job。
       - name: replay S1-S5 protocol assertions (MoonBit arm)
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' }}
         run: |
           node scripts/replay/replay_s1_s5.mts -moonbit
         shell: bash
@@ -94,6 +114,7 @@ jobs:
       # 构建）。J9 双路证红：golden desc 篡改 → exit 1（连锁红）；
       # step_budget 40 → exit 1（首现缺失）。
       - name: Teaching annotation diff (family-incremental golden, Exit 1)
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' }}
         run: node scripts/teaching_annotation_diff/main.mts
         shell: bash
 
@@ -106,6 +127,7 @@ jobs:
       # 后语料级红例 0 条——牙证由原语自检（合成 fixture 逐原语证红）承担。
       # serve exe 复用上一步构建（ensureFresh 兜底）。
       - name: Teaching truth gate (engine-behavior ground truth, Exit 1)
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' }}
         run: node scripts/teaching_truth/main.mts --selftest
         shell: bash
 
@@ -121,27 +143,32 @@ jobs:
       # known_violations.json 三态 + count 恶化检测（RED/EXPECTED_RED/ZOMBIE）。
       # js 臂壳现场构建（ensureFresh 只兜陈旧不兜缺失）。
       - name: Step invariant gate (per-frame runtime invariants)
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' }}
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target js cmd/vitro_js && cd ..
+          # 批③（2026-11-15）：多臂累计失败（ci-diff.yml 样板）——单臂红
+          # 不遮其余臂健康面（三臂独立断言面：抽样主跑 / rehost 装载 / native）。
+          rc=0
           if [ "${{ github.event_name }}" = "schedule" ]; then
             # schedule 档 --rehost = #520 处置批（2026-11-14）两档接线形态
             # （rebase 连坐 2026-11-15 手动吸收：master 该增量改在原 ci.yml，
             # 拆分后 step_invariant 步骤宿主迁本文件）
-            node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known --rehost
+            node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known --rehost || rc=1
             # 批② native 臂（2026-11-14）：夜间全量档双臂对称
-            node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known --arm native
+            node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known --arm native || rc=1
           else
-            node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000 --step-budget 20000
+            node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000 --step-budget 20000 || rc=1
             # PR #518 审阅 P3-6：--rehost 装载路径 CI 接线（REHOST 批 3 的
             # step 态 wasm 载体往返——此前 CI 无该旗标活行，覆盖只剩 wbtest
             # 两锚；抽样 40 独立跑，装载断言 fallback/缺失即红——P2-2 修后
             # rc=4/fallback 双形态均红）
-            node scripts/step_invariant/main.mts --corpus corpus --sample 40 --jobs 8 --timeout-ms 600000 --step-budget 20000 --rehost
+            node scripts/step_invariant/main.mts --corpus corpus --sample 40 --jobs 8 --timeout-ms 600000 --step-budget 20000 --rehost || rc=1
             # 批② native 臂（2026-11-14）：四不变量双臂断言（AGENTS §14）——
             # cmd/vitro exe 同协议 step 通道，驱动 --arm native（ensureFresh
             # 内部 MOON_CC=clang；本地抽样 20/20 + 15230 帧零违例实证）
-            node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000 --step-budget 20000 --arm native
+            node scripts/step_invariant/main.mts --corpus corpus --sample 60 --jobs 8 --timeout-ms 600000 --step-budget 20000 --arm native || rc=1
           fi
+          exit $rc
         shell: bash
 
       # ── wasm-gc / demo 闸族（产物复用链内构建）────────────────────────
@@ -154,21 +181,40 @@ jobs:
       # 一轮——原豁免条目 PASS/未触达即僵尸红，FAIL=合法豁免。J9 留痕：
       # 注入假豁免（真 PASS 断言）→ ZOMBIE(PASS) exit 1；净表 exit 0。
       - name: MoonBit exemption audit (zombie detector, D19)
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' }}
         run: node scripts/serve_smoke/main.mts -moonbit -audit-exemptions
         shell: bash
   gates-wasm:
-    name: wasm-arm gate (${{ matrix.slice }})
+    name: wasm-arm gate (${{ matrix.slice }}${{ matrix.shard && format('/{0}', matrix.shard) || '' }})
     runs-on: windows-latest
     strategy:
       # 闸级可见性全开：四实例互不取消（一红不见其余）——gates-diff 同款
       # 治理线收口（2026-10-17）：原单 job 串行十步，实锤 clang_direct wasm
       # 臂红 → serve 通道四臂全 skipped（红被前面的红吞掉）。拆分后各臂
       # 独立红绿；墙钟从串行和降为最重实例封顶（vm_diff wasm 全语料）。
+      # 红遮红批③连坐（2026-11-15）：matrix 拆分只治了 slice 间遮蔽，
+      # serve_channel（8 步）/ cli_smoke（5 步）片内串行一步红仍遮本片
+      # 后续步——检查步 if 路由升格 `always() &&`；consumer_smoke 步内
+      # selftest+主检改累计失败（同款样板）。vm_diff / clang_direct 各
+      # 仅单检查步、唯一前置为环境步（环境红全停语义保留），无片内
+      # 遮蔽面——不升格（升格零收益）。
       fail-fast: false
       matrix:
         include:
+          # CI 提速批 P3（2026-11-15）：vm_diff / clang_direct wasm 臂全量
+          # 串行 6.5/7.1min（run 1235 实测）——同 P2 按语料目录拆片（逐例
+          # digest 对拍与目录无关，分片=例集子集判定等价）。run 页步名
+          # 带 /a /b 片标识。
           - slice: vm_diff
+            shard: a
+          - slice: vm_diff
+            shard: b
           - slice: clang_direct
+            shard: a
+          - slice: clang_direct
+            shard: b
+          - slice: clang_direct
+            shard: c
           - slice: cli_smoke
           - slice: serve_channel
     steps:
@@ -187,6 +233,7 @@ jobs:
         with:
           name: build-products
           path: moonbit/_build
+        id: gate
       # protocol_frames wasm 臂读 rules.json——已随 #125 批 B 入库为真源
       # （.json.mbt 出库），本 job 的 jsonmbt clone/build/再生步随之摘除。
       # 四 slice 共享 build-products（wasm.wasm + native exe 集 +
@@ -199,7 +246,7 @@ jobs:
       # 实例：wasm 产物本身健康的最直接哨兵，serve 四臂同消费 gateway
       # 产物（重建步保持原语义）。
       - name: wasm-gc gateway build + Node host smoke
-        if: matrix.slice == 'serve_channel'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'serve_channel' }}
         run: |
           cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
           node scripts/wasm_gateway/host.mts
@@ -214,11 +261,15 @@ jobs:
       # bridges 与 scripts/consumer_smoke/baseline.json。J9：--selftest 三路
       # 篡改基线必红（本地实证）。
       - name: Consumer-side smoke (both bridges, exact link surface)
-        if: matrix.slice == 'serve_channel'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'serve_channel' }}
         run: |
           cd moonbit && moon build --release --target js teaching/langpack && cd ..
-          node scripts/consumer_smoke/main.mts --selftest
-          node scripts/consumer_smoke/main.mts
+          # 批③（2026-11-15）：selftest 与主检累计失败——判定器自检红
+          # 不遮主检查健康面（langpack 构建前置红即断属 fail loud）。
+          rc=0
+          node scripts/consumer_smoke/main.mts --selftest || rc=1
+          node scripts/consumer_smoke/main.mts || rc=1
+          exit $rc
         shell: bash
 
       # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
@@ -226,31 +277,31 @@ jobs:
       # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置 = gateway wasm 产物 + node + 工具链（壳自建）。
       # #292 批：驱动切 .mts（wasm 臂不进对拍——ensureFresh 会重建产物，对拍状态性）
       - name: replay wasm arm (shell serve)
-        if: matrix.slice == 'serve_channel'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'serve_channel' }}
         run: node scripts/replay/replay_s1_s5.mts --backend wasm
         shell: bash
       - name: serve_smoke wasm arm (shell serve)
-        if: matrix.slice == 'serve_channel'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'serve_channel' }}
         run: node scripts/serve_smoke/main.mts --backend-wasm
         shell: bash
       # PR #280 审阅 P3-6（2026-10-23）：豁免表 wasm 臂段此前从不入审计面
       #（僵尸审计只跑 -moonbit 一臂——断言更名批曾靠审阅者补跑才证真）
       - name: serve_smoke wasm exemptions audit
-        if: matrix.slice == 'serve_channel'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'serve_channel' }}
         run: node scripts/serve_smoke/main.mts --backend-wasm -audit-exemptions
         shell: bash
       - name: protocol_frames wasm arm (shell serve)
-        if: matrix.slice == 'serve_channel'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'serve_channel' }}
         run: node scripts/protocol_frames/main.mts --backend-wasm
         shell: bash
       - name: teaching_annotation_diff wasm arm (shell serve)
-        if: matrix.slice == 'serve_channel'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'serve_channel' }}
         run: node scripts/teaching_annotation_diff/main.mts --backend-wasm
         shell: bash
       # PR #463 审阅 P3-5：真值闸 wasm 臂——39 条真值锚不再单压 native 臂
       #（wasm 侧此前仅有 golden 防漂移；壳/产物复用上一步，ensureFresh 兜底）
       - name: teaching_truth wasm arm (shell serve)
-        if: matrix.slice == 'serve_channel'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'serve_channel' }}
         run: node scripts/teaching_truth/main.mts --backend-wasm
         shell: bash
 
@@ -264,7 +315,7 @@ jobs:
       # （artifact）+ 本步自建 cmd/vitro native exe（纪律 11 MOON_CC=clang）
       # + Go + node（上方公共步）。
       - name: unified CLI smoke (三臂同形：wasm shell / js / native exe)
-        if: matrix.slice == 'cli_smoke'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'cli_smoke' }}
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && MOON_CC=clang moon build --release --target native cmd/serve && cd ..
           node scripts/vitro_cli_smoke/main.mts --corpus 30
@@ -279,7 +330,7 @@ jobs:
       # 前置 = 上一步三臂产物；24 探针进程 ~2s。J9：盘上删 run 守卫只重建 js 臂 →
       # 「臂间分叉 native=4 js=0 wasm=4」红（batch_A7_REPORT 留痕）。
       - name: CLI argument-face symmetry (4 cmds × 2 probes × 3 arms)
-        if: matrix.slice == 'cli_smoke'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'cli_smoke' }}
         run: node scripts/cli_symmetry/main.mts -check
         shell: bash
 
@@ -295,7 +346,7 @@ jobs:
       # 前置 = 本步自建 js 产物（release）；纯件四件套归 scripts-ts job
       # （tsc/oxlint/node:test，package.json 三清单已列）。
       - name: MCP server product smoke (cmd/mcp_js stdio——披露/池/投影/渲染/回落)
-        if: matrix.slice == 'cli_smoke'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'cli_smoke' }}
         run: |
           cd moonbit && moon build --release --target js cmd/mcp_js && cd ..
           node scripts/moonbit/mcp_smoke/main.mts
@@ -305,7 +356,7 @@ jobs:
       # Edge/Chrome 条件跳过）。PR #457 审阅 v2 P3-④ 销案：原 D:/tmp 仓外件
       # 收编入仓（2026-11-04）——读者可核对，ci_checklist 活行引用。
       - name: MCP accept (cmd/mcp_js stdio 黑盒——每工具 happy path/池/边界/错误帧)
-        if: matrix.slice == 'cli_smoke'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'cli_smoke' }}
         run: node scripts/moonbit/mcp_smoke/accept.mts
         shell: bash
 
@@ -316,7 +367,7 @@ jobs:
       # 族集对账承接。J9：--catalog-selftest 两路内存注入证红。前置：node
       # （上方）+ native vitro（上一步）+ js 产物 EnsureFresh 自建。
       - name: algorithms.catalog three-way check (dual-arm)
-        if: matrix.slice == 'cli_smoke'
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'cli_smoke' }}
         run: node scripts/teaching_annotation_diff/main.mts --catalog-check
         shell: bash
 
@@ -330,11 +381,42 @@ jobs:
       # （gap 20/20 + 全量 733/733 两侧 exit 0，与 native 臂同判据）。
       - name: vm_diff wasm arm (gateway product vs frozen golden)
         if: matrix.slice == 'vm_diff'
-        run: node scripts/diff_gate/main.mts vm --backend wasm
+        # P3 分片（2026-11-15）：全量 6.5min（run 1235 实测）按语料目录拆两片；
+        # --corpus 单目录判定与全量同构（逐例 digest 对拍，三臂共享 golden）。
+        run: |
+          rc=0
+          case "${{ matrix.shard }}" in
+            a) dirs="baseline leetcode gap" ;;
+            b) dirs="knr llm_scale chibicc_port" ;;
+          *)
+            echo "::error::未知分片标识 shard=${{ matrix.shard }}（slice=${{ matrix.slice }}）——matrix include 与 case 目录集失同步" >&2
+            exit 2
+            ;;
+          esac
+          for d in $dirs; do
+            node scripts/diff_gate/main.mts vm --backend wasm --corpus "$d" || rc=1
+          done
+          exit $rc
         shell: bash
       - name: clang_direct wasm arm (gateway product vs Clang)
         if: matrix.slice == 'clang_direct'
-        run: node scripts/clang_direct/main.mts --backend wasm
+        # P3 分片（2026-11-15）：全量 7.1min 按语料目录拆三片（目录集与 P2
+        # 的 js 臂分片同构——均衡按例数与文件规模）。
+        run: |
+          rc=0
+          case "${{ matrix.shard }}" in
+            a) dirs="baseline knr" ;;
+            b) dirs="leetcode gap codegen_skeleton template_generated" ;;
+            c) dirs="llm_multifile llm_scale chibicc_port" ;;
+          *)
+            echo "::error::未知分片标识 shard=${{ matrix.shard }}（slice=${{ matrix.slice }}）——matrix include 与 case 目录集失同步" >&2
+            exit 2
+            ;;
+          esac
+          for d in $dirs; do
+            node scripts/clang_direct/main.mts --backend wasm --corpus "$d" || rc=1
+          done
+          exit $rc
         shell: bash
   arm4-wasmtime:
     name: 4th-arm wasmtime parity (gateway wasm x Cranelift vs V8)

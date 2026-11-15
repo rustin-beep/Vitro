@@ -1,6 +1,6 @@
 # Vitro 桌面壳（desktop/）——proton 捉虫/测试壳
 
-> as_of 2026-11-03（DCDP 批：CEF 真窗口 CDP smoke 形态 C 段入 CI；前史 2026-11-02 P 线实测前进拍板——实测报告 `tmp/batch_P_proton_REPORT.md` 不入库，结论摘要见本文 §5）
+> as_of 2026-11-15（D3 批：打包形态验证固化 `tools/package_check.mts` 五断言 + 跨目录打包边界与镜像布局处方入坑表；前史 2026-11-03 DCDP 批 CEF 真窗口 CDP smoke 形态 C 段入 CI；2026-11-02 P 线实测前进拍板——实测报告 `tmp/batch_P_proton_REPORT.md` 不入库，结论摘要见本文 §5）
 
 ## 定位（一句话）
 
@@ -58,7 +58,9 @@ PROTON_REMOTE_DEBUGGING_PORT=9335 proton_cli dev   # 起 ../demo 的 vite dev se
 node tools/smoke.mts 9335 9336                     # CI 同款全链 smoke：dev 形态 15 断言 + formC 段 9 断言（正向 7 + 负向对照 2）→ 杀树（本地暖态全链 ~60s，含 formC release 重建与负向实例）
 ```
 
-不经 `proton_cli` 直跑 `_build/.../app.exe` 需环境四件套：`PROTON_RUNTIME_ROOT=<store>/win32-x64/cef-<hash>-layout-1/runtime`（内容寻址目录，glob 发现）、`PROTON_HELPER_PATH=<helpers>/win32-x64/0.6.0/cef_process.exe`、`PROTON_PROJECT_CONFIG=<本目录>/proton.project.json`、`PATH` 前置 `<runtime>/bin`（缺 config 时 `load_config()` 直读 exe 同目录，缺即 abort）；**且 spawn 的 cwd 必须是 desktop/**——asset 相对路径 `../demo/dist` 按 **cwd**（非 exe 位置）解析，锚错即 `entry_load_error` 且 CDP page targets 空（DCDP 批实锤，smoke 形态 C 段已按此固化）。`proton_cli package` 打包后内嵌元数据可免——打包形态验证列下批。
+不经 `proton_cli` 直跑 `_build/.../app.exe` 需环境四件套：`PROTON_RUNTIME_ROOT=<store>/win32-x64/cef-<hash>-layout-1/runtime`（内容寻址目录，glob 发现）、`PROTON_HELPER_PATH=<helpers>/win32-x64/0.6.0/cef_process.exe`、`PROTON_PROJECT_CONFIG=<本目录>/proton.project.json`、`PATH` 前置 `<runtime>/bin`（缺 config 时 `load_config()` 直读 exe 同目录，缺即 abort）；**且 spawn 的 cwd 必须是 desktop/**——asset 相对路径 `../demo/dist` 按 **cwd**（非 exe 位置）解析，锚错即 `entry_load_error` 且 CDP page targets 空（DCDP 批实锤，smoke 形态 C 段已按此固化）。`proton_cli package` 打包后内嵌元数据可免——**已验证并固化**（`tools/package_check.mts` 五断言：免四件套直跑 / CDP env 钉端口在 release 产物复验 / proton.localhost 装载 / 页内编译✓运行✓golden✓ 端到端，2026-11-15 D3 批）。
+
+**打包跨目录边界（D3 批实锤，proton_cli 0.6.0）**：`package` 要求 bundle 输入在 base_dir（desktop/）内——frontend 跨目录（`../demo`）直打包即红（`bundle input must stay inside base_dir`）；且 facade asset 串是双语境镜像设计（`resolve_asset_path` 相对路径 join `runtime_resource_dir()`——直跑按 cwd、打包按 exe 旁 Resources 解析），跨目录打破镜像。**处方 = 打包期镜像布局**：拷 `demo/dist` → `desktop/web/dist` + asset 临时改 `web/dist/index.html` + config `frontend.path=web` → package → finally 还原——`tools/package_check.mts` 全自动编排（脏态自检 + git checkout 还原双兜底）。
 
 ## CDP 开关矩阵（P 线四形态实测）
 
@@ -113,4 +115,4 @@ CI 断言覆盖（`tools/smoke.mts`，DCDP 批起）：**dev 形态**（①–�
 
 ## 下批（拍板后）
 
-打包形态验证（`proton_cli package --dry-run` → `--format app`，**含 `../demo/dist` 跨目录前端装配**、dist 内嵌元数据免四件套、CDP env 钉端口在打包产物上复验）· feed 通道（scanf 续跑）E2E 锚进 smoke · 探针收编 `vitro-demo-mcp` 工具面 · native vs wasm 双臂对拍（demo 通道形态运行时可切——GUI 内 `arm_divergence` 的第三现场）。
+~~打包形态验证~~（**D3 批 2026-11-15 完成**：`tools/package_check.mts` 五断言固化——跨目录打包撞 proton 0.6.0 base_dir 边界，镜像布局 workaround 全自动编排）· ~~feed 通道（scanf 续跑）E2E 锚进 smoke~~（**核对已覆盖**：smoke ④ 段 `matrix-feed` 断言即 feed 全链 E2E——scanf→waiting_input→feed 42→`got 42`，清单项陈旧勾销）· 探针收编 `vitro-demo-mcp` 工具面 · native vs wasm 双臂对拍（demo 通道形态运行时可切——GUI 内 `arm_divergence` 的第三现场） · ~~package_check 接 CI~~（**2026-11-15 用户拍板不接**：打包不作为发布面（desktop=测试壳非发包面），本地验证件即终态——进 CI 属过度工程）。

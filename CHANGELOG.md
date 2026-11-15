@@ -1,5 +1,123 @@
 ## [Unreleased]
 
+### fix(ci+scripts+desktop): PR #529 审阅处置——P1×1 + P2×4 + P3×7 全清（2026-11-15）
+
+- **P1-1 package_check 失败路径**：`check(); process.exit(1)` 在 try 内——exit
+  不执行 finally，仓库留双文件篡改 + web/ 镜像残留（审阅实测复现）→ 改
+  throw（穿透 finally）；P3-9 连坐：git 回落补 confRaw 原文双回写。
+- **P2-2 -arm-check 红例进面**：原只收 Clang 绿（chibicc 20/41，51% 零覆盖
+  且无分母）→ 全部单文件进面（native 侧红例补跑 serve 批），实测
+  **41/41（绿 20+红 21）一致** + 分母输出。P3-7：severity 入签名（五元组）。
+  P3-8：-repo 模式入口 fail loud（原静默失效）。
+- **P2-3 multifile 空闸摘除**：36 工程键全跳过=0 文件判绿——CI 该行去
+  -arm-check + 注释。
+- **P2-4/P2-5 always() 语义两病**：① 取消轮仍执行（官方反模式，与 P0
+  cancel 相抵）②「环境红全停」注释误述（always 下检查步照样刷缺产物红）
+  → 三文件 ~90 步统一 `!cancelled() && steps.gate.outcome == 'success'`，
+  末环境步挂 id: gate 作门（环境红⇒检查步 skipped、一屏一条红指向环境）；
+  frontends/build/ci.yml 裸 always 连坐改 !cancelled()；install_skills 的
+  npm ci 反模式随治；被测准备步（E2E setup）保持无门（批① fail loud 语义）。
+- **P3-6**：四处 shard case 补未知分支 guard（`*) exit 2`——加片失同步
+  静默零例绿 → fail loud）。**P3-10**：步骤名改实符（per-driver matrix;
+  per-shard corpora）。**P3-11**：wasmenc 片 npm ci 共享前置（三闸 ~42s×3
+  →×1）。**P3-12**：措辞改口——「零防线损失」→「面未消失、冗余度自三臂
+  降为单臂」（4 处；P0 两处本义成立保留）。
+- **阻塞项 13**：rebase 到 base 最新 ce3304c9（lintlist/testlist 红消）。
+- **演化回灌**：skill 03 缺陷形态清单新增 D26-D28（process.exit 破口 /
+  分片 case 空集静默绿 / always() 与 cancel 冲突+环境红全停误述）+ 07
+  演化日志连坐。
+- 验证：yaml.safe_load ×6 / tsc+oxlint+node:test 10/10（realcode）/
+  arm-check 41/41 实测 / package_check 五断言第三轮全过（失败路径注入两法
+  未触达——PATH 摘除致加载期崩、.cmd 桩不被 spawnSync 解析；P1-1 采信
+  审阅者已实测 throw 处方 + finally 语言语义）。
+
+### perf(ci): CI 提速批——concurrency PR 轮取消（P0）+ static 五片（P1）+ diff js 臂目录分片（P2）（2026-11-15）
+
+- **实测基线**：run 1229 步级数据——总时长 15.2min ≈ 最长 job
+  static/bookkeeping 15.1min（零排队、公开仓免费无配额）；木桶=执行最短板
+  + concurrency pending。观感 20-27min（run 1224=27.4）系 pending 等待：
+  PR 轮不取消旧轮，同 PR 连推时新轮挂起 11min 实锤。
+- **P0 PR 轮 cancel-in-progress（ci.yml）**：`event_name == 'push'` →
+  `!= 'schedule'`——被取消旧轮对应过时 commit、结果无消费价值（required
+  checks 只看最新 commit），零防线损失；schedule 夜间全量轮保持不受打断
+  （group 事件后缀分流，跨事件互斥本就不发生）。拍板理由：agent 批次连推
+  节奏下 pending 10min 级纯等待。
+- **P1 static-gates 三片→五片（ci-static.yml）**：bookkeeping 独重
+  15.1min（rundiff 6.4 + testcount 5.3 + facts 1.9 互不相干）——wasmenc
+  三闸独立成片、dispatchdiff（批 4b-3 三方对拍含 cargo 冷编）再独立成片；
+  五片并行 ~8min 封顶。同闸同语料仅并发分片（无 full-only 判定面，
+  行为零变化）。
+- **P2 diff js 臂按语料目录分片（ci-diff.yml）**：clang_direct_js 10.2 /
+  vm_diff_js 8.5 是 diff 组长板——matrix 加 shard 维度（vm 6 目录×2 片 /
+  clang 9 目录×3 片，片内累计失败），逐例 digest 对拍与目录无关、分片=
+  例集子集判定等价。**native 两臂保持全量不动**（vm 1.0 / clang 2.9min）
+  ——golden 僵死 + 白名单空转防腐化只在 full 模式触发，native 全量继续
+  承担防腐化面——面未消失、**冗余度自三臂降为单臂**（PR #529 审阅
+  P3-12 改口，非「零防线损失」）。
+- 预期：关键路径 15.2 → ~9.7min（build 4.2 + diff 分片后 ~5）；job 数
+  30→36 零排队现状下安全。**首跑实测后再滚动 P3-P5**（engine wasm 分片 /
+  build 三臂并行 / fuzz 分片）。run 页效果不可本地复现——CI 首跑验收。
+
+### perf(ci)+feat(scripts): CI 提速批 P3 + realcode js 臂双臂化 + P4/P5 评估定界（2026-11-15）
+
+- **P3 engine wasm 臂分片（ci-engine-gates.yml）**：gates-wasm 的
+  vm_diff（6.5min）/ clang_direct（7.1min）按语料目录拆 2/3 片（run 1235
+  实测基线；目录集与 P2 js 臂同构、片标识 {0} 占位形态）。engine 组
+  7.1 → ~3min。
+- **realcode js 臂双臂化（P2 杂项，-arm-check）**：native serve 通道诊断集
+  vs cmd/vitro_js compile --json（type:diag 帧）逐文件四元组
+  （code/line/column/message）一致——分叉即 arm_divergence 红（AGENTS
+  §14 的 realcode 补面）；工程键（multifile 36 个）跳过并注明（js CLI
+  单文件出口无多文件形态——出口面差异非引擎差异）。实测 chibicc 20 文件
+  js≡native ✓；rc 语义坑实录：compile 有诊断错误时 rc=1 但 diag 帧照常
+  输出（CLI_PROTOCOL_V1）——帧到手即数据面。四件套：tsc strict ✓ /
+  oxlint ✓ / node:test +5 锚（diffArmDiags 四态 J9 注入 + -arm-check
+  布尔映射回归锚——曾被他分支静默吞实锤）/ CI realcode_corpus 两跑接线。
+- **P4 build 三臂并行：评估后不做**——build 已有 moon 增量缓存设计
+  （warm 轮增量秒级），拆三 job 破坏「P0 判定缓存与 build 缓存全命中或
+  全不命中」耦合（PR #310 审阅 P2-4 在档）+ artifact 合流复杂化，
+  收益 < 风险。
+- **P5 fuzz 分片：评估后不做（归 fuzz 独立批）**——驱动无分片参数
+  （-freeze/-regen/-rules/-baseline/-probe 而已），分片需改造
+  fuzz_baseline.json 全集对账语义（新指纹/桶恶化/ZOMBIE 全集判定）——
+  与「fuzz wasm 臂留独立批」同病同批（都动 fuzz 判定面）。
+- **libc_boot 双臂化：撞架构墙实测**——cmd/dump_compile
+  supported_targets="native"（extern C exit + fs 依赖），js/wasm 无等价
+  出口壳；编译器核心后端无关性由 hygiene 四目标测试背书。实现后回滚，
+  实测留痕（js 臂调用即 "does not support target backend" 红）。
+- **linux 全量语料（#365）**：拍板锚——四选项（known 平台分支/语料
+  适配/windows-only 声明/Linux 闸）待用户拍板，非 agent 可代决。
+
+### fix(ci): 红遮红批③——gates-native/static-gates/gates-wasm 步间 if: always() + 聚合步累计失败 + G11 孤儿注释清尾（2026-11-15）
+
+- **gates-native（ci-engine-gates.yml）**：9 检查步原零 always() 串行——
+  前步红则后续全 skipped（步级红才见、翻日志才知谁红，批① E2E 治理
+  run 43686664411 同款观感的引擎闸剩余面）。检查步统一加
+  `if: always()`（批① ci-frontends.yml 同款形态）：各自独立红绿上
+  run 页，多步红一屏尽收；job 结论仍红（闸强度不变）。环境四步
+  （checkout/Node/artifact/工具链）不升格——环境红全停且各检查步红均
+  指向前置（fail loud 不伪装成断言失败）。step_invariant 步内三臂
+  （抽样主跑 / rehost 装载 / native）改累计失败（ci-diff.yml 2026-10-18
+  样板）：单臂红不遮其余臂健康面。
+- **gates-wasm（ci-engine-gates.yml，批③观察项拍板连坐）**：matrix 拆分
+  （2026-10-17）只治了 slice 间遮蔽，serve_channel（8 步）/ cli_smoke
+  （5 步）片内串行一步红仍遮本片后续步——检查步 if 路由升格
+  `always() &&`；consumer_smoke 步内 selftest+主检改累计失败。
+  vm_diff / clang_direct 各单检查步、唯一前置为环境步，无片内遮蔽面
+  ——不升格（升格零收益）。
+- **static-gates（ci-static.yml）**：matrix 三片拆分（2026-10-17）只治了
+  片间遮蔽，片内串行一步红仍遮本片后续步——35 检查步 if 路由统一升格
+  `always() &&`（步间红不遮红）；步内多闸聚合改累计失败：freshness
+  七闸 / fix-diffusion 四闸 / host_contract 与 ledger 的 selftest+主检 /
+  install_skills 三件（node:test/tsc/oxlint）——全跑完聚齐失败再
+  exit，单闸红不遮其余闸健康面（前置类命令 build/npm ci 保持链式，
+  红即断属 fail loud 指向前置）。
+- **G11 孤儿注释删除**（P2 杂项清单项）：ci-static.yml 尾部 6 行注释
+  指向已退役的看板步骤（步骤体已不存在、注释悬空零宿主）——清除。
+- 验证：python yaml.safe_load 两文件解析 ✓；rc=0 / exit $rc 累计块
+  配对 ✓（grep 断言）；run 页步级红绿效果不可本地复现——待
+  CI 首跑观察（诚实登记，遮蔽证据锚批① run 43686664411 形态引证）。
+
 ### feat(bytecode+codegen+vm+wasmenc): REHOST 批 4b-4——wide-param 禁译撤除（误判定谳）+ 参数搬运弹序勘正 + 宽返回双通道（2026-11-15）
 
 - **wide-param 禁译撤除（4b-1 误判定谳）**：PR #520 审阅 P2-1 的「word/

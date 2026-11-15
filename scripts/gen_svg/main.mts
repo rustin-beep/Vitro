@@ -1089,7 +1089,7 @@ export function genGates(root: string): void {
     1064,
     "vitro MoonBit 自建验证防线全景",
     "MoonBit 自建验证防线 · 对拍链与闸卫",
-    "对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml 现役 job；结构图无数字锚（测试数见 README 机判行）",
+    "对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ 全集现役 job（CI 拆分批 2026-11-14 起 = 编排层 ci.yml + called 单元 + nightly.yml，单文件取全集会漏——D26）；结构图无数字锚（测试数见 README 机判行）",
   );
   // 顶条：引擎白盒测试
   P.push(

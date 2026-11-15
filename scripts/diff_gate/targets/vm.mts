@@ -56,6 +56,11 @@ const WASM_SHELL = "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js
 const WASM_ENGINE = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm";
 /** native 臂被测物：预编译 exe 直跑（Go 版同路径；CI 由 build artifact 保证存在）。 */
 const RUN_EXE = "moonbit/_build/native/release/build/cmd/run/run.exe";
+/** js 臂被测物（批② js 臂全量接线 2026-11-14）：CLI 缺省臂（AGENTS §12）此前
+ * 全量语料行为对拍为零（fuzz 变体/30 例 rc 面/10 行 triage 之外零覆盖）——
+ * js 壳 run 子命令与 run.exe 同参数面（cmd/lib/cli 单源三壳同表，
+ * --dump-memory/-i 三联可比），node 直跑免宿主装载层。 */
+const JS_SHELL = "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js";
 const DEFAULT_CORPORA = ["baseline", "knr", "leetcode", "gap", "llm_scale", "chibicc_port"]; // chibicc_port：#437 语料扩充窗口 2026-11-03 接线
 
 /** argv 区脱敏窗（评审 P3 收窄：载荷实测 ~50B，4KB 余量 ~80×）。 */
@@ -197,11 +202,11 @@ function digestOf(r: RunResult): { exit: number; stdout: string; mem: string; cf
 
 export interface VmRunOpts {
   root: string;
-  backend: "native" | "wasm";
+  backend: "native" | "wasm" | "js";
   fail?: (msg: string) => never;
 }
 
-/** 跑单例被测物：native 走**预编译 run.exe 直跑**（Go 版同路径），wasm 走 node 壳。 */
+/** 跑单例被测物：native 走**预编译 run.exe 直跑**（Go 版同路径），wasm/js 走 node 壳。 */
 export function runOne(file: string, opts: VmRunOpts): RunResult {
   const fail = opts.fail ?? fatal;
   const root = opts.root;
@@ -224,6 +229,11 @@ export function runOne(file: string, opts: VmRunOpts): RunResult {
   if (opts.backend === "wasm") {
     cmd = "node";
     cmdArgs = [path.join(root, WASM_SHELL), "run", ...args];
+  } else if (opts.backend === "js") {
+    // js 臂同 wasm 臂的壳消费形态（绝对壳路径 + 相对语料路径——壳路径是
+    // node 的 argv 不进引擎，映像口径与 native 臂一致可共享同一 golden）。
+    cmd = "node";
+    cmdArgs = [path.join(root, JS_SHELL), "run", ...args];
   } else {
     // 相对路径：Go 版 exec.Command(filepath.FromSlash(runnerExe), path) 同口径——
     // argv 内容（含路径串）会残留在映像里，绝对 vs 相对会让 memory_sha 不同
@@ -298,7 +308,7 @@ export function runVm(argv: string[], root: string): number {
   let corpora: string[] = DEFAULT_CORPORA;
   let sample = 0;
   let explicit: string[] = [];
-  let backend: "native" | "wasm" = "native";
+  let backend: "native" | "wasm" | "js" = "native";
   let golden = false;
   let freezeMB = false;
   let selftest = false;
@@ -322,8 +332,8 @@ export function runVm(argv: string[], root: string): number {
       selftest = true;
     } else if (a === "--backend" && i + 1 < argv.length) {
       const v = argv[++i];
-      if (v !== "native" && v !== "wasm") fail(`--backend 取值 native|wasm，得到 ${JSON.stringify(v ?? "")}`);
-      backend = v === "wasm" ? "wasm" : "native";
+      if (v !== "native" && v !== "wasm" && v !== "js") fail(`--backend 取值 native|wasm|js，得到 ${JSON.stringify(v ?? "")}`);
+      backend = v === "wasm" ? "wasm" : v === "js" ? "js" : "native";
     } else if (a === "--golden") {
       golden = true;
     } else if (a === "--prune-stale") {
@@ -339,12 +349,16 @@ export function runVm(argv: string[], root: string): number {
       fail(`${WASM_SHELL} 不存在（wasm 臂需 build 产物：moon build --release --target js cmd/vitro_wasm）`);
     }
     // 引擎产物存在性 fail loud（2026-11-01 审阅 v2 S05-C1）：原实现只查壳不查
-    // 引擎 wasm——缺引擎时全部例呈「stdout 同一 hash=壳错误输出」的同文误导性
+    // 引擎——缺引擎时全部例呈「stdout 同一 hash=壳错误输出」的同文误导性
     // DIFF（方向红但形态谎报行为漂移）；与 native 臂的 run.exe 缺件检查对称。
     if ((process.env.VITRO_WASM_MOD ?? "") === "" && !fs.existsSync(path.join(root, WASM_ENGINE))) {
       fail(
         `${WASM_ENGINE} 不存在（wasm 臂引擎产物，壳默认加载它——先 moon build --release --target wasm-gc gateway/wasm && node scripts/wasmopt/main.mts <产物>；或 VITRO_WASM_MOD 显式指定）`,
       );
+    }
+  } else if (backend === "js") {
+    if (!fs.existsSync(path.join(root, JS_SHELL))) {
+      fail(`${JS_SHELL} 不存在（js 臂需 build 产物：moon build --release --target js cmd/vitro_js）`);
     }
   }
   process.stderr.write(
@@ -370,6 +384,14 @@ export function runVm(argv: string[], root: string): number {
       "--target",
       "native",
       "cmd/run",
+    ]);
+  } else if (backend === "js") {
+    ensureFresh("vm_diff_js", path.join(root, JS_SHELL), [
+      "build",
+      "--release",
+      "--target",
+      "js",
+      "cmd/vitro_js",
     ]);
   } else if ((process.env.VITRO_WASM_MOD ?? "") === "") {
     ensureFresh(

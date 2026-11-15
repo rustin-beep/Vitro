@@ -190,7 +190,7 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
   // ① 漏登记（例外豁免）
   for (const d of drivers) {
     if (liveSet.has(d) || exSet.has(d)) continue;
-    lines.push(`漏登记: ${d}（scripts 下存在 main 驱动，ci.yml 零活行——要么接线要么进例外表自证）`);
+    lines.push(`漏登记: ${d}（scripts 下存在 main 驱动，workflows 零活行——要么接线要么进例外表自证）`);
     failed = true;
   }
   // ② 悬空（排序输出：Go 侧 map 序随机，此处收紧可复现性）——形态分流见活行集段
@@ -213,26 +213,30 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
   // 驱动集∪活行集∪磁盘 三者之并）
   for (const e of exceptions) {
     if (liveSet.has(e.driver)) {
-      lines.push(`僵尸例外: ${e.driver} 已被 ci.yml 活行引用，例外条目应删`);
+      lines.push(`僵尸例外: ${e.driver} 已被 workflow 活行引用，例外条目应删`);
       failed = true;
     } else if (!driverSet.has(e.driver) && !fs.existsSync(path.join(repo, e.driver))) {
       lines.push(`幽灵例外: ${e.driver} 既非驱动也无活行且磁盘上不存在——死条目（删除或修正）`);
       failed = true;
     }
   }
-  // ④ moon test 目标面
+  // ④ moon test 目标面（2026-11-14 CI 拆分批连坐：原判据只扫 ci.yml 单文件
+  // ——hygiene job（四 target moon test 活行宿主）拆至 ci-hygiene.yml 后
+  // 扫描面失真必假红。改扫全部 workflow 文件，与 ①②③ 活行对账同源 wfBytes。）
   const targetUnion = new Set<string>();
-  for (const line of ciBytes.match(MOON_TEST_RE) ?? []) {
-    if (line.includes("--target ")) {
-      for (const m of line.matchAll(TARGET_RE)) targetUnion.add(m[1] ?? "");
-    } else {
-      targetUnion.add("wasm"); // 裸 moon test 默认目标 = wasm
+  for (const wb of wfBytes.values()) {
+    for (const line of wb.match(MOON_TEST_RE) ?? []) {
+      if (line.includes("--target ")) {
+        for (const m of line.matchAll(TARGET_RE)) targetUnion.add(m[1] ?? "");
+      } else {
+        targetUnion.add("wasm"); // 裸 moon test 默认目标 = wasm
+      }
     }
   }
   for (const want of MOON_TARGETS) {
     if (!targetUnion.has(want)) {
       lines.push(
-        `目标面缺口: ci.yml 全部 moon test 活行的目标并集缺 --target ${want}（后端集加员须连坐测试面——AGENTS §14 三臂强制）`,
+        `目标面缺口: workflows 全部 moon test 活行的目标并集缺 --target ${want}（后端集加员须连坐测试面——AGENTS §14 三臂强制）`,
       );
       failed = true;
     }
@@ -248,10 +252,12 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
   //      「needs 11 而循环 10」失衡形态）；
   //   C. pairs 条数 == needs 数。
   // 豁免面：schedule-only job（if: github.event_name == 'schedule'——PR/push
-  // 面不触发，needs 它们会恒 skipped 假红）自动免；mutation-gate 观察期
-  // 显式豁免（ci.yml ci-summary 段注记），复活时摘除。
+  // 面不触发，needs 它们会恒 skipped 假红）自动免；mutation 观察期
+  // 显式豁免（ci.yml ci-summary 段注记），复活时摘除。拆分批（2026-11-14）
+  // 连坐：job id `mutation-gate` → caller 编排层 id `mutation`（job 实体在
+  // ci-mutation.yml，⑤ 只扫 ci.yml 的 caller job 集）。
   const SUMMARY_EXEMPT = new Map<string, string>([
-    ["mutation-gate", "观察期不入 needs（ci.yml ci-summary 段注记 2026-10-31）"],
+    ["mutation", "观察期不入 needs（ci.yml ci-summary 段注记 2026-10-31；拆分批 2026-11-14 起豁免键 = caller id）"],
   ]);
   const summaryResult = checkCiSummary(ciBytes, SUMMARY_EXEMPT);
   if (summaryResult !== null) {
@@ -259,7 +265,41 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
     failed = true;
   }
 
-  const summary = `ci_checklist: PASS——驱动 ${drivers.length}（.go ${goDrivers.length} / .mts ${mtsDrivers.length}，双形态目录各计其形）/ 活行 ${liveSet.size} / 例外 ${exceptions.length} 三向对账 + moon test 目标面（${targetUnion.size} 目标齐）+ ci-summary 三面一致`;
+  // ⑥ 方法论/登记文档 workflow 路径存在性（PR #524 审阅 P1-1 机判件，
+  // 2026-11-15）：CI 拆分后文档里的「取全集/接线」口径若仍引用单文件或
+  // 已改名 workflow，闸面零感知（D26 同族——非源码资产不在闸扫描面）。
+  // 判据收窄为**零误报**形态：文档文本中出现的具体 `.github/workflows/
+  // <file>.yml` 路径字面量必须实存（glob/通配形态不判——合法表达不误伤）。
+  // 扫描面写死清单（防自身漂移）：workspace-review skill（SKILL.md +
+  // references/*.md）+ 脚本总清单与必跑防线.md（CI 接线登记文档）。
+  const docList: string[] = [path.join(repo, ".agents/skills/vitro-workspace-review/SKILL.md")];
+  const refDir = path.join(repo, ".agents/skills/vitro-workspace-review/references");
+  try {
+    for (const n of fs.readdirSync(refDir)) if (n.endsWith(".md")) docList.push(path.join(refDir, n));
+  } catch {
+    // references 目录缺失不阻断（skill 结构演变时判据自身不红）
+  }
+  docList.push(path.join(repo, "docs/current/02-构建与上手/脚本总清单与必跑防线.md"));
+  const wfRe = /\.github[/\\]workflows[/\\]([A-Za-z0-9._-]+\.ya?ml)/g;
+  const wfNames = new Set<string>();
+  for (const wb of wfBytes.keys()) wfNames.add(wb);
+  for (const doc of docList) {
+    let body: string;
+    try {
+      body = fs.readFileSync(doc, "utf8");
+    } catch {
+      continue; // 文档缺席不判红（删除/改名语境由 ①③ 判据各管各面）
+    }
+    for (const m of body.matchAll(wfRe)) {
+      const name = m[1] as string;
+      if (!wfNames.has(name)) {
+        lines.push(`文档路径悬空: ${path.relative(repo, doc)} 引用 .github/workflows/${name} 但该文件不存在（改名/删除未连坐登记文档——D26 同族）`);
+        failed = true;
+      }
+    }
+  }
+
+  const summary = `ci_checklist: PASS——驱动 ${drivers.length}（.go ${goDrivers.length} / .mts ${mtsDrivers.length}，双形态目录各计其形）/ 活行 ${liveSet.size} / 例外 ${exceptions.length} 三向对账 + moon test 目标面（${targetUnion.size} 目标齐）+ ci-summary 三面一致 + 文档路径存在性`;
   return { failed, lines, summary };
 }
 

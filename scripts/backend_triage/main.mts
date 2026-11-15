@@ -43,7 +43,7 @@ export interface TriadVerdict {
 }
 
 /** runner 期望行数（cmd/backend_triage/main.mbt 的 println 计数——形状门量）。 */
-export const EXPECTED_LINES = 10;
+export const EXPECTED_LINES = 16;
 
 /** CRLF→LF 归一（字节域：仅剥 0d 0a 对中的 0d）。 */
 export function normalizeCrlf(b: Buffer): Buffer {

@@ -67,7 +67,7 @@ test("J9 ①漏登记：新驱动无活行 → 红", () => {
   });
   const r = check(f.root);
   assert.equal(r.failed, true);
-  assert.match(r.lines.join("\n"), /漏登记: scripts\/beta（scripts 下存在 main 驱动，ci.yml 零活行/);
+  assert.match(r.lines.join("\n"), /漏登记: scripts\/beta（scripts 下存在 main 驱动，workflows 零活行/);
 });
 
 test("J9 ②悬空：活行引用不存在的驱动 → 红", () => {
@@ -125,7 +125,7 @@ test("J9 ③僵尸例外：例外驱动同时被引用 → 红", () => {
   });
   const r = check(f.root);
   assert.equal(r.failed, true);
-  assert.match(r.lines.join("\n"), /僵尸例外: scripts\/alpha 已被 ci.yml 活行引用/);
+  assert.match(r.lines.join("\n"), /僵尸例外: scripts\/alpha 已被 workflow 活行引用/);
 });
 
 test("J9 例外缺 reason → 直接判红（exit 1 语义）", () => {
@@ -205,7 +205,7 @@ function summaryCi(needs: string, envJobs: string[], pairs: string[]): string {
   ].join("\n");
 }
 
-const EXEMPT = new Map<string, string>([["mutation-gate", "观察期"]]);
+const EXEMPT = new Map<string, string>([["mutation", "观察期"]]);
 
 test("⑤ 绿：gate job 全入 needs/env/pairs + schedule-only 自动豁免", () => {
   const ci = summaryCi("build-artifacts, gate-a", ["build-artifacts", "gate-a"], ["build", "gatea"]);
@@ -230,17 +230,40 @@ test("⑤ J9 pairs 失衡：循环数 != needs 数 → 红（2026-10-30 同形�
   assert.match(r as string, /pairs 1 != needs 2/);
 });
 
-test("⑤ 显式豁免表：mutation-gate 不入 needs 不红（观察期注记）", () => {
+test("⑤ 显式豁免表：mutation（caller id，拆分批 2026-11-14 起）不入 needs 不红（观察期注记）", () => {
   const ci = [
     "on: {push: {branches: [master]}}",
     "jobs:",
-    "  mutation-gate:",
-    "    runs-on: ubuntu-latest",
+    "  mutation:",
+    "    uses: ./.github/workflows/ci-mutation.yml",
     "  ci-summary:",
     "    needs: []",
     "    runs-on: ubuntu-latest",
   ].join("\n");
   assert.equal(checkCiSummary(ci, EXEMPT), null);
+});
+
+// ④ 拆分形态锚（2026-11-14 CI 拆分批）：moon test 活行随 hygiene 拆至
+// ci-hygiene.yml 后，目标面判据须扫全部 workflow——只扫 ci.yml 单文件必
+// 假红（修复前形态：fixture 无 moon test 行 → 四目标全缺口）。本锚 J9：
+// 修复前跑必红（目标面缺口 x4）。
+test("④ J9 拆分形态：moon test 活行在非 ci.yml 文件也能扫到（四目标跨文件并集）", () => {
+  const f = makeFixture((x) => {
+    // ci.yml 里只留活行，moon test 四行全部挪到拆分后的 called 文件
+    x.edit(".github/workflows/ci.yml", ["steps:", "  - run: go run ./scripts/alpha", ""].join("\n"));
+    x.edit(".github/workflows/ci-hygiene.yml", [
+      "steps:",
+      "  - run: |",
+      "      moon test --target js",
+      "      moon test --target native",
+      "      moon test",
+      "      moon test --target wasm-gc",
+      "",
+    ].join("\n"));
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+  assert.match(r.summary, /moon test 目标面（4 目标齐）/);
 });
 
 test("J9 ①漏登记（.mts 无 shebang 形态，2026-11-14 #512 彻查）：main.mts 文件名即驱动——shebang 缺失不得逃逸驱动集", () => {
@@ -267,4 +290,34 @@ test("无 shebang main.mts + 活行在场 → 不误伤（文件名即驱动的�
   const r = check(f.root);
   assert.equal(r.failed, false, r.lines.join("\n"));
   assert.match(r.summary, /\.mts 1/);
+});
+
+// ⑥ 文档路径悬空（PR #524 审阅 P1-1 机判件，2026-11-15）：方法论/登记
+// 文档引用不存在的 workflow 文件 → 红（CI 拆分后单文件口径/改名未连坐
+// 文档的机判面——D26 同族）。J9：fixture 文档写 `.github/workflows/
+// nonexist.yml` → 必红；现存文件（ci.yml）不误伤。
+test("⑥ J9 文档路径悬空：登记文档引用不存在的 workflow → 红", () => {
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, ".agents/skills/vitro-workspace-review"), { recursive: true });
+    fs.writeFileSync(
+      path.join(x.root, ".agents/skills/vitro-workspace-review/SKILL.md"),
+      "# 规程\n\n接线：`grep -c x .github/workflows/nonexist.yml`（0 = 本地工具）。\n现存引用 `.github/workflows/ci.yml` 不红。\n",
+    );
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, true);
+  assert.match(r.lines.join("\n"), /文档路径悬空: .*SKILL\.md 引用 \.github\/workflows\/nonexist\.yml 但该文件不存在/);
+});
+
+test("⑥ 绿：文档引用现存 workflow（含通配形态不判）零误伤", () => {
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, ".agents/skills/vitro-workspace-review/references"), { recursive: true });
+    fs.writeFileSync(
+      path.join(x.root, ".agents/skills/vitro-workspace-review/references/06-复现清单.md"),
+      "# 复现\n\n全集以 `.github/workflows/*.yml` 为准；单点看 `.github/workflows/ci.yml`。\n",
+    );
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+  assert.match(r.summary, /文档路径存在性/);
 });

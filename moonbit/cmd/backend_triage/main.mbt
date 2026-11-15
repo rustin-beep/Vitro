@@ -38,4 +38,14 @@ fn main {
       "{\"id\":10,\"method\":\"run\",\"params\":{\"argv\":[\"m.c\"],\"batch_input\":true}}",
     ),
   )
+  // ── 批②扩容（2026-11-14）：后端数学文本化分叉锚 ×6 ────────────────────
+  // 「三宿主桥」加宽——moonrun（单测域 wasm 宿主）↔ node V8（产品域）↔
+  // native 的数学库/文本化实现分叉面（纯计算零 gateway 状态，追加在
+  // run 帧后不扰动既有 10 行序/索引；新增行只增不改既有行）：
+  println((0.0 / 0.0).to_string()) // NaN 文本形态（NaN/nan/-nan 分叉面）
+  println((1.0 / 0.0).to_string()) // +inf 文本（inf/Inf/Infinity 分叉面）
+  println(9223372036854775807L.to_string()) // i64 max——js 侧 i64 模拟文本化
+  println((-9223372036854775807L - 1L).to_string()) // i64 min（取负溢出形态）
+  println(1.0e21.to_string()) // double 科学计数法形态（1e21 vs 1e+21）
+  println((0xdeadbeefL ^ 0x0fL).to_string()) // i64 位运算（异或）
 }

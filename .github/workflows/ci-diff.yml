@@ -21,11 +21,12 @@ jobs:
     name: Diff gate (${{ matrix.driver }})
     runs-on: windows-latest
     strategy:
-      # 闸级可见性全开：六实例互不取消（一红不见其余）。
+      # 闸级可见性全开：九实例互不取消（一红不见其余）。
       # exe 需求分两类（2026-10-11 校正）：parser/lexer/typeck/codegen 四家
       # 驱动内部 `moon run --target native cmd/dump_*` 现场构建（只要 moon
-      # 在 PATH，自建增量 2-4 分钟并行无妨）；vm_diff / clang_direct 读
-      # release 路径 cmd/run exe（全量构建分钟级——消费 artifact 免重复）。
+      # 在 PATH，自建增量 2-4 分钟并行无妨）；vm_diff / clang_direct（含批②
+      # js 臂两实例——vitro_js.js 同源 artifact）读 release 路径产物
+      # （全量构建分钟级——消费 artifact 免重复）。
       fail-fast: false
       matrix:
         include:
@@ -40,6 +41,18 @@ jobs:
           - driver: vm_diff
             needs_artifact: true
           - driver: clang_direct
+            needs_artifact: true
+          # 批② js 臂全量接线（2026-11-14）：js 是 CLI 缺省臂（AGENTS §12）
+          # 却全量语料行为对拍为零（arm_divergence 只有 fuzz 变体面）——
+          # vm/clang_direct 驱动扩 --backend js（node 直跑 vitro_js 壳，
+          # 三联与 native/wasm 共享同一 golden——本地全量 865/865 + clang
+          # 真值抽样 25/25 实证 + selftest J9 证红）。独立实例保闸级可见性
+          # （js 臂红不与 native 臂混灯——臂间分叉即 js 实例红 native 绿，
+          # arm_divergence 的原始语料面首次可见）。产物 = artifact 的
+          # vitro_js.js（needs_artifact 同上两类）。
+          - driver: vm_diff_js
+            needs_artifact: true
+          - driver: clang_direct_js
             needs_artifact: true
           # realcode 仓内语料对拍（2026-10-24 接线批）：-corpus 全量真跑
           # （Clang+gcc 分桶 + serve 三方）后与在库 gold 逐字段对账——77 语料
@@ -130,9 +143,18 @@ jobs:
             vm_diff)
               node scripts/diff_gate/main.mts vm
               ;;
+            vm_diff_js)
+              # 批② js 臂（2026-11-14）：共享 golden 直比——js 输出与 native
+              # 任一分叉即红（arm_divergence 原始语料面）。
+              node scripts/diff_gate/main.mts vm --backend js
+              ;;
             clang_direct)
               # 2026-10-25 #273 迁移批：Go→.mts（双跑对拍通过），CI 引用切 TS。
               node scripts/clang_direct/main.mts
+              ;;
+            clang_direct_js)
+              # 批② js 臂（2026-11-14）：与 clang 真值三方对拍的 js 侧。
+              node scripts/clang_direct/main.mts --backend js
               ;;
             realcode_corpus)
               # 仓内语料批运行时对拍（#273 迁移批 2026-10-25）：勘探与对账

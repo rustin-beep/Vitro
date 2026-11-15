@@ -421,6 +421,20 @@ jobs:
       - name: cef setup (download + assemble on cache miss)
         shell: bash
         run: cd desktop && proton_cli cef setup 2>&1 | tee /tmp/moon_pull_cef.log
+      - name: desktop moon test (app 编排层 wbtest——批② D1)
+        # 批②（2026-11-14）：engine_commands.mbt 编排层此前 CI 只有 moon check
+        # 类型面（零测试资产——对照引擎仓每包 wbtest 惯例的缺口）。wbtest 直连
+        # @gateway（@pin 真引擎）跑 collect 三形态/feed 续跑/invoke 透传全链 +
+        # JSON 工具边界与 CollectResult 键名契约（camelCase 九键——shim 层
+        # engine.ipc.ts 映射的地基，键名漂移即红）。测试 exe 链 CEF 运行时
+        # DLL——须在 cef setup 后跑且 PATH 前置 runtime bin（README「四件套」
+        # 同款约束；glob 取 store 内 layout，多 layout 取 mtime 最新非错）。
+        shell: bash
+        run: |
+          RT=$(ls -d "$HOME/.proton/store/win32-x64/cef-"*"-layout-"*"/runtime" 2>/dev/null | sort | tail -1)
+          if [ -z "$RT" ]; then echo '::error::CEF runtime 未发现（cef setup 步未就位？）'; exit 1; fi
+          export PATH="$RT/bin:$PATH"
+          cd desktop && moon test
       - name: demo deps (vite dev server)
         shell: bash
         run: cd demo && npm ci

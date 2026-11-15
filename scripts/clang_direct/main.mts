@@ -42,10 +42,13 @@ import { mergeMoonOutput } from "../diff_gate/targets/vm.mts";
 const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe";
 
 // #49 批二段三：被测物后端（"native" cmd/run exe | "wasm" 统一入口壳——
-// 与 vm_diff 同款插座）。
+// 与 vm_diff 同款插座；批② 2026-11-14 加 "js"——CLI 缺省臂全量语料接线，
+// 与 vm.mts js 臂同款：node 直跑 vitro_js 壳，参数面三壳同表）。
 const wasmShell = "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js";
 
 const wasmMod = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm";
+
+const jsShell = "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js";
 
 let backend = "native";
 
@@ -602,7 +605,9 @@ async function runMoon(c: CaseRef): Promise<MoonResult> {
   // 标注行剥除）。
   const r = backend === "wasm"
     ? await runProc("node", [wasmShell, "run", ...args], { timeoutMs: moonRunTimeoutMs })
-    : await runProc(runnerExe, args, { timeoutMs: moonRunTimeoutMs });
+    : backend === "js"
+      ? await runProc("node", [jsShell, "run", ...args], { timeoutMs: moonRunTimeoutMs })
+      : await runProc(runnerExe, args, { timeoutMs: moonRunTimeoutMs });
   if (r.timedOut) {
     // 运行期看门狗（2026-10-17 云端 wasm 臂挂死收口）：超时 → // RUN-TIMEOUT
     // 进 stdout（比对 DIFF 响亮红）+ memoryPath 空 → 「映像缺失」双证——
@@ -929,7 +934,9 @@ async function runMoonProject(c: CaseRef): Promise<MoonResult> {
     `{"id":3,"method":"output.delta","params":{"cursor":0,"stream":"stdout"}}\n`;
   const r = backend === "wasm"
     ? await runProc("node", [wasmShell, "api", "--batch"], { timeoutMs: moonRunTimeoutMs, stdin: Buffer.from(frames, "utf8") })
-    : await runProc(vitroApiExe, ["api", "--batch"], { timeoutMs: moonRunTimeoutMs, stdin: Buffer.from(frames, "utf8") });
+    : backend === "js"
+      ? await runProc("node", [jsShell, "api", "--batch"], { timeoutMs: moonRunTimeoutMs, stdin: Buffer.from(frames, "utf8") })
+      : await runProc(vitroApiExe, ["api", "--batch"], { timeoutMs: moonRunTimeoutMs, stdin: Buffer.from(frames, "utf8") });
   if (r.timedOut) {
     return { compileFail: false, stdout: "// RUN-TIMEOUT", exitCode: 0, memoryPath: "", skipMemoryCheck: true };
   }
@@ -1021,8 +1028,8 @@ async function main(): Promise<void> {
       checkKnownFlag = true;
     } else if (a === "--backend" && i + 1 < args.length) {
       const b = args[++i]!;
-      if (b !== "native" && b !== "wasm") {
-        process.stderr.write(`clang_direct: --backend 取值 native|wasm，得到 ${JSON.stringify(b)}\n`);
+      if (b !== "native" && b !== "wasm" && b !== "js") {
+        process.stderr.write(`clang_direct: --backend 取值 native|wasm|js，得到 ${JSON.stringify(b)}\n`);
         process.exit(2);
       }
       backend = b;
@@ -1050,6 +1057,12 @@ async function main(): Promise<void> {
       ["build", "--release", "--target", "wasm-gc", "gateway/wasm"]);
     ensureFresh("clang_direct_wasm_glue", wasmShell,
       ["build", "--release", "--target", "js", "cmd/vitro_wasm"]);
+  } else if (backend === "js") {
+    if (!fileExists(jsShell)) {
+      fatal(`${jsShell} 不存在（js 臂壳——moon build --release --target js cmd/vitro_js）`);
+    }
+    ensureFresh("clang_direct_js", jsShell,
+      ["build", "--release", "--target", "js", "cmd/vitro_js"]);
   } else {
     ensureFresh("clang_direct", runnerExe,
       ["build", "--release", "--target", "native", "cmd/run"]);

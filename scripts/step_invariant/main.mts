@@ -429,6 +429,14 @@ function jsShellPath(root: string): string {
   return path.join(root, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js");
 }
 
+/** 批② native 臂（2026-11-14）：cmd/vitro exe 的 step 子命令与 js 壳同协议
+ * （cmd/lib/cli 单源三壳同表）——四条过程语义不变量此前只在 js 臂断言，
+ * native `vitro step --json` 同契约零覆盖；ensureFresh 走 freshness 单源
+ * （内部 MOON_CC=clang——纪律 11）。 */
+function nativeExePath(root: string): string {
+  return path.join(root, "moonbit", "_build", "native", "release", "build", "cmd", "vitro", "vitro.exe");
+}
+
 /** REHOST 批 3 装载标记判定（纯函数——checkFile close 回调消费）：
  * 终态驱动形态（rc 0 正常 / 2 trap / 3 步数超限——rc=1 编译失败早退未达
  * step.begin 不在断言面）stderr 须含 `// WASM-REHOST-STEP ok`；缺失
@@ -455,10 +463,14 @@ export async function checkFile(
   rehost = false,
 ): Promise<StreamCheckResult & { rc: number; timedOut: boolean }> {
   return new Promise((resolve) => {
-    const args = [shell, "step", file, "--json"];
-    if (stepBudget > 0) args.push("--max-steps", String(stepBudget));
-    if (rehost) args.push("--wasm-rehost");
-    const child = spawn(process.execPath, args, {
+    const baseArgs = ["step", file, "--json"];
+    if (stepBudget > 0) baseArgs.push("--max-steps", String(stepBudget));
+    if (rehost) baseArgs.push("--wasm-rehost");
+    // 批②双臂 spawn 分流（2026-11-14）：js 壳 = node 直跑（现役形态不变）；
+    // native exe = PE 直 spawn（原实现恒以 process.execPath 起 node——native
+    // 臂时 node 把 exe 当 JS 解析，帧 0 全红 ST7 假形态，实测 15/15 实锤）。
+    const isJs = shell.endsWith(".js");
+    const child = spawn(isJs ? process.execPath : shell, isJs ? [shell, ...baseArgs] : baseArgs, {
       stdio: ["ignore", "pipe", "pipe"],
     });
     const checker = new StreamChecker(source);
@@ -555,6 +567,7 @@ function usage(): never {
   process.stderr.write(`用法: node scripts/step_invariant/main.mts <file.c> [...]
       node scripts/step_invariant/main.mts --corpus <dir> [--sample N] [--jobs N]
             [--timeout-ms N] [--step-budget N] [--json] [--audit-known] [--rehost]
+            [--arm js|native]
 `);
   process.exit(1);
 }
@@ -570,12 +583,15 @@ interface Opts {
   /** REHOST 批 3：透传 `vitro step --wasm-rehost`（step 态装载走 wasm
    * 载体往返）+ 装载标记行断言（fallback/缺失即红——见 checkFile 头注）。 */
   rehost: boolean;
+  /** 批② native 臂（2026-11-14）：缺省 js（现役活行零变化）；native =
+   * cmd/vitro exe 的同协议 step 通道（四不变量双臂断言——AGENTS §14）。 */
+  arm: "js" | "native";
   json: boolean;
   auditKnown: boolean;
 }
 
 function parseArgs(argv: string[]): Opts {
-  const o: Opts = { files: [], corpus: null, sample: 0, jobs: 4, timeoutMs: 120_000, stepBudget: 0, rehost: false, json: false, auditKnown: false };
+  const o: Opts = { files: [], corpus: null, sample: 0, jobs: 4, timeoutMs: 120_000, stepBudget: 0, rehost: false, arm: "js", json: false, auditKnown: false };
   let i = 0;
   while (i < argv.length) {
     const a = argv[i++];
@@ -600,6 +616,10 @@ function parseArgs(argv: string[]): Opts {
       o.stepBudget = v;
     } else if (a === "--rehost") {
       o.rehost = true;
+    } else if (a === "--arm") {
+      const v = argv[i++];
+      if (v !== "js" && v !== "native") usage();
+      o.arm = v;
     } else if (a === "--json") {
       o.json = true;
     } else if (a === "--audit-known") {
@@ -685,8 +705,14 @@ function sampleFiles(files: string[], n: number): string[] {
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   const root = projectRoot();
-  const shell = jsShellPath(root);
-  ensureFresh("step_invariant", shell, ["build", "--release", "--target", "js", "cmd/vitro_js"]);
+  // 批②双臂：js 壳（现役缺省）或 native exe（cmd/lib/cli 单源同协议）。
+  // ensureFresh 均走 freshness 单源（native 构建内部 MOON_CC=clang）。
+  const shell = opts.arm === "native" ? nativeExePath(root) : jsShellPath(root);
+  if (opts.arm === "native") {
+    ensureFresh("step_invariant_native", shell, ["build", "--release", "--target", "native", "cmd/vitro"]);
+  } else {
+    ensureFresh("step_invariant", shell, ["build", "--release", "--target", "js", "cmd/vitro_js"]);
+  }
   let files = opts.files.map((f) => path.resolve(f));
   if (opts.corpus !== null) {
     const dir = path.resolve(opts.corpus);

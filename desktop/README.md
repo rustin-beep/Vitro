@@ -48,6 +48,9 @@
 ```sh
 cd desktop
 moon update && moon check --target native          # 类型面（CI 闸）——不编 C、不碰 CEF
+moon test                                          # app 编排层 wbtest（批② 2026-11-14 起，CI 闸）——直连 @gateway 真引擎跑
+                                                   #  collect/feed/invoke 全链；测试 exe 链 CEF 运行时 DLL，须 PATH 前置
+                                                   #  ~/.proton/store/win32-x64/cef-*-layout-*/runtime/bin（CI 同款 glob）
 npm ci && npm run check:all                        # tsc 严档 + oxlint（CI 闸）
 proton_cli build -- --release                      # 原生构建（~26s，app.exe ~4.9MB）
 PROTON_REMOTE_DEBUGGING_PORT=9335 proton_cli dev   # 起 ../demo 的 vite dev server + 壳窗口

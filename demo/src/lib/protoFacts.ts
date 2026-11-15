@@ -4,7 +4,7 @@
 // 避免两处各写一份方法清单导致计数漂移。`used` = 本页是否消费该方法——与旧
 // ProtoView 的 15 行清单逐项同义（未消费只在工具组显式标 —，不假装全用）。
 //
-// 口径注：METHOD_TOTAL = 协议方法面 26（#323 texts.get 起；既有 ProtoView 头口径）；
+// 口径注：METHOD_TOTAL = 协议方法面 28（#470 timeline.plan 起；既有 ProtoView 头口径）；
 // METHOD_ROWS = 本页组清单行数（15）；两者分母不同，页面上分列不混算。
 "use strict";
 

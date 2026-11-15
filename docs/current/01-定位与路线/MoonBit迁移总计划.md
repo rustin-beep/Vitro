@@ -44,7 +44,7 @@
 ## 4. 包切分总图（L0–L9，`.mbti` 取代 ABI 版本化成为对外义务载体）
 
 ```
-L0 零依赖   vitro/engine/source(SourceLoc+坐标契约)   vitro/engine/opcode(135+Instruction+operand 校验；44–46 = C# 异常三件 TryBegin/TryEnd/Throw 进历史空号，2026-09-25 vm 批一号)   vitro/engine/util(零语义机械件单源：utf8_len/str_cmp/i64_to_i32_bits/LE 拼装读——G-1，2026-09-26 已落)   vitro/engine/fs(vendored 自 moonbitlang/x@0.5.5 的 native-only 文件系统件——唯一依赖清除 B 路线批 2026-09-28 已落：pub 收窄 7 函数+IOError，上游漂移由 scripts/moonbit/vendor_drift 内容哈希探针盯〔CI hygiene〕；moon.mod 依赖块自此清空=模块零外部依赖)   vitro/engine/arith(共享算术核——#426 批 0，2026-11-02 已落：折叠器↔VM 算术语义单源 + proofs/arith_mirror 镜像证明包)   vitro/engine/wasmenc(wasm 子集发射/折叠编码器——REHOST 载体迁移批 1a 建包 2026-11-05，#505，见[核载体迁移设计单](核载体迁移设计单——153码表wasm子集实体化.md))
+L0 零依赖   vitro/engine/source(SourceLoc+坐标契约)   vitro/engine/opcode(135+Instruction+operand 校验；44–46 = C# 异常三件 TryBegin/TryEnd/Throw 进历史空号，2026-09-25 vm 批一号)   vitro/engine/util(零语义机械件单源：utf8_len/str_cmp/i64_to_i32_bits/LE 拼装读——G-1，2026-09-26 已落)   vitro/engine/fs(vendored 自 moonbitlang/x@0.5.5 的 native-only 文件系统件——唯一依赖清除 B 路线批 2026-09-28 已落：pub 收窄 7 函数+IOError，上游漂移由 scripts/moonbit/vendor_drift 内容哈希探针盯〔CI hygiene〕；moon.mod 依赖块自此清空=模块零外部依赖)   vitro/engine/arith(共享算术核——#426 批 0，2026-11-02 已落：折叠器↔VM 算术语义单源 + proofs/arith_mirror 镜像证明包)   vitro/engine/wasmenc(wasm 子集发射/折叠编码器——REHOST 载体迁移批 1a 建包 2026-11-05，#505，见[核载体迁移设计单](核载体迁移设计单——153码表wasm子集实体化.md))   vitro/engine/timeline(动效编排计划 TimelinePlan v0.1——#470 批一建包 2026-11-15：最小帧视图 → {pv,steps[]}（sw 交换归属/cap 字幕段），零 IO 零包依赖，消费面 gateway `timeline.plan` + MCP `doc.timeline`，见 [TIMELINE_PLAN_V0_1](../../../moonbit/docs/spec/TIMELINE_PLAN_V0_1.md))
 L1 诊断契约  vitro/engine/diag(ErrorCode 码表 gen_diag 单源生成——臂/catalog 基线以 gen_diag expectedArms/expectedCatalog fail loud 锚为准〔2026-11-15 对账批亲证现值 126 臂 / catalog 122；原「137 臂」系 S4 时点口径，#233 摘 38 条 4xxx 死臂后 E4 段腾空〕+Severity+SourceLang+Diagnostic+catalog JSON+覆盖率断言)
 L2 抽象语法  vitro/engine/ast(Type 17/Expr 26/Stmt 16+depth+判等渲染单源；不含 compute_type_size)
 L3 名字单源  vitro/engine/names(InstKey→InstId→mangled Name 唯一产出口；parser/typeck 共依赖)
@@ -92,7 +92,7 @@ L9 教学智能  vitro/engine/analysis(cfg/algorithms)  vitro/engine/diagnostics
 |---|---|---|
 | **A 字节级** | ①字节码产物 code 段 ②stdout ③最终 1MB 内存映像 | Go canonicalizer（键排序/转义/缩进固定，fail loud）；**三条冻结**：槽位策略版本化 / 绝对 IP 跳转编码 / libc 固定索引（1000/1024/1089 按名→索引比对）；**排序义务显式继承**（现版产物确定性完全依赖 Go 侧 sort_keys，MoonBit 侧原生有序）；bundle 禁逐字节（F9） |
 | **B 结构化** | token TSV / AST dump（依赖 P7 出口）/ 符号表 / 诊断序列 / mangled 名集合 / 实例化产物 / 协议帧 NDJSON / error_catalog JSON / 标注首现序列 | 两侧**显式 emitter**（禁一侧 serde 一侧 ToJson）；serve 补字段级冻结测试（protocol_frames.jsonl 双宿主对拍）；白名单补"缺失即红"；含非 ASCII/\xHH 用例（现覆盖 0） |
-| **C 端到端** | Clang golden 733 全量 / replay 61 / serve_smoke 69 / JIT parity 八形状（若复活） | golden 缺失必红；`.out` 只作第二来源，live clang 为主真值 |
+| **C 端到端** | Clang golden 733 全量 / replay 61 / serve_smoke 71 / JIT parity 八形状（若复活） | golden 缺失必红；`.out` 只作第二来源，live clang 为主真值 |
 | **D 三联 diff** | stdout+返回码+1MB 映像 × 30 例矩阵（JIT 形状+UAF/隔离区+快照往返+字节通道+浮点+调用栈+VFS+路由分叉） | 内存 dump 出口新增 |
 
 ## 7. 裸奔期最小防线与重建里程碑

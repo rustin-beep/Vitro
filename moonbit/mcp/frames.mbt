@@ -120,6 +120,28 @@ fn vis_kind(ty : Int32) -> String {
 }
 
 ///|
+/// Frame → TimelinePlan 最小帧视图（宿主无关输入契约；timeline 是 L0 纯语义
+/// 包，本包单向消费——禁把 mcp Frame 类型下推）。数组面带元素数：旧规则
+/// `j >= len` 越界过滤属于可观察行为（bubble_sort 实测 2 帧 a[4]↔a[5]）。
+fn timeline_view_of_frame(fr : Frame) -> @timeline.FrameView {
+  let events : Array[@timeline.FrameEvent] = []
+  for ev in fr.e {
+    events.push({ ty: ev.ty, e0: ev.e0, e1: ev.e1, e2: ev.e2, context: ev.ctx, })
+  }
+  let arrays : Array[(String, Int32)] = []
+  for name, els in fr.r {
+    arrays.push((name, els.length()))
+  }
+  {
+    code_line: fr.l,
+    func_name: fr.f,
+    semantic_label: fr.s,
+    vis_events: events,
+    arrays,
+  }
+}
+
+///|
 /// 聚焦数组选择（v1 pickFocusArrays：显式优先；auto = 出现频次降序前 4）。
 fn pick_focus_arrays(
   frames : Array[Frame],

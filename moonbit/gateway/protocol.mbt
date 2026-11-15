@@ -386,6 +386,9 @@ fn dispatch(
     "step.begin" => serve_step_begin_frame(s, id, params)
     "step.next" => serve_step_next_frame(s, id, params)
     "payload.get" => serve_payload_get_frame(s, id, params)
+    // 动效编排（TimelinePlan v0.1 批一，2026-11-15，refs #470）：只读帧区间
+    // → plan（{pv, steps[]}，与区间帧零基同构；不碰 StepPayload）
+    "timeline.plan" => serve_timeline_plan_frame(s, id, params)
     "seek" => serve_seek_frame(s, id, params)
     "breakpoints.set" => serve_breakpoints_set_frame(s, id, params)
     // dump 族四方法（只读语义——独立通道不碰会话态；diagnostics_probe
@@ -402,7 +405,7 @@ fn dispatch(
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/texts.install/texts.get/semantic_labels/contracts/algorithms.catalog/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/vfs.list/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe/codegen）",
+          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/texts.install/texts.get/semantic_labels/contracts/algorithms.catalog/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/vfs.list/step.begin/step.next/payload.get/timeline.plan/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe/codegen）",
         ).stringify(),
         false,
       )

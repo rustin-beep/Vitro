@@ -66,6 +66,8 @@ const REQUESTS: Request[] = [
   { id: 6, method: "step.next" },
   { id: 7, method: "step.next" },
   { id: 8, method: "payload.get", params: { start: 0, end: 50 } },
+  // TimelinePlan v0.1（#470 批一）：只读帧区间 → {pv,steps[]}（同一 step 帧窗）
+  { id: 81, method: "timeline.plan", params: { start: 0, end: 50 } },
   { id: 9, method: "breakpoints.set", params: { lines: [3] } },
   { id: 10, method: "seek", params: { step: 1 } },
   { id: 11, method: "memory.regions" },
@@ -511,6 +513,21 @@ async function mainBatchAndBatches(exe: string): Promise<number> {
 
   const pg = res(8);
   check("cache_start_step" in pg && "max_collected_step" in pg, "payload.get 携带窗口字段", "");
+
+  // TimelinePlan v0.1（#470 批一）：pv=1 + steps 与同区间 payload.get 帧数同构
+  const tp = res(81);
+  const tpSteps = asArr(tp["steps"]);
+  const pgFrames = asArr(pg["payloads"]) ?? [];
+  check(
+    numEq(tp["pv"], 1) && tpSteps !== null,
+    "timeline.plan 返回 {pv:1,steps[]}",
+    tailMap(tp),
+  );
+  check(
+    tpSteps !== null && tpSteps.length === pgFrames.length,
+    "timeline.plan steps 与 payload.get 帧数零基同构",
+    `steps=${tpSteps === null ? "?" : tpSteps.length} frames=${pgFrames.length}`,
+  );
 
   const r9 = res(9);
   const lines3 = asArr(r9["lines"]) ?? [];

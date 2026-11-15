@@ -1344,3 +1344,111 @@ test "mcp_render_viz_multi_series_focus" {
     msg="多序列全部进 focus（ghost_a/ghost_b 缺一即红）",
   )
 }
+
+///|
+/// 帧是否含「界内」ty=2 交换事件（与 timeline 生成器同判据的测试侧探针：
+/// extras 升序、非负、i!=j、j < 数组长度）。
+fn frame_has_inbounds_swap(fr : Json, arr_name : String) -> Bool {
+  let len = match jget(fr, "r") {
+    Object(m) =>
+      match m.get(arr_name) {
+        Some(Array(a)) => a.length()
+        _ => -1
+      }
+    _ => -1
+  }
+  if len < 0 {
+    return false
+  }
+  match jget(fr, "e") {
+    Array(events) =>
+      for e in events {
+        match e {
+          Array(v) =>
+            if v.length() >= 4 && jint(v[0]) == Some(2) {
+              let x = jint_or(v[2], -1)
+              let y = jint_or(v[3], -1)
+              let lo = if x <= y { x } else { y }
+              let hi = if x <= y { y } else { x }
+              if lo >= 0 && lo != hi && hi < len {
+                return true
+              }
+            }
+          _ => ()
+        }
+      }
+    _ => ()
+  }
+  false
+}
+
+///|
+/// TimelinePlan v0.1 批一（2026-11-15，refs #470）：render/animate 的
+/// doc.timeline 与选中帧零基同构；sw 归属真名；cap.t 与字幕同源；
+/// 缺省键不产空串。
+test "mcp_render_timeline_plan_contract" {
+  let clock : Ref[Double] = Ref(0.0)
+  let rendered : Ref[Json] = Ref(Json::null())
+  let srv = Server::new(host=fake_host(clock, Some(rendered)))
+  ignore(call(srv, "initialize", 1))
+  let r = tool_body(
+    tool_call(
+      srv,
+      1,
+      "animate",
+      ob()
+      .s("source", bubble_src())
+      .n("budget", 100)
+      .b("preview_png", false)
+      .done(),
+    ),
+  )
+  assert_eq(jbool(jget(r, "ok")), Some(true), msg="animate ok")
+  let data = rendered.val
+  let doc = jget(data, "doc")
+  let tl = jget(doc, "timeline")
+  assert_eq(jint(jget(tl, "pv")), Some(1), msg="doc.timeline.pv=1")
+  let frames = jarr(jget(data, "frames"))
+  let steps = jarr(jget(tl, "steps"))
+  assert_eq(
+    steps.length(),
+    frames.length(),
+    msg="steps 与选中帧零基同构（错位即红）",
+  )
+  let mut sw_frames = 0
+  for k = 0; k < frames.length(); k = k + 1 {
+    let fr = frames[k]
+    let step = steps[k]
+    let has_ev = frame_has_inbounds_swap(fr, "arr")
+    let sw = jget(step, "sw")
+    match sw {
+      Object(_) as swj => {
+        sw_frames += 1
+        assert_true(has_ev, msg="sw 不得无源（界内 ty=2 事件）")
+        assert_eq(
+          jstr_or(jget(swj, "name"), ""),
+          "arr",
+          msg="sw.name = 真实数组名",
+        )
+        let i = jint_or(jget(swj, "i"), -1)
+        let j = jint_or(jget(swj, "j"), -1)
+        assert_true(i >= 0 && i < j, msg="sw 下标升序合法")
+      }
+      _ => assert_false(has_ev, msg="界内事件帧必须点亮 sw")
+    }
+    // cap 同源：frame.s 非空 ⇔ cap.t == s；空标签不产 cap（禁空串占位）
+    let label = jstr_or(jget(fr, "s"), "")
+    let cap = jget(step, "cap")
+    if label.length() == 0 {
+      assert_true(cap is Null, msg="空标签不产 cap")
+    } else {
+      assert_eq(
+        jstr_or(jget(cap, "t"), ""),
+        label,
+        msg="cap.t 与字幕原文同源",
+      )
+      assert_true(jint_or(jget(cap, "w"), 0) >= 1, msg="cap.w 量感档在场")
+    }
+  }
+  assert_true(sw_frames > 0, msg="锚非空转：至少一个交换帧")
+}

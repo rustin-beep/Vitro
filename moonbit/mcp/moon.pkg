@@ -19,6 +19,7 @@ import {
   "vitro/engine/gateway",
   "vitro/engine/session",
   "vitro/engine/style",
+  "vitro/engine/timeline",
   "vitro/engine/util",
   "vitro/engine/view",
 }

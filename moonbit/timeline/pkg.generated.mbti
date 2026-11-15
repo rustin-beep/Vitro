@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/timeline"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub const PLAN_PV : Int32 = 1
+
+pub fn plan(Array[FrameView]) -> Plan
+
+pub fn plan_json(Plan) -> @json.Json
+
+pub fn validate(Plan, Int32) -> Result[Unit, String]
+
+// Errors
+
+// Types and methods
+pub(all) struct Cap {
+  t : String
+  w : Int32
+  dur : Int32
+}
+
+pub(all) struct FrameEvent {
+  ty : Int32
+  e0 : Int32
+  e1 : Int32
+  e2 : Int32
+  context : String
+}
+
+pub(all) struct FrameView {
+  code_line : Int32
+  func_name : String
+  semantic_label : String
+  vis_events : Array[FrameEvent]
+  arrays : Array[(String, Int32)]
+}
+
+pub(all) struct Plan {
+  pv : Int32
+  steps : Array[Step]
+}
+
+pub(all) struct Step {
+  sw : SwapPair?
+  cap : Cap?
+}
+
+pub(all) struct SwapPair {
+  name : String
+  i : Int32
+  j : Int32
+}
+
+// Type aliases
+
+// Traits

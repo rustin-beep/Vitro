@@ -39,10 +39,12 @@ DeepSeek Harness（DSH）插件的 **MCP server 核心**——stdio JSON-RPC 2.0
 - `cmd/mcp_js`（+js）：stdin 行循环 / 墙钟 / exit 全 extern "js"；渲染落盘 = v1 render.mjs（HTML 模板 + 播放器 + PNG 截图，浏览器资产）整体移植入 extern 块。产物 = node 直跑单文件。
 - interactive 模式：gateway wasm-gc 产物（+wasmopt 后置）经 `VITRO_MCP_WASM` / `./engine/wasm.wasm` / `./wasm.wasm` 解析；缺失自动回落 static（mbt 恒算关键帧——回落即用；响应 mode/frame_count 取壳层实测值）。
 - 帧数据逻辑（关键帧判据 / 预算抽稀 / 聚焦选择 / 投影）全在 mbt 侧单源。
+- **TimelinePlan v0.1（2026-11-15，#470 批一）**：render/animate 的渲染数据 `doc.timeline` = `plan(选中帧)`——`steps[k]` 与产物内嵌 frames 零基同构；`sw`（交换归属：`vis_events.context` 真实数组名 + 下标对，越界/缺失/歧义不猜）与 `cap`（字幕段 `t/w/dur`）由引擎 `vitro/engine/timeline`（L0）单源生成；壳层 PLAYER 只读 `plan.sw`/`plan.cap`，改造前的 `swapPair`/归属正则已删除。gateway 另设只读方法 `timeline.plan`（帧区间 → plan JSON，同一生成器）。规格 [TIMELINE_PLAN_V0_1](../../../moonbit/docs/spec/TIMELINE_PLAN_V0_1.md)。
 
 ## 验收与登记
 
-- 白盒：`mcp/mcp_wbtest.mbt` 22 条（js/wasm-gc/native 三 target 全绿——**裸 moon test 含 mcp**，现值裸 1478——facts `moonbit_test_passed`，2026-11-15 对齐；注入必红断言实验〔时点基线 1239〕变 1238/1 failed；mcp 挂 +wasm 随 gateway B3 口径入裸计数；含 PR #457 审阅 v2 批 P2×4 + P3-② 锚）。- 黑盒：`scripts/moonbit/mcp_smoke/accept.mts`（2026-11-04 收编入仓并挂 CI——原 D:/tmp 仓外件销案；27 断言 CI + PNG 预览断言仅本地）；CI 产物闸 = `scripts/moonbit/mcp_smoke`（18 断言，含 #468/#469 语法门与驱动对拍）。- 登记：pkg_deps L9 / surface 边表 10 条 / mbti_sync 豁免（同 gateway 病：canonical backend=wasm 而包不含 wasm）/ testcount 双 README（裸 1222→1275 / native 1271→1324，mcp 22 条 js/native 双域——as_of 2026-11-04 本地全量实测）。
+- 白盒：`mcp/mcp_wbtest.mbt` 22 条（js/wasm-gc/native 三 target 全绿——**裸 moon test 含 mcp**，现值裸 1478——facts `moonbit_test_passed`，2026-11-15 对齐；注入必红断言实验〔时点基线 1239〕变 1238/1 failed；mcp 挂 +wasm 随 gateway B3 口径入裸计数；含 PR #457 审阅 v2 批 P2×4 + P3-② 锚）。- 黑盒：`scripts/moonbit/mcp_smoke/accept.mts`（2026-11-04 收编入仓并挂 CI——原 D:/tmp 仓外件销案；27 断言 CI + PNG 预览断言仅本地）；CI 产物闸 = `scripts/moonbit/mcp_smoke`（18 断言，含 #468/#469 语法门与驱动对拍）。- **TimelinePlan v0.1 批一（2026-11-15，refs #470）**：`mcp_wbtest` +1 锚（`doc.timeline` 与选中帧零基同构 / sw 真名 / cap 同源）；`mcp_smoke` +2 断言（共 21：steps==frames、界内事件帧全点亮、`sw.name` 真实数组名）；`timeline_equiv` CI 等价对拍（bubble 301 帧 + bubble_sort 81 帧，旧规则冻结副本 vs plan 路径逐帧一致）；gateway 白盒 +3（`timeline.plan` 区间/对齐/真名）+ `api help` 方法表 32→33；surface 边表 +12（gateway/mcp 各 6）。
+- 登记：pkg_deps L9 / surface 边表 10 条 / mbti_sync 豁免（同 gateway 病：canonical backend=wasm 而包不含 wasm）/ testcount 双 README（裸 1222→1275 / native 1271→1324，mcp 22 条 js/native 双域——as_of 2026-11-04 本地全量实测）。
 
 ## 待拍板
 

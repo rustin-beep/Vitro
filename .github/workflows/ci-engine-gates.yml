@@ -335,7 +335,7 @@ jobs:
         shell: bash
 
       # ── MCP server 产物冒烟（DSH mbt 化批，2026-11-03）────────────────────
-      # cmd/mcp_js（vitro/engine/mcp 核心的 js 产物）stdio 全链路 16 断言：
+      # cmd/mcp_js（vitro/engine/mcp 核心的 js 产物）stdio 全链路 21 断言：
       # 协议契约（initialize/listChanged）/ 渐进披露（L0 5→session_open→
       # list_changed→L1 12→全关收回）/ readOnlyHint / L1 无会话守卫 / run_to
       # 事件锚（首交换帧 93 行 8）/ frames_summary 锚（1126 步·swap 7）/
@@ -350,6 +350,17 @@ jobs:
         run: |
           cd moonbit && moon build --release --target js cmd/mcp_js && cd ..
           node scripts/moonbit/mcp_smoke/main.mts
+        shell: bash
+
+      # TimelinePlan v0.1 等价对拍（#470 批一，2026-11-15）：同一真实产物逐帧
+      # 对比「旧规则（冻结副本）vs plan 路径」——bubble（真名=展示名 arr）与
+      # bubble_sort（真名 a ≠ 字幕展示名 arr 的 #469 分叉面，含 2 帧 a[4]↔a[5]
+      # 越界事件）两案例：交换帧集合 / 字幕 HTML / stage 关键类名（cell swap、
+      # cell changed）逐帧一致。J9：改生成器归属/字幕 → 本闸红（等价证据 +
+      # mcp_smoke 的 plan 不变量断言互为双闸）。前置 = 上一步 js 产物。
+      - name: TimelinePlan equivalence (old rule vs plan path, 2 corpora)
+        if: matrix.slice == 'cli_smoke'
+        run: node scripts/moonbit/timeline_equiv/main.mts
         shell: bash
 
       # MCP 黑盒验收（v1 samples 同源锚 27 断言；PNG 预览断言仅本地——CI 无

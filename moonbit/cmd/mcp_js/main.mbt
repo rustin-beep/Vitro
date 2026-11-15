@@ -199,7 +199,7 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| function $(id){return document.getElementById(id)}
   #| function arrDims(fr,nm){for(var i=0;i<fr.v.length;i++){if(fr.v[i][0]===nm){var m=/\\\[(\\\d+)\\\]\\\[(\\\d+)\\\](?![\\\[])\\s*$/.exec(fr.v[i][1]);if(m)return [+m[1],+m[2]]}}return null}
   #| function ctxMentions(ctx,nm){if(!nm)return false;var esc=nm.replace(/[.*+?^\${}()|[\]\\\\]/g,"\\\\$&");return new RegExp("(^|[^\\\\w.])"+esc+"\\\\s*\\\\[").test(ctx)}
-  #| function swapPair(fr,nm,len){
+  #| function legacySwapPair(fr,nm,len){ // 仅 interactive 回退（批二 EMBED 镜像 planStep 后删除）
   #| for(var k=0;k<fr.e.length;k++){var ev=fr.e[k];
   #| if(ev[0]!==2||!ctxMentions(ev[5],nm))continue;
   #| var x=ev[2],y=ev[3];
@@ -213,13 +213,16 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| h+='<div class="'+cls+'" data-l="'+n+'"><span class="no">'+n+'</span><code>'+esc(lines[n-1]||" ")+'</code></div>'}
   #| $("codeWrap").innerHTML=h}
   #| function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
-  #| var DOC=D.doc||{pv:"",default:"cells",projectors:[],series_decl:[]};
+  #| var DOC=D.doc||{pv:"",default:"cells",projectors:[],series_decl:[],timeline:{pv:1,steps:[]}};
+  #| var TL=(DOC.timeline&&DOC.timeline.steps)||[];
+  #| var LIVE=D.mode==="interactive";
+  #| function planSwap(fr,nm,len){if(LIVE)return legacySwapPair(fr,nm,len);var st=TL[S.cur];if(!st||!st.sw)return null;var sw=st.sw;if(sw.name!==nm)return null;return{i:sw.i,j:sw.j}}
   #| function projSpec(id){var ps=DOC.projectors||[];for(var i=0;i<ps.length;i++){if(ps[i].id===id)return ps[i]}return null}
   #| function dimLabel(i,dm){var out="",rest=i,idx=[];for(var k=dm.length-1;k>=0;k--){var d=dm[k]||1;idx.unshift(d>0?rest%d:0);rest=d>0?Math.floor(rest/d):0}for(var q=0;q<idx.length;q++)out+="["+idx[q]+"]";return out}
   #| function arrHtml(fr,pv,nm){var els=(fr.r||{})[nm]||[];if(!els.length)return"";
   #| var pels=pv&&(pv.r||{})[nm]||[];
   #| var dm=((fr.rd||{})[nm])||arrDims(fr,nm)||null;var cols=dm?(dm[dm.length-1]||1):els.length;
-  #| var sp=swapPair(fr,nm,els.length);
+  #| var sp=planSwap(fr,nm,els.length);
   #| var max=1;for(var q=0;q<els.length;q++){var fv=parseFloat(els[q]);if(isFinite(fv)&&Math.abs(fv)>max)max=Math.abs(fv)}
   #| var h='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> \u00b7 '+els.length+' \u5143\u7d20'+(dm?' ['+dm.join('x')+']':'')+'</span></div><div class="cells'+(dm?' grid2d':'')+'" style="--n:'+els.length+';--cw:64px'+(dm?';--cols:'+cols:'')+'">';
   #| for(var i2=0;i2<els.length;i2++){var cls2="cell";var sp2=sp&&(i2===sp.i||i2===sp.j);
@@ -292,10 +295,11 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| var sh="";for(var y=fr.c.length-1;y>=0;y--)sh+='<div class="fr2'+(y===fr.c.length-1?" top":"")+'">'+esc(fr.c[y])+"</div>";
   #| $("stack").innerHTML=sh;
   #| if(D.outputs&&D.outputs.stdout)$("stdout").textContent=D.outputs.stdout;
-  #| var cap=fr.s||"";if(fr.a&&fr.a.d)cap+=' <span class="as">\u2014 '+esc(fr.a.d)+"</span>";
+  #| var stl=TL[k];var capTxt=LIVE?(fr.s||""):((stl&&stl.cap&&stl.cap.t)||"");
+  #| var cap=capTxt;if(fr.a&&fr.a.d)cap+=' <span class="as">\u2014 '+esc(fr.a.d)+"</span>";
   #| if(fr.h)cap+=' <span class="as" style="color:var(--err)">\u26a0 '+esc(fr.h.o)+"</span>";
   #| $("cap").innerHTML=cap;
-  #| var t=fr.s+(fr.a?" "+fr.a.d:"");
+  #| var t=capTxt+(fr.a?" "+fr.a.d:"");
   #| if(S.speakOn&&t&&t!==S.lastCap&&window.speechSynthesis){speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(t);u.lang="zh-CN";speechSynthesis.speak(u)}
   #| S.lastCap=t;
   #| $("slider").max=Math.max(0,S.frames.length-1);$("slider").value=k;

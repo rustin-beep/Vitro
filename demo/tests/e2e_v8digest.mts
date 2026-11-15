@@ -31,7 +31,14 @@ const SOURCES = [
 /** invoke 序列（compile→run→output.delta stdout）——两端同构的唯一真源（字符串模板注入页内）。 */
 const RUNNER_JS = `
   async function digestInPage(sources) {
-    const buf = await (await fetch(${JSON.stringify(BASE + "wasm.wasm")})).arrayBuffer();
+    // wasm URL 发现（CI 首跑勘误 run 43677043207：vite build 后产物是
+    // assets 哈希名，根路径 wasm.wasm 404 → 空 buffer → CompileError@+0）：
+    // 页面 boot 时 worker 已 instantiate 过 wasm——performance resource
+    // 表里就有真实 URL（零路径猜测）；缺席才回落根路径并显式报错。
+    const ent = performance.getEntriesByType("resource").find((e) => e.name.endsWith(".wasm"));
+    const url = ent !== undefined ? ent.name : ${JSON.stringify(BASE + "wasm.wasm")};
+    const buf = await (await fetch(url)).arrayBuffer();
+    if (buf.byteLength === 0) throw new Error("wasm 拉取为空: " + url);
     // 装配（与 node 侧对称）：枚举 "_" 常量 + options 编译（js-string builtins）
     const bare = new WebAssembly.Module(buf);
     const consts = {};

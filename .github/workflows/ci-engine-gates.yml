@@ -360,13 +360,14 @@ jobs:
           node scripts/moonbit/mcp_smoke/main.mts
         shell: bash
 
-      # TimelinePlan v0.1 等价对拍（#470 批一，2026-11-15）：同一真实产物逐帧
-      # 对比「旧规则（冻结副本）vs plan 路径」——bubble（真名=展示名 arr）与
-      # bubble_sort（真名 a ≠ 字幕展示名 arr 的 #469 分叉面，含 2 帧 a[4]↔a[5]
-      # 越界事件）两案例：交换帧集合 / 字幕 HTML / stage 关键类名（cell swap、
-      # cell changed）逐帧一致。J9：改生成器归属/字幕 → 本闸红（等价证据 +
-      # mcp_smoke 的 plan 不变量断言互为双闸）。前置 = 上一步 js 产物。
-      - name: TimelinePlan equivalence (old rule vs plan path, 2 corpora)
+      # TimelinePlan v0.1 等价对拍（#470 批一，2026-11-15；PR #530 审阅扩面）：
+      # 同一真实产物逐帧对比「旧规则（冻结副本）vs plan 路径」——bubble（真名
+      # =展示名 arr）/ bubble_sort（真名 a ≠ 展示名 arr 的 #469 分叉面，含
+      # 越界事件）/ same-name（全局 arr + 形参 arr 双快照）三案例：交换帧集合 /
+      # 字幕 HTML / stage 关键类名逐帧一致；另有人造分叉锚（plan 与 frames
+      # 故意不一致 → DOM 必须跟 plan 走，防静默回退旧规则）。J9：改生成器归属
+      # /字幕/壳层换源 → 本闸红。前置 = 上一步 js 产物。
+      - name: TimelinePlan equivalence (old rule vs plan path, 3 corpora)
         if: matrix.slice == 'cli_smoke'
         run: node scripts/moonbit/timeline_equiv/main.mts
         shell: bash

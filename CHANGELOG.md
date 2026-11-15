@@ -1,17 +1,21 @@
 ## [Unreleased]
 
-### docs: 全库文档对账第九轮——0.9.1 后双主线回灌 + 防线册对 ci.yml 亲证 + 状态权威补漏（2026-11-15）
+### fix(teaching+course+demo): #517 CI 第二轮三红收口（2026-11-15）
 
-- **基准与真值**：origin/master `09c42963`（worktree `docs-master-sync`，基云端最新 master）；facts 亲采（含 serve.exe 前置构建）= 1463〔裸 `moon test`〕/ 1539〔native 全量〕/ 警告 98 / lexer 1640 / parser 818 / 语料 578+81+138+23 / 引擎 0.9.1；`facts --strict check` 漂移 0 / 待采集 0 / 坏引用 0（改后复跑同绿）。**合并 #520（`59dfe2d1`，批 4a/4b-1）后真值重采**：1478 / 1554 / 警告 112（dispatch-loop 批中间态 +14，warning 台账随 #520 连坐）——本批现值句已按新基线刷新，设计单 §3.2 冲突融合（采 #520 新批次序为基底 + 批 3 已落回灌并入）。
-- **REHOST 批 3 漏连坐根治**：核载体迁移设计单 §3.2 批 3 行补 ✅ 已落回灌（master `09c42963` = #518——step 态切换六件 + #512 ci_checklist 驱动集盲区根治 + vm_diff 新鲜度硬门禁；验收实录 STEP-INV --rehost 1035 语料/2.08M 帧 RED 0、rundiff 919 双跑一致、vm_diff 双臂 865 SAME）；架构设计 §3 管线补 `wasmenc` 叶包 + §11 编译目标行补载体迁移注记；**moonbit/AGENTS.md 包清单补 `wasmenc` 行**（批 1a 建包 2026-11-05 起缺失——状态权威漂移）；docs/README 设计单索引行同步批 1a~3 已落。
-- **排期权威补行**：总计划 §10 补 **1.0 / 0.10+ 行**（退役评估 + REHOST 批 4 收口前置窗口〔0.11.0 发版窗口〕+ C# 前端 1.0 后排期）——路线图「1.0 验收锚见总计划 §10」此前为**悬空引用**；docs/README 总计划索引行同步收官口径（原停在「S9 修复批中」）。
-- **防线册对 ci.yml 亲证**：脚本总清单 §1.1 job 清单 **16→19**〔补 arm4-wasmtime（W4 第四臂）/ toolchain-prerelease-sentinel / desktop（PR #417 全量升格）/ release-preflight 四行说明〕；protocol_frames 基线帧数勘正 **33/47→74**（#473 seek 族批扩容漏连坐）；clang_direct 行语言列勘正 Go→`.mts` 现役（#273 迁移批漏连坐）；**§2.1 补登 `wasmenc_emitgate` / `wasmenc_rundiff` / `wasmenc_watcheck` / `step_invariant` 四驱动**（REHOST 产物闸 + STEP-INV 防线资产，入册义务补账）。
-- **数字与口径勘误（实测大于脑测）**：路线图 clang_direct 句八目录→**九目录**（chibicc_port 39 例 #437 入库漏连坐；llm_multifile 计 36 工程；known 17→**19 条**亲数）+ e2e 754→**820**〔facts `c_e2e_*` 真值〕+ 测试数 1459→1463（两处）+ protocol_frames 47→74；DSH-MCP「现值裸 1459」→1463；标准库支持矩阵「0.8.0 在架」→0.9.1（facts 机判）；直拍门禁尾注 main.go→main.mts；人审清单 teaching_annotation_diff「Go」→`.mts`（10-24 迁移漏连坐）。
-- **文档内部矛盾修复**：C 规范总结段「不支持」清单移除 `_Static_assert`（§2.12 已支持编译期真求值——总结段漏更新致自相矛盾）；协作纪律档案 §二 #8 行补 2026-10-22 ts 改向注 + #13 改写注 + **补 #15 Sluice 闸门行**（gxworks-agent PR #5 外部事故制度化）；内存安全规范 SessionConfig「随 S7 落形」将来时→已落事实句。
-- **实施批销账回灌**：常量折叠设计单 §六 批 0 勾选销账（arith 核包 2026-11-02 当日已落 + PROVE-arith 镜像证明包，设计单漏回灌）；实机勘探方案 §三 待拍板 ①② 落地注（chibicc_port 39 例入库 #437 / vitro-green 精选集接 CI #513）+ §2.4 gcc 分桶裁判已接线注（realcode_diff 三方对拍现役）；路线图编年补 **2026-11-01~14 条目**（缺陷猎杀线 + REHOST 批 1a~3 + 基建线 14 项）。
-- **SVG 生成器连坐**（改 `scripts/gen_svg/main.mts` 重生成，**禁手改 SVG**）：架构图 base 行 3→4 格补 **wasmenc** + 状态条更新（0.9.1 在架 · REHOST 批 1a~3 已落）+ 对拍真值行补 rundiff；包分层图 compile 侧 L0 补 **util / arith（+proofs 镜像）/ fs / wasmenc 四包**（REHOST 与 #426 建包均漏连坐）+ opcode desc「135」→154 + diag desc 去数字化（锚 gen_diag）；runtime 侧 **L8/L9 层位对齐总计划 §4 降层裁定**（time_travel / teaching / diagnostics 2026-10-01 降 L8 两月未跟 + 补 teaching/assets·langpack·content_data 与 mcp 入 L9 + analysis M14 已迁注）；防线图闸卫家族 **13→17 项**（补 wasmenc 三闸 / step_invariant / green_probe / ci_checklist，随扩容整体下移底部块）；恰好 4 张 SVG 变化、其余 11 张活值直读图重生成逐字节零漂移，`gen_svg -check` 绿。
-- **diag 码表数字三处口径统一**（120/121/137 三说并存的根治）：moonbit/AGENTS.md / 脚本总清单 gen_diag 行 / 总计划 §4 全部改锚 **gen_diag expectedArms/expectedCatalog fail loud 锚**（亲证现值 126 臂 / catalog 122）——裸数字改引用锚，增删随批连坐生成器不再漂文档。
-- **复核无需更新**（自锚 as_of / 自声明充分）：快速入门 / 构建指南 / CLI 手册（批 3 已连坐）、CSharp 计划（设计稿）、05 教学域 8 份（沿革总注齐）、06 出口 6 份、已知限制与 warning 台账（与真值一致）、语料生成防线方案（#74 open「批次未开工」仍准确——llm 语料系用户投喂入库非 #74 管线产物，a7202d19 在案）、08 发布档案（冻结实录）、审阅报告 v2 / 判定书 / INCIDENTS（档案态）。
+- **根因一（teaching_annotation_diff 16 处 hanoi 错位）**：P3-16 的 char
+  标量 `'A'` 格式化破坏 `VarMap::get_int` 数值解析——hanoi 的 char 参数
+  from/to 解析 None 回落「启动汉诺塔」通配文案。修：`parse_int` 增
+  `'c'` 三字符形态折回码点（hanoi 首条恢复「从 A 柱移动…」）。
+- **根因二（demo B7 六幕点幕失效）**：P1-3 形参解引用视图让被调帧与
+  调用帧的数组快照同源——「进/出函数的快照切换」从差分序数中消失，
+  sorting/bubble_sort 课 20 变→16 变，幕 5/6 旧锚 `@arr_change:17/19`
+  越界解析 -1→clamp 0。修：两课 lesson.md 六幕锚重标（sorting 幕 5/6
+  改用 compare 相位锚 `@compare:10`——实测 10 比较帧=预算 4+3+2+1；
+  basic/bubble 序数锚同位免改，注释帧号更新）+ e2e B2/B7 验证绿
+  （33/35——B9/F6 为本地手册资产缺失面，CI 上轮绿）。
+- 验收：ta 82 模板双向一致 / moon test 1475 / facts --strict 漂移 0 /
+  mcp_smoke 18 / demo_smoke 197 / course_catalog 8 课对账全绿。
+
 
 ### fix(scripts+vm+ci+docs): PR #518 审阅处置——P2×2 + P3×6 全收口（2026-11-14）
 

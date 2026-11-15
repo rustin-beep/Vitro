@@ -81,8 +81,19 @@ pub fn VarMap::get_str(self : VarMap, name : String) -> String? {
 /// 整数解析（Rust `str::parse::<i32>()`——首尾空白容忍度对齐：Rust
 /// parse **不容忍**空白，本侧同样严格；infer 消费面 value 均为引擎
 /// 格式化产物无空白）。可选正负号 + 数字序列；溢出/非数字 = None。
+/// #517 P3-16 连坐（2026-11-14）：char 标量值改 `'c'` 可打印形态后，
+/// `'A'` 形态在此折回码点（hanoi 的 char 参数 from/to 经 get_int_any
+/// 消费——修前 None 回落「启动汉诺塔」通配文案，golden 16 处错位）。
 fn parse_int(s : String) -> Int32? {
   if s.length() == 0 {
+    return None
+  }
+  // 'c' 形态（三字符、引号包裹的单可打印字符）→ 码点
+  if s.length() == 3 && s[0] == '\'' && s[2] == '\'' {
+    let c = s[1]
+    if c.to_int() >= 32 && c.to_int() <= 126 {
+      return Some(c.to_int())
+    }
     return None
   }
   let mut idx = 0

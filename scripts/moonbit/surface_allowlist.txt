@@ -136,3 +136,4 @@ vitro/engine/view projector_ids
 vitro/engine/view projectors
 vitro/engine/view doc_json
 vitro/engine/view parse_series_decl
+vitro/engine/timeline PLAN_PV

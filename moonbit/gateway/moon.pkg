@@ -27,6 +27,7 @@ import {
   "vitro/engine/session",
   "vitro/engine/teaching/assets",
   "vitro/engine/teaching/steps",
+  "vitro/engine/timeline",
   "vitro/engine/time_travel",
   "vitro/engine/typeck",
   "vitro/engine/util",

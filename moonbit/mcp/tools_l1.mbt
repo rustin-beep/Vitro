@@ -506,6 +506,28 @@ fn Server::render_entry(
   for i in idx {
     frames_json.push(frame_json_full(slice[i], focus))
   }
+  // TimelinePlan v0.1（#470 批一）：steps[k] ↔ 选中帧[k] 零基同构，落
+  // doc.timeline（与 doc.series_decl 同一版本化信封）。plan 与 frames 的
+  // 对齐是本文件内构造保证 + validate 兜底——错位属内部缺陷，fail loud
+  // 不产坏产物。interactive 页内帧流（运行时 keyframe 采集）与本 plan 不同源，
+  // 壳层批一仍走旧规则、批二 EMBED 镜像 planStep 后换源（静态路径已只读 plan）。
+  let plan_views : Array[@timeline.FrameView] = []
+  for i in idx {
+    plan_views.push(timeline_view_of_frame(slice[i]))
+  }
+  let tplan : @timeline.Plan = @timeline.plan(plan_views)
+  match @timeline.validate(tplan, idx.length()) {
+    Ok(_) => ()
+    Err(m) =>
+      return Fail(
+        "渲染中止：timeline plan 与选中帧不对齐——\{m}",
+      )
+  }
+  let doc = @view.doc_value(decls)
+  match doc {
+    Object(m) => m.set("timeline", @timeline.plan_json(tplan))
+    _ => ()
+  }
   // 警告（v1 口径：编译成功带 warning 级诊断；采集提前停注明）
   let warnings : Array[String] = []
   for d in decls {
@@ -573,7 +595,7 @@ fn Server::render_entry(
     .s("source", e.source)
     .a("frames", frames_json)
     .sa("focus", focus)
-    .j("doc", @view.doc_value(decls))
+    .j("doc", doc)
     .j("algo", algo)
     .j("run", run_summary_json(e))
     .j("outputs", outputs_json(e))

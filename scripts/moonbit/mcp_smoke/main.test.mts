@@ -2,7 +2,16 @@
 // script 提段与 PLAYER 驱动器（#468 语法门 / #469 swap 对拍的纯件面）。
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { makeLineAcc, toolTextOf, CheckRun, extractScript, driveScript } from "./main.mts";
+import {
+  makeLineAcc,
+  toolTextOf,
+  CheckRun,
+  extractScript,
+  driveScript,
+  checkTimelinePlan,
+  frameHasValidSwap,
+  contextMentionsArray,
+} from "./main.mts";
 
 test("makeLineAcc：跨 chunk 残行拼接 + 多帧一次到达", () => {
   const acc = makeLineAcc();
@@ -75,4 +84,73 @@ test("driveScript：逐帧驱动 + swap 类名计数（mini PLAYER）", () => {
   const r = driveScript(script);
   assert.equal(r.total, 2);
   assert.equal(r.swapFrames, 1);
+});
+
+test("contextMentionsArray：标识符/成员边界（旧规则同款）", () => {
+  assert.equal(contextMentionsArray("a[j]:a[j + 1]", "a"), true);
+  assert.equal(contextMentionsArray("a [j]", "a"), true);
+  assert.equal(contextMentionsArray("obj.arr[j]", "arr"), false, "成员访问不算");
+  assert.equal(contextMentionsArray("barr[j]", "arr"), false, "标识符内含不算");
+  assert.equal(contextMentionsArray("ab[j]", "a"), false, "前缀同形不算（后接 b 非 [）");
+});
+
+test("frameHasValidSwap：越界/歧义/缺失不点亮", () => {
+  const len5 = ["1", "2", "3", "4", "5"];
+  assert.equal(frameHasValidSwap({ r: { a: len5 }, e: [[2, 2, 0, 1, -1, "a[j]:a[j + 1]"]] }), true);
+  assert.equal(frameHasValidSwap({ r: { a: len5 }, e: [[2, 2, 4, 5, -1, "a[j]:a[j + 1]"]] }), false, "a[4]↔a[5] 越界（bubble_sort 实锤）");
+  assert.equal(frameHasValidSwap({ r: { a: len5 }, e: [[2, 2, 2, 2, -1, "a[j]:a[j + 1]"]] }), false, "i==j 丢");
+  assert.equal(frameHasValidSwap({ r: { a: len5 }, e: [[2, 2, 0, 1, -1, ""]] }), false, "无 context 不猜");
+  assert.equal(frameHasValidSwap({ r: { a: len5, b: len5 }, e: [[2, 2, 0, 1, -1, "a[j]:b[j + 1]"]] }), false, "歧义不猜");
+});
+
+test("checkTimelinePlan：合规产物绿 + 计数", () => {
+  const data = {
+    frames: [
+      { r: { a: ["2", "1"] }, e: [[2, 2, 0, 1, -1, "a[j]:a[j + 1]"]], s: "交换 arr[0]↔arr[1]" },
+      { r: { a: ["2", "1"] }, e: [], s: "" },
+    ],
+    doc: {
+      timeline: {
+        pv: 1,
+        steps: [
+          { sw: { name: "a", i: 0, j: 1 }, cap: { t: "交换 arr[0]↔arr[1]", w: 2, dur: 1 } },
+          {},
+        ],
+      },
+    },
+  };
+  const r = checkTimelinePlan(data, "a");
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.steps, 2);
+  assert.equal(r.swFrames, 1);
+});
+
+test("checkTimelinePlan：J9 突变必红（对齐/归属/空串/漏点亮）", () => {
+  const mk = () => ({
+    frames: [
+      { r: { a: ["2", "1"] }, e: [[2, 2, 0, 1, -1, "a[j]:a[j + 1]"]], s: "交换 arr[0]↔arr[1]" },
+      { r: { a: ["2", "1"] }, e: [], s: "" },
+    ],
+    doc: {
+      timeline: {
+        pv: 1,
+        steps: [
+          { sw: { name: "a", i: 0, j: 1 }, cap: { t: "交换 arr[0]↔arr[1]", w: 2, dur: 1 } },
+          {},
+        ],
+      },
+    },
+  });
+  const wrongName = mk();
+  wrongName.doc.timeline.steps[0]!.sw!.name = "arr";
+  assert.ok(checkTimelinePlan(wrongName, "a").errors.some((e) => e.includes("归属真名")));
+  const misaligned = mk();
+  misaligned.doc.timeline.steps.pop();
+  assert.ok(checkTimelinePlan(misaligned, "a").errors.some((e) => e.includes("步骤错位")));
+  const missingSw = mk();
+  delete missingSw.doc.timeline.steps[0]!.sw;
+  assert.ok(checkTimelinePlan(missingSw, "a").errors.some((e) => e.includes("未点亮")));
+  const emptyCap = mk();
+  emptyCap.doc.timeline.steps[1]!.cap = { t: "", w: 1, dur: 0 };
+  assert.ok(checkTimelinePlan(emptyCap, "a").errors.some((e) => e.includes("空标签仍产 cap")));
 });

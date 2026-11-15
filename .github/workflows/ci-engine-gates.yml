@@ -97,6 +97,14 @@ jobs:
           node scripts/serve_smoke/main.mts -moonbit
         shell: bash
 
+      # serve_smoke 四件套 e2e（PR #530 审阅 P2-2）：main.test.mts 的三条 e2e
+      # 依赖 debug serve.exe——scripts-ts job 不构产物故恒 skip；在本 job 有
+      # 产物的语境显式跑，防「条件 skip 的锚」实现演进后陈旧不红（计数锚
+      # 71/69 + responses=26 随本批同步）。
+      - name: serve_smoke e2e anchors (node --test)
+        run: node --test scripts/serve_smoke/main.test.mts
+        shell: bash
+
       # replay MoonBit 臂（S7 批四号留批义务兑现，2026-10-04）：S1–S5 帧序列
       # 断言全集跑 cmd/serve（同一断言集，豁免面 scripts/replay/
       # moonbit_exemptions.json——主跑即审计：PASS 即 ZOMBIE 红防僵尸）。
@@ -273,7 +281,7 @@ jobs:
         shell: bash
 
       # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
-      # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
+      # 子命令——replay 61 断言 / serve_smoke 71 断言（豁免面 wasm 段臂分
       # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置 = gateway wasm 产物 + node + 工具链（壳自建）。
       # #292 批：驱动切 .mts（wasm 臂不进对拍——ensureFresh 会重建产物，对拍状态性）
       - name: replay wasm arm (shell serve)
@@ -335,7 +343,7 @@ jobs:
         shell: bash
 
       # ── MCP server 产物冒烟（DSH mbt 化批，2026-11-03）────────────────────
-      # cmd/mcp_js（vitro/engine/mcp 核心的 js 产物）stdio 全链路 16 断言：
+      # cmd/mcp_js（vitro/engine/mcp 核心的 js 产物）stdio 全链路 21 断言：
       # 协议契约（initialize/listChanged）/ 渐进披露（L0 5→session_open→
       # list_changed→L1 12→全关收回）/ readOnlyHint / L1 无会话守卫 / run_to
       # 事件锚（首交换帧 93 行 8）/ frames_summary 锚（1126 步·swap 7）/
@@ -350,6 +358,18 @@ jobs:
         run: |
           cd moonbit && moon build --release --target js cmd/mcp_js && cd ..
           node scripts/moonbit/mcp_smoke/main.mts
+        shell: bash
+
+      # TimelinePlan v0.1 等价对拍（#470 批一，2026-11-15；PR #530 审阅扩面）：
+      # 同一真实产物逐帧对比「旧规则（冻结副本）vs plan 路径」——bubble（真名
+      # =展示名 arr）/ bubble_sort（真名 a ≠ 展示名 arr 的 #469 分叉面，含
+      # 越界事件）/ same-name（全局 arr + 形参 arr 双快照）三案例：交换帧集合 /
+      # 字幕 HTML / stage 关键类名逐帧一致；另有人造分叉锚（plan 与 frames
+      # 故意不一致 → DOM 必须跟 plan 走，防静默回退旧规则）。J9：改生成器归属
+      # /字幕/壳层换源 → 本闸红。前置 = 上一步 js 产物。
+      - name: TimelinePlan equivalence (old rule vs plan path, 3 corpora)
+        if: matrix.slice == 'cli_smoke'
+        run: node scripts/moonbit/timeline_equiv/main.mts
         shell: bash
 
       # MCP 黑盒验收（v1 samples 同源锚 27 断言；PNG 预览断言仅本地——CI 无

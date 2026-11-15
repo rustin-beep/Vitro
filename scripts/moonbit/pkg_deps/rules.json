@@ -39,6 +39,7 @@
     "diagnostics": 8,
     "icons": 0,
     "style": 0,
+    "timeline": 0,
     "view": 0,
     "wasmenc": 0
   },

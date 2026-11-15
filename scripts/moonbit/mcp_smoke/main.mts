@@ -136,11 +136,28 @@ function makeEl(id: string): StubEl {
  * PLAYER（init 自然执行），再逐帧拨 slider 复算每帧 stage.innerHTML，统计
  * 含 swap 类名的帧数。首个 new vm.Script 即语法门——#468 形态（模板字面量
  * 转义丢失的裸换行/退化正则）在编译期 throw，不再依赖「生成成功+帧数正确」
- * 的盲验收。只 stub static 路径 PLAYER 触碰的宿主面（interactive 分支不达）。 */
-export function driveScript(scriptText: string): { swapFrames: number; total: number } {
+ * 的盲验收。只 stub static 路径 PLAYER 触碰的宿主面（interactive 分支不达）。
+ * TimelinePlan 批一（#470）：额外返回 __VITRO__ 数据与逐帧探针（swap/changed
+ * 类名计数 + 字幕 innerHTML）——plan 路径等价对拍与 smoke 扩断言共用。 */
+export interface FrameProbe {
+  swap: number;
+  changed: number;
+  cap: string;
+}
+
+export interface DriveResult {
+  swapFrames: number;
+  total: number;
+  data: unknown;
+  probes: FrameProbe[];
+}
+
+export function driveScript(scriptText: string): DriveResult {
   const els = new Map<string, StubEl>();
   const stage = makeEl("stage");
   els.set("stage", stage);
+  const cap = makeEl("cap");
+  els.set("cap", cap);
   const slider = makeEl("slider");
   els.set("slider", slider);
   const documentStub = {
@@ -162,23 +179,155 @@ export function driveScript(scriptText: string): { swapFrames: number; total: nu
   vm.createContext(sandbox);
   vm.runInContext(scriptText, sandbox); // 语法门：SyntaxError 在此 throw
   const total = Number(slider.max) + 1;
+  const countCls = (html: string, cls: string): number => {
+    let n = 0;
+    for (let i = html.indexOf(`class="${cls}"`); i >= 0; i = html.indexOf(`class="${cls}"`, i + 1)) n += 1;
+    return n;
+  };
   let swapFrames = 0;
+  const probes: FrameProbe[] = [];
   for (let k = 0; k < total; k++) {
     slider.value = String(k);
     if (slider.oninput !== null) slider.oninput.call(slider);
-    if (stage.innerHTML.includes("cell swap")) swapFrames++;
+    const html = stage.innerHTML;
+    const swap = countCls(html, "cell swap");
+    const changed = countCls(html, "cell changed");
+    if (swap > 0) swapFrames++;
+    probes.push({ swap, changed, cap: cap.innerHTML });
   }
-  return { swapFrames, total };
+  return { swapFrames, total, data: sandbox.__VITRO__, probes };
 }
 
 /** render 产物探针（读盘 + 提段 + 驱动；异常折叠为 {ok:false,err}）。 */
-function probeHtml(htmlPath: string): { ok: boolean; swapFrames: number; total: number; err?: string } {
+function probeHtml(
+  htmlPath: string,
+): {
+  ok: boolean;
+  swapFrames: number;
+  total: number;
+  data?: unknown;
+  probes?: FrameProbe[];
+  err?: string;
+} {
   try {
-    const { swapFrames, total } = driveScript(extractScript(readFileSync(htmlPath, "utf8")));
-    return { ok: true, swapFrames, total };
+    const d = driveScript(extractScript(readFileSync(htmlPath, "utf8")));
+    return { ok: true, swapFrames: d.swapFrames, total: d.total, data: d.data, probes: d.probes };
   } catch (e) {
     return { ok: false, swapFrames: -1, total: -1, err: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/** 事件 context 是否点名该数组（旧壳层规则同款；等价对拍与 smoke 共用）。 */
+export function contextMentionsArray(context: string, name: string): boolean {
+  if (!name) return false;
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^\\w.])${esc}\\s*\\[`).test(context);
+}
+
+export interface TimelineSwap {
+  name: string;
+  i: number;
+  j: number;
+}
+export interface TimelineCap {
+  t: string;
+  w: number;
+  dur: number;
+}
+export interface TimelineStep {
+  sw?: TimelineSwap;
+  cap?: TimelineCap;
+}
+export interface MiniFrame {
+  s?: string;
+  /** vis_events 紧凑数组 [ty,line,e0,e1,e2,context]（context 是字符串）。 */
+  e?: Array<Array<number | string>>;
+  r?: Record<string, string[]>;
+  a?: { p?: string; d?: string } | null;
+  h?: { o?: string } | null;
+}
+export interface VitroData {
+  frames?: MiniFrame[];
+  focus?: string[];
+  doc?: { timeline?: { pv?: number; steps?: TimelineStep[] } };
+}
+
+/** 帧内是否存在「可归属且有界」的 ty=2 交换事件（与 plan 生成器同判据）。 */
+export function frameHasValidSwap(fr: MiniFrame): boolean {
+  const names = Object.keys(fr.r ?? {});
+  for (const e of fr.e ?? []) {
+    if (e[0] !== 2) continue;
+    const ctx = typeof e[5] === "string" ? e[5] : "";
+    if (ctx === "") continue;
+    const hits = names.filter((n) => contextMentionsArray(ctx, n));
+    if (hits.length !== 1) continue;
+    const name = hits[0];
+    if (name === undefined) continue;
+    const x = Number(e[2]);
+    const y = Number(e[3]);
+    if (!Number.isInteger(x) || !Number.isInteger(y)) continue;
+    const lo = Math.min(x, y);
+    const hi = Math.max(x, y);
+    const len = (fr.r?.[name] ?? []).length;
+    if (lo < 0 || lo === hi || hi >= len) continue;
+    return true;
+  }
+  return false;
+}
+
+/** TimelinePlan v0.1 产物不变量（#470 批一）：
+ *  steps 与 frames 零基同构 / sw 归属真名且事件帧全点亮 / cap.t 与字幕同源 /
+ *  缺省键不产空串。返回错误清单（空 = 绿）与计数。 */
+export function checkTimelinePlan(
+  data: unknown,
+  realName: string,
+): { errors: string[]; swFrames: number; steps: number; frames: number } {
+  const errors: string[] = [];
+  const d = (data ?? {}) as VitroData;
+  const frames = d.frames ?? [];
+  const tl = d.doc?.timeline;
+  const steps = tl?.steps;
+  if (tl?.pv !== 1) errors.push(`doc.timeline.pv 非 1（${String(tl?.pv)}）`);
+  if (!Array.isArray(steps)) {
+    return { errors: [...errors, "doc.timeline.steps 缺失"], swFrames: 0, steps: 0, frames: frames.length };
+  }
+  if (steps.length !== frames.length) {
+    errors.push(`steps=${steps.length} ≠ frames=${frames.length}（步骤错位）`);
+  }
+  let swFrames = 0;
+  for (let k = 0; k < Math.min(steps.length, frames.length); k++) {
+    const fr = frames[k] ?? {};
+    const step = steps[k] ?? {};
+    const hasEv = frameHasValidSwap(fr);
+    // prod 帧的 r 已按 focus 过滤——归属真名不在本帧可见数组时不判「事件↔sw」
+    // （v0.1 plan 可携带非聚焦数组意图；绘制面由宿主决定）。
+    const visible = fr.r?.[realName] !== undefined;
+    const sw = step.sw;
+    if (sw !== undefined) {
+      swFrames += 1;
+      if (visible && !hasEv) errors.push(`帧 ${k}: sw 无源（无界内 ty=2 事件）`);
+      if (sw.name !== realName) errors.push(`帧 ${k}: sw.name=${sw.name} ≠ ${realName}（归属真名）`);
+      if (typeof sw.name !== "string" || sw.name === "") errors.push(`帧 ${k}: sw.name 空串`);
+      if (!Number.isInteger(sw.i) || !Number.isInteger(sw.j) || sw.i < 0 || sw.i >= sw.j) {
+        errors.push(`帧 ${k}: sw 下标非法 ${sw.i}/${sw.j}`);
+      }
+    } else if (visible && hasEv) {
+      errors.push(`帧 ${k}: 界内交换事件未点亮 sw`);
+    }
+    const label = fr.s ?? "";
+    const cap = step.cap;
+    if (label === "") {
+      if (cap !== undefined) errors.push(`帧 ${k}: 空标签仍产 cap（禁空串占位）`);
+    } else if (cap === undefined) {
+      errors.push(`帧 ${k}: 非空标签缺 cap`);
+    } else {
+      if (cap.t !== label) errors.push(`帧 ${k}: cap.t ≠ semantic_label`);
+      if (cap.t === "") errors.push(`帧 ${k}: cap.t 空串`);
+      if (!(typeof cap.w === "number" && cap.w >= 1)) errors.push(`帧 ${k}: cap.w 非法`);
+      if (!(typeof cap.dur === "number" && cap.dur >= 0)) errors.push(`帧 ${k}: cap.dur 非法`);
+    }
+  }
+  return { errors, swFrames, steps: steps.length, frames: frames.length };
 }
 
 async function drive(): Promise<number> {
@@ -298,6 +447,14 @@ async function drive(): Promise<number> {
     chk.check("render 产物 script 语法门 + PLAYER 驱动（BUBBLE_C swap 锚 3/#468·#469/#517）",
       pa.ok && pa.swapFrames === 3 && pa.total === 301,
       pa.ok ? `swap=${pa.swapFrames}/${pa.total}` : `驱动失败: ${pa.err ?? "?"}`);
+    // TimelinePlan v0.1 批一（#470）：doc.timeline 与选中帧零基同构、sw 归属
+    // 真名（bubble 真名=展示名 arr）、界内事件帧全点亮（3/3）、cap.t 同源。
+    const pt = pa.data === undefined ? null : checkTimelinePlan(pa.data, "arr");
+    chk.check(
+      "doc.timeline：steps==frames(301) + 事件帧全点亮 3 + sw.name=arr（#470 批一）",
+      pt !== null && pt.errors.length === 0 && pt.steps === 301 && pt.swFrames === 3,
+      pt === null ? "产物数据缺失" : `steps=${pt.steps} sw=${pt.swFrames} ${pt.errors.slice(0, 3).join(" | ")}`,
+    );
     // interactive 回落（CI 无 wasm 资产——恒走回落，恰锁该路径）
     const anim = body<{ ok: boolean; mode: string; frame_count: number; warnings: string[] }>(
       await call("animate", { source: BUBBLE_C, mode: "interactive", out_dir: outDir, preview_png: false }));
@@ -321,6 +478,15 @@ async function drive(): Promise<number> {
     chk.check("swap 高亮归属（真名 a ≠ 展示名 arr，vis_events context 归属锚 54/#469/#517）",
       renderedC.ok && pc.ok && pc.swapFrames === 54,
       renderedC.ok ? (pc.ok ? `swap=${pc.swapFrames}/${pc.total}` : `驱动失败: ${pc.err ?? "?"}`) : `render 红本文: ${renderedC.error ?? "?"}`);
+    // TimelinePlan 分叉面锚：sw.name 必须是真实数组名 a（不是字幕展示名 arr）；
+    // 81 帧里 54 个界内交换帧全点亮，另 2 帧 a[4]↔a[5] 越界（数组长 5）不产 sw
+    // ——这条正是「数组长度入最小视图」的判别证据（否则 plan 会到 56 帧）。
+    const ptc = pc.data === undefined ? null : checkTimelinePlan(pc.data, "a");
+    chk.check(
+      "doc.timeline：sw.name=a 54 界内帧全点亮 + 越界帧不产 sw（#470 批一）",
+      renderedC.ok && ptc !== null && ptc.errors.length === 0 && ptc.steps === 81 && ptc.swFrames === 54,
+      ptc === null ? "产物数据缺失" : `steps=${ptc.steps} sw=${ptc.swFrames} ${ptc.errors.slice(0, 3).join(" | ")}`,
+    );
     await call("session_close", { session_id: openedC.session_id });
 
     // ── P3-6：真课 viz 声明经引擎解析（fourier 的 vitri-viz 块 → animate.viz）──

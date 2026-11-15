@@ -2,7 +2,7 @@
 //
 // 覆盖三层：
 //   1. 纯 helper（行切分 / rune 尾部截断 / 帧解析）；
-//   2. 端到端：-moonbit 主跑（68 断言 + 2 豁免）+ 豁免审计轮（D19）；
+//   2. 端到端：-moonbit 主跑（71 断言 = 69 PASS + 2 豁免）+ 豁免审计轮（D19）；
 //   3. **证红通道**：VITRO_RSS_BUDGET_MB=5 → RSS 护栏断言必须红（U0#2「先证会红」义务）。
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -70,7 +70,7 @@ test("e2e：VITRO_CLI 指向不存在的产物 → exit 2（fail loud，不静�
   assert.match(r.out, /VITRO_CLI 指定的 .* 不存在/);
 });
 
-test("e2e：-moonbit 主跑全绿（68 断言 2 豁免）", (t) => {
+test("e2e：-moonbit 主跑全绿（71 断言：69 PASS + 2 豁免）", (t) => {
   if (!serveReady) {
     t.diagnostic("skip：cmd/serve 产物未构建");
     return;
@@ -78,8 +78,8 @@ test("e2e：-moonbit 主跑全绿（68 断言 2 豁免）", (t) => {
   const r = cli(["-moonbit"]);
   assert.equal(r.rc, 0, (r.out ?? "").slice(-3000) + r.err);
   assert.match(r.out, /MoonBit serve: .*（豁免 2 断言 \+ 0 整批）/);
-  assert.match(r.out, /responses=25 \(requests=25\)/);
-  assert.match(r.out, /MoonBit 臂断言数: 69 {2}\(PASS 67 \/ FAIL 0 \/ 豁免 2\)/);
+  assert.match(r.out, /responses=26 \(requests=26\)/);
+  assert.match(r.out, /MoonBit 臂断言数: 71 {2}\(PASS 69 \/ FAIL 0 \/ 豁免 2\)/);
   assert.match(r.out, /serve 冒烟全部通过/);
   assert.match(r.out, /PASS {2}RSS 护栏：提交峰值在预算内/);
 });

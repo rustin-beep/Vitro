@@ -335,6 +335,12 @@ vitro/engine/gateway vitro/engine/teaching/steps export_algorithms_catalog_json
 vitro/engine/gateway vitro/engine/time_travel DEFAULT_MAX_CHECKPOINTS
 vitro/engine/gateway vitro/engine/time_travel SourceLineProvider
 vitro/engine/gateway vitro/engine/time_travel UnifiedEngine
+vitro/engine/gateway vitro/engine/timeline FrameEvent
+vitro/engine/gateway vitro/engine/timeline FrameView
+vitro/engine/gateway vitro/engine/timeline Plan
+vitro/engine/gateway vitro/engine/timeline plan
+vitro/engine/gateway vitro/engine/timeline plan_json
+vitro/engine/gateway vitro/engine/timeline validate
 vitro/engine/gateway vitro/engine/typeck TypeChecker
 vitro/engine/gateway vitro/engine/typeck TypeError
 vitro/engine/gateway vitro/engine/util JsonParseError
@@ -436,6 +442,12 @@ vitro/engine/mcp vitro/engine/gateway engine_version
 vitro/engine/mcp vitro/engine/gateway invoke_on
 vitro/engine/mcp vitro/engine/gateway protocol_version
 vitro/engine/mcp vitro/engine/session Session
+vitro/engine/mcp vitro/engine/timeline FrameEvent
+vitro/engine/mcp vitro/engine/timeline FrameView
+vitro/engine/mcp vitro/engine/timeline Plan
+vitro/engine/mcp vitro/engine/timeline plan
+vitro/engine/mcp vitro/engine/timeline plan_json
+vitro/engine/mcp vitro/engine/timeline validate
 vitro/engine/mcp vitro/engine/util json_parse
 vitro/engine/mcp vitro/engine/util utf8_text_partial
 vitro/engine/mcp vitro/engine/view SeriesDecl

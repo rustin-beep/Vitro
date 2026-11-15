@@ -53,6 +53,8 @@ pub(all) enum DispatchError {
   BadReturnPoint(Int32, Int32)
   /// 跨块留值深度超溢出池（L_S 槽上限——首版 8；扩池随实测）
   NotSupportedHeight(Int32)
+  /// CallHost 组无窗口元数据（投影层供给缺口——结构性 fail loud）
+  HostSiteMissing(Int32)
 }
 
 ///|
@@ -112,6 +114,17 @@ pub(all) struct CallSiteMeta {
 }
 
 ///|
+/// CallHost 组的窗口调用点元数据（批 4′ host 回接——投影层按
+/// vm 包 host_window_sig 表 + AST 侧车 + 效应定型构造供给）。
+pub(all) struct HostCallMeta {
+  /// 逐参 wasm 栈值形态（**值栈序**：argc 项、序 0 = 底 = 首参数——
+  /// 与 codegen 压参序镜像；弹写窗口按逆序〔栈顶先〕发射）
+  pub arg_kinds : Array[WValKind]
+  /// 返回值形态（None = void/停机族——返回值 drop）
+  pub ret : WValKind?
+}
+
+///|
 
 ///|
 /// dispatch-loop 组装输入。
@@ -127,6 +140,9 @@ pub(all) struct DispatchInput {
   pub entry_ip : Int32
   /// 静态调用点元数据（gip → meta；Call/CallVar 必有、其余不查）
   pub call_sites : Map[Int32, CallSiteMeta]
+  /// CallHost 窗口调用点元数据（gip → meta；批 4′ host 回接——
+  /// CallHost 组必有，缺席即组装红〔BadReturnPoint 形态〕）
+  pub host_sites : Map[Int32, HostCallMeta]
   /// Ret 组的返回值类型（gip → kind；批 4b-4 宽返回通道——Ret 组按
   /// 所属函数的返回类型分派 G_RV〔i32〕/G_RV_W〔i64/f64 过桥〕；缺省
   /// 〔表无此 gip〕= VkWordI32 主通道）
@@ -157,10 +173,26 @@ pub fn assemble_dispatch_body(
     Ok(b) => b
     Err(e) => return Err(Blocks(e))
   }
+  // 调用组弹数供给（批 4′ 起 CallHost 并入）：Call/CallVar = arg_words
+  // （返回值走 G_RV 通道——调用点净弹）；CallHost = argc − ret 项（参数
+  // 就地弹写窗口 + 返回值就地压回——净效应负贡献合法）
   let arg_words_of = fn(gip : Int32) -> Int32 {
-    match input.call_sites.get(gip) {
-      Some(m) => m.arg_words
-      None => 0
+    match ops[gip] {
+      CallHost =>
+        match input.host_sites.get(gip) {
+          Some(m) =>
+            m.arg_kinds.length() -
+            (match m.ret {
+              Some(_) => 1
+              None => 0
+            })
+          None => 0
+        }
+      _ =>
+        match input.call_sites.get(gip) {
+          Some(m) => m.arg_words
+          None => 0
+        }
     }
   }
   let heights = match
@@ -244,8 +276,10 @@ pub fn assemble_dispatch_body(
       }
       if h_out < 0 {
         // 出口高为负 = 块内下溢的等价形态（联立判定的块图前置拦截——
-        // 负值传入后继会污染整链）
-        return Err(BadReturnPoint(k2, h_out))
+        // 负值传入后继会污染整链）。诊断增强（批 4′）：第二值改
+        // **块首 gip**（块索引在拼接域不可读——dispatch_setup 翻译侧
+        // 无 starts 上下文）
+        return Err(BadReturnPoint(starts[k2], h_out))
       }
       // 块尾组的后继边
       let last = end_k - 1
@@ -619,16 +653,16 @@ pub fn assemble_dispatch_body(
           body.push(WMemoryFill)
           body.push(WLocalGet(L_V))
         }
-        // CallHost：微缩模板即执行语义（H2 import + 返回值压栈同块消费）
+        // CallHost：批 4′ host 回接独立展开——参数弹写窗口 + import 调用
+        // + trap 检查 + 返回值分派压栈（微缩模板〔OpI32/HostArgvPtr/WCall〕
+        // 假设参数已在窗口，dispatch 真执行参数在 wasm 栈——模板不消费
+        // 即 4b-2 定谳的块图高度分歧大宗根因；往返路径模板锁死不动）
         CallHost => {
-          let g = match emit_group(op, operand, input.ctx) {
-            Ok(g) => g
-            Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
-            Err(BadOperand(m)) => return Err(Emit("BadOperand: " + m))
+          let meta = match input.host_sites.get(gip) {
+            Some(m) => m
+            None => return Err(HostSiteMissing(gip))
           }
-          for w in g {
-            body.push(w)
-          }
+          push_host_call_expand(body, meta, operand, input.ctx.host_argv_ptr)
         }
         _ => {
           // A/B 类组：往返路径同源字节
@@ -1032,4 +1066,84 @@ fn push_ret_expand(
   // Ret 出口高恒 0（返回值走 G_RV）——spill(0) 防御性空操作
   push_spill(body, spill_h)
   body.push(WBr(br_depth))
+}
+
+///|
+/// CallHost 执行展开（批 4′ host 回接——H2 窗口 ABI 的 wasm 侧）：
+///
+/// **窗口布局**（`win = ctx.host_argv_ptr` = align4(global_data_end)——
+/// 堆基下方空洞，malloc 永不进入；投影层保证 win+8+8·argc ≤ heap_base）：
+/// ```
+/// win+0: trap : i32   —— 调用前 wasm 置 0；宿主写非 0 = VM 停机语义
+///                        （trap/exit 族——统一 unreachable 出口）
+/// win+4: argc : i32   —— wasm 写（宿主 push 数对账锚）
+/// win+8: p[i] : i64   —— 逐参数 u64 位模式（VM 值栈项同构；**值栈序**：
+///                        p[0] = 底 = 首参数——宿主按序 push 回 VM 值栈，
+///                        臂内弹参序〔蓝本逐函数不一致〕透传单源不干预）
+/// ```
+///
+/// **发射序**：①trap 头清零 → ②argc 头写 → ③参数逆序弹写（栈顶先 =
+/// 窗口末槽；VkWordI32 经 extend_i32_s〔VM push_i32 符号扩展同构〕、
+/// VkF64 经 L_TF 暂存 + i64.reinterpret、VkI64 经 L_T64 暂存直写）→
+/// ④call import → ⑤trap 头检查（非 0 → unreachable——VM 停机语义）→
+/// ⑥返回值分派压栈（VkWordI32 → i32.wrap、VkI64 直留、VkF64 →
+/// f64.reinterpret；None → drop）。
+fn push_host_call_expand(
+  body : Array[WInstr],
+  meta : HostCallMeta,
+  route_id : Int32,
+  win : Int32,
+) -> Unit {
+  let argc = meta.arg_kinds.length()
+  // ① trap 头清零（宿主写非 0 = 停机——每次调用复位）
+  body.push(WI32Const(win))
+  body.push(WI32Const(0))
+  body.push(WI32Store)
+  // ② argc 头
+  body.push(WI32Const(win + 4))
+  body.push(WI32Const(argc))
+  body.push(WI32Store)
+  // ③ 参数逆序弹写（栈顶先 = 窗口高槽——值栈序镜像）
+  for i = argc - 1; i >= 0; i = i - 1 {
+    let addr = win + 8 + i * 8
+    match meta.arg_kinds[i] {
+      VkWordI32 => {
+        body.push(WLocalSet(L_A)) // 弹 1 word（i32）
+        body.push(WI32Const(addr))
+        body.push(WLocalGet(L_A))
+        body.push(WI64ExtendI32S) // push_i32 符号扩展同构
+        body.push(WI64Store)
+      }
+      VkF64 => {
+        body.push(WLocalSet(L_TF)) // 弹 1 f64（暂存槽中转）
+        body.push(WI32Const(addr))
+        body.push(WLocalGet(L_TF))
+        body.push(WI64ReinterpretF64)
+        body.push(WI64Store)
+      }
+      VkI64 => {
+        body.push(WLocalSet(L_T64)) // 弹 1 i64
+        body.push(WI32Const(addr))
+        body.push(WLocalGet(L_T64))
+        body.push(WI64Store)
+      }
+    }
+  }
+  // ④ 调用（import 函数索引 0——装载约定单源 module.mbt）
+  body.push(WI32Const(route_id))
+  body.push(WI32Const(win))
+  body.push(WCall(0))
+  // ⑤ trap 头检查（宿主停机写非 0 → unreachable 出口）
+  body.push(WI32Const(win))
+  body.push(WI32Load)
+  body.push(WIf)
+  body.push(WUnreachable)
+  body.push(WEnd)
+  // ⑥ 返回值分派（i64 返回位模式 → 消费域）
+  match meta.ret {
+    Some(VkWordI32) => body.push(WI32WrapI64)
+    Some(VkI64) => () // i64 域直留
+    Some(VkF64) => body.push(WF64ReinterpretI64)
+    None => body.push(WDrop)
+  }
 }

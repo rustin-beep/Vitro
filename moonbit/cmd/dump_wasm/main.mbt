@@ -110,7 +110,7 @@ fn dump_one(path : String, name : String, lexed : @lexer.LexResult) -> String {
   }
   let (output, gen_errors) = @codegen.compile(typed)
   match output {
-    Some(o) => emit_json(path, name, o)
+    Some(o) => emit_json(path, name, o, scan_variadic_host_argc(typed))
     None =>
       // #223：gen_errors 结构化（GenError）——join 消费面取 message 域
       fail_json(name, "gen", gen_errors.map(fn(e) { e.message }).join("\n"))
@@ -129,6 +129,7 @@ fn emit_json(
   path : String,
   name : String,
   o : @bytecode.CompileOutput,
+  variadic_argc : Array[Int32],
 ) -> String {
   let ctx = @bytecode.wasm_emit_ctx(o)
   match @bytecode.build_wasm_product(o) {
@@ -151,7 +152,7 @@ fn emit_json(
               buf.write_string("\",\"module\":\"")
               buf.write_string(hex_bytes(mod_bytes))
               buf.write_string("\",\"dispatch\":")
-              buf.write_string(dispatch_json(path, o))
+              buf.write_string(dispatch_json(path, o, variadic_argc))
               buf.write_string("}")
               buf.to_string()
             }
@@ -176,8 +177,12 @@ fn emit_json(
 /// `ok:false` + reason 单行（对拍闸按 reason 分类登记 skip 面，不静默）。
 /// `max_steps` 钉 10,000,000（引擎臂 cmd/run 默认同值——对拍臂预算判定
 /// 须同源；升参需求随 host 回接批评估）。
-fn dispatch_json(path : String, o : @bytecode.CompileOutput) -> String {
-  match @vm.build_dispatch_product(o, 10000000, argv0=path) {
+fn dispatch_json(
+  path : String,
+  o : @bytecode.CompileOutput,
+  variadic_argc : Array[Int32],
+) -> String {
+  match @vm.build_dispatch_product(o, 10000000, argv0=path, variadic_argc~) {
     Ok(p) => {
       let buf = StringBuilder()
       buf.write_string("{\"ok\":true,\"module\":\"")
@@ -194,6 +199,13 @@ fn dispatch_json(path : String, o : @bytecode.CompileOutput) -> String {
       buf.write_string(p.host_calls.to_string())
       buf.write_string(",\"max_steps\":")
       buf.write_string(p.max_steps.to_string())
+      // 窗口装载参数（批 4′ host 回接——中继 INIT 帧：堆基/argv 同源）
+      buf.write_string(",\"win_data_end\":")
+      buf.write_string(p.win_data_end.to_string())
+      buf.write_string(",\"win_argc\":")
+      buf.write_string(p.win_argc.to_string())
+      buf.write_string(",\"win_argv0\":")
+      buf.write_string(@ast.json_escape_string(p.win_argv0))
       buf.write_string("}")
       buf.to_string()
     }

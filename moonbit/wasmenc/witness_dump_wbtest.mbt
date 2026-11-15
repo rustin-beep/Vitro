@@ -289,6 +289,7 @@ test "witness_dump_dispatch_modules" {
       func_entry_ips: entries,
       entry_ip: 0,
       call_sites: sites,
+      host_sites: Map([]),
       ret_kinds: Map([]),
       stack_start: 1048576,
       call_depth_limit: 10000,

@@ -234,8 +234,20 @@ function collectRehostDispatch(root: string, facts: Record<string, Fact>): void 
   facts["rehost_dispatch_dualrun"] = okFact(
     doc.paired ?? 0, "例", "scripts/wasmenc_dispatchdiff（三方对拍一致）", "count_gate", asOf,
   );
+  // 批 4′（2026-11-16）桶细分连坐：callhost 总桶退役 → stdin/vfs/callback/
+  // va 四分组桶 + badreturn（块图会合分歧——批 4″ 收口登记）；wt_pending
+  // = host 例 wasmtime 臂回接挂账数（批 4″）
+  const callhostSum =
+    (t.callhost_stdin ?? 0) + (t.callhost_vfs ?? 0) +
+    (t.callhost_callback ?? 0) + (t.callhost_va ?? 0) + (t.callhost_other ?? 0);
   facts["rehost_dispatch_skip_callhost"] = okFact(
-    t.callhost ?? 0, "例", "scripts/wasmenc_dispatchdiff（H2 宿主回接批域）", "count_gate", asOf,
+    callhostSum, "例", "scripts/wasmenc_dispatchdiff（禁译分组：stdin/vfs/callback/va）", "count_gate", asOf,
+  );
+  facts["rehost_dispatch_badreturn"] = okFact(
+    t.badreturn ?? 0, "例", "scripts/wasmenc_dispatchdiff（块图多前驱会合分歧——批 4″ 收口）", "count_gate", asOf,
+  );
+  facts["rehost_dispatch_wt_pending"] = okFact(
+    t.wt_pending ?? 0, "例", "scripts/wasmenc_dispatchdiff（host 例 wasmtime 臂回接挂账——批 4″）", "count_gate", asOf,
   );
   facts["rehost_dispatch_skip_unsupported"] = okFact(
     t.unsupported ?? 0, "例", "scripts/wasmenc_dispatchdiff（变参/wide-param/CallPtr 等静态不可展开）", "count_gate", asOf,

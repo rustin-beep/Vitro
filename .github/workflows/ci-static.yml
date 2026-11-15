@@ -510,7 +510,7 @@ jobs:
         # （rehost_dispatch_* 键）。
         shell: bash
         run: |
-          cd moonbit && moon build --target native cmd/dump_wasm && moon build --target native cmd/run
+          cd moonbit && moon build --target native cmd/dump_wasm && moon build --target native cmd/run && moon build --release --target js cmd/host_relay
           cd .. && cd scripts/wasmtime_arm/rs && cargo build --release --locked
           cd ../../.. && cd scripts && npm ci --no-audit --no-fund
           cd .. && node scripts/wasmenc_dispatchdiff/main.mts

@@ -164,6 +164,7 @@ pub(all) enum DispatchError {
   Effect(EffectError)
   BadReturnPoint(Int32, Int32)
   NotSupportedHeight(Int32)
+  HostSiteMissing(Int32)
 }
 pub fn DispatchError::equal(Self, Self) -> Bool
 pub fn DispatchError::not_equal(Self, Self) -> Bool
@@ -175,6 +176,7 @@ pub(all) struct DispatchInput {
   func_entry_ips : Array[Int32]
   entry_ip : Int32
   call_sites : Map[Int32, CallSiteMeta]
+  host_sites : Map[Int32, HostCallMeta]
   ret_kinds : Map[Int32, WValKind]
   stack_start : Int32
   call_depth_limit : Int32
@@ -289,6 +291,11 @@ pub fn GroupTable::equal(Self, Self) -> Bool
 pub fn GroupTable::new() -> Self
 pub fn GroupTable::not_equal(Self, Self) -> Bool
 pub fn GroupTable::to_repr(Self) -> @debug.Repr
+
+pub(all) struct HostCallMeta {
+  arg_kinds : Array[WValKind]
+  ret : WValKind?
+}
 
 #derive(@debug.Debug)
 pub(all) enum LebError {

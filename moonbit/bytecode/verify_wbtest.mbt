@@ -27,6 +27,7 @@ fn mk_clean_output() -> CompileOutput {
         local_count: 0,
         param_sizes: [],
         return_type: @ast.Type::int(),
+        param_types: [],
         is_variadic: false,
         local_buffers: [],
       },
@@ -302,6 +303,7 @@ test "verify: wrapper Call 目标错" {
     local_count: 0,
     param_sizes: [],
     return_type: @ast.Type::int(),
+    param_types: [],
     is_variadic: false,
     local_buffers: [],
   })
@@ -413,6 +415,7 @@ fn mk_two_func_call_underflow() -> CompileOutput {
     local_count: 8,
     param_sizes: [1, 1],
     return_type: @ast.Type::int(),
+    param_types: [],
     is_variadic: false,
     local_buffers: [],
   })
@@ -495,6 +498,7 @@ test "verify: 键集分叉——func_table 有而 func_index 无" {
     local_count: 0,
     param_sizes: [],
     return_type: @ast.Type::int(),
+    param_types: [],
     is_variadic: false,
     local_buffers: [],
   })
@@ -569,6 +573,7 @@ test "verify: 段间游离指令（由段尾非控制类兜住；L359 死分支�
     local_count: 0,
     param_sizes: [],
     return_type: @ast.Type::int(),
+    param_types: [],
     is_variadic: false,
     local_buffers: [],
   })

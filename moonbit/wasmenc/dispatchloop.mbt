@@ -62,6 +62,33 @@ pub extend DispatchError with Debug::{to_repr}
 pub extend DispatchError with Eq::{not_equal, equal}
 
 ///|
+/// 参数的 wasm 栈值形态（批 4b-4——Call 展开按值分派弹/存的判据）。
+/// **全域 word 流定谳**（t3 减法探针 + codegen call.mbt 亲读）：i64/double
+/// 实参经 SplitD/SplitQ **拆双 word 压栈**（低/高各一 i32——wasm 栈同形），
+/// do_call 弹写也是 word 流——**逐 word i32 弹存全域正确**（4b-1 的
+/// 「wasm 值=1」系误判，wide-param 禁译撤除）。唯一例外 = **f32**：
+/// 用户函数原型 float 参数不提升（C11 6.5.2.2——仅变参 ... 提升双精度），
+/// wasm 栈上是**单 f32 值**（1 word 但类型非 i32——i32 槽弹会类型炸）。
+#derive(Debug, Eq)
+pub(all) enum WValKind {
+  /// word 流（i32/f32/指针——**f32 word 流统一**〔PR #526 审阅 P1-2〕：
+  /// dispatch 真执行的 f32 值恒 i32 位模式入栈，无独立 f32 域）
+  VkWordI32
+  /// i64 返回（Ret 存 G_RV_W〔i64 槽〕+ 返回点 load 同槽——批 4b-4
+  /// 宽返回通道：G_RV 是 i32 槽〔#520 P1-a 定形〕装不下 f64/i64 返回值，
+  /// V8 编译红实锤）
+  VkI64
+  /// f64 返回（同上——f64 域）
+  VkF64
+}
+
+///|
+pub extend WValKind with Debug::{to_repr}
+
+///|
+pub extend WValKind with Eq::{not_equal, equal}
+
+///|
 /// Call/CallVar 组的调用点元数据（组装方按 func_table 侧车算好供给——
 /// 静态调用点的目标信息编译期全知）。
 pub(all) struct CallSiteMeta {
@@ -73,8 +100,15 @@ pub(all) struct CallSiteMeta {
   frame_bytes : Int32
   /// 逐参 word 数（逆序搬运发射用——声明序）
   param_words : Array[Int32]
+  /// 逐参值类型（批 4b-4——与 param_words 同长同序；空表 = 类型源缺失
+  /// （libc 扁平产物），搬运回落逐 word i32 形态〔word≤1 时安全〕）
+  param_kinds : Array[WValKind]
   /// void 函数（返回点不 load G_RV）
   is_void : Bool
+  /// 返回值通道形态（批 4b-4——非 void 时：VkWordI32 → G_RV 主通道；
+  /// VkI64/VkF64 → G_RV_W 宽通道过桥；f32 无专值〔word 流统一——恒
+  /// VkWordI32 主通道〕）
+  ret_kind : WValKind
 }
 
 ///|
@@ -93,6 +127,10 @@ pub(all) struct DispatchInput {
   pub entry_ip : Int32
   /// 静态调用点元数据（gip → meta；Call/CallVar 必有、其余不查）
   pub call_sites : Map[Int32, CallSiteMeta]
+  /// Ret 组的返回值类型（gip → kind；批 4b-4 宽返回通道——Ret 组按
+  /// 所属函数的返回类型分派 G_RV〔i32〕/G_RV_W〔i64/f64 过桥〕；缺省
+  /// 〔表无此 gip〕= VkWordI32 主通道）
+  ret_kinds : Map[Int32, WValKind]
   /// 初始 mem_stack_top（= STACK_START；宿主装载语义同 VM setup）
   pub stack_start : Int32
   /// 调用深度上限（VM call_depth_limit 同源——教学 trap 语义）
@@ -130,19 +168,23 @@ pub fn assemble_dispatch_body(
     Ok(h) => h
     Err(e) => return Err(Blocks(e))
   }
-  // 2. 返回点映射（Call gip → gip+1 是返回点块首；非 void 前插 G_RV load）
-  let ret_points : Map[Int32, Bool] = Map([]) // 返回点 gip → 是否 load G_RV
+  // 2. 返回点映射（Call gip → gip+1 是返回点块首；非 void 前插返回值
+  //    load——批 4b-4 起按被调 ret_kind 分派槽位：VkWordI32 → G_RV、
+  //    VkI64/VkF64 → G_RV_W（宽返回通道）；表值 = load 形态，不在表 = 不 load）
+  let ret_points : Map[Int32, WValKind] = Map([]) // 返回点 gip → load 槽型
   for gip = 0; gip < n; gip = gip + 1 {
     match ops[gip] {
       Call | CallVar => {
-        let is_void = match input.call_sites.get(gip) {
-          Some(m) => m.is_void
+        let m = match input.call_sites.get(gip) {
+          Some(m) => m
           None => return Err(BadReturnPoint(gip, -1))
         }
         if gip + 1 >= n + 1 {
           return Err(BadReturnPoint(gip, n))
         }
-        ret_points.set(gip + 1, !is_void)
+        if !m.is_void {
+          ret_points.set(gip + 1, m.ret_kind)
+        }
       }
       _ => ()
     }
@@ -195,7 +237,7 @@ pub fn assemble_dispatch_body(
       let end_k = if k2 + 1 < nblocks { starts[k2 + 1] } else { n }
       // 有效出口高 = h_in + 增量 + 返回点 load 项（G_RV 压回 wasm 栈
       // 被块内/后继消费——\|\| 短路条件的 libc 实锤形态）
-      let rv0 = if ret_points.get(starts[k2]) == Some(true) { 1 } else { 0 }
+      let rv0 = if ret_points.get(starts[k2]) is Some(_) { 1 } else { 0 }
       let h_out = h_in[k2] + heights[k2] + rv0
       if h_in[k2] < 0 {
         continue
@@ -383,9 +425,17 @@ pub fn assemble_dispatch_body(
     push_budget_check(body, input.max_steps)
     // 块首 fill（跨块留值从溢出池回栈——短路 Dup 形态）
     push_fill(body, h_in[k])
-    // 返回点 load（非 void 调用的返回点——G_RV → wasm 栈）
-    if ret_points.get(start) == Some(true) {
-      body.push(WGlobalGet(G_RV))
+    // 返回点 load（非 void 调用的返回点——按被调 ret_kind 分派槽：
+    // VkWordI32 → G_RV〔i32〕；VkI64 → G_RV_W〔i64〕；VkF64 → G_RV_W
+    // + i64.reinterpret_f64 回 f64 域——批 4b-4 宽返回通道）
+    match ret_points.get(start) {
+      Some(VkF64) => {
+        body.push(WGlobalGet(G_RV_W))
+        body.push(WF64ReinterpretI64)
+      }
+      Some(VkI64) => body.push(WGlobalGet(G_RV_W))
+      Some(VkWordI32) => body.push(WGlobalGet(G_RV))
+      None => ()
     }
     // 组序列
     let mut ended_by_control = false
@@ -421,8 +471,153 @@ pub fn assemble_dispatch_body(
           ended_by_control = true
         }
         Ret | RetVoid => {
-          push_ret_expand(body, op, depth, h_in[k] + heights[k])
+          push_ret_expand(
+            body,
+            op,
+            depth,
+            h_in[k] + heights[k],
+            match input.ret_kinds.get(gip) {
+              Some(k0) => k0
+              None => VkWordI32
+            },
+          )
           ended_by_control = true
+        }
+        // StepEvent：dispatch 形态零发射——计步由块首批量步锚单源覆盖
+        //（模板的 steps+=1 四条序列是微缩/往返路径形态，本路径双计实锤
+        // 2026-11-15：V8 steps=11 vs 引擎 9，差值 = 块内 StepEvent 数；
+        // operand/行号观测留权威侧，与模板头注口径一致）
+        StepEvent => ()
+        // ── f32 word 流统一族（PR #526 审阅 P1-2：f32 域分立修）──
+        // dispatch 真执行的 f32 值在 wasm 栈**恒走 i32 word**（f32 位模式）：
+        // 装载路径产 i32（LoadLocal 通用 i32.load——无类型信息不可改），
+        // 而模板的常量/运算族产裸 f32——微缩域由垫收器自洽掩盖，真实
+        // 发射序拼接即类型炸（f32p/f32r 探针：`f32.gt expected [f32,f32]
+        // found [i32,f32]`）。本族独立展开 = 模板字节前后插转域
+        //（f32.reinterpret_i32 入 / i32.reinterpret_f32 回）；模板锁死
+        // 不动（往返路径批 2/3 已验收面）。f64 域不受此面（装载/常量/
+        // 运算全 f64 域自洽——仅 SplitD 调用拆分出口）。
+        PushConstF => {
+          let g = match emit_group(op, operand, input.ctx) {
+            Ok(g) => g
+            Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
+            Err(BadOperand(m)) => return Err(Emit("BadOperand: " + m))
+          }
+          for w in g {
+            body.push(w)
+          }
+          body.push(WI32ReinterpretF32) // f32.const → i32 位模式入流
+        }
+        NegF => {
+          // 一元：单值入域 → 模板 → 结果回 i32 word
+          body.push(WF32ReinterpretI32)
+          let g = match emit_group(op, operand, input.ctx) {
+            Ok(g) => g
+            Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
+            Err(BadOperand(m)) => return Err(Emit("BadOperand: " + m))
+          }
+          for w in g {
+            body.push(w)
+          }
+          body.push(WI32ReinterpretF32)
+        }
+        AddF | SubF | MulF | DivF => {
+          // 二元算术：双值入域——**顺序双转换的自吞缺陷**（PR #526 P1-2
+          // 二次实锤：`conv;conv;op` 的第二条 conv 吃第一条的产物）——
+          // 暂存槽中转形态：顶转 → 存 L_TF32 → 次转 → 取回 → 模板 →
+          // 结果回 i32 word
+          body.push(WF32ReinterpretI32)
+          body.push(WLocalSet(L_TF32))
+          body.push(WF32ReinterpretI32)
+          body.push(WLocalGet(L_TF32))
+          let g = match emit_group(op, operand, input.ctx) {
+            Ok(g) => g
+            Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
+            Err(BadOperand(m)) => return Err(Emit("BadOperand: " + m))
+          }
+          for w in g {
+            body.push(w)
+          }
+          body.push(WI32ReinterpretF32)
+        }
+        EqF | NeF | LtF | LeF | GtF | GeF => {
+          // 二元比较：同暂存中转形态 → 模板（产 i32 bool，无需回转）
+          body.push(WF32ReinterpretI32)
+          body.push(WLocalSet(L_TF32))
+          body.push(WF32ReinterpretI32)
+          body.push(WLocalGet(L_TF32))
+          let g = match emit_group(op, operand, input.ctx) {
+            Ok(g) => g
+            Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
+            Err(BadOperand(m)) => return Err(Emit("BadOperand: " + m))
+          }
+          for w in g {
+            body.push(w)
+          }
+        }
+        CastI2F | CastU2F | CastD2F | CastUQ2F => {
+          // int/double/u64 → f32：模板产 f32 → 转 i32 word 入流
+          let g = match emit_group(op, operand, input.ctx) {
+            Ok(g) => g
+            Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
+            Err(BadOperand(m)) => return Err(Emit("BadOperand: " + m))
+          }
+          for w in g {
+            body.push(w)
+          }
+          body.push(WI32ReinterpretF32)
+        }
+        CastF2I => {
+          // f32 → i32 饱和：入域 → 模板（产 i32）
+          body.push(WF32ReinterpretI32)
+          let g = match emit_group(op, operand, input.ctx) {
+            Ok(g) => g
+            Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
+            Err(BadOperand(m)) => return Err(Emit("BadOperand: " + m))
+          }
+          for w in g {
+            body.push(w)
+          }
+        }
+        CastF2D => {
+          // f32 → f64：入域 → 模板（promote 产 f64 域——f64 域自洽不回转）
+          body.push(WF32ReinterpretI32)
+          let g = match emit_group(op, operand, input.ctx) {
+            Ok(g) => g
+            Err(NotImplemented(m)) => return Err(Emit("NotImplemented: " + m))
+            Err(BadOperand(m)) => return Err(Emit("BadOperand: " + m))
+          }
+          for w in g {
+            body.push(w)
+          }
+        }
+        // Memset：dispatch 形态独立展开——value 暂存从模板的 L_T64（i64
+        // 过桥 + wrap 收窄）改 L_A（i32 槽直存）。模板形态在微缩/witness
+        // 域自洽（效应垫收按 i64 域供给），但真实发射序的 value 生产者恒
+        // i32 域（C memset 第二参 int——PushConst/Add 等产 i32），dispatch
+        // 拼接即「local.set i64 槽吃 i32」类型炸（V8/wabt 编译红实锤，
+        // 2026-11-15 零 host 摸底 3/9 例）。语义逐条同模板：ptr/value/
+        // size 三弹 + NULL 区检查（ptr <0x1000 ge_u）+ value&0xFF +
+        // memory.fill + 压回 ptr（exec_memory.mbt:135-154 亲读镜像）；
+        // 往返模板字节锁死不动（批 2/3 已验收面）。
+        Memset => {
+          body.push(WLocalSet(L_V)) // ptr（栈顶先弹）
+          body.push(WLocalSet(L_A)) // value（i32 域——本臂与模板的唯一差异）
+          body.push(WLocalSet(L_N)) // size
+          body.push(WBlock)
+          body.push(WLocalGet(L_V))
+          body.push(WI32Const(0x1000))
+          body.push(WI32GeU)
+          body.push(WBrIf(0))
+          body.push(WUnreachable)
+          body.push(WEnd)
+          body.push(WLocalGet(L_V))
+          body.push(WLocalGet(L_A))
+          body.push(WI32Const(0xFF))
+          body.push(WI32And)
+          body.push(WLocalGet(L_N))
+          body.push(WMemoryFill)
+          body.push(WLocalGet(L_V))
         }
         // CallHost：微缩模板即执行语义（H2 import + 返回值压栈同块消费）
         CallHost => {
@@ -553,6 +748,7 @@ pub fn assemble_dispatch_module(
   let _ = b.add_global(WT_I32, true, WI32Const(0)) // 4: G_RET
   let _ = b.add_global(WT_I32, true, WI32Const(0)) // 5: G_RV（P1-a：i32——Ret 塞 i32 值，i64 槽类型错）
   let _ = b.add_global(WT_I32, true, WI32Const(0)) // 6: G_DEPTH
+  let _ = b.add_global(WT_I64, true, WI64Const(0L)) // 7: G_RV_W（批 4b-4 宽返回——f64/i64 位模式过桥槽）
   b.add_export("main", 0, main_idx)
   b.add_export("memory", 2, 0)
   b.add_export("steps", 3, G_STEPS) // 预算/对拍观测（result 级三锚）
@@ -562,6 +758,13 @@ pub fn assemble_dispatch_module(
 ///|
 /// G_DEPTH global 索引（批 1b 六槽之后第 7——垫收证人模块不含本槽）。
 pub const G_DEPTH : Int32 = 6
+
+///|
+/// 宽返回值槽（批 4b-4 第 8 槽，i64 mut——f64/i64 返回经位模式过桥：
+/// f64 经 L_TF 暂存后 i64.reinterpret 存入；返回点 load 后 reinterpret
+/// 回 f64。G_RV 是 i32 槽〔#520 P1-a 定形——int 返回主通道〕装不下
+/// 8 字节返回值，dsum 例 V8 编译红实锤）。
+pub const G_RV_W : Int32 = 7
 
 ///|
 /// 跨块留值溢出池槽位数（L_S0.. 段——短路求值 Dup 留值跨块的
@@ -681,8 +884,8 @@ fn push_jump_with_depth(
 /// ①深度上限检查（G_DEPTH——教学 trap：超限 unreachable）；
 /// ②NULL 下界检查（SPT − (12+frame) < 0x1000 → unreachable——堆碰撞
 /// 检查首版不做，blocks 头注登记）；
-/// ③参数搬运（param_words 声明序逆序逐 word 弹出——wasm 栈 LIFO 对齐
-/// VM do_call 弹序；i64 双 word 形态待 4b 锚）；
+/// ③参数搬运（**声明序**逐参、参内高 word 先弹——do_call_inner 同构；
+/// 宽值拆双 word 流〔SplitD/SplitQ〕；f32 经 PushConstF 臂的 i32.reinterpret 入流〔PR #526 P1-2 word 流统一〕）；
 /// ④帧头三 word（return_ip=gip+1 | orig_top=SPT | caller_fb=FB）@
 /// 新帧底 −12；
 /// ⑤指针更新（SPT −= 12+frame；FB = 新 locals_base；DEPTH += 1）；
@@ -711,19 +914,23 @@ fn push_call_expand(
   body.push(WIf)
   body.push(WUnreachable)
   body.push(WEnd)
-  // ③参数搬运（逆序：最后参最后 word 先弹）——地址 = SPT - frame + off*4
-  //   （压帧前用旧 SPT；新 locals_base = SPT - frame_bytes）
-  // 计算总 word 偏移（声明序累计），再逆序发射
+  // ③参数搬运（批 4b-4 勘正弹序——**声明序先弹**：do_call_inner 亲读
+  //   〔exec_control.mbt:109-119，param_sizes 声明序逐参 + 参内高 word
+  //   先弹〕与压栈序〔右→左、左参在顶〕闭环；原「逆序先弹」错位实锤：
+  //   t3 减法例 V8 -4 vs 引擎 4——加法交换律长期掩盖）。地址 =
+  //   SPT - frame + off*4（压帧前用旧 SPT；新 locals_base = SPT - frame_bytes）。
+  //   宽值（i64/double）拆双 word 压栈（SplitD/SplitQ）→ 逐 word i32 弹存
+  //   全域正确（f32 经 word 流统一族入流——同 i32 形态）。
   let total : Array[Int32] = []
   let mut acc : Int32 = 0
   for w in meta.param_words {
     total.push(acc)
     acc = acc + w
   }
-  for pi = meta.param_words.length() - 1; pi >= 0; pi = pi - 1 {
+  for pi = 0; pi < meta.param_words.length(); pi = pi + 1 {
     let base_off = total[pi]
     let words = meta.param_words[pi]
-    // 参数内 word 逆序（栈顶 = 最后 word）
+    // word 流（i32/i64/double/指针——参内高 word 先弹，do_call 同构）
     for k = words - 1; k >= 0; k = k - 1 {
       let woff = base_off + k
       body.push(WLocalSet(L_A)) // 弹 1 word（i32 形态）
@@ -780,9 +987,25 @@ fn push_ret_expand(
   op : @opcode.OpCode,
   br_depth : Int32,
   spill_h : Int32,
+  ret_kind : WValKind,
 ) -> Unit {
   if op is Ret {
-    body.push(WGlobalSet(G_RV))
+    // 批 4b-4 宽返回分派：f64 经 L_TF 暂存 + i64.reinterpret 过桥存
+    // G_RV_W；i64 经 L_T64；i32/f32 主通道 G_RV 直存
+    match ret_kind {
+      VkF64 => {
+        body.push(WLocalSet(L_TF))
+        body.push(WLocalGet(L_TF))
+        body.push(WI64ReinterpretF64)
+        body.push(WGlobalSet(G_RV_W))
+      }
+      VkI64 => {
+        body.push(WLocalSet(L_T64))
+        body.push(WLocalGet(L_T64))
+        body.push(WGlobalSet(G_RV_W))
+      }
+      VkWordI32 => body.push(WGlobalSet(G_RV))
+    }
   }
   // return_ip @ FB-12
   body.push(WGlobalGet(G_FB))

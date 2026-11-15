@@ -481,6 +481,22 @@ fn EffectSim::sim_step(
       self.stack.push(WT_I64)
       Ok(())
     }
+    // 批 4b-4 宽返回通道三条（位模式互转——同宽单目：pop 一型 push 对型）
+    WF64ReinterpretI64 => {
+      self.sim_pop(WT_I64, at)
+      self.stack.push(WT_F64)
+      Ok(())
+    }
+    WI32ReinterpretF32 => {
+      self.sim_pop(WT_F32, at)
+      self.stack.push(WT_I32)
+      Ok(())
+    }
+    WF32ReinterpretI32 => {
+      self.sim_pop(WT_I32, at)
+      self.stack.push(WT_F32)
+      Ok(())
+    }
     // ── 批量内存（栈 [dst, src, n] / [dst, val, n] → 空）──
     WMemoryCopy => {
       self.sim_pop(WT_I32, at)

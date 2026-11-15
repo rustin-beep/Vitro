@@ -4,13 +4,20 @@
 /// build_wasm_product`（组表 + 单函数体字节）+ `@wasmenc.
 /// verify_fold_with_table`（组表引导裁决装载核对——产物闸的机检核心），
 /// JSONL 逐行 stdout（产物闸 `scripts/wasmenc_emitgate` 消费）。
+/// 批 4b-2（2026-11-15）：成功行追加 `dispatch` 段——`@vm.
+/// build_dispatch_product`（全程序投影 + dispatch-loop 组装：可执行
+/// 载体模块/data 铺设 hex + 装载协议元数据；argv[0] 真值精化=path 同
+/// 串），对拍闸 `scripts/wasmenc_dispatchdiff` 的 V8/wasmtime 胶水消费；
+/// 旧消费面（emitgate 判定字段）零扰动。
 ///
 /// 用法：moon run cmd/dump_wasm -- <corpus_dir|file.c>
 ///
 /// 每输入一行：
-/// - 成功：{"file":"x.c","ok":true,"groups":N,"bytes":M,"verify":"ok","hex":"...","module":"..."}
+/// - 成功：{"file":"x.c","ok":true,"groups":N,"bytes":M,"verify":"ok","hex":"...","module":"...","dispatch":{...}}
 ///   （hex = 指令区字节；module = 垫收证人模块字节——批 2a 起 node 侧
-///   wabt `m.validate()` **内容级**真验证消费；组表数字段供统计）
+///   wabt `m.validate()` **内容级**真验证消费；组表数字段供统计；
+///   dispatch = 批 4b-2 可执行载体：{ok,module,data,base,entry,groups,
+///   host_calls,max_steps} 或 {ok:false,reason}——禁译面单行理由归闸登记）
 /// - 编译失败：{"file":"x.c","ok":false,"stage":"lex|parse|type|gen","errors":[...]}
 ///   （与 dump_compile 的 stage 口径同构——编译失败面不是本闸验收对象，
 ///   由 codegen_diff 既有防线管）
@@ -63,14 +70,15 @@ fn main raise {
       collect_files(dir_of(path), v)
       @lexer.tokenize_with_vfs(src, files=v, base_dir=dir_of(path))
     }
-    println(dump_one(name, lexed))
+    println(dump_one(path, name, lexed))
   }
 }
 
 ///|
 /// 单输入 dump：管线逐层 fail loud——stage 标注失败层（编译失败面不是
-/// 本闸验收对象，emit/verify 两 stage 才是）。
-fn dump_one(name : String, lexed : @lexer.LexResult) -> String {
+/// 本闸验收对象，emit/verify 两 stage 才是）。`path` = 输入完整路径
+/// （dispatch 载体的 argv[0] 真值——与引擎臂 cmd/run 同串跑才逐位对齐）。
+fn dump_one(path : String, name : String, lexed : @lexer.LexResult) -> String {
   if !lexed.errors.is_empty() {
     return fail_json(
       name,
@@ -102,7 +110,7 @@ fn dump_one(name : String, lexed : @lexer.LexResult) -> String {
   }
   let (output, gen_errors) = @codegen.compile(typed)
   match output {
-    Some(o) => emit_json(name, o)
+    Some(o) => emit_json(path, name, o)
     None =>
       // #223：gen_errors 结构化（GenError）——join 消费面取 message 域
       fail_json(name, "gen", gen_errors.map(fn(e) { e.message }).join("\n"))
@@ -110,11 +118,18 @@ fn dump_one(name : String, lexed : @lexer.LexResult) -> String {
 }
 
 ///|
-/// 发射 + 装载核对 + 垫收组装 → JSON 行（成功/emit/verify/assemble 四态）。
-/// `module` = 垫收证人模块字节 hex（批 2a：组独立 block + 效应垫收 + 段
-/// 拼装——emitgate 消费过 `wasm-validate` **内容级**真验证；批 1c 的
-/// `hex` 指令区直塞壳只过解码级，审阅 P1-2 的升级件）。
-fn emit_json(name : String, o : @bytecode.CompileOutput) -> String {
+/// 发射 + 装载核对 + 垫收组装 + dispatch 载体产物 → JSON 行（成功行五段
+/// /emit/verify/assemble 四态）。`module` = 垫收证人模块字节 hex（批 2a：
+/// 组独立 block + 效应垫收 + 段拼装——emitgate 消费过 `wasm-validate`
+/// **内容级**真验证；批 1c 的 `hex` 指令区直塞壳只过解码级，审阅 P1-2
+/// 的升级件）。`dispatch` = 批 4b-2 可执行载体（vm 投影层 + wasmenc
+/// dispatch-loop 组装——dispatchdiff 胶水/对拍闸消费；禁译面 ok:false
+/// reason 单行，fail loud 归闸登记不静默）。
+fn emit_json(
+  path : String,
+  name : String,
+  o : @bytecode.CompileOutput,
+) -> String {
   let ctx = @bytecode.wasm_emit_ctx(o)
   match @bytecode.build_wasm_product(o) {
     Ok(p) =>
@@ -135,7 +150,9 @@ fn emit_json(name : String, o : @bytecode.CompileOutput) -> String {
               buf.write_string(hex_bytes(p.bytes))
               buf.write_string("\",\"module\":\"")
               buf.write_string(hex_bytes(mod_bytes))
-              buf.write_string("\"}")
+              buf.write_string("\",\"dispatch\":")
+              buf.write_string(dispatch_json(path, o))
+              buf.write_string("}")
               buf.to_string()
             }
             Err(e) => {
@@ -150,6 +167,38 @@ fn emit_json(name : String, o : @bytecode.CompileOutput) -> String {
       }
     Err(@bytecode.EmitFailed(gip, op_name, reason)) =>
       "{\"file\":\{@ast.json_escape_string(name)},\"ok\":false,\"stage\":\"emit\",\"gip\":\{gip},\"op\":\{@ast.json_escape_string(op_name)},\"reason\":\{@ast.json_escape_string(reason)}}"
+  }
+}
+
+///|
+/// dispatch 载体产物段（批 4b-2）：vm 投影层 + dispatch-loop 组装一体——
+/// 成功携模块/data hex 与装载协议元数据（胶水实例化消费）；禁译/组装失败
+/// `ok:false` + reason 单行（对拍闸按 reason 分类登记 skip 面，不静默）。
+/// `max_steps` 钉 10,000,000（引擎臂 cmd/run 默认同值——对拍臂预算判定
+/// 须同源；升参需求随 host 回接批评估）。
+fn dispatch_json(path : String, o : @bytecode.CompileOutput) -> String {
+  match @vm.build_dispatch_product(o, 10000000, argv0=path) {
+    Ok(p) => {
+      let buf = StringBuilder()
+      buf.write_string("{\"ok\":true,\"module\":\"")
+      buf.write_string(hex_bytes(p.module))
+      buf.write_string("\",\"data\":\"")
+      buf.write_string(hex_bytes(p.data_blob))
+      buf.write_string("\",\"base\":")
+      buf.write_string(p.data_base.to_string())
+      buf.write_string(",\"entry\":")
+      buf.write_string(p.entry_ip.to_string())
+      buf.write_string(",\"groups\":")
+      buf.write_string(p.group_count.to_string())
+      buf.write_string(",\"host_calls\":")
+      buf.write_string(p.host_calls.to_string())
+      buf.write_string(",\"max_steps\":")
+      buf.write_string(p.max_steps.to_string())
+      buf.write_string("}")
+      buf.to_string()
+    }
+    Err(reason) =>
+      "{\"ok\":false,\"reason\":\{@ast.json_escape_string(reason)}}"
   }
 }
 

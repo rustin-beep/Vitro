@@ -113,6 +113,7 @@ pub(all) struct FuncMeta {
   mut param_count : Int32
   mut local_count : Int32
   mut param_sizes : Array[Int32]
+  mut param_types : Array[@ast.Type]
   return_type : @ast.Type
   mut is_variadic : Bool
   local_buffers : Array[LocalBuffer]

@@ -21,12 +21,16 @@ fn BytecodeGen::enter_function(
   self.next_local_offset = 0
   let mut offset = 0
   let param_sizes : Array[Int32] = []
+  // param_types 与 param_sizes 同游标同步（批 4b-4——dispatch Call 展开
+  // 的按值分派源；隐参 __ret_ptr = int 指针）
+  let param_types : Array[@ast.Type] = []
   let returns_struct = match self.func_table.get(name) {
     Some(m) => m.return_type.kind() is TK_Struct
     None => false
   }
   if returns_struct {
     param_sizes.push(1)
+    param_types.push(@ast.Type::pointer_to(@ast.Type::int()))
     self.local_indices.set("__ret_ptr", offset)
     self.local_types.set("__ret_ptr", @ast.Type::pointer_to(@ast.Type::int()))
     offset += 4
@@ -36,6 +40,7 @@ fn BytecodeGen::enter_function(
     let aligned_sz = if sz % 4 == 0 { sz } else { sz + 4 - sz % 4 }
     let words = (sz + 3) / 4
     param_sizes.push(words)
+    param_types.push(p.ty)
     self.local_indices.set(p.name, offset)
     self.local_types.set(p.name, p.ty)
     self.sym_index.set(p.name, self.symbols.length())
@@ -70,6 +75,7 @@ fn BytecodeGen::enter_function(
   match self.func_table.get(name) {
     Some(meta) => {
       meta.param_sizes = param_sizes
+      meta.param_types = param_types
       meta.is_variadic = is_variadic
       ()
     }

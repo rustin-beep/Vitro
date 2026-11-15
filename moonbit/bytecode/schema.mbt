@@ -41,6 +41,16 @@ pub(all) struct FuncMeta {
   mut param_count : Int32
   mut local_count : Int32
   mut param_sizes : Array[Int32]
+  /// 参数类型表（含 codegen 隐参——returns_struct 的 `__ret_ptr` 首位；
+  /// **REHOST 批 4b-4（2026-11-15）：dispatch 载体 Call 展开的按值分派源**
+  /// ——param_sizes 只有 word 数（i64 与 f64 同 2 word 分不出来），真执行
+  /// 路径的参数搬运须按 wasm 栈值类型（i32/i64/f32/f64）弹存。用户函数
+  /// 由 codegen enter_function 逐参填（与 param_sizes 同游标）；libc 侧
+  /// 扁平产物不含类型留空（空表 + word>1 保守禁译——实测 libc 数学函数
+  /// 走 CallHost 路由，wide-param 18 例全在用户段 1089-1141）。**不进
+  /// canonical dump**（emitter 字段白名单手写——codegen_diff golden
+  /// 零扰动）。
+  mut param_types : Array[@ast.Type]
   /// 函数返回类型（codegen 使用；session/vm 中保持默认 Void 即可）。
   return_type : @ast.Type
   /// 是否为变参函数。

@@ -1,5 +1,100 @@
 ## [Unreleased]
 
+### feat(bytecode+codegen+vm+wasmenc): REHOST 批 4b-4——wide-param 禁译撤除（误判定谳）+ 参数搬运弹序勘正 + 宽返回双通道（2026-11-15）
+
+- **wide-param 禁译撤除（4b-1 误判定谳）**：PR #520 审阅 P2-1 的「word/
+  value 口径混用」判断不成立——codegen call.mbt 亲读：i64/double 实参
+  经 **SplitD/SplitQ 拆双 word 压栈**（低/高各一 i32——wasm 栈同形），
+  do_call_inner 弹写也是 word 流——**逐 word i32 搬运全域正确**（摸底
+  18 例 wide-param 全因此假禁译；全在用户函数段 1089-1141，libc 数学
+  函数走 CallHost 路由）。
+- **参数搬运弹序勘正（错位实锤）**：原「逆序先弹（最后参先）」与
+  do_call_inner（**声明序**逐参、参内高 word 先弹）及压栈序（右→左、
+  左参在顶）错位——t3 减法探针 `sub2(7,3)` V8 rc=-4 vs 引擎 4 实锤
+  （**加法交换律长期掩盖**：t1 加法例全绿假象）。修为声明序 + J9 锚
+  `dispatch_call_param_order`（逆序形态证红在案）。
+- **宽返回双通道**：G_RV 是 i32 槽（#520 P1-a 定形）装不下 f64/i64
+  返回值——dsum 例 V8 编译红实锤（wide-param 禁译曾掩盖）。新增
+  **G_RV_W（globals 第 8 槽，i64）**位模式过桥通道：f64 经 L_TF 暂存
+  + i64.reinterpret 存、返回点 G_RV_W + f64.reinterpret 回域；i64 经
+  L_T64 直存；f32 经 i32.reinterpret_f32/f32.reinterpret_i32 过桥
+  （wasmcode +4 指令 0xBF/0xBC/0xBE + 0xBD 既有；effect 穷尽臂连坐）。
+  **ret_kinds**（PR #526 审阅 P1-1 重设计为**值生产者定型**——逐 Ret
+  按前一组 op 分派，隐式尾恒 i32〔mret/dno 探针实证〕；原段扫描「遇
+  Ret 关段」致多返回点第 2 个 Ret 失归属组装非法 wasm）。原段扫描形态：函数头切段 +
+  **遇 Ret 关段**（wrapper 段〔Call main; Ret〕无头不落段——t2 二次
+  实错：`<=` 推进把关掉的段追回致隐式尾 Ret 误标 VkF64）+ **紧邻
+  Call 的 Ret 特判**（wrapper 形态 → kind = 被调函数返回形态）。
+- **param_types 类型表贯通**（FuncMeta 增量字段——**不进 canonical
+  dump**，emitter 字段白名单手写，codegen_diff golden 577/577 零漂移
+  实证）：codegen enter_function 逐参填（与 param_sizes 同游标、含
+  __ret_ptr 隐参）；libc 扁平产物留空（return_type 同为装载兜底
+  Void——libc 非 void 返回值面全语料零 live 命中，登记边界）。
+  CallSiteMeta 增 param_kinds（f32 单值例外分派）+ ret_kind。
+- **验证**：t2（`dsum(7.5,2.5)` 宽参+宽返回）/t3（减法弹序）双探针
+  三方全对齐（V8 rc/steps ↔ 引擎）；九目录 dispatchdiff **22 例 0 红**
+  （禁译桶迁移连坐 baseline：wide-param 18 例解锁后全含 CallHost 迁入
+  callhost 桶——unsupported 26→8 / callhost 871→889）；wasmenc 54/54
+  （+2 锚）；裸 **1497/1497** + native **1573/1573**（+2 双域；PR #526 审阅 P2-3 勘正：1482/1558 系换基前旧值——合并基 c8c0a14a 实跑真值）三文档
+  连坐；emitgate 919/0 红（schema 增量零扰动）；surface +5 边
+  （vm→wasmenc WValKind 族）+ G_RV_W 白名单。
+
+### feat(wasmenc+vm+cmd+scripts+ci): REHOST 批 4b-2/4b-3——node 宿主胶水 + 零 host 首例实跑 + V8/wasmtime/引擎三方对拍闸 + 禁译覆盖率入 facts（2026-11-15）
+
+- **dump_wasm dispatch 出口**（批 4b-2）：成功行追加 `dispatch` 段——
+  `@vm.build_dispatch_product`（全程序投影 + dispatch-loop 组装：模块
+  hex + data 铺设 hex + base/entry/groups/host_calls/max_steps 元数据），
+  `scripts/wasmenc_dispatchdiff` 胶水/对拍闸消费；禁译面 `ok:false` +
+  reason 单行（fail loud 归闸登记不静默）；旧消费面（emitgate 判定
+  字段）零扰动。moon.pkg 补 `vitro/engine/vm` import（cmd 豁免方向）；
+  surface 边表 +1 边（dump_wasm→vm build_dispatch_product——白名单
+  条目随消费撤除）。
+- **dispatch 真执行面三处缺陷修复（零 host 首例实跑暴露）**：
+  ① **globals 基址漏加**——globals_init_32/64 的 pair.0 是相对
+  GLOBAL_START 偏移（VM set_globals_* 与 LoadGlobal 模板 OpBase(0x1000)
+  同口径），投影曾直接当绝对地址（data 落 0x400 而模板读 0x1400）——
+  e2_guarded_mutual 例 V8 return_value 0 vs 引擎 8 实锤；② **StepEvent
+  双计步**——块首批量步锚（steps+=块长）与模板 steps+=1 四条序列重复
+  计数（V8 steps=11 vs 引擎 9，差值=块内 StepEvent 数）——dispatch 形态
+  零发射（计步由块锚单源）；③ **Memset value 暂存域错配**——模板 L_T64
+  i64 过桥在真实发射序与 i32 生产者（C memset 第二参 int）错配，dispatch
+  拼接「local.set i64 槽吃 i32」类型炸（V8/wabt 编译红，零 host 摸底
+  3/9 例）——dispatch 独立展开（L_A i32 槽直存，语义逐条同模板；往返
+  模板字节锁死不动）。J9 双证红在案（锚先红后绿：`dispatch_step_event_
+  zero_emission` / `dispatch_memset_i32_staging`——wasmenc 52/52）。
+- **argv 真值精化**（设计单批 4「近似升真值」项）：`build_dispatch_
+  input/product` 加 `argv0~` 具名参数——argc=1 + argv_addr 按 R1 ③
+  footprint 布局（GLOBAL_REGION_LIMIT 向下）+ ctx 槽真值 + argv 区字节
+  铺设进 data 写集（@utf8.encode 单源——write_cstring_utf8 同口径）；
+  引擎臂 cmd/run 恒以完整文件路径作 argv[0]，对拍闸同串调用。
+- **CallHost 禁译定谳**：块图高度分歧大宗（摸底 221/919 例
+  BadReturnPoint 神秘红）根因 = CallHost 模板不消费 vitro 栈参数（微缩
+  域由垫收器供给；dispatch 真执行参数滞留 wasm 栈 → 前驱会合高分歧）。
+  参数消费序列 = H2 宿主回接协议组成件归 host 回接批——投影层显式
+  NotSupported（禁译理由清晰化），零 host 子集零影响。
+- **wasmtime 第三证人**（rs 胶水 `dispatch` 子命令）：MVP dispatch 模块
+  批跑（`wasmtime_arm dispatch <cases.tsv> <out.tsv>`——零 JSON 依赖
+  保持单依赖锁定；host 桩计数 / data 铺设 / main() / steps 导出）。
+- **三方对拍闸 `scripts/wasmenc_dispatchdiff`**（.mts 四件套）：零禁译
+  子集（dispatch ok + host_calls=0）三臂逐位对拍——V8（进程内
+  WebAssembly）vs wasmtime（批模式）vs 引擎（cmd/run --json）的
+  rc+steps+stdout；trap/预算例终态类别判定（V8 -1 ↔ 引擎 E3091 归一；
+  steps 豁免——块批量计步 overshoot ≤1 块已知分叉）；host 桩被调即红
+  （静态计数与运行态互证）；**memory 不入锚**（VFS 预置写集
+  〔gateway 会话语义 0x10000 区〕与软件栈 12B 帧头内嵌两类装载差异
+  ——批 5 host 回接后评估，摸底归因在案）；禁译面 reason 分桶 baseline
+  钉住（callhost/unsupported/other——other>0 即红须归因）；coverage.json
+  仅全量默认目录集落盘（部分 --dir 跑覆盖全量真值的实锤修）。基线：
+  9 目录 = **对拍 22 例 0 红** + callhost 871 + unsupported 26 + 编译期
+  42（2026-11-15 摸底真值）。
+- **禁译覆盖率入 facts**（设计单批 4′ 验收面④）：`rehost_dispatch_
+  dualrun/skip_callhost/skip_unsupported` 三键静态采集（coverage.json
+  真源——dispatchdiff 全量跑 ~1 分钟不进 facts --run 关键路径）。
+- 连坐：CI bookkeeping slice 接 dispatchdiff 步（dump_wasm + run 构建
+  前置 + rs cargo build + npm ci）；测试数 1478→1480 / native 1554→1556
+  （+2 = wasmenc dispatch 形态两锚 js/native 双域）三文档；ci_checklist
+  活行 73 自动收编。
+
 ### docs: 全库文档对账第九轮——0.9.1 后双主线回灌 + 防线册对 ci.yml 亲证 + 状态权威补漏（2026-11-15）
 
 - **基准与真值**：origin/master `09c42963`（worktree `docs-master-sync`，基云端最新 master）；facts 亲采（含 serve.exe 前置构建）= 1463〔裸 `moon test`〕/ 1539〔native 全量〕/ 警告 98 / lexer 1640 / parser 818 / 语料 578+81+138+23 / 引擎 0.9.1；`facts --strict check` 漂移 0 / 待采集 0 / 坏引用 0（改后复跑同绿）。**合并 #520（`59dfe2d1`，批 4a/4b-1）后真值重采**：1478 / 1554 / 警告 112（dispatch-loop 批中间态 +14，warning 台账随 #520 连坐）——本批现值句已按新基线刷新，设计单 §3.2 冲突融合（采 #520 新批次序为基底 + 批 3 已落回灌并入）。
@@ -62,6 +157,7 @@
   （33/35——B9/F6 为本地手册资产缺失面，CI 上轮绿）。
 - 验收：ta 82 模板双向一致 / moon test 1475 / facts --strict 漂移 0 /
   mcp_smoke 18 / demo_smoke 197 / course_catalog 8 课对账全绿。
+
 
 ### fix(scripts+vm+ci+docs): PR #518 审阅处置——P2×2 + P3×6 全收口（2026-11-14）
 

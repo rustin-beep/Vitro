@@ -635,8 +635,18 @@ fn json_escape(s: &str) -> String {
 
 fn main() -> wasmtime::Result<()> {
     let args: Vec<String> = std::env::args().collect();
+    // REHOST 批 4b-3（2026-11-15）：dispatch 子命令——用户载体（MVP
+    // dispatch-loop 模块）批跑第三证人。用法：
+    //   wasmtime_arm dispatch <cases.tsv> <out.tsv>
+    // cases 行格式（dispatchdiff .mts 产）：`<module_hex> <data_hex> <base> <max_steps>`
+    // out 行：`ok <rc> <steps>` / `trap <steps> <msg..>` / `host <steps>`。
+    // 零 JSON 依赖（wasmtime_arm 保持单依赖锁定——wasmtime only）。
+    if args.len() == 4 && args[1] == "dispatch" {
+        return dispatch_run(&args[2], &args[3]);
+    }
     if args.len() != 4 {
         eprintln!("usage: wasmtime_arm <wasm.wasm> <requests.ndjson> <responses.ndjson>");
+        eprintln!("       wasmtime_arm dispatch <cases.tsv> <out.tsv>   (REHOST dispatch 第三证人)");
         std::process::exit(2);
     }
     // wasmtime 约束：max_wasm_stack 必须小于宿主线程栈（否则 guard page 探测
@@ -818,5 +828,107 @@ fn run(args: &[String]) -> wasmtime::Result<()> {
             .collect();
         eprintln!("[wasmtime_arm] host-calls total={total} {}", parts.join(" "));
     }
+    Ok(())
+}
+
+// ══ REHOST 批 4b-3：dispatch 载体第三证人 ═════════════════════════════════
+// 用户载体（MVP dispatch-loop 模块：import env.vitro_host_call + export
+// main/memory/steps）批跑——与 V8 臂（dispatchdiff .mts 内 WebAssembly）
+// 同判定形态：data 铺设 → main() → 读 steps；host 桩被调即该例标 host
+// （零 host 子集的运行期双保险——与静态 host_calls 计数互证）。
+
+use std::sync::atomic::AtomicI32;
+
+static DISPATCH_HOST_USED: AtomicI32 = AtomicI32::new(0);
+
+fn unhex(s: &str) -> wasmtime::Result<Vec<u8>> {
+    let b = s.as_bytes();
+    if b.len() % 2 != 0 {
+        wasmtime::bail!("hex 长度非偶: {}", b.len());
+    }
+    let mut out = Vec::with_capacity(b.len() / 2);
+    for pair in b.chunks(2) {
+        let hi = match (pair[0] as char).to_digit(16) {
+            Some(v) => v,
+            None => wasmtime::bail!("hex 非法字符: {}", pair[0] as char),
+        };
+        let lo = match (pair[1] as char).to_digit(16) {
+            Some(v) => v,
+            None => wasmtime::bail!("hex 非法字符: {}", pair[1] as char),
+        };
+        out.push(((hi << 4) | lo) as u8);
+    }
+    Ok(out)
+}
+
+fn dispatch_run(cases_path: &str, out_path: &str) -> wasmtime::Result<()> {
+    // MVP 模块（无 wasm-gc/js-string 面）——默认 Engine 配置即可
+    let engine = Engine::default();
+    let input = std::io::BufReader::new(std::fs::File::open(cases_path)?);
+    let mut out = BufWriter::new(std::fs::File::create(out_path)?);
+    for (idx, line) in input.lines().enumerate() {
+        let line = line?;
+        let parts: Vec<&str> = line.split(' ').collect();
+        if parts.len() != 4 {
+            wasmtime::bail!("case {} 字段数 {} ≠ 4（格式: module_hex data_hex base max_steps）", idx, parts.len());
+        }
+        let module_bytes = unhex(parts[0])?;
+        let data = unhex(parts[1])?;
+        let base: u32 = parts[2].parse().map_err(|e| wasmtime::Error::from(e))?;
+        // PR #526 审阅 P2-4：逐例 catch 编译失败（单例非法 wasm 输出 bad 行
+        // 继续批——原 `?` 中止整批且报错无例名，审阅定位 P1 需人工二分）
+        let module = match Module::new(&engine, &module_bytes) {
+            Ok(m) => m,
+            Err(e) => {
+                let msg = e.to_string().chars().map(|c| if c.is_whitespace() { ' ' } else { c }).collect::<String>();
+                writeln!(out, "bad {msg}")?;
+                continue;
+            }
+        };
+        let mut store = Store::new(&engine, GcProbe::default());
+        // host 桩：被调即计数（零 host 子集判定——返回 0 保持无害）
+        let host = Func::wrap(&mut store, |_a: i32, _b: i32| -> i64 {
+            DISPATCH_HOST_USED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            0
+        });
+        let mut linker = Linker::new(&engine);
+        linker.define(&mut store, "env", "vitro_host_call", host)?;
+        let instance = linker.instantiate(&mut store, &module)?;
+        let mem = match instance.get_memory(&mut store, "memory") {
+            Some(m) => m,
+            None => wasmtime::bail!("export memory 缺失"),
+        };
+        if !data.is_empty() {
+            mem.write(&mut store, base as usize, &data)?;
+        }
+        let main_f = match instance.get_func(&mut store, "main") {
+            Some(f) => f,
+            None => wasmtime::bail!("export main 缺失"),
+        };
+        DISPATCH_HOST_USED.store(0, std::sync::atomic::Ordering::Relaxed);
+        let mut results = [Val::I32(0)];
+        let run_res = main_f.call(&mut store, &[], &mut results);
+        let host_used = DISPATCH_HOST_USED.load(std::sync::atomic::Ordering::Relaxed);
+        let steps = match instance.get_global(&mut store, "steps") {
+            Some(g) => g.get(&mut store).i32().unwrap_or(0),
+            None => wasmtime::bail!("export steps 缺失"),
+        };
+        if host_used > 0 {
+            writeln!(out, "host {steps}")?;
+            continue;
+        }
+        match run_res {
+            Ok(_) => {
+                let rc = results[0].i32().unwrap_or(0);
+                writeln!(out, "ok {rc} {steps}")?;
+            }
+            Err(e) => {
+                // trap 文本压缩到单行（dispatchdiff 只作「trap 发生」判定面）
+                let msg = e.to_string().replace(['\n', '\r', '\t'], " ");
+                writeln!(out, "trap {steps} {msg}")?;
+            }
+        }
+    }
+    out.flush()?;
     Ok(())
 }

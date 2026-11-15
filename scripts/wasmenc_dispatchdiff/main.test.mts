@@ -56,4 +56,22 @@ test("parseWasmtimeLine：ok/trap/host 三形态 + 非法行 null", () => {
   assert.deepEqual(parseWasmtimeLine("host 3"), { kind: "host", steps: 3 });
   assert.equal(parseWasmtimeLine("garbage"), null);
   assert.equal(parseWasmtimeLine(""), null);
+  // bad 行（PR #526 审阅 P2-4——逐例 catch 形态，steps=-1 哨兵 + badCompile）
+  const bad = parseWasmtimeLine("bad Invalid input WebAssembly code at offset 561");
+  assert.ok(bad !== null);
+  assert.equal(bad.kind, "trap");
+  assert.equal(bad.steps, -1);
+  assert.match(bad.badCompile ?? "", /offset 561/);
+});
+
+test("judgeCase：合法返回 -1 走 finished 对拍不误报（P2-1——预算归一与 E3091 绑定）", () => {
+  // 引擎 finished rv=-1 + 双 runtime ok -1 = 合法返回值，非预算态
+  assert.equal(judgeCase("ret_minus1.c", arm("ok", -1), arm("ok", -1), eng("finished", -1, 9)), null);
+  // 引擎预算 E3091 + 双 runtime ok -1 = 预算归一态（绿）
+  assert.equal(judgeCase("b.c", arm("ok", -1), arm("ok", -1), eng("trap", 0, 10000001, "E3091")), null);
+  // 引擎预算但 V8 正常返回 0 = 真终态分叉（红——保留检出力）
+  assert.match(
+    judgeCase("c.c", arm("ok", 0), arm("ok", 0), eng("trap", 0, 10000001, "E3091"))!,
+    /终态类别分叉/,
+  );
 });

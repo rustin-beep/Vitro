@@ -19,7 +19,9 @@
   + i64.reinterpret 存、返回点 G_RV_W + f64.reinterpret 回域；i64 经
   L_T64 直存；f32 经 i32.reinterpret_f32/f32.reinterpret_i32 过桥
   （wasmcode +4 指令 0xBF/0xBC/0xBE + 0xBD 既有；effect 穷尽臂连坐）。
-  **ret_kinds 段扫描**（Ret 组按所属函数返回类型分派）：函数头切段 +
+  **ret_kinds**（PR #526 审阅 P1-1 重设计为**值生产者定型**——逐 Ret
+  按前一组 op 分派，隐式尾恒 i32〔mret/dno 探针实证〕；原段扫描「遇
+  Ret 关段」致多返回点第 2 个 Ret 失归属组装非法 wasm）。原段扫描形态：函数头切段 +
   **遇 Ret 关段**（wrapper 段〔Call main; Ret〕无头不落段——t2 二次
   实错：`<=` 推进把关掉的段追回致隐式尾 Ret 误标 VkF64）+ **紧邻
   Call 的 Ret 特判**（wrapper 形态 → kind = 被调函数返回形态）。
@@ -33,7 +35,7 @@
   三方全对齐（V8 rc/steps ↔ 引擎）；九目录 dispatchdiff **22 例 0 红**
   （禁译桶迁移连坐 baseline：wide-param 18 例解锁后全含 CallHost 迁入
   callhost 桶——unsupported 26→8 / callhost 871→889）；wasmenc 54/54
-  （+2 锚）；裸 **1482/1482** + native **1558/1558**（+2 双域）三文档
+  （+2 锚）；裸 **1497/1497** + native **1573/1573**（+2 双域；PR #526 审阅 P2-3 勘正：1482/1558 系换基前旧值——合并基 c8c0a14a 实跑真值）三文档
   连坐；emitgate 919/0 红（schema 增量零扰动）；surface +5 边
   （vm→wasmenc WValKind 族）+ G_RV_W 白名单。
 

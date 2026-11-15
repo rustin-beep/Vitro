@@ -64,6 +64,8 @@ export interface RuntimeArmResult {
   kind: "ok" | "trap" | "host";
   rc?: number;
   steps: number;
+  /// wasmtime 侧编译失败单行信息（bad 行——逐例 catch 形态）
+  badCompile?: string;
 }
 
 /// 引擎臂结果（cmd/run --json 的 run 帧 + stdout 帧）
@@ -87,10 +89,13 @@ export function judgeCase(
   if (v8.kind === "host" || wt.kind === "host") {
     return `${file}: host 桩被调（零 host 子集运行期违约——静态计数与运行态分叉）`;
   }
-  // ② trap/预算形态：三方「终态类别」一致（trap↔trap；预算例引擎 trap_code=E3091、
-  //    V8/wasmtime main()==-1 是「ok -1」形态——按 (trap || rc===-1) 归一）
-  const isTrapV8 = v8.kind === "trap" || (v8.kind === "ok" && v8.rc === -1);
-  const isTrapWt = wt.kind === "trap" || (wt.kind === "ok" && wt.rc === -1);
+  // ② trap/预算形态：三方「终态类别」一致。预算归一**与引擎 E3091 绑定**
+  //（PR #526 审阅 P2-1：合法 `main` 返回 -1 的零 host 例被无条件当预算态
+  // 误报「终态类别分叉」——`ret_minus1` 探针实锤；修后 eng finished
+  // rv=-1 的例走下方 finished 逐位对拍）
+  const budgetEng = eng.status === "trap" && eng.trapCode === "E3091";
+  const isTrapV8 = v8.kind === "trap" || (v8.kind === "ok" && v8.rc === -1 && budgetEng);
+  const isTrapWt = wt.kind === "trap" || (wt.kind === "ok" && wt.rc === -1 && budgetEng);
   const isTrapEng = eng.status === "trap";
   if (isTrapV8 || isTrapWt || isTrapEng) {
     // 三方须同类别（全部 trap/预算 归一态）
@@ -122,13 +127,17 @@ export function judgeCase(
   return null;
 }
 
-/// wasmtime 出口行（`ok <rc> <steps>` / `trap <steps> <msg..>` / `host <steps>`）
+/// wasmtime 出口行（`ok <rc> <steps>` / `trap <steps> <msg..>` / `host <steps>` /
+/// `bad <msg..>`〔编译失败——PR #526 审阅 P2-4 逐例 catch，不再中止整批〕）
 /// → RuntimeArmResult（纯函数——node:test 消费）
 export function parseWasmtimeLine(line: string): RuntimeArmResult | null {
   const sp = line.indexOf(" ");
   if (sp < 0) return null;
   const kind = line.slice(0, sp);
   const rest = line.slice(sp + 1);
+  if (kind === "bad") {
+    return { kind: "trap", steps: -1, badCompile: rest };
+  }
   if (kind === "host") {
     return { kind: "host", steps: Number(rest) };
   }
@@ -282,9 +291,16 @@ async function main(): Promise<number> {
     }
     const b: Bucket = { ok: 0, callhost: 0, unsupported: 0, other: 0, compile: 0 };
     for (const line of lines) {
-      const d = JSON.parse(line) as { file: string; ok: boolean; dispatch?: DispatchSeg };
+      const d = JSON.parse(line) as { file: string; ok: boolean; stage?: string; dispatch?: DispatchSeg };
+      // PR #526 审阅 P3：compile 桶只收编译期失败（lex/parse/type/gen）；
+      // emit/verify/assemble 失败已由 ok:false 整行红化，不混入 codegen_diff 域
       if (!d.ok) {
-        b.compile++;
+        if (d.stage !== undefined && ["lex", "parse", "type", "gen"].includes(d.stage)) {
+          b.compile++;
+        } else {
+          // 产物形态破损（dump 旧版行等）——按 other 计（fail loud 面）
+          b.other++;
+        }
         continue;
       }
       const disp = d.dispatch ?? { ok: false, reason: "dispatch 段缺失（dump_wasm 产物形态破损）" };
@@ -318,38 +334,60 @@ async function main(): Promise<number> {
     console.error(`wasmtime 出口行数 ${wtLines.length} ≠ 对拍例 ${pairCases.length}（批协议破裂）`);
     return 1;
   }
+  // 对拍例红与基线桶红**分账**（PR #526 审阅 P2-2：paired = 对拍一致例数，
+  // 曾把基线桶红计入致 coverage.paired 少报——审阅实验「抬 baseline.ok 9→10
+  // 跑一次 paired=21 实际 22 例全过」实锤）
   let red = 0;
+  let pairRed = 0;
   for (let i = 0; i < pairCases.length; i++) {
     const c = pairCases[i]!;
     const v8 = v8Arm(c.disp);
     if (v8 === null) {
       console.error(`RED ${c.file}: V8 编译失败（dispatch 产物非法 wasm——组装器缺陷面）`);
       red++;
+      pairRed++;
       continue;
     }
     const wt = parseWasmtimeLine(wtLines[i]!);
     if (wt === null) {
       console.error(`RED ${c.file}: wasmtime 出口行不可解析：${wtLines[i]}`);
       red++;
+      pairRed++;
+      continue;
+    }
+    if (wt.badCompile !== undefined) {
+      console.error(`RED ${c.file}: wasmtime 编译失败（dispatch 产物非法 wasm）：${wt.badCompile.slice(0, 120)}`);
+      red++;
+      pairRed++;
       continue;
     }
     const eng = engineArm(c.rel);
     if (eng === null) {
       console.error(`RED ${c.file}: 引擎臂失败（超时/帧形态）`);
       red++;
+      pairRed++;
       continue;
     }
     const verdict = judgeCase(c.file, v8, wt, eng);
     if (verdict !== null) {
       console.error(`RED ${verdict}`);
       red++;
+      pairRed++;
     }
   }
   // 基线对账（桶下限——下跌即红；增长不红）+ coverage 落盘
   const baseline = loadBaseline();
   for (const [label, b] of Object.entries(perDir)) {
     const base = baseline[label];
-    if (base === undefined) continue;
+    if (base === undefined) {
+      // PR #526 审阅 P3：默认全量目录集下无基线 = fail-open（新目录不设
+      // 下限即无守护）——红化登记义务；--dir 显式传入的调试目录豁免
+      if (dirs.length === 0) {
+        console.error(`RED ${label}: 无基线条目（默认目录集新目录须连坐 baseline.json——fail-open 防线）`);
+        red++;
+      }
+      continue;
+    }
     for (const k of ["ok", "callhost", "unsupported", "other"] as const) {
       if (base[k] !== undefined && b[k] < base[k]) {
         console.error(`RED ${label}: 桶 ${k} ${b[k]} < 基线 ${base[k]}（覆盖面退化或桶迁移未连坐 baseline）`);
@@ -374,7 +412,7 @@ async function main(): Promise<number> {
     fs.writeFileSync(
       path.join(scriptDir, "coverage.json"),
       JSON.stringify(
-        { as_of: new Date().toISOString().slice(0, 10), per_dir: perDir, totals, paired: pairCases.length - red, red },
+        { as_of: new Date().toISOString().slice(0, 10), per_dir: perDir, totals, paired: pairCases.length - pairRed, red },
         null,
         2,
       ) + "\n",

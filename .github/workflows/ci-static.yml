@@ -437,6 +437,13 @@ jobs:
           cd .. && cd scripts && npm ci --no-audit --no-fund
           cd .. && node scripts/wasmenc_rundiff/main.mts
 
+      - name: Cache cargo target (wasmtime_arm dispatch 跑器——PR #526 审阅 P3：windows 首编全量 wasmtime 分钟级)
+        if: always() && matrix.slice == 'bookkeeping'
+        uses: actions/cache@v4
+        with:
+          path: scripts/wasmtime_arm/rs/target
+          key: wasmtime-arm-${{ runner.os }}-${{ hashFiles('scripts/wasmtime_arm/rs/Cargo.lock') }}
+
       - name: wasmenc dispatchdiff (V8/wasmtime/engine triple-run crosscheck on dispatch carrier)
         if: always() && matrix.slice == 'bookkeeping'
         # REHOST 批 4b-3（2026-11-15）：三方对拍闸（设计单 §3.2 批 4′ 验收

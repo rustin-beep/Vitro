@@ -875,7 +875,16 @@ fn dispatch_run(cases_path: &str, out_path: &str) -> wasmtime::Result<()> {
         let module_bytes = unhex(parts[0])?;
         let data = unhex(parts[1])?;
         let base: u32 = parts[2].parse().map_err(|e| wasmtime::Error::from(e))?;
-        let module = Module::new(&engine, &module_bytes)?;
+        // PR #526 审阅 P2-4：逐例 catch 编译失败（单例非法 wasm 输出 bad 行
+        // 继续批——原 `?` 中止整批且报错无例名，审阅定位 P1 需人工二分）
+        let module = match Module::new(&engine, &module_bytes) {
+            Ok(m) => m,
+            Err(e) => {
+                let msg = e.to_string().chars().map(|c| if c.is_whitespace() { ' ' } else { c }).collect::<String>();
+                writeln!(out, "bad {msg}")?;
+                continue;
+            }
+        };
         let mut store = Store::new(&engine, GcProbe::default());
         // host 桩：被调即计数（零 host 子集判定——返回 0 保持无害）
         let host = Func::wrap(&mut store, |_a: i32, _b: i32| -> i64 {

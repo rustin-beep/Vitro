@@ -55,8 +55,11 @@ pub(all) struct DispatchProduct {
   data_blob : Array[Byte]
   /// data_blob 铺设基址（blob 首字节对应的全程序地址）
   data_base : Int32
-  /// CallHost 组数（静态计数——>0 即含 host 调用面，零 host 对拍子集
-  /// 的静态判据；4b 胶水遇 host 调用 skip 的登记口径）
+  /// CallHost 组数（静态计数）。**PR #526 审阅 P3 注记：当前恒 0 死字段**
+  ///——build_dispatch_input 遇 CallHost 直接 NotSupported（host 回接批
+  /// 前禁译），成功产物的本字段无判定力；保留为 host 回接批的产物面
+  /// 预留（届时禁译撤除后复权），dispatchdiff 的零 host 过滤恒真即此
+  /// 边界的体现。
   host_calls : Int32
   /// 步数预算（预算安全点常量——对拍臂预算判定须同值）
   max_steps : Int32
@@ -148,19 +151,13 @@ pub fn build_dispatch_input(
     // param_types 与 param_sizes 同长对齐（codegen enter_function 同游标
     // 填——含 __ret_ptr 隐参）；libc 扁平产物空表 → 全 @wasmenc.VkWordI32（libc
     // 内部 Call 同一 codegen 产拆双压形态，word 流正确）
-    let types_aligned = m.param_types.length() == m.param_sizes.length()
     for i = 0; i < m.param_sizes.length(); i = i + 1 {
       let w = m.param_sizes[i]
       param_words.push(w)
       arg_words = arg_words + w
-      let ty = if types_aligned { m.param_types[i] } else { @ast.Type::int() }
-      param_kinds.push(
-        if ty.kind() is TK_Float {
-          @wasmenc.VkF32
-        } else {
-          @wasmenc.VkWordI32
-        },
-      )
+      // f32 参数 word 流统一（PR #526 P1-2）——恒 VkWordI32；表保留为
+      // 「与 param_words 同长」的类型源位（未来 wide 域扩展预留）
+      param_kinds.push(@wasmenc.VkWordI32)
     }
     Ok({
       target_ip: target,
@@ -325,18 +322,11 @@ pub fn build_dispatch_input(
   // ── 函数入口 ip 集（live 域——块划分 leader 判定）+ 段头 meta 对
   //    （ret_kinds 段扫描的元数据源——批 4b-4）──
   let entry_ips : Array[Int32] = []
-  let meta_map_pairs : Array[(Int32, @bytecode.FuncMeta)] = []
   for sp in spans {
     let (fidx, s0, _) = sp
     if live_funcs.contains(fidx) {
       match remap.get(s0) {
-        Some(t) => {
-          entry_ips.push(t)
-          match meta_of.get(fidx) {
-            Some(m1) => meta_map_pairs.push((t, m1))
-            None => ()
-          }
-        }
+        Some(t) => entry_ips.push(t)
         None => ()
       }
     }
@@ -345,10 +335,7 @@ pub fn build_dispatch_input(
     guard output.func_index.get(name) is Some(idx) else { continue }
     guard output.func_table.get(name) is Some(m) else { continue }
     match remap.get(m.ip + libc_len) {
-      Some(t) => {
-        entry_ips.push(t)
-        meta_map_pairs.push((t, m))
-      }
+      Some(t) => entry_ips.push(t)
       None => ()
     }
   }
@@ -372,47 +359,31 @@ pub fn build_dispatch_input(
       (@bytecode.GLOBAL_REGION_LIMIT - fp).reinterpret_as_int()
     },
   }
-  // ── ret_kinds（批 4b-4 宽返回通道——Ret 组按所属函数的返回类型分派
-  //    G_RV/G_RV_W）：段扫描 = 函数头（升序）切全程序段，段内 Ret 组
-  //    → 该函数 return_type 映射。libc 段 return_type 扁平产物缺省
-  //    Void（装载兜底——libc 非 void 函数的返回值面全语料零 live 命中，
-  //    登记边界）──
-  let head_pairs : Array[(Int32, @bytecode.FuncMeta)] = []
-  for ip in entry_ips {
-    // 头 ip → meta（用户 names 表反查；live libc 段头在 spans 头 remap）
-    for pair in meta_map_pairs {
-      let (h, m1) = pair
-      if h == ip {
-        head_pairs.push((h, m1))
-        break
-      }
-    }
-  }
-  head_pairs.sort_by(fn(a, b) { a.0.compare(b.0) })
+  // ── ret_kinds（PR #526 审阅 P1-1 重设计：**值生产者定型**替代段状态机）──
+  //    段扫描两轮实错（关段致多返回点第 2 个 Ret 失归属〔审阅复现：
+  //    `double pick(int x){if(x>0) return 1.5; return 2.5;}` 组装非法
+  //    wasm〕；不关段则 wrapper 段误归最后函数）的根因 = **同一函数的
+  //    Ret 栈值类型本就不恒定**——隐式尾恒 `PushConst 0`（i32 域，哪怕
+  //    f64 函数——C 无尾 return 是 UB 域，codegen 恒发 int 0，dump 实证
+  //    mret/dno 探针）；显式 Ret 按返回表达式值域。正确语义 = 逐 Ret
+  //    按**前一组 op**（值生产者）定型：PushConstD 族 → f64、
+  //    PushConstQ 族 → i64、F 族算术 → f32、其余 → i32 word 流；
+  //    紧邻 Call 的 Ret（wrapper/直接转发形态）→ 被调函数 ret_kind。──
   let ret_kinds : Map[Int32, @wasmenc.WValKind] = Map([])
-  // seg = -1 无有效段：函数体以 Ret 收尾即**关段**（尾随 wrapper 段
-  // 〔Call main; Ret——无函数头〕不落任何段；t2 实错：wrapper 的 Ret
-  // 被误归最后函数段致 i32 值塞 f64 槽 V8 编译红）；**紧邻 Call 的
-  // Ret**（wrapper 形态）→ kind = 被调函数返回形态
-  let mut seg : Int32 = -1
   for gip = 0; gip < full_ops.length(); gip = gip + 1 {
-    // 切段仅当 gip 恰为函数头（<= 形态会在关段后把段追回——t2 二次
-    // 实错：gip8 隐式尾 Ret 被追回的 dsum 段误标 VkF64）
-    while seg + 1 < head_pairs.length() && head_pairs[seg + 1].0 == gip {
-      seg = seg + 1
-    }
-    if full_ops[gip] is Ret {
-      if gip > 0 && (full_ops[gip - 1] is Call || full_ops[gip - 1] is CallVar) {
+    if full_ops[gip] is Ret && gip > 0 {
+      let prev = full_ops[gip - 1]
+      if prev is Call || prev is CallVar {
         match call_sites.get(gip - 1) {
           Some(cm) => ret_kinds.set(gip, cm.ret_kind)
           None => ()
         }
-      } else if seg >= 0 {
-        let (_, m2) = head_pairs[seg]
-        if !(m2.return_type is Void(_)) {
-          ret_kinds.set(gip, ret_kind_of(m2.return_type))
+      } else {
+        let k = producer_val_kind(prev)
+        if k != @wasmenc.VkWordI32 {
+          ret_kinds.set(gip, k)
         }
-        seg = -1
+        // VkWordI32 = 主通道缺省（不入表——dispatchloop 侧缺省同值）
       }
     }
   }
@@ -582,8 +553,52 @@ pub fn build_dispatch_product(
 fn ret_kind_of(ty : @ast.Type) -> @wasmenc.WValKind {
   match ty.kind() {
     TK_Double => @wasmenc.VkF64
-    TK_Float => @wasmenc.VkF32
+    // TK_Float 归主通道（f32 word 流统一——PR #526 P1-2，无 VkF32 专值）
     TK_LongLong => @wasmenc.VkI64
+    _ => @wasmenc.VkWordI32
+  }
+}
+
+///|
+/// **值生产者定型**（PR #526 审阅 P1-1 重设计的核心件）：Ret 前一组
+/// op → wasm 栈值域。比段归属精确的根据：隐式尾恒 `PushConst 0`（i32
+/// 域——哪怕 f64 函数，codegen 恒发 int 0，mret/dno 探针 dump 实证）；
+/// 显式 Ret 按返回表达式值域。映射按模板真值域（比较族产 i32 bool、
+/// 算术/装载/常量/转换按目标型；CastQ2I/CastF2I 产 i32、Split 产拆后
+/// i32）——**Ret 紧邻可达的生产者**才是本表消费面（Call 族在调用方
+/// 特判，CallHost 已禁译不可达）。
+fn producer_val_kind(op : @opcode.OpCode) -> @wasmenc.WValKind {
+  match op {
+    // f64 域（常量/装载/转换/算术；D 比较族产 i32 bool 不在此）
+    PushConstD
+    | LoadLocalD
+    | LoadGlobalD
+    | LoadMemD
+    | CastF2D
+    | CastD2F
+    | CastI2D
+    | CastQ2D
+    | CastU2D
+    | CastUQ2D
+    | AddD
+    | SubD
+    | MulD
+    | DivD
+    | NegD => @wasmenc.VkF64
+    // i64 域（Q 族；CastD2UQ 产 u64 位模式 = i64 域；Q 比较族产 i32）
+    PushConstQ
+    | LoadLocalQ
+    | LoadGlobalQ
+    | LoadMemQ
+    | CastI2Q
+    | CastU2Q
+    | CastD2UQ
+    | AddQ
+    | SubQ
+    | MulQ => @wasmenc.VkI64
+    // 其余（i32/f32 全 word 流——**f32 经 PushConstF 臂 i32.reinterpret
+    // 入流**〔PR #526 P1-2〕、算术/比较/逻辑/装载/转换收窄/栈操作）→
+    // i32 word 流
     _ => @wasmenc.VkWordI32
   }
 }

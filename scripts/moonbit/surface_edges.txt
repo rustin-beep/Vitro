@@ -893,7 +893,6 @@ vitro/engine/vm vitro/engine/wasmenc DispatchInput
 vitro/engine/vm vitro/engine/wasmenc Emit
 vitro/engine/vm vitro/engine/wasmenc ExitStackNonEmpty
 vitro/engine/vm vitro/engine/wasmenc NotSupportedHeight
-vitro/engine/vm vitro/engine/wasmenc VkF32
 vitro/engine/vm vitro/engine/wasmenc VkF64
 vitro/engine/vm vitro/engine/wasmenc VkI64
 vitro/engine/vm vitro/engine/wasmenc VkWordI32

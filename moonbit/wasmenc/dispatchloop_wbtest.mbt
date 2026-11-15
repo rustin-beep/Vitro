@@ -385,3 +385,121 @@ test "dispatch_wide_ret_channel_f64" {
     msg="返回点 load f64 回域（G_RV_W→f64.reinterpret）",
   )
 }
+
+///|
+/// PR #526 审阅 P1-1 锚：多返回点宽返回——值生产者定型（ret_kinds 逐 Ret
+/// 按前一组 op 分派，隐式尾 `PushConst 0` 恒 i32 域）。修前段扫描「遇
+/// Ret 关段」致同函数第 2 个 Ret 失归属误走 i32 主通道（f64 值直存
+/// G_RV 组装非法 wasm——审阅 mret 探针复现）。断言：多 Ret 程序组装绿
+/// 且 **G_RV_W 的存取各恰一处**（单宽 Ret）——第 2 个显式 Ret（f64）与
+/// 隐式尾（i32）分走双通道。
+test "dispatch_multi_ret_wide_producer_typed" {
+  // main：Call pick; Pop; PushConst 0; Ret（紧邻 Call→pick 的 VkF64）
+  // pick（gip5 起）：PushConstD; Ret（显式 f64）+ PushConst 0; Ret（隐式 i32）
+  let sites : Map[Int32, CallSiteMeta] = Map([])
+  sites.set(0, {
+    target_ip: 4,
+    arg_words: 0,
+    frame_bytes: 8,
+    param_words: [],
+    param_kinds: [],
+    is_void: false,
+    ret_kind: VkF64,
+  })
+  let rk : Map[Int32, WValKind] = Map([])
+  rk.set(5, VkF64) // pick 显式 Ret（PushConstD 生产 → f64 通道）
+  let input : DispatchInput = {
+    ops: [Call, Pop, PushConst, Ret, PushConstD, Ret, PushConst, Ret],
+    operands: [4, 0, 0, 0, 0, 0, 0, 0],
+    func_entry_ips: [0, 4],
+    entry_ip: 0,
+    call_sites: sites,
+    ret_kinds: rk,
+    stack_start: 1048576,
+    call_depth_limit: 10000,
+    max_steps: 100000,
+    ctx: d4_ctx(),
+  }
+  let r = assemble_dispatch_body(input)
+  guard r is Ok(body) else {
+    fail("多 Ret 组装须绿（修前第 2 宽 Ret 类型炸）")
+  }
+  let mut w_sets = 0
+  let mut w_gets = 0
+  for w in body {
+    if w is WGlobalSet(G_RV_W) {
+      w_sets = w_sets + 1
+    }
+    if w is WGlobalGet(G_RV_W) {
+      w_gets = w_gets + 1
+    }
+  }
+  assert_eq(
+    w_sets,
+    1,
+    msg="G_RV_W 存恰 1（显式 f64 Ret；隐式尾走 i32 主通道）",
+  )
+  assert_eq(w_gets, 1, msg="G_RV_W load 恰 1（Call 返回点）")
+}
+
+///|
+/// PR #526 审阅 P1-2 锚：f32 word 流统一——PushConstF 产 i32 位模式入流
+/// （i32.reinterpret_f32 尾随）+ 二元 F 族的**暂存中转双入域**（顺序双
+/// 转换自吞缺陷：`conv;conv;op` 第二条 conv 吃第一条产物——f32p 探针
+/// 二次实锤）。断言：PushConstF 组的发射序列以 reinterpret 收尾、
+/// GtF 组含 L_TF32 暂存对。
+test "dispatch_f32_word_stream_unified" {
+  // GtF 组（前后值已在栈）：本臂只验发射形态——直接查 PushConstF 与 GtF 臂
+  let input : DispatchInput = {
+    ops: [PushConstF, Ret],
+    operands: [0, 0],
+    func_entry_ips: [0],
+    entry_ip: 0,
+    call_sites: Map([]),
+    ret_kinds: Map([]),
+    stack_start: 1048576,
+    call_depth_limit: 10000,
+    max_steps: 100000,
+    ctx: d4_ctx(),
+  }
+  let r = assemble_dispatch_body(input)
+  guard r is Ok(body) else { fail("组装须绿") }
+  let mut ends_with_reinterpret = false
+  for i = 0; i + 1 < body.length(); i = i + 1 {
+    if body[i] is WF32Const(_) && body[i + 1] is WI32ReinterpretF32 {
+      ends_with_reinterpret = true
+    }
+  }
+  assert_true(
+    ends_with_reinterpret,
+    msg="PushConstF 臂 i32.reinterpret_f32 收尾入流",
+  )
+  // GtF 双入域形态（构造 [值,值,GtF] 序列查 L_TF32 中转）
+  let input2 : DispatchInput = {
+    ops: [PushConstF, PushConstF, GtF, Ret],
+    operands: [0, 0, 0, 0],
+    func_entry_ips: [0],
+    entry_ip: 0,
+    call_sites: Map([]),
+    ret_kinds: Map([]),
+    stack_start: 1048576,
+    call_depth_limit: 10000,
+    max_steps: 100000,
+    ctx: d4_ctx(),
+  }
+  let r2 = assemble_dispatch_body(input2)
+  guard r2 is Ok(body2) else { fail("GtF 组装须绿") }
+  let mut staged = false
+  for i = 0; i + 3 < body2.length(); i = i + 1 {
+    if body2[i] is WF32ReinterpretI32 &&
+      body2[i + 1] is WLocalSet(L_TF32) &&
+      body2[i + 2] is WF32ReinterpretI32 &&
+      body2[i + 3] is WLocalGet(L_TF32) {
+      staged = true
+    }
+  }
+  assert_true(
+    staged,
+    msg="二元 F 族暂存中转双入域（conv→set→conv→get）",
+  )
+}

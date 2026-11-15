@@ -228,7 +228,9 @@ function collectRehostDispatch(root: string, facts: Record<string, Fact>): void 
     return;
   }
   const t = doc.totals ?? {};
-  const asOf = doc.as_of ?? nowISO();
+  // PR #526 审阅 P3：coverage 缺 as_of 时用固定哨兵而非采集时刻——
+  // nowISO() 会造成每次运行都不同的漂移性事实值
+  const asOf = doc.as_of ?? "unknown";
   facts["rehost_dispatch_dualrun"] = okFact(
     doc.paired ?? 0, "例", "scripts/wasmenc_dispatchdiff（三方对拍一致）", "count_gate", asOf,
   );

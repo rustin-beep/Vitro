@@ -114,8 +114,11 @@ fn BytecodeGen::gen_return(
 ) -> Unit {
   match value {
     Some(v) => {
+      // #515（2026-11-15）：union 返回值同 struct 走 __ret_ptr 逐字拷贝
+      //（与 func.mbt enter_function / call.mbt ret_temp_offset 同批收口）
       let ret_is_struct = match self.func_table.get(self.current_func) {
-        Some(m) => m.return_type.kind() is TK_Struct
+        Some(m) =>
+          m.return_type.kind() is TK_Struct || m.return_type.kind() is TK_Union
         None => false
       }
       if ret_is_struct {

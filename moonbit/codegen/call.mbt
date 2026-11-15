@@ -18,7 +18,13 @@ fn BytecodeGen::gen_call_ptr(
   ret_ty : @ast.Type,
   loc : @source.SourceLoc,
 ) -> Unit {
-  let ret_temp_offset : Int32? = if ret_ty.kind() is TK_Struct {
+  // #515（2026-11-15）：聚合返回判定并入 TK_Union——union 返回值与 struct
+  // 同走隐藏 ret 指针 + 调用点临时区（__ret_ptr 族三处同批：本处调用侧
+  // temp、func.mbt enter_function 形参侧、stmt.mbt gen_return 装载侧）。
+  // 缺陷版 union 返回被当标量：`U v = makeU(7)` 落「不支持的地址生成」
+  // 编译错（issue 探针 union_ret.c 实测）。
+  let ret_temp_offset : Int32? = if ret_ty.kind() is TK_Struct ||
+    ret_ty.kind() is TK_Union {
     let sz = {
       let raw = self.type_size(ret_ty)
       if raw % 4 == 0 {
@@ -55,7 +61,12 @@ fn BytecodeGen::gen_call_ptr(
   while i >= 0 {
     let arg = args[i]
     let arg_ty = arg.ty()
-    if arg_ty.kind() is TK_Struct {
+    // #515（2026-11-15）：按值实参 words 展开并入 TK_Union——缺陷版 union
+    // 实参落标量 else 臂只压 1 word（gen_expr 压 union 变量地址），callee
+    // 形参区按 type_size 的 words（U{int;double}=2）读参 → 栈下溢 TRAP
+    // （takeU(u) 双臂实测）。type_size 单源口径本就正确（compute_type_size
+    // 取最大成员），病根仅在展开臂的 kind 判定。
+    if arg_ty.kind() is TK_Struct || arg_ty.kind() is TK_Union {
       let sz = self.type_size(arg_ty)
       let words = (sz + 3) / 4
       match arg {
@@ -221,7 +232,9 @@ fn BytecodeGen::gen_call_ptr(
                 for w in meta.param_sizes {
                   named_words += w
                 }
-                let user_named_count = if meta.return_type.kind() is TK_Struct {
+                // #515 连坐：union 返回同 struct 占隐藏 __ret_ptr 一参
+                let user_named_count = if meta.return_type.kind() is TK_Struct ||
+                  meta.return_type.kind() is TK_Union {
                   if meta.param_count - 1 > 0 {
                     meta.param_count - 1
                   } else {

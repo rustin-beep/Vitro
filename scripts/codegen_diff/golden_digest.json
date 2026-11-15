@@ -544,6 +544,7 @@
         "ungetc_eof_noop.c": "78f61ffb",
         "union_array.c": "eb30623a",
         "union_basic.c": "d0a842c6",
+        "union_byval_and_return.c": "6b884cbb",
         "union_int_member.c": "aeb30e27",
         "union_member_struct_assign.c": "25ea7de0",
         "union_member_widths.c": "40847cc3",
@@ -2238,6 +2239,9 @@
         },
         "union_basic.c": {
           "result_sha": "6a6f2bb2a81517d5"
+        },
+        "union_byval_and_return.c": {
+          "result_sha": "04ae8947d621f3f5"
         },
         "union_int_member.c": {
           "result_sha": "af5fb41ea049c93f"

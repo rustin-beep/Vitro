@@ -58,8 +58,11 @@ fn BytecodeGen::gen_addr(
     Member(object, member_name, _, _, _) =>
       self.gen_member_addr(object, member_name, loc)
     // 函数按值返回结构体 / 复合字面量：gen_expr 已在栈顶留下地址
+    // #515（2026-11-15）：union 返回调用同款——`U v = makeU()` 的初始化
+    // 拷贝路径 gen_addr(call) 落此处；缺陷版只判 TK_Struct 报「不支持
+    // 的地址生成」编译错（issue 探针 union_ret.c 三臂一致实测）
     CallPtr(_, _, _, ty) =>
-      if ty.kind() is TK_Struct {
+      if ty.kind() is TK_Struct || ty.kind() is TK_Union {
         self.gen_expr(expr)
       } else {
         self.report_error("不支持的地址生成", loc)

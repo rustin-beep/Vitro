@@ -3242,6 +3242,12 @@
       "stdout_sha": "6b86b273ff34fce1",
       "memory_sha": "6629896e6bcfd60d"
     },
+    "baseline/union_byval_and_return.c": {
+      "src_sha": "6b884cbb",
+      "exit_code": 0,
+      "stdout_sha": "f19c0195b9b4228f",
+      "memory_sha": "56266ae8ccf4b399"
+    },
     "baseline/union_int_member.c": {
       "src_sha": "aeb30e27",
       "exit_code": 0,

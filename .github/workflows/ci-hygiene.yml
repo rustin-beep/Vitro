@@ -1,7 +1,6 @@
 # ── CI 拆分批（2026-11-14）：本文件 = 主 CI（ci.yml）的 called 单元 ──────────
-# hygiene job 自 ci.yml 逐字搬迁（步骤/注释裁定资产零改动），唯一机械变换 =
-# 删跨文件无效的 `needs: build-artifacts` 行（时序由 caller 侧 needs 承接，
-# 语义等价）。called job 与 caller 同 run 执行：artifact / cache /
+# hygiene job 自 ci.yml 逐字搬迁（步骤/注释裁定资产零改动，零机械变换——
+# 本文件各 job 在原 ci.yml 即无跨文件 needs，原样平移）。called job 与 caller 同 run 执行：artifact / cache /
 # needs 红态传导 / github 上下文（event_name 等触发事件面）全同域。
 # 编排与汇总（ci-summary）见 ci.yml；夜间哨兵见 nightly.yml。
 name: CI hygiene

@@ -90,7 +90,10 @@ test "collect_result 键名契约：camelCase 九键与 demo TS 契约逐字对�
     Json::null(),
   )
   // 键集锚：shim 层（engine.ipc.ts）与 demo CollectResult 的消费面——
-  // 任一键改名/增删即 stringify 首键序列红（Map 保插入序）。
+  // 任一键改名/增删即 stringify 首键序列红（Map 保插入序）。锚面澄清
+  // （PR #524 审阅 P3-2）：期望串 versions 两字段的值由被测引擎现填
+  //（自指插值）——本锚只锁键名与键序，值不锁（值真值锚归
+  // teaching_truth/golden 族闸），勿读成值也被锁。
   inspect(
     r.stringify(),
     content="{\"frames\":[],\"stopped\":\"\",\"outputs\":{},\"ms\":5,\"versions\":{\"engine\":\"\{@gateway.engine_version()}\",\"protocol\":\"\{@gateway.protocol_version()}\"},\"diagnostics\":[],\"ppTrace\":[],\"compileOk\":true,\"run\":null}",

@@ -67,7 +67,7 @@ test("J9 ①漏登记：新驱动无活行 → 红", () => {
   });
   const r = check(f.root);
   assert.equal(r.failed, true);
-  assert.match(r.lines.join("\n"), /漏登记: scripts\/beta（scripts 下存在 main 驱动，ci.yml 零活行/);
+  assert.match(r.lines.join("\n"), /漏登记: scripts\/beta（scripts 下存在 main 驱动，workflows 零活行/);
 });
 
 test("J9 ②悬空：活行引用不存在的驱动 → 红", () => {
@@ -125,7 +125,7 @@ test("J9 ③僵尸例外：例外驱动同时被引用 → 红", () => {
   });
   const r = check(f.root);
   assert.equal(r.failed, true);
-  assert.match(r.lines.join("\n"), /僵尸例外: scripts\/alpha 已被 ci.yml 活行引用/);
+  assert.match(r.lines.join("\n"), /僵尸例外: scripts\/alpha 已被 workflow 活行引用/);
 });
 
 test("J9 例外缺 reason → 直接判红（exit 1 语义）", () => {
@@ -290,4 +290,34 @@ test("无 shebang main.mts + 活行在场 → 不误伤（文件名即驱动的�
   const r = check(f.root);
   assert.equal(r.failed, false, r.lines.join("\n"));
   assert.match(r.summary, /\.mts 1/);
+});
+
+// ⑥ 文档路径悬空（PR #524 审阅 P1-1 机判件，2026-11-15）：方法论/登记
+// 文档引用不存在的 workflow 文件 → 红（CI 拆分后单文件口径/改名未连坐
+// 文档的机判面——D26 同族）。J9：fixture 文档写 `.github/workflows/
+// nonexist.yml` → 必红；现存文件（ci.yml）不误伤。
+test("⑥ J9 文档路径悬空：登记文档引用不存在的 workflow → 红", () => {
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, ".agents/skills/vitro-workspace-review"), { recursive: true });
+    fs.writeFileSync(
+      path.join(x.root, ".agents/skills/vitro-workspace-review/SKILL.md"),
+      "# 规程\n\n接线：`grep -c x .github/workflows/nonexist.yml`（0 = 本地工具）。\n现存引用 `.github/workflows/ci.yml` 不红。\n",
+    );
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, true);
+  assert.match(r.lines.join("\n"), /文档路径悬空: .*SKILL\.md 引用 \.github\/workflows\/nonexist\.yml 但该文件不存在/);
+});
+
+test("⑥ 绿：文档引用现存 workflow（含通配形态不判）零误伤", () => {
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, ".agents/skills/vitro-workspace-review/references"), { recursive: true });
+    fs.writeFileSync(
+      path.join(x.root, ".agents/skills/vitro-workspace-review/references/06-复现清单.md"),
+      "# 复现\n\n全集以 `.github/workflows/*.yml` 为准；单点看 `.github/workflows/ci.yml`。\n",
+    );
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+  assert.match(r.summary, /文档路径存在性/);
 });

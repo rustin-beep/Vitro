@@ -273,6 +273,10 @@ jobs:
           sleep 2
         shell: bash
 
+      # 样式契约闸（#222 P0 第二批，2026-10-21）：五主题 × 19 选择器 × 9
+      # computed 属性（颜色/字体族/连字/字距/大小写）。取的是跨 OS 确定值
+      # （不经栅格化），基线 demo/tests/style_contract.json 入库。
+      # -selftest 先证完整性判定（残缺 doc 判红），再跑真比对。
       - name: "E2E: style_contract (selftest + 5 主题 × 19 选择器)"
         if: always()
         run: |
@@ -307,6 +311,11 @@ jobs:
         run: node demo/tests/e2e_v8digest.mts http://127.0.0.1:8931/
         shell: bash
       # bootfail 末位：临时改名 dist wasm 产物造装载失败（finally 还原）。
+      # 前提重述（E2E 步骤级拆批 2026-11-15）：旧串行形态下「前置红则本步
+      # 不执行」的免遗留改名前提已随 if: always() 反转——现在前置步红本步
+      # 照跑，安全性由脚本自身 finally 还原保证（改名窗口内崩溃亦有下次
+      # vite build 重建产物兜底）；保持末位是采集面习惯序（前面步骤的页面
+      # 状态不被本步的装载失败横幅污染）。
       - name: "E2E: e2e_bootfail (装载失败横幅)"
         if: always()
         run: node demo/tests/e2e_bootfail.mts http://127.0.0.1:8931/

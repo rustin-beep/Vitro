@@ -114,8 +114,8 @@ async function main(): Promise<number> {
   // 是门量锚错帧非引擎分叉。改锚三帧组：stdout（13/15/vitro-v8）天然
   // 互异；全崩形态（compile 错误帧三同）仍被互异断言检出。
   const perSource = [0, 1, 2].map((i) => sha256(lines.slice(i * 3, i * 3 + 3).join("\n")));
-  if (perSource[0] === perSource[1] || perSource[1] === perSource[2]) {
-    console.error(`e2e_v8digest: 判别门量红——三语料帧组 digest 互同（compile/run 面全崩假形态）：${perSource.join(",")}`);
+  if (perSource[0] === perSource[1] || perSource[1] === perSource[2] || perSource[0] === perSource[2]) {
+    console.error(`e2e_v8digest: 判别门量红——三语料帧组 digest 存在互同对（compile/run 面全崩假形态；PR #524 审阅 P3-1 补 [0]≠[2]）：${perSource.join(",")}`);
     return 1;
   }
 

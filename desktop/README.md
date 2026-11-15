@@ -115,4 +115,4 @@ CI 断言覆盖（`tools/smoke.mts`，DCDP 批起）：**dev 形态**（①–�
 
 ## 下批（拍板后）
 
-~~打包形态验证~~（**D3 批 2026-11-15 完成**：`tools/package_check.mts` 五断言固化——跨目录打包撞 proton 0.6.0 base_dir 边界，镜像布局 workaround 全自动编排）· ~~feed 通道（scanf 续跑）E2E 锚进 smoke~~（**核对已覆盖**：smoke ④ 段 `matrix-feed` 断言即 feed 全链 E2E——scanf→waiting_input→feed 42→`got 42`，清单项陈旧勾销）· 探针收编 `vitro-demo-mcp` 工具面 · native vs wasm 双臂对拍（demo 通道形态运行时可切——GUI 内 `arm_divergence` 的第三现场） · package_check 接 CI（当前本地验证件——423M 产物 + 打包分钟级，接 CI 的代价/价值待拍板）。
+~~打包形态验证~~（**D3 批 2026-11-15 完成**：`tools/package_check.mts` 五断言固化——跨目录打包撞 proton 0.6.0 base_dir 边界，镜像布局 workaround 全自动编排）· ~~feed 通道（scanf 续跑）E2E 锚进 smoke~~（**核对已覆盖**：smoke ④ 段 `matrix-feed` 断言即 feed 全链 E2E——scanf→waiting_input→feed 42→`got 42`，清单项陈旧勾销）· 探针收编 `vitro-demo-mcp` 工具面 · native vs wasm 双臂对拍（demo 通道形态运行时可切——GUI 内 `arm_divergence` 的第三现场） · ~~package_check 接 CI~~（**2026-11-15 用户拍板不接**：打包不作为发布面（desktop=测试壳非发包面），本地验证件即终态——进 CI 属过度工程）。

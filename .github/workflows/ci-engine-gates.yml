@@ -244,9 +244,13 @@ jobs:
         id: gate
       # protocol_frames wasm 臂读 rules.json——已随 #125 批 B 入库为真源
       # （.json.mbt 出库），本 job 的 jsonmbt clone/build/再生步随之摘除。
-      # 四 slice 共享 build-products（wasm.wasm + native exe 集 +
-      # vitro_js.js）；vitro_wasm.js 壳不在 artifact——由各驱动自带
-      # EnsureFresh 现场建（freshness 单源，#41 毒化机判）。
+      # 四 slice 共享 build-products（wasm.wasm〔wasmopt 后〕+ native exe 集 +
+      # vitro_js.js + vitro_wasm.js 壳——打包面见 ci-build.yml upload 步，
+      # #523 批勘正：早先「vitro_wasm.js 不在 artifact」表述过时）。js/wasm
+      # 产物跨平台通用由 artifact 直供；native exe 需本机编译的 slice 自建
+      # （cli_smoke 步内 MOON_CC=clang）。产物 mtime = 下载恢复/自建时刻，
+      # 新于 checkout 源——各驱动自带 EnsureFresh（freshness 单源，#41
+      # 毒化机判）零触发，只兜本地陈旧态。
 
       # ── slice serve_channel = host.js 冒烟（G2）+ serve 通道 wasm 臂 ──
       # host.js 冒烟（R4：出口 2 守护——wasm32 ABI 导出 + capi 全链路，

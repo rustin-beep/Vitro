@@ -516,6 +516,24 @@ html { --vr-masthead-h: 65px; scroll-padding-top: calc(var(--vr-masthead-h) + 12
 
 /* ---------- 数组索引格 ---------- */
 .vr-cells { display: flex; gap: 8px; flex-wrap: wrap; position: relative; }
+/* 二维数组（2026-11-14 批 B，refs #517 P2-08）：grid 按列数对齐——列数取
+   `dims` 末维（C 行主序），行数由元素数自然决定；一维仍走上面的 flex+wrap。 */
+/* ---------- 投影器图形（SeriesView：课程 vitri-viz 声明驱动，批 D） ----------
+   只认 StylePack 语义槽，五主题自动换肤；DOM/SVG 实现归宿主，引擎侧不下沉。 */
+.vr-viz-svg { display: block; width: 100%; height: auto; max-height: 152px; padding: 4px 0; }
+.vr-viz-axis { stroke: var(--vr-rule); stroke-width: 1; }
+.vr-viz-ring { fill: none; stroke: var(--vr-rule-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.vr-viz-bar { fill: var(--vr-amber); opacity: .82; }
+.vr-viz-line { fill: none; stroke: var(--vr-amber); stroke-width: 2; stroke-linejoin: round; }
+.vr-viz-line.s1 { stroke: var(--vr-swap); }
+.vr-viz-line.s2 { stroke: var(--vr-green); }
+.vr-viz-line.s3 { stroke: var(--vr-red); }
+.vr-viz-line.s4 { stroke: var(--vr-kw); }
+.vr-viz-ray { stroke: var(--vr-swap); stroke-width: 1.5; opacity: .78; }
+.vr-viz-dot { fill: var(--vr-amber); }
+.vr-viz-text { fill: var(--vr-ink-3); font-family: var(--vr-mono); font-variant-ligatures: none; }
+.vr-viz-error { margin: 8px 0; padding: 8px 10px; border-left: 3px solid var(--vr-red); background: var(--vr-red-tint); color: var(--vr-red); }
+.vr-cells.is-2d { display: grid; grid-template-columns: repeat(var(--cols, 1), 56px); }
 .vr-cell {
   width: 56px; height: 56px; padding: 3px 0 0; text-align: center;
   border: 1px solid var(--vr-rule-2); background: var(--vr-panel); border-radius: 2px;
@@ -1146,6 +1164,7 @@ html { --vr-masthead-h: 65px; scroll-padding-top: calc(var(--vr-masthead-h) + 12
   .vr-select { min-height: 32px; }
   .vr-keys { display: none; }
   .vr-cells { gap: 6px; }
+  .vr-cells.is-2d { grid-template-columns: repeat(var(--cols, 1), 48px); }
   .vr-cell { width: 48px; height: 50px; }
   .vr-cell .vr-val { font-size: 17px; }
   .vr-treebox { grid-template-columns: 1fr; }

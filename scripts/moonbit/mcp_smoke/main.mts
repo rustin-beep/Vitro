@@ -46,6 +46,19 @@ const BUBBLE_SORT_A = `// @category: baseline
 int main() { int a[5] = {5,3,4,1,2}; for (int i = 0; i < 4; i++) for (int j = 0; j < 4-i; j++) if (a[j] > a[j+1]) { int t = a[j]; a[j] = a[j+1]; a[j+1] = t; } printf("%d", a[0]); return 0; }
 `;
 
+/// fourier 真课 viz 块的探针程序：数组名与课源一致（re/im/mag），数值不是
+/// DFT 语义——只验「真课声明 → 引擎解析 → doc.series_decl/focus」链路（P3-6）。
+const VIZ_PROBE_C = `#include <stdio.h>
+
+int main(void) {
+  double re[4] = {1.0, 0.0, -1.0, 0.0};
+  double im[4] = {0.0, 1.0, 0.0, -1.0};
+  double mag[4] = {1.0, 1.0, 1.0, 1.0};
+  printf("%.1f\\n", re[0] + im[1] + mag[2]);
+  return 0;
+}
+`;
+
 /** 行缓冲累积器：feed 返回本次成行的完整帧（不带换行）；残行留存。 */
 export function makeLineAcc(): { feed(chunk: string): string[] } {
   let buf = "";
@@ -309,6 +322,24 @@ async function drive(): Promise<number> {
       renderedC.ok && pc.ok && pc.swapFrames === 54,
       renderedC.ok ? (pc.ok ? `swap=${pc.swapFrames}/${pc.total}` : `驱动失败: ${pc.err ?? "?"}`) : `render 红本文: ${renderedC.error ?? "?"}`);
     await call("session_close", { session_id: openedC.session_id });
+
+    // ── P3-6：真课 viz 声明经引擎解析（fourier 的 vitri-viz 块 → animate.viz）──
+    {
+      const md = readFileSync(path.resolve("course/basic/fourier/lesson.md"), "utf8").replace(/\r\n/g, "\n");
+      const block = /<!--\s*vitri-viz v1\n([\s\S]*?)-->/.exec(md);
+      const viz = (block?.[1] ?? "")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l !== "" && !l.startsWith("//"))
+        .join("\n");
+      const vizAnim = body<{ ok: boolean; html_path: string; arrays_focused: string[] }>(
+        await call("animate", { source: VIZ_PROBE_C, viz, out_dir: outDir, preview_png: false }));
+      const html = vizAnim.ok ? readFileSync(vizAnim.html_path, "utf8") : "";
+      const docOk = html.includes("\"series_decl\"") && html.includes("\"projector\":\"polar\"") && html.includes("\"projector\":\"spectrum\"");
+      chk.check("fourier 真课 viz 声明进 doc（polar+spectrum + focus re/im，P3-6）",
+        vizAnim.ok && viz !== "" && docOk && vizAnim.arrays_focused.includes("re") && vizAnim.arrays_focused.includes("im"),
+        `viz=${JSON.stringify(viz)} focus=${(vizAnim.arrays_focused ?? []).join(",")}`);
+    }
 
     // ── 收回披露 ──
     notifications.length = 0;

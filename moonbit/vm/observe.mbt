@@ -47,6 +47,11 @@ pub(all) struct ArraySnapshotData {
   elements : Array[String]
   /// U2#10：超出 256 截断标记（payload 级可见，消费方不得当全量）。
   truncated : Bool
+  /// 数组维度表（外→内，如 `int m[2][3]` = [2, 3]；一维 = [N]）。
+  /// 2026-11-14 批 B（#517 P2-08）：`elements` 是扁平元素，维度信息此前
+  /// 在观测面即丢失（`base_element_type` 把 `int m[2][3]` 剥成 int），
+  /// 宿主只能画成一维 6 格。`dims` 由 `Type::dims()` 直读，零推算。
+  dims : Array[Int32]
 }
 
 ///|
@@ -301,6 +306,7 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
       element_ty: @ast.type_display_name(@ast.base_element_type(sym.ty)),
       elements,
       truncated,
+      dims: sym.ty.dims().copy(),
     })
   }
   // #517 P1-3 后半：数组形参解引用视图——`void f(int a[], n)` 的形参符号
@@ -349,11 +355,18 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
           let (elements, truncated) = self.snapshot_elements(
             target, count, pointee,
           )
+          // #519 合入的解引用视图构造点：dims 由 pointee（数组）直读；
+          // 标量 pointee 的覆盖数组按一维 [count] 呈现（多维也确无维度可读）。
+          let dims : Array[Int32] = match pointee {
+            Array(_, _, ds, _, _, _) => ds.copy()
+            _ => [count]
+          }
           result.push({
             name: sym.name,
             element_ty: @ast.type_display_name(@ast.base_element_type(pointee)),
             elements,
             truncated,
+            dims,
           })
         }
       }

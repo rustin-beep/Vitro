@@ -20,7 +20,7 @@ export declare const FIELDS: {
   readonly ApiVariableSnapshot: readonly ["name", "addr", "is_local", "ty_name", "value"];
   readonly ApiFrameInfo: readonly ["func_name", "return_line"];
   readonly AccessedVar: readonly ["name", "access_type"];
-  readonly ArraySnapshot: readonly ["name", "element_ty", "elements", "truncated"];
+  readonly ArraySnapshot: readonly ["name", "element_ty", "elements", "truncated", "dims"];
   readonly PointerSnapshot: readonly ["name", "addr", "ty_name", "target_addr", "target_name", "status"];
   readonly VisEvent: readonly ["ty", "line", "extra0", "extra1", "extra2", "context"];
   readonly RootCauseHint: readonly ["category", "one_liner", "related_lines", "suggested_fix_kind", "suggested_fix_line", "suggested_fix_desc"];

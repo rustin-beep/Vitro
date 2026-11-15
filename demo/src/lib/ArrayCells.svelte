@@ -15,6 +15,7 @@
   import { goldenNumbers } from "./golden.ts";
   import { motion, pulse } from "./motion.svelte.ts";
   import { swapPairs, type SwapPair } from "./visEvents.ts";
+  import { arrayIndexLabel } from "../../js/util.ts";
   import type { ArraySnapshot, StepPayload } from "../../js/types.ts";
 
   let { snap, frame, source, before, heldFrom = -1, frameIdx = undefined }: { snap: ArraySnapshot; frame: StepPayload | undefined; source: string; before: StepPayload | undefined; heldFrom?: number; frameIdx?: number | undefined } = $props();
@@ -43,6 +44,17 @@
 
   /** 上一个可视帧的同名快照（无事件时的差分兜底基准）。 */
   const prevEls = $derived(before?.array_snapshots?.find((s) => s.name === snap.name)?.elements ?? null);
+  /** 维度表（2026-11-14 批 B，#517 P2-08）：旧产物无 `dims` 时按一维兜底，
+   *  引擎新产物恒带（一维 = [N]）。二维起改用 grid：列数 = 末维，行数 =
+   *  前面各维乘积；`elements` 恒为 C 行主序扁平序列，下标标签读作 `m[r][c]`。 */
+  const dims = $derived(snap?.dims && snap.dims.length > 0 ? snap.dims : [elements.length]);
+  const is2d = $derived(dims.length > 1);
+  const cols = $derived(is2d ? (dims[dims.length - 1] ?? elements.length) : elements.length);
+  /** 扁平下标 → 显示标签（一维 `a[i]`；多维按 dims 逐维展开 `m[r][c][k]`）。 */
+  function cellLabel(i: number): string {
+    return `${snap.name}${arrayIndexLabel(i, dims)}`;
+  }
+  const shapeText = $derived(is2d ? dims.map((d) => `[${d}]`).join("") : `[${elements.length}]`);
   const changed = $derived.by(() => {
     const s = new Set<number>();
     if (!prevEls || prevEls.length !== elements.length) return s;
@@ -181,7 +193,7 @@
 
 <section class="vr-block" aria-label="数组可视化">
   <div class="vr-blockhead">
-    <h2 class="vr-label">数组 {snap?.name ?? "?"} · {snap?.element_ty ?? "?"}[{elements.length}]</h2>
+    <h2 class="vr-label">数组 {snap?.name ?? "?"} · {snap?.element_ty ?? "?"}{shapeText}</h2>
     <span class="vr-spacer"></span>
     <span class="vr-meta">{metaText}</span>
   </div>
@@ -191,6 +203,8 @@
   {:else}
     <div
       class="vr-cells"
+      class:is-2d={is2d}
+      style:--cols={is2d ? cols : undefined}
       role="list"
       aria-label="数组 {snap.name} 的索引格"
       bind:this={cellsEl}
@@ -206,11 +220,11 @@
           class:is-swap-event={hasSwapEvent && pairCells.has(i)}
           class:is-text={!numeric}
           role="listitem"
-          aria-label="{snap.name}[{i}] = {isChar ? charCellText(v) : v}"
+          aria-label="{cellLabel(i)} = {isChar ? charCellText(v) : v}"
           data-swap-cell={pairCells.has(i) ? "1" : undefined}
           bind:this={cellEls[i]}
         >
-          <span class="vr-idx">{snap.name}[{i}]</span>
+          <span class="vr-idx">{cellLabel(i)}</span>
           <span class="vr-val">{isChar ? charCellText(v) : v}</span>
           {#if numeric}
             <span class="vr-bar" style:height="{Math.round(Math.max((Math.abs(nums[i] ?? 0) / maxAbs) * 16, 2))}px"></span>

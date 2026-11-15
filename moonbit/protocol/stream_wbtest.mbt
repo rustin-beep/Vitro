@@ -84,6 +84,7 @@ fn clone_payload(p : StepPayload) -> StepPayload {
       element_ty: a.element_ty,
       elements: a.elements.map(e => e),
       truncated: a.truncated,
+      dims: a.dims,
     }),
     pointer_snapshots: p.pointer_snapshots.map(pt => {
       name: pt.name,
@@ -210,7 +211,13 @@ test "stream_call_stack_delta" {
 test "stream_array_and_pointer_delta" {
   let p0 = make_payload(0, [mkvar("i", "int", "0")])
   p0.array_snapshots = [
-    { name: "a", element_ty: "int", elements: ["1", "2"], truncated: false, },
+    {
+      name: "a",
+      element_ty: "int",
+      elements: ["1", "2"],
+      truncated: false,
+      dims: [2],
+    },
   ]
   p0.pointer_snapshots = [
     {
@@ -228,7 +235,13 @@ test "stream_array_and_pointer_delta" {
   let p2 = clone_payload(p1)
   // p2 删除数组 a、新增数组 b；指针 p 目标改变
   p2.array_snapshots = [
-    { name: "b", element_ty: "int", elements: ["7"], truncated: false, },
+    {
+      name: "b",
+      element_ty: "int",
+      elements: ["7"],
+      truncated: false,
+      dims: [1],
+    },
   ]
   p2.pointer_snapshots[0].target_addr = 300
   let batch = encode_payloads([p0, p1, p2], 0)
@@ -243,6 +256,36 @@ test "stream_array_and_pointer_delta" {
   assert_eq(decoded[2].array_snapshots.length(), 1)
   assert_eq(decoded[2].array_snapshots[0].name, "b")
   assert_eq(decoded[2].pointer_snapshots[0].target_addr, 300)
+}
+
+///|
+/// 2026-11-14 批 B（refs #517 P2-08）：`dims` 经 stream 差分与符号表往返
+/// 不丢——二维形态跨 base 与 delta 两条路径都要保留（delta 只改 elements）。
+test "stream_array_dims_roundtrip_2d" {
+  let p0 = make_payload(0, [mkvar("i", "int", "0")])
+  p0.array_snapshots = [
+    {
+      name: "m",
+      element_ty: "int",
+      elements: ["1", "2", "3", "4", "5", "6"],
+      truncated: false,
+      dims: [2, 3],
+    },
+  ]
+  let p1 = clone_payload(p0)
+  p1.array_snapshots[0].elements = ["9", "2", "3", "4", "5", "6"]
+  let batch = encode_payloads([p0, p1], 0)
+  let decoded = decode_batch(batch)
+  assert_eq(decoded.length(), 2)
+  for k in 0..<2 {
+    let a = decoded[k].array_snapshots[0]
+    assert_eq(a.name, "m")
+    assert_eq(a.dims.length(), 2)
+    assert_eq(a.dims[0], 2)
+    assert_eq(a.dims[1], 3)
+    assert_eq(a.elements.length(), 6)
+  }
+  assert_eq(decoded[1].array_snapshots[0].elements[0], "9")
 }
 
 ///|

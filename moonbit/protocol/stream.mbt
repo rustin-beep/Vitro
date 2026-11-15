@@ -65,6 +65,9 @@ pub(all) struct ArraySnapshotRef {
   element_ty_idx : SymIdx
   elements : Array[String]
   truncated : Bool
+  /// 维度表（外→内；与 `elements` 扁平序列配套）。2026-11-14 批 B additive：
+  /// 维度是静态类型属性、跨帧恒定，故不入差分判据（`arrays_equal` 不比较）。
+  dims : Array[Int32]
 }
 
 ///|
@@ -272,6 +275,7 @@ pub fn encode_step_payload(
       element_ty_idx: sym.insert(a.element_ty),
       elements: a.elements,
       truncated: a.truncated,
+      dims: a.dims,
     }),
     pointer_snapshots: payload.pointer_snapshots.map(p => {
       name_idx: sym.insert(p.name),
@@ -458,6 +462,7 @@ fn diff_array_snapshots(
     element_ty_idx: sym.insert(a.element_ty),
     elements: a.elements,
     truncated: a.truncated,
+    dims: a.dims,
   })
   (Some(snapshots), removed)
 }

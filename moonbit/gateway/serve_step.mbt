@@ -137,6 +137,13 @@ fn step_payload_json(p : @protocol.StepPayload) -> Json {
     }
     am.set("elements", Json::array(elems))
     am.set("truncated", Json(a.truncated))
+    // 2026-11-14 批 B（#517 P2-08）：维度表 additive 下发——`elements` 仍是
+    // 扁平序列，宿主按 dims 还原行列；旧读者忽略即退化为原一维形态。
+    let dims : Array[Json] = []
+    for d in a.dims {
+      dims.push(Json::number(d.to_double()))
+    }
+    am.set("dims", Json::array(dims))
     arrs.push(Json::object(am))
   }
   m.set("array_snapshots", Json::array(arrs))

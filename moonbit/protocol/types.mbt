@@ -173,6 +173,10 @@ pub(all) struct ArraySnapshot {
   mut elements : Array[String]
   /// U2#10：元素被截断的可见标记
   truncated : Bool
+  /// 数组维度表（外→内；一维 = [N]，`int m[2][3]` = [2, 3]）。2026-11-14
+  /// 批 B additive 新增（#517 P2-08）：`elements` 恒为扁平序列，宿主按
+  /// `dims` 还原行列；旧消费者忽略本字段即退化为原一维形态。
+  dims : Array[Int32]
 }
 
 ///|

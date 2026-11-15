@@ -29,6 +29,9 @@ pub struct Frame {
   e : Array[VisEv]
   /// 数组快照 name → elements（全量；聚焦过滤在消费点）
   r : Map[String, Array[String]]
+  /// 多维数组 name → dims（2026-11-14 批 B，refs #517 P2-08）：**只收二维起**
+  /// 的形态（一维按 `[len]` 兜底，不入表——渲染产物每帧省一个冗余键）。
+  rd : Map[String, Array[Int32]]
   /// root_cause_hint 原样（Null = 无）
   h : Json
 }
@@ -68,6 +71,7 @@ fn frame_of_payload(p : Json) -> Frame {
     })
   }
   let r : Map[String, Array[String]] = Map([])
+  let rd : Map[String, Array[Int32]] = Map([])
   for x in jarr(jget(p, "array_snapshots")) {
     let name = jstr_or(jget(x, "name"), "")
     let els : Array[String] = []
@@ -80,6 +84,13 @@ fn frame_of_payload(p : Json) -> Frame {
       )
     }
     r.set(name, els)
+    let d : Array[Int32] = []
+    for el in jarr(jget(x, "dims")) {
+      d.push(jint_or(el, 0))
+    }
+    if d.length() > 1 {
+      rd.set(name, d)
+    }
   }
   {
     i: jint_or(jget(p, "step_index"), 0),
@@ -91,6 +102,7 @@ fn frame_of_payload(p : Json) -> Frame {
     c,
     e,
     r,
+    rd,
     h: match jget(p, "root_cause_hint") {
       Object(_) as hint => hint
       _ => Json::null()
@@ -270,6 +282,10 @@ fn frame_json_full(fr : Frame, focus : Array[String]) -> Json {
   ignore(o.sa("c", fr.c))
   ignore(o.j("e", frame_events_json(fr)))
   ignore(o.j("r", frame_arrays_json(fr, focus)))
+  match frame_dims_json(fr, focus) {
+    Some(j) => ignore(o.j("rd", j))
+    None => ()
+  }
   ignore(o.j("h", frame_hint_json(fr)))
   o.done()
 }
@@ -336,6 +352,27 @@ fn frame_arrays_json(fr : Frame, focus : Array[String]) -> Json {
     }
   }
   Json::object(m)
+}
+
+///|
+/// 多维数组维度表 JSON（2026-11-14 批 B，refs #517 P2-08）：与 `r` 同 focus
+/// 口径；表空（全一维）返回 None——渲染产物不下发空键。
+fn frame_dims_json(fr : Frame, focus : Array[String]) -> Json? {
+  let m : Map[String, Json] = Map([])
+  for name, ds in fr.rd {
+    if focus.length() == 0 || focus.contains(name) {
+      let arr : Array[Json] = []
+      for d in ds {
+        arr.push(Json::number(d.to_double()))
+      }
+      m.set(name, Json::array(arr))
+    }
+  }
+  if m.length() == 0 {
+    None
+  } else {
+    Some(Json::object(m))
+  }
 }
 
 ///|

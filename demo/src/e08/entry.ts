@@ -21,6 +21,8 @@
 
 import { render } from "svelte/server";
 import ArrayCells from "../lib/ArrayCells.svelte";
+import SeriesView from "../lib/SeriesView.svelte";
+import { declError } from "../lib/viewProjection.ts";
 import CourseNote from "../lib/CourseNote.svelte";
 import DiagBand from "../lib/DiagBand.svelte";
 import MemoryView from "../lib/MemoryView.svelte";
@@ -30,12 +32,12 @@ import RefIndex from "../lib/RefIndex.svelte";
 import Timeline from "../lib/Timeline.svelte";
 import VarsList from "../lib/VarsList.svelte";
 import { frameAt, session } from "../session.svelte.ts";
-import { parseLessonMd, type Block, type LessonDoc } from "../lib/lessonMd.ts";
+import { parseLessonMd, type Block, type LessonDoc, type VizDecl } from "../lib/lessonMd.ts";
 import { buildCallTree } from "../../js/calltree.ts";
 import bubbleMd from "../../../course/basic/bubble/lesson.md?raw";
 import bubbleSortMd from "../../../course/sorting/bubble_sort/lesson.md?raw";
 import bubbleC from "../../e08/bubble.c?raw";
-import type { Diagnostic, MemoryRegions, StepPayload } from "../../js/types.ts";
+import type { ArraySnapshot, Diagnostic, MemoryRegions, StepPayload } from "../../js/types.ts";
 import type { CatalogCard } from "../session.svelte.ts";
 
 // 课程真源（?raw 内联——E-08 是 node 侧 SSR 闸，无 fetch 面）
@@ -172,6 +174,45 @@ const CASES: Record<string, (p: CorePayload) => string> = {
         source: SOURCE_SAMPLE,
       },
     }).body;
+  },
+  // 二维数组（2026-11-14 批 B，refs #517 P2-08）：`dims` 驱动 grid 布局与
+  // `m[r][c]` 标签——elements 恒为 C 行主序扁平序列（此前只能画一维 6 格）。
+  "arraycells-2d": () => {
+    const snap: ArraySnapshot = {
+      name: "m",
+      element_ty: "int",
+      elements: ["1", "2", "3", "4", "5", "6"],
+      truncated: false,
+      dims: [2, 3],
+    };
+    return render(ArrayCells, {
+      props: {
+        snap,
+        frame: undefined,
+        before: undefined,
+        source: "int m[2][3] = {{1, 2, 3}, {4, 5, 6}};",
+      },
+    }).body;
+  },
+  // 课程声明驱动的参数化图形（2026-11-14 批 D，refs #470 v0.1.1）：
+  // polar = 两条序列（实部/虚部）画相量，spectrum = 幅值柱 + 频率刻度，
+  // 坏声明 = 错误面板（不静默降级）。三者都是宿主 SVG 绘制面的冻结锚。
+  "seriesview-polar": () => {
+    const decl: VizDecl = { series: ["re", "im"], projector: "polar", opts: { group: "z", gain: "2" }, line: 3 };
+    const re: ArraySnapshot = { name: "re", element_ty: "double", elements: ["1", "0", "-1", "0"], truncated: false };
+    const im: ArraySnapshot = { name: "im", element_ty: "double", elements: ["0", "1", "0", "-1"], truncated: false };
+    return render(SeriesView, { props: { decl, snaps: [re, im], error: null } }).body;
+  },
+  "seriesview-spectrum": () => {
+    const decl: VizDecl = { series: ["mag"], projector: "spectrum", opts: { axis: "freq" }, line: 4 };
+    const mag: ArraySnapshot = { name: "mag", element_ty: "double", elements: ["0", "3", "1", "2", "4", "2"], truncated: false };
+    return render(SeriesView, { props: { decl, snaps: [mag], error: null } }).body;
+  },
+  "seriesview-error": () => {
+    const decl: VizDecl = { series: ["re", "im"], projector: "polar", opts: {}, line: 3 };
+    const re: ArraySnapshot = { name: "re", element_ty: "double", elements: ["1", "0"], truncated: false };
+    const error = declError(decl, [re], ["im"]);
+    return render(SeriesView, { props: { decl, snaps: [re], error } }).body;
   },
   "memoryview-mallocfree": () => render(MemoryView).body,
   "outputview-three": () => render(OutputView).body,

@@ -52,6 +52,20 @@ export function coalesceStmt<F extends { code_line: number }>(frames: F[]): F[] 
   return annotateGroups(frames).filter((g) => g.m === g.k).map((g) => g.f);
 }
 
+/** 行主序扁平下标 → 多维下标标签后缀（P3-3：`[2][3][4]` 的第 5 个元素
+ *  = `[0][1][1]`，不再只拼两维撒谎）。dims 缺省/一维按 `[i]`。 */
+export function arrayIndexLabel(i: number, dims: readonly number[]): string {
+  if (dims.length <= 1) return `[${i}]`;
+  const idx: number[] = [];
+  let rest = i;
+  for (let k = dims.length - 1; k >= 0; k -= 1) {
+    const d = dims[k] ?? 1;
+    idx.unshift(d > 0 ? rest % d : 0);
+    rest = d > 0 ? Math.floor(rest / d) : 0;
+  }
+  return idx.map((x) => `[${x}]`).join("");
+}
+
 export function esc(s: string): string {
   return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
 }

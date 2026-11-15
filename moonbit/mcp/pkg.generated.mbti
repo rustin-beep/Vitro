@@ -42,6 +42,7 @@ pub struct Frame {
   c : Array[String]
   e : Array[VisEv]
   r : Map[String, Array[String]]
+  rd : Map[String, Array[Int32]]
   h : @json.Json
 }
 

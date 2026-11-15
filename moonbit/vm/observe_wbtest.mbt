@@ -547,6 +547,7 @@ test "observe_array_param_deref_interior_ptr_no_snapshot" {
   assert_true(a_view, msg="数组本体照常")
 }
 
+///|
 /// 锚六（2026-11-14 批 B，refs #517 P2-08）：二维数组维度表下发——
 /// `int m[2][3]` 的 `elements` 是扁平 6 元素，`dims` = [2, 3] 由 typeck
 /// 直读（`Type::dims()`）。此前观测面在 `base_element_type` 处把维度剥掉，

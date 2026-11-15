@@ -1186,6 +1186,7 @@ test "mcp_files_overview_last_func_end_spliced_stream" {
   assert_eq(end, 10, msg="末函数 end = 拼接流全末行")
 }
 
+///|
 /// 批 E（2026-11-14；refs #470）：render/animate 的 `viz` 声明消费——
 /// doc.series_decl 出口 + focus 注入 + 未知投影器 warning + 坏声明 fail loud。
 test "mcp_render_viz_doc_contract" {

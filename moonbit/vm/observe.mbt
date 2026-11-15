@@ -355,11 +355,18 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
           let (elements, truncated) = self.snapshot_elements(
             target, count, pointee,
           )
+          // #519 合入的解引用视图构造点：dims 由 pointee（数组）直读；
+          // 标量 pointee 的覆盖数组按一维 [count] 呈现（多维也确无维度可读）。
+          let dims : Array[Int32] = match pointee {
+            Array(_, _, ds, _, _, _) => ds.copy()
+            _ => [count]
+          }
           result.push({
             name: sym.name,
             element_ty: @ast.type_display_name(@ast.base_element_type(pointee)),
             elements,
             truncated,
+            dims,
           })
         }
       }

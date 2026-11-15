@@ -1,3 +1,7 @@
+
+
+
+
 #
 #
 #
@@ -5,19 +9,36 @@
 #
 #
 #   compute_heap_base      → vm 的 setup 动态堆起点（再喂 MemoryMap::set_heap_base）
+#   engine_version 的单源），同包 engine_version() 包裹对外、下游可直读；
+#   mirror_wbtest.mbt/parity_test.mbt 测试消费，白名单条目随批清理。包外引擎代码
 #   ——"哪些码无卡片"是登记在案的缺口而非异常）。语义属对外可核对的教学契约，
+#   与后续证明面复用；其余四件（wrap32u/wrap32s/two_pow/m_shift_guard）已由
 #   出口）随 P2~P4 逐面接线后即出现跨包消费边，届时本条撤销。
 #   口径外的消费形态）；引擎内消费（lexer `<>` 判定、capabilities.libraries
+#   引理——包内（m_shr_i32/u32/i64 消费）但无跨包消费者，保留 pub 供逐臂矩阵对拍
 #   当前消费者 = Go 侧 gen_stubs（文本解析，非 MoonBit import——surface 闸
 #   故保留 pub；本仓内当前无跨包消费者。
+#   本仓内无跨包 MoonBit 消费（scripts/wasm_gateway/host.mts 的版本失联锚走
+#   目标后 .mbti 首次落盘、本包 pub 面进入闸的 provider 面——发版锁步常量
+#   运行时导出比对非 import），保留 pub。同批 append_leak_report 收 priv（纯同包消费）。
+#   零消费，MoonBit 语义面不扩张（.mbti 无消费方）。
+#   （release 机械件 bump 面 + facts engine_version 键 + gateway/wasm export
 #  N3/N4 漂移登记锚（S6/S8 单源收编），priv 不在 pub 审计面，无需登记。
 #  曾于 176fbdf 误判死码删除，审阅批四恢复。）
 # **2026-09-22 重构**：闸门新增**类型闭包自动识别**（见 moonbit_surface.go
 # --- S6 前置 pub 化（memory 建包批，2026-09-23）---
 # --- 有意保留（人工裁定项）---
 # -check 双向对账：实际可收清单多出白名单 → 漏收（红）；白名单条目不在
+# G_SPT/G_RET/G_RV）+ 六局部（L_V/L_A/L_N/L_T64/L_TF/L_TF32）——模块段
+# PROVE-arith 批（2026-11-04，处置批 2026-11-05 收窄）：镜像证明包的 floor_div_pos
+# REHOST 批 1a（2026-11-05）：wasmenc L0 编码库件与装载协议入口——批 1b/1c 组合模板与
+# REHOST 批 1b（2026-11-05）：装载约定槽常量六全局（G_PC/G_FB/G_STEPS/
+# REHOST 批 1c（2026-11-13）：bytecode 投影层 wasm_triples（code→组三元组
+# REHOST 批 4a（2026-11-14）：dispatch-loop 组装器件——4b 宿主胶水/对拍闸
+# REHOST 批 4b-1（2026-11-14）：投影层入口（4b 胶水壳接线时出表）+ 溢出池内聚件
 # S7 段二：两个 encode 细粒度出口的签名含 priv SymbolTable（跨包不可构造，
 # diag codes_without_catalog：教学卡片（catalog）的**覆盖率断言清单**（T2 口径
+# gateway ENGINE_VERSION（B3 批 2026-11-02，审阅 v2 R3 P1-1 连坐）：gateway 补 `+wasm`
 # memory 包**不复制** L6 的地址布局常量（`@bytecode.` 前缀引用，单源不双写），
 # minor 可带 breaking，须在 CHANGELOG 明示。
 # moonbit_surface 白名单：**允许保持 pub 但当前无跨包消费**的符号（格式 `包全名 sym`）。
@@ -28,16 +49,24 @@
 # 余下 3 个是 vm 片的消费面（S6 同批后续片，包尚未建）：
 # 发布状态（2026-09-22 核实）：0.4.0（2026-09-21）起本 module 全部对外包已
 # 可收清单 → 过期（红，须清理）。
+# 届时出白名单进边表；块划分/栈空闸为组装器内聚件（wbtest 同包锁）。
 # 引用 → 自动归入「签名闭包·非收面」，**不再需要手工登记**）。故本表现在只
 # 承载「**技术上可收、但有意保留**」的符号——纯人工裁定项。
+# 折叠装载器接线时的消费面（当下无跨包消费方，pub 面保留=骨架 API 定形）
+# 接线时 assemble_dispatch_module 等获得跨包消费方（bytecode/cmd 层投影），
 # 本节登记**（届时转由 surface_edges.txt 的真实消费边覆盖）。
 # 此前手工登记的 parser ParseError / bytecode LocalBuffer / diag 三类型 /
 # 照搬 Rust pub+priv 形态）；真消费面 = encode_payloads 内部。
+# 直投影——build_wasm_product 内部消费；跨包消费方批 2 装载协议接线时补边）
 # 第二遍：pub 类型若被 pub fn/const 签名、pub(all) struct 字段、enum 变体载荷
+# 结构契约（批 1c codegen 接线与 wabt 证人的组装依据，当下无跨包消费方）
 # 进架（moon publish 是 module 级）⇒ 收面 = 对已发布包的破坏性变更；0.x 阶段
 # 键形态（S6 批一段，2026-09-23）：`包全名 sym`（原 `pkg 末段 sym`）。
 # （锚保留注记：libc 的 LibcSig/lookup 已 priv 化——白盒 wbtest 消费
+vitro/engine/bytecode wasm_triples
+vitro/engine/gateway ENGINE_VERSION
 vitro/engine/host realloc_invalid_message
+vitro/engine/proofs/arith_mirror floor_div_pos
 vitro/engine/protocol encode_step_delta
 vitro/engine/protocol encode_step_payload
 vitro/engine/stdlib headers
@@ -56,29 +85,34 @@ vitro/engine/teaching/steps expr_to_string
 vitro/engine/teaching/steps extract_features
 vitro/engine/teaching/steps has_word
 vitro/engine/time_travel infer_semantic_label
+vitro/engine/vm build_dispatch_input
 vitro/engine/vm load_libc_artifact
-# gateway ENGINE_VERSION（B3 批 2026-11-02，审阅 v2 R3 P1-1 连坐）：gateway 补 `+wasm`
-#   目标后 .mbti 首次落盘、本包 pub 面进入闸的 provider 面——发版锁步常量
-#   （release 机械件 bump 面 + facts engine_version 键 + gateway/wasm export
-#   engine_version 的单源），同包 engine_version() 包裹对外、下游可直读；
-#   本仓内无跨包 MoonBit 消费（scripts/wasm_gateway/host.mts 的版本失联锚走
-#   运行时导出比对非 import），保留 pub。同批 append_leak_report 收 priv（纯同包消费）。
-vitro/engine/gateway ENGINE_VERSION
-
-# PROVE-arith 批（2026-11-04，处置批 2026-11-05 收窄）：镜像证明包的 floor_div_pos
-#   引理——包内（m_shr_i32/u32/i64 消费）但无跨包消费者，保留 pub 供逐臂矩阵对拍
-#   与后续证明面复用；其余四件（wrap32u/wrap32s/two_pow/m_shift_guard）已由
-#   mirror_wbtest.mbt/parity_test.mbt 测试消费，白名单条目随批清理。包外引擎代码
-#   零消费，MoonBit 语义面不扩张（.mbti 无消费方）。
-vitro/engine/proofs/arith_mirror floor_div_pos
-
-# REHOST 批 1a（2026-11-05）：wasmenc L0 编码库件与装载协议入口——批 1b/1c 组合模板与
-# 折叠装载器接线时的消费面（当下无跨包消费方，pub 面保留=骨架 API 定形）
+vitro/engine/wasmenc G_DEPTH
+vitro/engine/wasmenc G_FB
+vitro/engine/wasmenc G_PC
+vitro/engine/wasmenc G_RET
+vitro/engine/wasmenc G_RV
+vitro/engine/wasmenc G_RV_W
+vitro/engine/wasmenc G_SPT
+vitro/engine/wasmenc G_STEPS
+vitro/engine/wasmenc L_A
+vitro/engine/wasmenc L_N
+vitro/engine/wasmenc L_SPILL_BASE
+vitro/engine/wasmenc L_T64
+vitro/engine/wasmenc L_TF
+vitro/engine/wasmenc L_TF32
+vitro/engine/wasmenc L_V
+vitro/engine/wasmenc SPILL_SLOTS
 vitro/engine/wasmenc WT_F32
 vitro/engine/wasmenc WT_F64
 vitro/engine/wasmenc WT_I64
 vitro/engine/wasmenc WT_VOID
+vitro/engine/wasmenc assemble_dispatch_body
+vitro/engine/wasmenc blocks_exit_heights
+vitro/engine/wasmenc blocks_underflow_with_entry
+vitro/engine/wasmenc control_pop_words
 vitro/engine/wasmenc fold_instrs
+vitro/engine/wasmenc partition_blocks
 vitro/engine/wasmenc sleb_decode
 vitro/engine/wasmenc sleb_encode
 vitro/engine/wasmenc uleb_decode
@@ -86,57 +120,4 @@ vitro/engine/wasmenc uleb_encode
 vitro/engine/wasmenc winstr_decode
 vitro/engine/wasmenc winstr_decode_all
 vitro/engine/wasmenc winstr_encode_all
-# REHOST 批 1b（2026-11-05）：装载约定槽常量六全局（G_PC/G_FB/G_STEPS/
-# G_SPT/G_RET/G_RV）+ 六局部（L_V/L_A/L_N/L_T64/L_TF/L_TF32）——模块段
-# 结构契约（批 1c codegen 接线与 wabt 证人的组装依据，当下无跨包消费方）
-vitro/engine/wasmenc G_FB
-vitro/engine/wasmenc G_PC
-vitro/engine/wasmenc G_RET
-vitro/engine/wasmenc G_RV
-vitro/engine/wasmenc G_SPT
-vitro/engine/wasmenc G_STEPS
-vitro/engine/wasmenc L_A
-vitro/engine/wasmenc L_N
-vitro/engine/wasmenc L_T64
-vitro/engine/wasmenc L_TF
-vitro/engine/wasmenc L_TF32
-vitro/engine/wasmenc L_V
-# REHOST 批 1c（2026-11-13）：bytecode 投影层 wasm_triples（code→组三元组
-# 直投影——build_wasm_product 内部消费；跨包消费方批 2 装载协议接线时补边）
-vitro/engine/bytecode wasm_triples
 
-# REHOST 批 4a（2026-11-14）：dispatch-loop 组装器件——4b 宿主胶水/对拍闸
-# 接线时 assemble_dispatch_module 等获得跨包消费方（bytecode/cmd 层投影），
-# 届时出白名单进边表；块划分/栈空闸为组装器内聚件（wbtest 同包锁）。
-vitro/engine/wasmenc G_DEPTH
-vitro/engine/wasmenc assemble_dispatch_body
-vitro/engine/wasmenc control_pop_words
-vitro/engine/wasmenc partition_blocks
-
-# REHOST 批 4b-1（2026-11-14）：投影层入口（4b 胶水壳接线时出表）+ 溢出池内聚件
-vitro/engine/vm build_dispatch_input
-vitro/engine/vm build_dispatch_product
-vitro/engine/wasmenc L_SPILL_BASE
-vitro/engine/wasmenc SPILL_SLOTS
-vitro/engine/wasmenc blocks_exit_heights
-vitro/engine/wasmenc blocks_underflow_with_entry
-
-# 绘制下沉批 A/D（2026-11-14）：StylePack / 投影器词表两个 L0 资产包——
-# 消费面在包外宿主（demo TS 词表由同源生成器发射、MCP 换肤后续接线），
-# MoonBit 包内当前无跨包 import；pub 面保留为宿主可读的资产出口
-# （refs #470 v0.1.1 / #517）。接线后出现消费边时按闸提示撤销本段。
-vitro/engine/style css_base
-vitro/engine/style css_block
-vitro/engine/style pack
-vitro/engine/style slot
-vitro/engine/style style_base
-vitro/engine/style style_digest
-vitro/engine/style style_sizes
-vitro/engine/view check_decl
-vitro/engine/view default_projector
-vitro/engine/view known_opt
-vitro/engine/view projector_digest
-vitro/engine/view projector_ids
-vitro/engine/view projectors
-vitro/engine/view doc_json
-vitro/engine/view parse_series_decl

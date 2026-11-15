@@ -204,6 +204,42 @@ function collectCaseDirs(root: string, facts: Record<string, Fact>): void {
 
 // ─── 采集器：常量真值（读源码，零副作用）────────────────────────────────────
 
+// collectRehostDispatch（REHOST 批 4b-3，2026-11-15）：dispatch 载体三方
+// 对拍闸的禁译覆盖率——静态读 scripts/wasmenc_dispatchdiff/coverage.json
+// （闸每轮重写、随批提交；dispatchdiff 全量跑 ~1 分钟不进 facts --run
+// 关键路径）。设计单 §3.2 批 4′ 验收面④「禁译覆盖率入 facts」的落点：
+// 跳过须登记非静默（zombie 同律——callhost/unsupported 桶数即登记面）。
+function collectRehostDispatch(root: string, facts: Record<string, Fact>): void {
+  const p = path.join(root, "scripts/wasmenc_dispatchdiff/coverage.json");
+  let doc: {
+    as_of?: string;
+    totals?: Record<string, number>;
+    paired?: number;
+    red?: number;
+  };
+  try {
+    doc = JSON.parse(fs.readFileSync(p, "utf8")) as typeof doc;
+  } catch {
+    facts["rehost_dispatch_dualrun"] = unavail(
+      "例", "scripts/wasmenc_dispatchdiff/coverage.json",
+      "node scripts/wasmenc_dispatchdiff/main.mts（闸跑完落盘、随批提交）",
+      "coverage.json 缺失或不可解析",
+    );
+    return;
+  }
+  const t = doc.totals ?? {};
+  const asOf = doc.as_of ?? nowISO();
+  facts["rehost_dispatch_dualrun"] = okFact(
+    doc.paired ?? 0, "例", "scripts/wasmenc_dispatchdiff（三方对拍一致）", "count_gate", asOf,
+  );
+  facts["rehost_dispatch_skip_callhost"] = okFact(
+    t.callhost ?? 0, "例", "scripts/wasmenc_dispatchdiff（H2 宿主回接批域）", "count_gate", asOf,
+  );
+  facts["rehost_dispatch_skip_unsupported"] = okFact(
+    t.unsupported ?? 0, "例", "scripts/wasmenc_dispatchdiff（变参/wide-param/CallPtr 等静态不可展开）", "count_gate", asOf,
+  );
+}
+
 // collectAbiVersion 采集 C ABI 版本真值。唯一来源曾是
 // native/src/capi/first_batch.rs 的 VITRO_ABI_VERSION 常量——文档里的
 // 版本号一律不是真相（M13 实证：代码 2.1.0 时仍有多份文档写 1.2.0/2.0.0）。
@@ -857,6 +893,7 @@ export function collectAll(
   const facts: Record<string, Fact> = {};
   collectFailureLedgers(root, facts);
   collectCaseDirs(root, facts);
+  collectRehostDispatch(root, facts);
   collectAbiVersion(root, facts);
   collectMoonbitPackages(root, facts);
 

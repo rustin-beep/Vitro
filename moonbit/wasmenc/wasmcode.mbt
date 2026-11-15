@@ -154,6 +154,9 @@ pub(all) enum WInstr {
   WI64TruncSatF64S // CastD2Q
   WI64TruncSatF64U // CastD2UQ（#471 饱和无符号——负→0/≥2^64→MAX，随 #485 连坐）
   WI64ReinterpretF64 // SplitD 首步（位拆——f64 位模式直转 i64）
+  WF64ReinterpretI64 // 批 4b-4 宽返回通道 load 侧（G_RV_W i64 位模式回 f64 域）
+  WI32ReinterpretF32 // 批 4b-4 f32 返回存侧（f32 位模式转 i32 入 G_RV）
+  WF32ReinterpretI32 // 批 4b-4 f32 返回 load 侧（G_RV i32 位模式回 f32 域）
   // ── 批量内存（批 1b：Memcpy/Memset——wasm 2.0 bulk-memory 基线；
   // memory.copy 为 memmove 语义，与现役临时缓冲实现等价〔O3 亲读对账〕）──
   WMemoryCopy
@@ -451,6 +454,9 @@ fn winstr_encode_into(instr : WInstr, out : Array[Byte]) -> Unit {
     WI64TruncSatF64S => trunc_sat(0x06, out)
     WI64TruncSatF64U => trunc_sat(0x07, out)
     WI64ReinterpretF64 => pushOp(0xBD, out)
+    WF64ReinterpretI64 => pushOp(0xBF, out)
+    WI32ReinterpretF32 => pushOp(0xBC, out)
+    WF32ReinterpretI32 => pushOp(0xBE, out)
     // bulk-memory（0xFC 前缀子码）：copy=0x0A 双 memidx（dst/src）、
     // fill=0x0B 单 memidx（规范形态——fill 只操作一个 memory；watcheck
     // 逐字节对拍实锤本处曾多发一个 0x00：validate 不拦的字节错位面，
@@ -752,6 +758,9 @@ pub fn winstr_decode(
     0xBB => Ok((WF64PromoteF32, 1))
     0xC0 => Ok((WI32Extend8S, 1))
     0xBD => Ok((WI64ReinterpretF64, 1))
+    0xBF => Ok((WF64ReinterpretI64, 1))
+    0xBC => Ok((WI32ReinterpretF32, 1))
+    0xBE => Ok((WF32ReinterpretI32, 1))
     0xFC =>
       // 前缀族：trunc_sat（子码 0..7）+ bulk-memory（子码 0x0A 双 memidx/
       // 0x0B 单 memidx，恒 0——面外变体拒载）

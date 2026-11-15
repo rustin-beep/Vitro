@@ -289,6 +289,7 @@ test "witness_dump_dispatch_modules" {
       func_entry_ips: entries,
       entry_ip: 0,
       call_sites: sites,
+      ret_kinds: Map([]),
       stack_start: 1048576,
       call_depth_limit: 10000,
       max_steps: 100000,
@@ -305,7 +306,9 @@ test "witness_dump_dispatch_modules" {
     arg_words: 1,
     frame_bytes: 8,
     param_words: [1],
+    param_kinds: [VkWordI32],
     is_void: false,
+    ret_kind: VkWordI32,
   })
   let f2 = mk(
     [PushConst, Call, PushConst, Ret, PushConst, Ret],

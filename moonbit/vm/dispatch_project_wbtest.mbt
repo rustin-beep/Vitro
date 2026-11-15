@@ -59,6 +59,7 @@ test "dispatch_project_call_rewrite" {
     local_count: 8,
     param_sizes: [1],
     return_type: @ast.Type::Int(false, false),
+    param_types: [],
     is_variadic: false,
     local_buffers: [],
   }
@@ -94,6 +95,7 @@ test "dispatch_project_variadic_red" {
     local_count: 8,
     param_sizes: [1],
     return_type: @ast.Type::Void(false),
+    param_types: [],
     is_variadic: true,
     local_buffers: [],
   }
@@ -122,8 +124,12 @@ test "dispatch_project_data_blob" {
     ],
     [],
   )
-  // globals_init/string_data 是 Array 字段（push 可变操作——无需 mut 绑定）
-  out.globals_init_32.push((0x2000U, 0x41424344))
+  // globals_init/string_data 是 Array 字段（push 可变操作——无需 mut 绑定）。
+  // globals_init_32 的 pair.0 是**相对 GLOBAL_START（0x1000）的偏移**（4b-2
+  // 勘正：VM set_globals_32 与 LoadGlobal 模板 OpBase(0x1000) 同口径——
+  // 投影曾漏加基址致 V8 读全局恒 0，e2_guarded_mutual 例 return_value 0
+  // vs 引擎 8 实锤）；string_data 的地址是绝对值（codegen intern 产出）。
+  out.globals_init_32.push((0x8U, 0x41424344))
   out.string_data.push((0x2008U, "AB"))
   guard build_dispatch_input(out, 100000) is Ok(di) else {
     fail("投影须绿")
@@ -136,16 +142,33 @@ test "dispatch_project_data_blob" {
       Ok(_) => fail("unreachable")
     }
   }
-  assert_eq(p.data_base, 0x2000, msg="blob 基址 = 首写地址")
-  // word 0x41424344 → 小端 44 43 42 41；空洞 0x2004..0x2007 零铺；
+  assert_eq(p.data_base, 0x1008, msg="blob 基址 = GLOBAL_START + 首偏移")
+  // word 0x41424344 → 小端 44 43 42 41（@0x1008）；空洞 0x100c..0x2007 零铺；
   // "AB" + NUL @ 0x2008 → 41 42 00 + 尾零
   assert_eq(
     p.data_blob.length(),
-    12,
-    msg="blob 长 12（word4 + 空洞4 + AB\\0 4 对齐）",
+    0x2008 - 0x1008 + 4,
+    msg="blob 长 = 首末写区间稠密投影",
   )
   assert_eq(p.data_blob[0], b'\x44', msg="小端首字节")
   assert_eq(p.data_blob[4], b'\x00', msg="空洞零铺")
-  assert_eq(p.data_blob[8], b'A', msg="字符串首字节")
-  assert_eq(p.data_blob[10], b'\x00', msg="NUL 终止")
+  assert_eq(p.data_blob[0x1000], b'A', msg="字符串首字节")
+  assert_eq(p.data_blob[0x1002], b'\x00', msg="NUL 终止")
+  // argv0 精化锚（4b-2）：真值形态 argc=1 + argv 区自 GLOBAL_REGION_LIMIT
+  // 向下（R1 ③ footprint 口径）+ ctx 槽真值——空 argv0 保近似（argc=0）
+  guard build_dispatch_input(out, 100000, argv0="x") is Ok(di2) else {
+    fail("argv0 投影须绿")
+  }
+  assert_eq(di2.ctx.argc, 1, msg="argc 真值")
+  let fp = @bytecode.argv_region_footprint(1, ["x"])
+  assert_eq(
+    di2.ctx.argv_addr,
+    (@bytecode.GLOBAL_REGION_LIMIT - fp).reinterpret_as_int(),
+    msg="argv_addr = GLOBAL_REGION_LIMIT - footprint",
+  )
+  let r2 = build_dispatch_product(out, 100000, argv0="x")
+  guard r2 is Ok(p2) else { fail("argv0 产物须绿") }
+  // argv 铺设进 blob（R1 ③ 编址）+ 产物新字段（4b-2）
+  assert_eq(p2.host_calls, 0, msg="零 host 例计数")
+  assert_eq(p2.max_steps, 100000, msg="预算透传")
 }

@@ -26,6 +26,7 @@ test "dispatch_minimal_program_skeleton" {
     func_entry_ips: [0],
     entry_ip: 0,
     call_sites: Map([]),
+    ret_kinds: Map([]),
     stack_start: 1048576,
     call_depth_limit: 10000,
     max_steps: 100000,
@@ -72,6 +73,7 @@ test "dispatch_minimal_program_skeleton" {
     func_entry_ips: [0],
     entry_ip: 0,
     call_sites: Map([]),
+    ret_kinds: Map([]),
     stack_start: 1048576,
     call_depth_limit: 10000,
     max_steps: 100000,
@@ -95,6 +97,7 @@ test "dispatch_call_ret_protocol" {
     func_entry_ips: [0, 4],
     entry_ip: 0,
     call_sites: Map([]),
+    ret_kinds: Map([]),
     stack_start: 1048576,
     call_depth_limit: 10000,
     max_steps: 100000,
@@ -105,7 +108,9 @@ test "dispatch_call_ret_protocol" {
     arg_words: 1,
     frame_bytes: 8,
     param_words: [1],
+    param_kinds: [VkWordI32],
     is_void: false,
+    ret_kind: VkWordI32,
   })
   let r = assemble_dispatch_body(input)
   guard r is Ok(body) else { fail("组装须绿") }
@@ -149,6 +154,7 @@ test "dispatch_callptr_red" {
     func_entry_ips: [0],
     entry_ip: 0,
     call_sites: Map([]),
+    ret_kinds: Map([]),
     stack_start: 1048576,
     call_depth_limit: 10000,
     max_steps: 100000,
@@ -169,7 +175,8 @@ test "dispatch_missing_call_site_red" {
     operands: [1, 0, 0],
     func_entry_ips: [0, 1],
     entry_ip: 0,
-    call_sites: Map([]), // 缺 gip0 的登记（栈空闸按 0 word 过——到返回点检查红）
+    call_sites: Map([]),
+    ret_kinds: Map([]), // 缺 gip0 的登记（栈空闸按 0 word 过——到返回点检查红）
     stack_start: 1048576,
     call_depth_limit: 10000,
     max_steps: 100000,
@@ -179,5 +186,202 @@ test "dispatch_missing_call_site_red" {
   assert_true(
     r is Err(BadReturnPoint(_, _)),
     msg="调用点元数据缺失必红",
+  )
+}
+
+///|
+/// 批 4b-2 锚①：StepEvent 零发射——dispatch 形态计步由块首批量步锚单源
+/// 覆盖（模板的 steps+=1 四条序列是微缩/往返形态；双计实锤：V8 steps=11
+/// vs 引擎 9，差值 = 块内 StepEvent 数）。断言：块体对 G_STEPS 的
+/// global.set 恰 1 处（块锚）——修前（走模板）每 StepEvent 组多 1 处。
+test "dispatch_step_event_zero_emission" {
+  let input : DispatchInput = {
+    ops: [StepEvent, StepEvent, PushConst, Ret],
+    operands: [5, 6, 42, 0],
+    func_entry_ips: [0],
+    entry_ip: 0,
+    call_sites: Map([]),
+    ret_kinds: Map([]),
+    stack_start: 1048576,
+    call_depth_limit: 10000,
+    max_steps: 100000,
+    ctx: d4_ctx(),
+  }
+  let r = assemble_dispatch_body(input)
+  guard r is Ok(body) else { fail("组装须绿") }
+  let mut g_steps_sets = 0
+  for w in body {
+    if w is WGlobalSet(G_STEPS) {
+      g_steps_sets = g_steps_sets + 1
+    }
+  }
+  assert_eq(
+    g_steps_sets,
+    1,
+    msg="G_STEPS 写恰 1 处（块锚单源——StepEvent 模板序列零发射）",
+  )
+}
+
+///|
+/// 批 4b-2 锚②：Memset 独立展开——value 暂存 i32 域（L_A），不经 L_T64
+/// i64 过桥（模板形态在真实发射序与 i32 生产者错配——V8/wabt 编译红
+/// 实锤 local.set[i64] 吃 i32）。断言：含 Memset 组的产物 body 中
+/// L_T64 零消费（本输入无 Q 族——修前模板臂必现 WLocalGet/Set(L_T64)）
+/// 且 memory.fill 在场。
+test "dispatch_memset_i32_staging" {
+  // vitro 栈序 [addr(底), value, size(顶)]——exec_memory Memset 弹序镜像
+  let input : DispatchInput = {
+    ops: [PushConst, PushConst, PushConst, Memset, Pop, PushConst, Ret],
+    operands: [0x2000, 0x41, 8, 0, 0, 0, 0],
+    func_entry_ips: [0],
+    entry_ip: 0,
+    call_sites: Map([]),
+    ret_kinds: Map([]),
+    stack_start: 1048576,
+    call_depth_limit: 10000,
+    max_steps: 100000,
+    ctx: d4_ctx(),
+  }
+  let r = assemble_dispatch_body(input)
+  guard r is Ok(body) else { fail("组装须绿") }
+  let mut l_t64_refs = 0
+  let mut has_fill = false
+  for w in body {
+    if w is WLocalGet(L_T64) || w is WLocalSet(L_T64) {
+      l_t64_refs = l_t64_refs + 1
+    }
+    if w is WMemoryFill {
+      has_fill = true
+    }
+  }
+  assert_eq(
+    l_t64_refs,
+    0,
+    msg="L_T64 零消费（value 走 L_A i32 槽——i64 过桥臂必红）",
+  )
+  assert_true(has_fill, msg="memory.fill 在场（语义同模板）")
+}
+
+///|
+/// 批 4b-4 锚③：参数搬运**声明序**弹存——do_call_inner 同构（param_sizes
+/// 声明序逐参、参内高 word 先弹；压栈右→左、左参在顶）。修前「逆序先
+/// 弹」错位实锤：t3 减法例（`sub2(7,3)`）V8 rc=-4 vs 引擎 4——加法交换
+/// 律长期掩盖。断言：双参搬运的两组 store 序中，param0 的帧偏移常量先现
+/// （frame_bytes-0 先于 frame_bytes-4——声明序发射）。
+test "dispatch_call_param_order" {
+  let sites : Map[Int32, CallSiteMeta] = Map([])
+  sites.set(2, {
+    target_ip: 5,
+    arg_words: 2,
+    frame_bytes: 8,
+    param_words: [1, 1],
+    param_kinds: [VkWordI32, VkWordI32],
+    is_void: false,
+    ret_kind: VkWordI32,
+  })
+  // main：PushConst 7; PushConst 3; Call sub; PushConst 0; Ret
+  // sub（gip5）：LoadLocal 0; LoadLocal 4; Sub; Ret
+  let input : DispatchInput = {
+    ops: [
+      PushConst,
+      PushConst,
+      Call,
+      PushConst,
+      Ret,
+      LoadLocal,
+      LoadLocal,
+      Sub,
+      Ret,
+    ],
+    operands: [7, 3, 5, 0, 0, 0, 4, 0, 0],
+    func_entry_ips: [0, 5],
+    entry_ip: 0,
+    call_sites: sites,
+    ret_kinds: Map([]),
+    stack_start: 1048576,
+    call_depth_limit: 10000,
+    max_steps: 100000,
+    ctx: d4_ctx(),
+  }
+  let r = assemble_dispatch_body(input)
+  guard r is Ok(body) else { fail("组装须绿") }
+  // 搬运 store 特征：`WI32Const(frame_bytes - woff*4)` 后随 G_SPT/sub/加
+  // 与 WI32Store。收集「frame_bytes-woff*4 形态」的常量出现序（8-0=8 先
+  // 于 8-4=4 = 声明序 param0 先）。
+  let order : Array[Int32] = []
+  for i = 0; i < body.length(); i = i + 1 {
+    // 搬运特征：WGlobalGet(G_SPT) 后随 WI32Const(frame_bytes - woff*4)
+    if body[i] is WGlobalGet(G_SPT) &&
+      i + 1 < body.length() &&
+      body[i + 1] is WI32Const(c) {
+      if c == 8 || c == 4 {
+        order.push(c)
+      }
+    }
+  }
+  // frame_bytes=8：param0 woff=0 → const 8；param1 woff=1 → const 4
+  assert_eq(
+    order,
+    [8, 4],
+    msg="搬运 store 声明序（param0 帧偏移先发——修前逆序 [4,8] 错位）",
+  )
+}
+
+///|
+/// 批 4b-4 锚④：宽返回通道（VkF64）——Ret 存侧走 G_RV_W（L_TF 暂存 +
+/// i64.reinterpret 过桥）+ 返回点 load 侧 G_RV_W + f64.reinterpret 回域。
+/// 修前缺陷：G_RV 是 i32 槽装不下 f64 返回值（dsum 例 V8 编译红
+/// `local.set[0] expected type f64`——wide-param 禁译曾掩盖该面）。
+test "dispatch_wide_ret_channel_f64" {
+  let sites : Map[Int32, CallSiteMeta] = Map([])
+  sites.set(0, {
+    target_ip: 4,
+    arg_words: 0,
+    frame_bytes: 8,
+    param_words: [],
+    param_kinds: [],
+    is_void: false,
+    ret_kind: VkF64,
+  })
+  // main：Call f; Pop(返回值); PushConst 0; Ret；f：PushConstD(1.5); Ret
+  let rk : Map[Int32, WValKind] = Map([])
+  rk.set(5, VkF64) // f 的 Ret（VkF64 存侧）
+  let input : DispatchInput = {
+    ops: [Call, Pop, PushConst, Ret, PushConstD, Ret],
+    operands: [4, 0, 0, 0, 0, 0],
+    func_entry_ips: [0, 4],
+    entry_ip: 0,
+    call_sites: sites,
+    ret_kinds: rk,
+    stack_start: 1048576,
+    call_depth_limit: 10000,
+    max_steps: 100000,
+    ctx: d4_ctx(),
+  }
+  let r = assemble_dispatch_body(input)
+  guard r is Ok(body) else { fail("组装须绿") }
+  // Ret 存侧：L_TF 暂存 + reinterpret + G_RV_W
+  let mut has_store = false
+  for i = 0; i + 3 < body.length(); i = i + 1 {
+    if body[i] is WLocalSet(L_TF) &&
+      body[i + 2] is WI64ReinterpretF64 &&
+      body[i + 3] is WGlobalSet(G_RV_W) {
+      has_store = true
+    }
+  }
+  assert_true(
+    has_store,
+    msg="Ret 存侧 f64 过桥（L_TF→reinterpret→G_RV_W）",
+  )
+  // 返回点 load 侧：G_RV_W + f64.reinterpret_i64
+  let mut has_load = false
+  for i = 0; i + 1 < body.length(); i = i + 1 {
+    if body[i] is WGlobalGet(G_RV_W) && body[i + 1] is WF64ReinterpretI64 {
+      has_load = true
+    }
+  }
+  assert_true(
+    has_load,
+    msg="返回点 load f64 回域（G_RV_W→f64.reinterpret）",
   )
 }

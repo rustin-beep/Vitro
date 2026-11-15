@@ -1,0 +1,78 @@
+{
+  "as_of": "2026-11-15",
+  "per_dir": {
+    "baseline": {
+      "ok": 9,
+      "callhost": 527,
+      "unsupported": 7,
+      "other": 0,
+      "compile": 35
+    },
+    "chibicc_port": {
+      "ok": 0,
+      "callhost": 38,
+      "unsupported": 1,
+      "other": 0,
+      "compile": 0
+    },
+    "codegen_skeleton": {
+      "ok": 12,
+      "callhost": 0,
+      "unsupported": 0,
+      "other": 0,
+      "compile": 1
+    },
+    "gap": {
+      "ok": 1,
+      "callhost": 16,
+      "unsupported": 0,
+      "other": 0,
+      "compile": 6
+    },
+    "knr": {
+      "ok": 0,
+      "callhost": 81,
+      "unsupported": 0,
+      "other": 0,
+      "compile": 0
+    },
+    "leetcode": {
+      "ok": 0,
+      "callhost": 138,
+      "unsupported": 0,
+      "other": 0,
+      "compile": 0
+    },
+    "llm_scale": {
+      "ok": 0,
+      "callhost": 6,
+      "unsupported": 0,
+      "other": 0,
+      "compile": 0
+    },
+    "mutator_probe": {
+      "ok": 0,
+      "callhost": 1,
+      "unsupported": 0,
+      "other": 0,
+      "compile": 0
+    },
+    "template_generated": {
+      "ok": 0,
+      "callhost": 82,
+      "unsupported": 0,
+      "other": 0,
+      "compile": 0
+    }
+  },
+  "totals": {
+    "ok": 22,
+    "callhost": 889,
+    "unsupported": 8,
+    "other": 0,
+    "compile": 42,
+    "dirs": 9
+  },
+  "paired": 22,
+  "red": 0
+}

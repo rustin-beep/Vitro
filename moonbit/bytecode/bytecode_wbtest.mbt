@@ -132,6 +132,7 @@ test "compile_output_dump_json rich shape (Type/f64/escape single-source)" {
         local_count: 4,
         param_sizes: [],
         return_type: @ast.Type::Int(false, false),
+        param_types: [],
         is_variadic: false,
         local_buffers: [],
       },

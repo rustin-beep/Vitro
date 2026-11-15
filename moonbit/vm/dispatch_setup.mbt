@@ -55,6 +55,11 @@ pub(all) struct DispatchProduct {
   data_blob : Array[Byte]
   /// data_blob 铺设基址（blob 首字节对应的全程序地址）
   data_base : Int32
+  /// CallHost 组数（静态计数——>0 即含 host 调用面，零 host 对拍子集
+  /// 的静态判据；4b 胶水遇 host 调用 skip 的登记口径）
+  host_calls : Int32
+  /// 步数预算（预算安全点常量——对拍臂预算判定须同值）
+  max_steps : Int32
 }
 
 ///|
@@ -81,9 +86,14 @@ fn libc_spans(libc : LibcArtifact) -> Array[(Int32, Int32, Int32)] {
 
 ///|
 /// CompileOutput → DispatchInput（全程序组装输入；投影协议见文件头注）。
+/// `argv0~`：进程 argv[0] 真值（dispatch 真执行面——PushArgc/PushArgv 模板
+/// 的 CtxI32 槽从批 1c 的 0 近似升真值；空串 = 不精化保近似〔wbtest 旧
+/// 锚口径〕。引擎臂 cmd/run 恒以完整文件路径作 argv[0] 下发——对拍闸须
+/// 同串调用本参数，argv 区字节（data 铺设）才与引擎臂 1MB 映像逐位对齐）。
 pub fn build_dispatch_input(
   output : @bytecode.CompileOutput,
   max_steps : Int32,
+  argv0~ : String = "",
 ) -> Result[@wasmenc.DispatchInput, DispatchProjectError] {
   // ── libc 装载（与 setup_from_output 第 1 步同源）──
   let libc = load_libc_artifact()
@@ -127,39 +137,42 @@ pub fn build_dispatch_input(
         ),
       )
     }
-    // PR #520 审阅 P2-1：word/value 口径混用禁译——Call 搬运按 word 逐个
-    // local.set（i32 槽），i64/double 参数（word=2、wasm 值=1）必错位且
-    // 静默产非法字节；任何 word 数 >1 的参数即 NotSupported（fail loud）。
-    // 全 1 word 的参数仍可能是 f32（FuncMeta 无参数类型——4b-2 胶水全语料
-    // 实测兜底，登记）
-    for pw in m.param_sizes {
-      if pw > 1 {
-        return Err(
-          NotSupported(
-            "wide-param func_idx=" +
-            func_idx.to_string() +
-            " word=" +
-            pw.to_string() +
-            " gip=" +
-            gip.to_string(),
-          ),
-        )
-      }
-    }
+    // 批 4b-4：wide-param 禁译撤除——「wasm 值=1 与 word 口径混用」系
+    // 4b-1 误判（codegen call.mbt 亲读：i64/double 实参经 SplitD/SplitQ
+    // **拆双 word 压栈**，与 do_call 的 word 流弹写全域同构——逐 word
+    // i32 搬运正确；摸底 18 例 wide-param 全因此假禁译）。唯一真例外 =
+    // f32 单值（原型 float 不提升——param_kinds 分派）。
     let param_words : Array[Int32] = []
+    let param_kinds : Array[@wasmenc.WValKind] = []
     let mut arg_words = 0
-    for w in m.param_sizes {
+    // param_types 与 param_sizes 同长对齐（codegen enter_function 同游标
+    // 填——含 __ret_ptr 隐参）；libc 扁平产物空表 → 全 @wasmenc.VkWordI32（libc
+    // 内部 Call 同一 codegen 产拆双压形态，word 流正确）
+    let types_aligned = m.param_types.length() == m.param_sizes.length()
+    for i = 0; i < m.param_sizes.length(); i = i + 1 {
+      let w = m.param_sizes[i]
       param_words.push(w)
       arg_words = arg_words + w
+      let ty = if types_aligned { m.param_types[i] } else { @ast.Type::int() }
+      param_kinds.push(
+        if ty.kind() is TK_Float {
+          @wasmenc.VkF32
+        } else {
+          @wasmenc.VkWordI32
+        },
+      )
     }
     Ok({
       target_ip: target,
       arg_words,
       frame_bytes: m.local_count,
       param_words,
+      param_kinds,
       is_void: m.return_type is Void(_),
+      ret_kind: ret_kind_of(m.return_type),
     })
   }
+
   let spans = libc_spans(libc)
   // ── DCE 根集（用户静态调用）+ libc 内部闭包 ──
   let live_funcs : Set[Int32] = Set([])
@@ -293,13 +306,37 @@ pub fn build_dispatch_input(
       }
     }
   }
-  // ── 函数入口 ip 集（live 域——块划分 leader 判定）──
+  // ── CallHost 禁译（4b-2 定谳：块图高度分歧的大宗根因——CallHost 模板
+  //    不消费 vitro 栈参数〔微缩域由垫收器供给；dispatch 真执行参数滞留
+  //    wasm 栈 → 前驱会合高分歧 BadReturnPoint 神秘红，摸底 221/919 例
+  //    大宗〕。参数消费序列 = H2 宿主回接协议的组成件，归 host 回接批；
+  //    本批零 host 子集对拍不受影响，禁译理由显式化替代神秘组装红）──
+  for gip = 0; gip < full_ops.length(); gip = gip + 1 {
+    if full_ops[gip] is CallHost {
+      return Err(
+        NotSupported(
+          "callhost gip=" +
+          gip.to_string() +
+          "（H2 宿主回接协议归 host 回接批——参数消费序列未展开）",
+        ),
+      )
+    }
+  }
+  // ── 函数入口 ip 集（live 域——块划分 leader 判定）+ 段头 meta 对
+  //    （ret_kinds 段扫描的元数据源——批 4b-4）──
   let entry_ips : Array[Int32] = []
+  let meta_map_pairs : Array[(Int32, @bytecode.FuncMeta)] = []
   for sp in spans {
     let (fidx, s0, _) = sp
     if live_funcs.contains(fidx) {
       match remap.get(s0) {
-        Some(t) => entry_ips.push(t)
+        Some(t) => {
+          entry_ips.push(t)
+          match meta_of.get(fidx) {
+            Some(m1) => meta_map_pairs.push((t, m1))
+            None => ()
+          }
+        }
         None => ()
       }
     }
@@ -308,18 +345,84 @@ pub fn build_dispatch_input(
     guard output.func_index.get(name) is Some(idx) else { continue }
     guard output.func_table.get(name) is Some(m) else { continue }
     match remap.get(m.ip + libc_len) {
-      Some(t) => entry_ips.push(t)
+      Some(t) => {
+        entry_ips.push(t)
+        meta_map_pairs.push((t, m))
+      }
       None => ()
     }
   }
-  // ── EmitCtx（bytecode 投影件同源）──
-  let ctx = @bytecode.wasm_emit_ctx(output)
+  // ── EmitCtx（bytecode 投影件同源 + dispatch 真执行面精化）──
+  // 往返路径（批 2/3）的 ctx 近似无碍——重建 Instruction 的 operand 取
+  // 侧车原值；dispatch 是真 wasm 执行，CtxI32(Argc/ArgvAddr) 槽直接进
+  // 字节——argc/argv_addr 须填真值（4b-2，设计单批 4「近似升真值」项）。
+  // 布局单源 = VM setup_argv 的编址（R1 ③：argv 区自 GLOBAL_REGION_LIMIT
+  // 向下——footprint 口径 @bytecode.argv_region_footprint）。
+  let ctx = {
+    ..@bytecode.wasm_emit_ctx(output),
+    argc: if argv0.is_empty() {
+      0
+    } else {
+      1
+    },
+    argv_addr: if argv0.is_empty() {
+      0
+    } else {
+      let fp = @bytecode.argv_region_footprint(1, [argv0])
+      (@bytecode.GLOBAL_REGION_LIMIT - fp).reinterpret_as_int()
+    },
+  }
+  // ── ret_kinds（批 4b-4 宽返回通道——Ret 组按所属函数的返回类型分派
+  //    G_RV/G_RV_W）：段扫描 = 函数头（升序）切全程序段，段内 Ret 组
+  //    → 该函数 return_type 映射。libc 段 return_type 扁平产物缺省
+  //    Void（装载兜底——libc 非 void 函数的返回值面全语料零 live 命中，
+  //    登记边界）──
+  let head_pairs : Array[(Int32, @bytecode.FuncMeta)] = []
+  for ip in entry_ips {
+    // 头 ip → meta（用户 names 表反查；live libc 段头在 spans 头 remap）
+    for pair in meta_map_pairs {
+      let (h, m1) = pair
+      if h == ip {
+        head_pairs.push((h, m1))
+        break
+      }
+    }
+  }
+  head_pairs.sort_by(fn(a, b) { a.0.compare(b.0) })
+  let ret_kinds : Map[Int32, @wasmenc.WValKind] = Map([])
+  // seg = -1 无有效段：函数体以 Ret 收尾即**关段**（尾随 wrapper 段
+  // 〔Call main; Ret——无函数头〕不落任何段；t2 实错：wrapper 的 Ret
+  // 被误归最后函数段致 i32 值塞 f64 槽 V8 编译红）；**紧邻 Call 的
+  // Ret**（wrapper 形态）→ kind = 被调函数返回形态
+  let mut seg : Int32 = -1
+  for gip = 0; gip < full_ops.length(); gip = gip + 1 {
+    // 切段仅当 gip 恰为函数头（<= 形态会在关段后把段追回——t2 二次
+    // 实错：gip8 隐式尾 Ret 被追回的 dsum 段误标 VkF64）
+    while seg + 1 < head_pairs.length() && head_pairs[seg + 1].0 == gip {
+      seg = seg + 1
+    }
+    if full_ops[gip] is Ret {
+      if gip > 0 && (full_ops[gip - 1] is Call || full_ops[gip - 1] is CallVar) {
+        match call_sites.get(gip - 1) {
+          Some(cm) => ret_kinds.set(gip, cm.ret_kind)
+          None => ()
+        }
+      } else if seg >= 0 {
+        let (_, m2) = head_pairs[seg]
+        if !(m2.return_type is Void(_)) {
+          ret_kinds.set(gip, ret_kind_of(m2.return_type))
+        }
+        seg = -1
+      }
+    }
+  }
   Ok({
     ops: full_ops,
     operands: full_operands,
     func_entry_ips: entry_ips,
     entry_ip: user_base,
     call_sites,
+    ret_kinds,
     stack_start: 1048576,
     call_depth_limit: 10000,
     max_steps,
@@ -329,11 +432,13 @@ pub fn build_dispatch_input(
 
 ///|
 /// CompileOutput → 载体产物（投影 + 组装 + data blob 一体）。
+/// `argv0~` 语义同 `build_dispatch_input`（真执行精化 + argv 区铺设）。
 pub fn build_dispatch_product(
   output : @bytecode.CompileOutput,
   max_steps : Int32,
+  argv0~ : String = "",
 ) -> Result[DispatchProduct, String] {
-  let input = match build_dispatch_input(output, max_steps) {
+  let input = match build_dispatch_input(output, max_steps, argv0~) {
     Ok(i) => i
     Err(NotSupported(m)) => return Err("dispatch-not-supported: " + m)
     Err(FuncMissing(idx)) =>
@@ -341,13 +446,36 @@ pub fn build_dispatch_product(
   }
   let group_count = input.ops.length()
   let entry_ip = input.entry_ip
+  // ── CallHost 静态计数（零 host 对拍子集判据）──
+  let mut host_calls = 0
+  for op in input.ops {
+    if op is CallHost {
+      host_calls = host_calls + 1
+    }
+  }
   // ── data blob（稀疏写集 → 稠密投影）──
   let writes : Map[Int32, Int32] = Map([]) // 4 对齐地址 → word
+  fn put_byte(pos : Int32, b : Int32) -> Unit {
+    let wa = pos - pos % 4
+    let sh = pos % 4 * 8
+    let old = match writes.get(wa) {
+      Some(v) => v
+      None => 0
+    }
+    let mask = 255 << sh
+    let keep = old ^ (old & mask)
+    writes.set(wa, keep | (b << sh))
+  }
+
+  // globals_init_32/64 的 pair.0 是**相对 GLOBAL_START 的偏移**（VM
+  // set_globals_* 与 LoadGlobal 模板 OpBase(0x1000) 同口径——绝对地址 =
+  // GLOBAL_START + off）；string_data 的地址已是绝对值（codegen
+  // intern_string_literal 产出 GLOBAL_START+off）
   for pair in output.globals_init_32 {
-    writes.set(pair.0.reinterpret_as_int(), pair.1)
+    writes.set((@bytecode.GLOBAL_START + pair.0).reinterpret_as_int(), pair.1)
   }
   for pair in output.globals_init_64 {
-    let a = pair.0.reinterpret_as_int()
+    let a = (@bytecode.GLOBAL_START + pair.0).reinterpret_as_int()
     let v = pair.1
     let lo = @util.i64_to_i32_bits(v.reinterpret_as_int64() & 0xFFFFFFFFL)
     let hi = @util.i64_to_i32_bits(v.reinterpret_as_int64() >> 32)
@@ -359,18 +487,31 @@ pub fn build_dispatch_product(
     let addr = pair.0.reinterpret_as_int()
     let bytes = pair.1.to_array()
     for k = 0; k < bytes.length(); k = k + 1 {
-      let b = bytes[k].to_int()
-      let pos = addr + k
-      let wa = pos - pos % 4
-      let sh = pos % 4 * 8
-      let old = match writes.get(wa) {
-        Some(v) => v
-        None => 0
-      }
-      let mask = 255 << sh
-      let keep = old ^ (old & mask)
-      writes.set(wa, keep | (b << sh))
+      put_byte(addr + k, bytes[k].to_int())
     }
+  }
+  // ── argv 区铺设（真执行精化——VM setup_argv 第 12 步的字节级投影：
+  // 指针数组 [argv_addr] = 字符串地址 + UTF-8+NUL 串体；与 ctx.argv_addr
+  // 同一编址单源。argc=0/空 argv0 时 VM 侧 argc=0/argv_addr=0——零写
+  // 入即同形。字节口径 = @utf8.encode（write_cstring_utf8 同源——推进量
+  // == 写入量，与 argv_region_footprint 计账一致）──
+  if !argv0.is_empty() {
+    let fp = @bytecode.argv_region_footprint(1, [argv0])
+    let array_addr = @bytecode.GLOBAL_REGION_LIMIT - fp
+    let string_addr = array_addr + 4U
+    // 指针槽（小端 u32）
+    writes.set(
+      array_addr.reinterpret_as_int(),
+      string_addr.reinterpret_as_int(),
+    )
+    // 串体：UTF-8 字节 + NUL 终止
+    let base = string_addr.reinterpret_as_int()
+    let mut k = 0
+    for b in @utf8.encode(argv0) {
+      put_byte(base + k, b.to_int())
+      k = k + 1
+    }
+    put_byte(base + k, 0)
   }
   let addrs : Array[Int32] = []
   for a in writes.keys() {
@@ -404,6 +545,8 @@ pub fn build_dispatch_product(
         group_count,
         data_blob,
         data_base,
+        host_calls,
+        max_steps,
       })
     Err(@wasmenc.Blocks(@wasmenc.CallPtrUnsupported(gip))) =>
       Err("dispatch-not-supported: callptr gip=" + gip.to_string())
@@ -430,5 +573,17 @@ pub fn build_dispatch_product(
     Err(@wasmenc.Blocks(@wasmenc.Emit(m))) =>
       Err("dispatch-not-supported: " + m)
     Err(_) => Err("dispatch-assemble-failed: unclassified")
+  }
+}
+
+///|
+/// 返回类型 → 返回通道形态（批 4b-4 宽返回）：f64/i64 走 G_RV_W 位模式
+/// 过桥、f32 走 G_RV + i32.reinterpret 过桥、其余 i32 主通道直存。
+fn ret_kind_of(ty : @ast.Type) -> @wasmenc.WValKind {
+  match ty.kind() {
+    TK_Double => @wasmenc.VkF64
+    TK_Float => @wasmenc.VkF32
+    TK_LongLong => @wasmenc.VkI64
+    _ => @wasmenc.VkWordI32
   }
 }

@@ -947,6 +947,7 @@ fn load_qsort_vm() -> @vm.VitroVM {
       local_count: 8,
       param_sizes: [1, 1],
       return_type: @ast.Type::Int(false, false),
+      param_types: [],
       is_variadic: false,
       local_buffers: [],
     }) {
@@ -1140,6 +1141,7 @@ test "engine_seek_dense_switch_keeps_crossboundary_callback_frames" {
       local_count: 8,
       param_sizes: [1, 1],
       return_type: @ast.Type::Int(false, false),
+      param_types: [],
       is_variadic: false,
       local_buffers: [],
     }) {

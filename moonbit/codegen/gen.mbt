@@ -273,6 +273,9 @@ fn BytecodeGen::generate(
       param_count: 0,
       local_count: 0,
       param_sizes,
+      // enter_function 回填（与 param_sizes 同款两阶段——含 __ret_ptr
+      // 隐参的对齐在 enter_function 侧，此预构造值不生效）
+      param_types: [],
       return_type: f.return_type,
       is_variadic: false,
       local_buffers: [],

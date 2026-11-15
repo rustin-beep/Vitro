@@ -437,6 +437,23 @@ jobs:
           cd .. && cd scripts && npm ci --no-audit --no-fund
           cd .. && node scripts/wasmenc_rundiff/main.mts
 
+      - name: wasmenc dispatchdiff (V8/wasmtime/engine triple-run crosscheck on dispatch carrier)
+        if: always() && matrix.slice == 'bookkeeping'
+        # REHOST 批 4b-3（2026-11-15）：三方对拍闸（设计单 §3.2 批 4′ 验收
+        # 面①——真 runtime 执行级独立证人）。零禁译子集三臂逐位对拍：V8
+        # （node 进程内 WebAssembly）vs wasmtime（rs 胶水 dispatch 子命令
+        # 批模式）vs 引擎（cmd/run --json）——rc+steps+stdout；trap/预算例
+        # 终态类别判定（steps 豁免——块批量计步 overshoot ≤1 块已知分叉）；
+        # host 桩被调即红。禁译面 reason 分桶 baseline 钉住（4b-4 后：
+        # callhost 889/unsupported 8）；coverage.json 落盘供 facts
+        # （rehost_dispatch_* 键）。
+        shell: bash
+        run: |
+          cd moonbit && moon build --target native cmd/dump_wasm && moon build --target native cmd/run
+          cd .. && cd scripts/wasmtime_arm/rs && cargo build --release --locked
+          cd ../../.. && cd scripts && npm ci --no-audit --no-fund
+          cd .. && node scripts/wasmenc_dispatchdiff/main.mts
+
       - name: Build serve.exe (debug native) for facts replay/serve_smoke collectors
         if: matrix.slice == 'bookkeeping'
         # 审阅 v2 A6 批（2026-11）S01-A2 连坐：replay/serve_smoke 两键移出

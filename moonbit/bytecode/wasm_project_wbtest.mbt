@@ -26,6 +26,7 @@ fn mk_wasm_output() -> CompileOutput {
         local_count: 0,
         param_sizes: [],
         return_type: @ast.Type::int(),
+        param_types: [],
         is_variadic: false,
         local_buffers: [],
       },

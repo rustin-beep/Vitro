@@ -1,14 +1,21 @@
+
 #   - core/第三方库记完整路径如 moonbitlang/core/string、moonbitlang/x/fs；
 #   - 工作区包如 vitro/engine/lexer、vitro/engine/lexer/internal/host；
 #   - 模块根 README（发布面文档承诺）的 consumer 记 "."。
 # #426 B3' 批 1（2026-11-02）：typeck const_eval 接共享算术核——38 边（批 2 ops.mbt integer_promote_type 再 +1）（域/算子/故障枚举构造器 + 6 函数）
 # #426 B3' 批 3（2026-11-02）：vm executor 整型算术臂接共享算术核——29 边
+# PR #480 审阅处置批（2026-11-05）：mirror_wbtest.mbt 逐臂矩阵对拍扩面的 11 边（wbtest 包级 import 消费——审阅实锤形态）
+# PROVE-arith 批（2026-11-04）：镜像证明包对拍锚（parity_test.mbt 黑盒——wrap 模型对拍 normalize /
+# QC 属性批(2026-11-04):util 黑盒 _test.mbt 的 for "test" import 面——quickcheck 属性测试消费边(core 自带,moon.mod 零新增依赖)
+# REHOST 批 1a（2026-11-05）：wasmenc 新叶包（153 码表 wasm 子集发射/折叠骨架）消费边
+# REHOST 批 4b-1（2026-11-14）：vm 投影层消费 wasmenc 组装器/bytecode EmitCtx/util 位拼装
 # S6 批一段（2026-09-23）起两侧一律**包全名**（moon.mod 模块名 + 包目录）：
 # issue #55 json_escape 六份收一（转义单源 vitro/engine/util）新增 8 边：
 # main.js 退役批（2026-10-16）：engine_direct 拆包（lib/cli 纯逻辑化）+ vitro_wasm 胶水新边
 # moonbit_surface 边清单：全部合法跨包消费边（consumer provider sym）。
 # 两侧条目、只能靠注释区分——已随本批消除（同名符号 J9 注入实证分离）。
 # 口径修复前记：旧末段口径下 "host" 同时承载 L7 host 与 lexer/internal/host
+# 拒绝路径行为锚 / 域采样；证明函数零引用 @arith，import 仅供测试消费）
 # 新增边 = 对外面扩张——必须经人工审阅后登记（新边即红，防"新 pub +
 # 新消费"绕过无主 pub 对账的扩张通道——架构审阅 v2 待办①的完整闭环）。
 . vitro/engine/codegen compile
@@ -23,6 +30,7 @@ vitro/engine/ast moonbitlang/core/string parse_int
 vitro/engine/ast vitro/engine/source SourceLoc
 vitro/engine/ast vitro/engine/util json_escape
 vitro/engine/ast vitro/engine/util json_escape_into
+vitro/engine/ast vitro/engine/util json_parse
 vitro/engine/bytecode moonbitlang/core/encoding/utf8 encode
 vitro/engine/bytecode vitro/engine/ast StructField
 vitro/engine/bytecode vitro/engine/ast Type
@@ -35,6 +43,8 @@ vitro/engine/bytecode vitro/engine/libc is_libc_func
 vitro/engine/bytecode vitro/engine/opcode Instruction
 vitro/engine/bytecode vitro/engine/opcode OpCode
 vitro/engine/bytecode vitro/engine/source SourceLoc
+vitro/engine/bytecode vitro/engine/util str_cmp
+vitro/engine/bytecode vitro/engine/util utf8_len
 vitro/engine/bytecode vitro/engine/wasmenc EmitCtx
 vitro/engine/bytecode vitro/engine/wasmenc GroupTable
 vitro/engine/bytecode vitro/engine/wasmenc VerifyError
@@ -43,8 +53,6 @@ vitro/engine/bytecode vitro/engine/wasmenc emit_group_bytes
 vitro/engine/bytecode vitro/engine/wasmenc template_spec
 vitro/engine/bytecode vitro/engine/wasmenc verify_fold_with_table
 vitro/engine/bytecode vitro/engine/wasmenc verify_group_table
-vitro/engine/bytecode vitro/engine/util str_cmp
-vitro/engine/bytecode vitro/engine/util utf8_len
 vitro/engine/cmd/backend_triage vitro/engine/gateway engine_version
 vitro/engine/cmd/backend_triage vitro/engine/gateway invoke
 vitro/engine/cmd/backend_triage vitro/engine/gateway protocol_version
@@ -55,17 +63,17 @@ vitro/engine/cmd/compile vitro/engine/teaching/content_data install_baked
 vitro/engine/cmd/dump_ast moonbitlang/core/env args
 vitro/engine/cmd/dump_ast vitro/engine/ast ast_dump_json
 vitro/engine/cmd/dump_ast vitro/engine/ast json_escape_string
-vitro/engine/cmd/dump_ast vitro/engine/fs create_dir
 vitro/engine/cmd/dump_ast vitro/engine/fs IOError
+vitro/engine/cmd/dump_ast vitro/engine/fs create_dir
 vitro/engine/cmd/dump_ast vitro/engine/fs is_dir
 vitro/engine/cmd/dump_ast vitro/engine/fs path_exists
 vitro/engine/cmd/dump_ast vitro/engine/fs read_dir
 vitro/engine/cmd/dump_ast vitro/engine/fs read_file_to_string
 vitro/engine/cmd/dump_ast vitro/engine/fs write_string_to_file
-vitro/engine/cmd/dump_ast vitro/engine/util str_cmp
 vitro/engine/cmd/dump_ast vitro/engine/lexer LexResult
 vitro/engine/cmd/dump_ast vitro/engine/lexer tokenize_with_vfs
 vitro/engine/cmd/dump_ast vitro/engine/parser parse
+vitro/engine/cmd/dump_ast vitro/engine/util str_cmp
 vitro/engine/cmd/dump_compile moonbitlang/core/env args
 vitro/engine/cmd/dump_compile vitro/engine/ast json_escape_string
 vitro/engine/cmd/dump_compile vitro/engine/bytecode compile_output_dump_json
@@ -74,8 +82,8 @@ vitro/engine/cmd/dump_compile vitro/engine/bytecode verify_violations_json
 vitro/engine/cmd/dump_compile vitro/engine/codegen SLOT_STRATEGY_VERSION
 vitro/engine/cmd/dump_compile vitro/engine/codegen compile
 vitro/engine/cmd/dump_compile vitro/engine/codegen compile_library
-vitro/engine/cmd/dump_compile vitro/engine/fs create_dir
 vitro/engine/cmd/dump_compile vitro/engine/fs IOError
+vitro/engine/cmd/dump_compile vitro/engine/fs create_dir
 vitro/engine/cmd/dump_compile vitro/engine/fs is_dir
 vitro/engine/cmd/dump_compile vitro/engine/fs path_exists
 vitro/engine/cmd/dump_compile vitro/engine/fs read_dir
@@ -87,6 +95,36 @@ vitro/engine/cmd/dump_compile vitro/engine/parser parse
 vitro/engine/cmd/dump_compile vitro/engine/teaching/content_data install_baked
 vitro/engine/cmd/dump_compile vitro/engine/typeck TypeChecker
 vitro/engine/cmd/dump_compile vitro/engine/util str_cmp
+vitro/engine/cmd/dump_tokens moonbitlang/core/env args
+vitro/engine/cmd/dump_tokens vitro/engine/fs IOError
+vitro/engine/cmd/dump_tokens vitro/engine/fs create_dir
+vitro/engine/cmd/dump_tokens vitro/engine/fs is_dir
+vitro/engine/cmd/dump_tokens vitro/engine/fs path_exists
+vitro/engine/cmd/dump_tokens vitro/engine/fs read_dir
+vitro/engine/cmd/dump_tokens vitro/engine/fs read_file_to_string
+vitro/engine/cmd/dump_tokens vitro/engine/fs write_string_to_file
+vitro/engine/cmd/dump_tokens vitro/engine/lexer dump_lex_tsv
+vitro/engine/cmd/dump_tokens vitro/engine/lexer dump_raw_tsv
+vitro/engine/cmd/dump_tokens vitro/engine/lexer tokenize_raw
+vitro/engine/cmd/dump_tokens vitro/engine/lexer tokenize_with_vfs
+vitro/engine/cmd/dump_tokens vitro/engine/util str_cmp
+vitro/engine/cmd/dump_typeck moonbitlang/core/env args
+vitro/engine/cmd/dump_typeck vitro/engine/ast ast_dump_json
+vitro/engine/cmd/dump_typeck vitro/engine/ast json_escape_string
+vitro/engine/cmd/dump_typeck vitro/engine/fs IOError
+vitro/engine/cmd/dump_typeck vitro/engine/fs create_dir
+vitro/engine/cmd/dump_typeck vitro/engine/fs is_dir
+vitro/engine/cmd/dump_typeck vitro/engine/fs path_exists
+vitro/engine/cmd/dump_typeck vitro/engine/fs read_dir
+vitro/engine/cmd/dump_typeck vitro/engine/fs read_file_to_string
+vitro/engine/cmd/dump_typeck vitro/engine/fs write_string_to_file
+vitro/engine/cmd/dump_typeck vitro/engine/lexer LexResult
+vitro/engine/cmd/dump_typeck vitro/engine/lexer tokenize_with_vfs
+vitro/engine/cmd/dump_typeck vitro/engine/parser parse
+vitro/engine/cmd/dump_typeck vitro/engine/teaching/content_data install_baked
+vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeChecker
+vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeError
+vitro/engine/cmd/dump_typeck vitro/engine/util str_cmp
 vitro/engine/cmd/dump_wasm moonbitlang/core/env args
 vitro/engine/cmd/dump_wasm vitro/engine/ast json_escape_string
 vitro/engine/cmd/dump_wasm vitro/engine/bytecode CompileOutput
@@ -104,40 +142,11 @@ vitro/engine/cmd/dump_wasm vitro/engine/parser parse
 vitro/engine/cmd/dump_wasm vitro/engine/teaching/content_data install_baked
 vitro/engine/cmd/dump_wasm vitro/engine/typeck TypeChecker
 vitro/engine/cmd/dump_wasm vitro/engine/util str_cmp
+vitro/engine/cmd/dump_wasm vitro/engine/vm build_dispatch_product
 vitro/engine/cmd/dump_wasm vitro/engine/wasmenc AssembleError
 vitro/engine/cmd/dump_wasm vitro/engine/wasmenc VerifyError
 vitro/engine/cmd/dump_wasm vitro/engine/wasmenc assemble_witness_module
 vitro/engine/cmd/dump_wasm vitro/engine/wasmenc verify_fold_with_table
-vitro/engine/cmd/dump_tokens moonbitlang/core/env args
-vitro/engine/cmd/dump_tokens vitro/engine/fs create_dir
-vitro/engine/cmd/dump_tokens vitro/engine/fs IOError
-vitro/engine/cmd/dump_tokens vitro/engine/fs is_dir
-vitro/engine/cmd/dump_tokens vitro/engine/fs path_exists
-vitro/engine/cmd/dump_tokens vitro/engine/fs read_dir
-vitro/engine/cmd/dump_tokens vitro/engine/fs read_file_to_string
-vitro/engine/cmd/dump_tokens vitro/engine/fs write_string_to_file
-vitro/engine/cmd/dump_tokens vitro/engine/util str_cmp
-vitro/engine/cmd/dump_tokens vitro/engine/lexer dump_lex_tsv
-vitro/engine/cmd/dump_tokens vitro/engine/lexer dump_raw_tsv
-vitro/engine/cmd/dump_tokens vitro/engine/lexer tokenize_raw
-vitro/engine/cmd/dump_tokens vitro/engine/lexer tokenize_with_vfs
-vitro/engine/cmd/dump_typeck moonbitlang/core/env args
-vitro/engine/cmd/dump_typeck vitro/engine/ast ast_dump_json
-vitro/engine/cmd/dump_typeck vitro/engine/ast json_escape_string
-vitro/engine/cmd/dump_typeck vitro/engine/fs create_dir
-vitro/engine/cmd/dump_typeck vitro/engine/fs IOError
-vitro/engine/cmd/dump_typeck vitro/engine/fs is_dir
-vitro/engine/cmd/dump_typeck vitro/engine/fs path_exists
-vitro/engine/cmd/dump_typeck vitro/engine/fs read_dir
-vitro/engine/cmd/dump_typeck vitro/engine/fs read_file_to_string
-vitro/engine/cmd/dump_typeck vitro/engine/fs write_string_to_file
-vitro/engine/cmd/dump_typeck vitro/engine/util str_cmp
-vitro/engine/cmd/dump_typeck vitro/engine/lexer LexResult
-vitro/engine/cmd/dump_typeck vitro/engine/lexer tokenize_with_vfs
-vitro/engine/cmd/dump_typeck vitro/engine/parser parse
-vitro/engine/cmd/dump_typeck vitro/engine/teaching/content_data install_baked
-vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeChecker
-vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeError
 vitro/engine/cmd/lib/cli moonbitlang/core/encoding/utf8 encode
 vitro/engine/cmd/lib/cli vitro/engine/fs read_file_to_string
 vitro/engine/cmd/lib/cli vitro/engine/fs write_bytes_to_file
@@ -489,6 +498,39 @@ vitro/engine/parser vitro/engine/names ctor_call_name
 vitro/engine/parser vitro/engine/names ctor_def_name
 vitro/engine/parser vitro/engine/source SourceLoc
 vitro/engine/parser vitro/engine/util i64_to_i32_bits
+vitro/engine/proofs/arith_mirror vitro/engine/arith AddOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith ArithFault
+vitro/engine/proofs/arith_mirror vitro/engine/arith DivByZero
+vitro/engine/proofs/arith_mirror vitro/engine/arith DivOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith I32
+vitro/engine/proofs/arith_mirror vitro/engine/arith I64
+vitro/engine/proofs/arith_mirror vitro/engine/arith IntBinOp
+vitro/engine/proofs/arith_mirror vitro/engine/arith IntDomain
+vitro/engine/proofs/arith_mirror vitro/engine/arith IntUnOp
+vitro/engine/proofs/arith_mirror vitro/engine/arith MulOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith NegOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpAdd
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpBitNot
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpDiv
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpEq
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpGe
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpGt
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpLe
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpLt
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpMod
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpMul
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpNe
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpNeg
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpShl
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpShr
+vitro/engine/proofs/arith_mirror vitro/engine/arith OpSub
+vitro/engine/proofs/arith_mirror vitro/engine/arith ShiftOutOfRange
+vitro/engine/proofs/arith_mirror vitro/engine/arith SubOverflow
+vitro/engine/proofs/arith_mirror vitro/engine/arith U32
+vitro/engine/proofs/arith_mirror vitro/engine/arith U64
+vitro/engine/proofs/arith_mirror vitro/engine/arith eval_int_binary
+vitro/engine/proofs/arith_mirror vitro/engine/arith eval_int_unary
+vitro/engine/proofs/arith_mirror vitro/engine/arith normalize
 vitro/engine/session vitro/engine/ast Type
 vitro/engine/session vitro/engine/bytecode CompileOutput
 vitro/engine/session vitro/engine/protocol AlgorithmMatch
@@ -648,7 +690,6 @@ vitro/engine/typeck vitro/engine/teaching/assets builtin_notes
 vitro/engine/typeck vitro/engine/teaching/assets install_texts
 vitro/engine/typeck vitro/engine/util i64_to_i32_bits
 vitro/engine/typeck vitro/engine/util utf8_len
-# QC 属性批(2026-11-04):util 黑盒 _test.mbt 的 for "test" import 面——quickcheck 属性测试消费边(core 自带,moon.mod 零新增依赖)
 vitro/engine/util moonbitlang/core/debug Debug
 vitro/engine/util moonbitlang/core/encoding/utf8 decode
 vitro/engine/util moonbitlang/core/encoding/utf8 encode
@@ -659,8 +700,8 @@ vitro/engine/util moonbitlang/core/quickcheck/splitmix RandomState
 vitro/engine/view vitro/engine/util json_parse
 vitro/engine/view vitro/engine/util str_cmp
 vitro/engine/vm moonbitlang/core/encoding/utf8 encode
-vitro/engine/vm vitro/engine/arith ArithFault
 vitro/engine/vm vitro/engine/arith AddOverflow
+vitro/engine/vm vitro/engine/arith ArithFault
 vitro/engine/vm vitro/engine/arith DivByZero
 vitro/engine/vm vitro/engine/arith DivOverflow
 vitro/engine/vm vitro/engine/arith I32
@@ -698,7 +739,6 @@ vitro/engine/vm vitro/engine/ast base_element_type
 vitro/engine/vm vitro/engine/ast compute_type_size
 vitro/engine/vm vitro/engine/ast type_display_name
 vitro/engine/vm vitro/engine/bytecode CompileOutput
-vitro/engine/vm vitro/engine/bytecode rehost_round_trip
 vitro/engine/vm vitro/engine/bytecode FuncMeta
 vitro/engine/vm vitro/engine/bytecode GLOBAL_REGION_LIMIT
 vitro/engine/vm vitro/engine/bytecode GLOBAL_START
@@ -711,6 +751,8 @@ vitro/engine/vm vitro/engine/bytecode Symbol
 vitro/engine/vm vitro/engine/bytecode align4
 vitro/engine/vm vitro/engine/bytecode argv_region_footprint
 vitro/engine/vm vitro/engine/bytecode cstring_bytes
+vitro/engine/vm vitro/engine/bytecode rehost_round_trip
+vitro/engine/vm vitro/engine/bytecode wasm_emit_ctx
 vitro/engine/vm vitro/engine/host HostMemReply
 vitro/engine/vm vitro/engine/host InputState
 vitro/engine/vm vitro/engine/host OutputKind
@@ -839,52 +881,31 @@ vitro/engine/vm vitro/engine/opcode Instruction
 vitro/engine/vm vitro/engine/opcode OpCode
 vitro/engine/vm vitro/engine/source SourceLoc
 vitro/engine/vm vitro/engine/teaching/assets trap_messages
+vitro/engine/vm vitro/engine/util i64_to_i32_bits
 vitro/engine/vm vitro/engine/util render_template
 vitro/engine/vm vitro/engine/util utf8_len
-vitro/engine/ast vitro/engine/util json_parse
-# PROVE-arith 批（2026-11-04）：镜像证明包对拍锚（parity_test.mbt 黑盒——wrap 模型对拍 normalize /
-# 拒绝路径行为锚 / 域采样；证明函数零引用 @arith，import 仅供测试消费）
-vitro/engine/proofs/arith_mirror vitro/engine/arith AddOverflow
-vitro/engine/proofs/arith_mirror vitro/engine/arith DivByZero
-vitro/engine/proofs/arith_mirror vitro/engine/arith DivOverflow
-vitro/engine/proofs/arith_mirror vitro/engine/arith I32
-vitro/engine/proofs/arith_mirror vitro/engine/arith I64
-vitro/engine/proofs/arith_mirror vitro/engine/arith MulOverflow
-vitro/engine/proofs/arith_mirror vitro/engine/arith NegOverflow
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpAdd
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpDiv
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpMod
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpMul
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpNeg
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpShl
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpShr
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpSub
-vitro/engine/proofs/arith_mirror vitro/engine/arith ShiftOutOfRange
-vitro/engine/proofs/arith_mirror vitro/engine/arith SubOverflow
-vitro/engine/proofs/arith_mirror vitro/engine/arith U32
-vitro/engine/proofs/arith_mirror vitro/engine/arith U64
-vitro/engine/proofs/arith_mirror vitro/engine/arith eval_int_binary
-vitro/engine/proofs/arith_mirror vitro/engine/arith eval_int_unary
-vitro/engine/proofs/arith_mirror vitro/engine/arith normalize
-# PR #480 审阅处置批（2026-11-05）：mirror_wbtest.mbt 逐臂矩阵对拍扩面的 11 边（wbtest 包级 import 消费——审阅实锤形态）
-vitro/engine/proofs/arith_mirror vitro/engine/arith ArithFault
-vitro/engine/proofs/arith_mirror vitro/engine/arith IntBinOp
-vitro/engine/proofs/arith_mirror vitro/engine/arith IntDomain
-vitro/engine/proofs/arith_mirror vitro/engine/arith IntUnOp
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpBitNot
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpEq
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpGe
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpGt
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpLe
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpLt
-vitro/engine/proofs/arith_mirror vitro/engine/arith OpNe
-
-# REHOST 批 1a（2026-11-05）：wasmenc 新叶包（153 码表 wasm 子集发射/折叠骨架）消费边
+vitro/engine/vm vitro/engine/wasmenc BadReturnPoint
+vitro/engine/vm vitro/engine/wasmenc BadTarget
+vitro/engine/vm vitro/engine/wasmenc Blocks
+vitro/engine/vm vitro/engine/wasmenc CallPtrUnsupported
+vitro/engine/vm vitro/engine/wasmenc CallSiteMeta
+vitro/engine/vm vitro/engine/wasmenc DispatchInput
+vitro/engine/vm vitro/engine/wasmenc Emit
+vitro/engine/vm vitro/engine/wasmenc ExitStackNonEmpty
+vitro/engine/vm vitro/engine/wasmenc NotSupportedHeight
+vitro/engine/vm vitro/engine/wasmenc VkF32
+vitro/engine/vm vitro/engine/wasmenc VkF64
+vitro/engine/vm vitro/engine/wasmenc VkI64
+vitro/engine/vm vitro/engine/wasmenc VkWordI32
+vitro/engine/vm vitro/engine/wasmenc WValKind
+vitro/engine/vm vitro/engine/wasmenc assemble_dispatch_module
 vitro/engine/wasmenc vitro/engine/opcode Add
 vitro/engine/wasmenc vitro/engine/opcode And
+vitro/engine/wasmenc vitro/engine/opcode BitAnd
 vitro/engine/wasmenc vitro/engine/opcode BitNot
 vitro/engine/wasmenc vitro/engine/opcode BitNotQ
 vitro/engine/wasmenc vitro/engine/opcode BitXor
+vitro/engine/wasmenc vitro/engine/opcode BitXorQ
 vitro/engine/wasmenc vitro/engine/opcode Call
 vitro/engine/wasmenc vitro/engine/opcode CallHost
 vitro/engine/wasmenc vitro/engine/opcode CallPtr
@@ -892,45 +913,30 @@ vitro/engine/wasmenc vitro/engine/opcode CallVar
 vitro/engine/wasmenc vitro/engine/opcode Jump
 vitro/engine/wasmenc vitro/engine/opcode JumpIfNotZero
 vitro/engine/wasmenc vitro/engine/opcode JumpIfZero
+vitro/engine/wasmenc vitro/engine/opcode LoadLocal
 vitro/engine/wasmenc vitro/engine/opcode Not
 vitro/engine/wasmenc vitro/engine/opcode OpCode
+vitro/engine/wasmenc vitro/engine/opcode Or
 vitro/engine/wasmenc vitro/engine/opcode Pop
 vitro/engine/wasmenc vitro/engine/opcode PushArgc
 vitro/engine/wasmenc vitro/engine/opcode PushArgv
 vitro/engine/wasmenc vitro/engine/opcode PushConst
+vitro/engine/wasmenc vitro/engine/opcode PushConstD
 vitro/engine/wasmenc vitro/engine/opcode PushConstF
 vitro/engine/wasmenc vitro/engine/opcode PushConstQ
 vitro/engine/wasmenc vitro/engine/opcode Ret
 vitro/engine/wasmenc vitro/engine/opcode RetVoid
+vitro/engine/wasmenc vitro/engine/opcode StepEvent
+vitro/engine/wasmenc vitro/engine/opcode Strlen
+vitro/engine/wasmenc vitro/engine/opcode Throw
+vitro/engine/wasmenc vitro/engine/opcode TrapBoundsVla
 vitro/engine/wasmenc vitro/engine/opcode TruncByte
+vitro/engine/wasmenc vitro/engine/opcode TruncUByte
+vitro/engine/wasmenc vitro/engine/opcode TryBegin
+vitro/engine/wasmenc vitro/engine/opcode TryEnd
 vitro/engine/wasmenc vitro/engine/opcode UAdd
 vitro/engine/wasmenc vitro/engine/opcode UDiv
 vitro/engine/wasmenc vitro/engine/opcode USub
 vitro/engine/wasmenc vitro/engine/source SourceLoc
 vitro/engine/wasmenc vitro/engine/util i64_to_i32_bits
 vitro/engine/wasmenc vitro/engine/util utf8_bytes
-vitro/engine/wasmenc vitro/engine/opcode BitAnd
-vitro/engine/wasmenc vitro/engine/opcode BitXorQ
-vitro/engine/wasmenc vitro/engine/opcode LoadLocal
-vitro/engine/wasmenc vitro/engine/opcode Or
-vitro/engine/wasmenc vitro/engine/opcode PushConstD
-vitro/engine/wasmenc vitro/engine/opcode StepEvent
-vitro/engine/wasmenc vitro/engine/opcode Strlen
-vitro/engine/wasmenc vitro/engine/opcode Throw
-vitro/engine/wasmenc vitro/engine/opcode TrapBoundsVla
-vitro/engine/wasmenc vitro/engine/opcode TruncUByte
-vitro/engine/wasmenc vitro/engine/opcode TryBegin
-vitro/engine/wasmenc vitro/engine/opcode TryEnd
-# REHOST 批 4b-1（2026-11-14）：vm 投影层消费 wasmenc 组装器/bytecode EmitCtx/util 位拼装
-vitro/engine/vm vitro/engine/bytecode wasm_emit_ctx
-vitro/engine/vm vitro/engine/util i64_to_i32_bits
-vitro/engine/vm vitro/engine/wasmenc BadReturnPoint
-vitro/engine/vm vitro/engine/wasmenc BadTarget
-vitro/engine/vm vitro/engine/wasmenc Blocks
-vitro/engine/vm vitro/engine/wasmenc CallPtrUnsupported
-vitro/engine/vm vitro/engine/wasmenc CallSiteMeta
-vitro/engine/vm vitro/engine/wasmenc DispatchInput
-vitro/engine/vm vitro/engine/wasmenc ExitStackNonEmpty
-vitro/engine/vm vitro/engine/wasmenc Emit
-vitro/engine/vm vitro/engine/wasmenc NotSupportedHeight
-vitro/engine/vm vitro/engine/wasmenc assemble_dispatch_module

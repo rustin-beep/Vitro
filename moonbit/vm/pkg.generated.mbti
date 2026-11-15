@@ -23,9 +23,9 @@ pub const SNAPSHOT_INTERVAL : Int32 = 100_000
 
 pub const VIS_EVENT_LIMIT : Int32 = 1024
 
-pub fn build_dispatch_input(@bytecode.CompileOutput, Int32) -> Result[@wasmenc.DispatchInput, DispatchProjectError]
+pub fn build_dispatch_input(@bytecode.CompileOutput, Int32, argv0? : String) -> Result[@wasmenc.DispatchInput, DispatchProjectError]
 
-pub fn build_dispatch_product(@bytecode.CompileOutput, Int32) -> Result[DispatchProduct, String]
+pub fn build_dispatch_product(@bytecode.CompileOutput, Int32, argv0? : String) -> Result[DispatchProduct, String]
 
 pub fn load_libc_artifact() -> LibcArtifact
 
@@ -61,6 +61,8 @@ pub(all) struct DispatchProduct {
   group_count : Int32
   data_blob : Array[Byte]
   data_base : Int32
+  host_calls : Int32
+  max_steps : Int32
 }
 
 #derive(Eq, @debug.Debug)

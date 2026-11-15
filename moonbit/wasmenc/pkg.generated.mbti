@@ -18,6 +18,8 @@ pub const G_RET : Int32 = 4
 
 pub const G_RV : Int32 = 5
 
+pub const G_RV_W : Int32 = 7
+
 pub const G_SPT : Int32 = 3
 
 pub const G_STEPS : Int32 = 2
@@ -131,7 +133,9 @@ pub(all) struct CallSiteMeta {
   arg_words : Int32
   frame_bytes : Int32
   param_words : Array[Int32]
+  param_kinds : Array[WValKind]
   is_void : Bool
+  ret_kind : WValKind
 }
 
 #derive(Eq, @debug.Debug)
@@ -171,6 +175,7 @@ pub(all) struct DispatchInput {
   func_entry_ips : Array[Int32]
   entry_ip : Int32
   call_sites : Map[Int32, CallSiteMeta]
+  ret_kinds : Map[Int32, WValKind]
   stack_start : Int32
   call_depth_limit : Int32
   max_steps : Int32
@@ -483,6 +488,9 @@ pub(all) enum WInstr {
   WI64TruncSatF64S
   WI64TruncSatF64U
   WI64ReinterpretF64
+  WF64ReinterpretI64
+  WI32ReinterpretF32
+  WF32ReinterpretI32
   WMemoryCopy
   WMemoryFill
 }
@@ -494,6 +502,17 @@ pub fn WInstr::op_gt(Self, Self) -> Bool
 pub fn WInstr::op_le(Self, Self) -> Bool
 pub fn WInstr::op_lt(Self, Self) -> Bool
 pub fn WInstr::to_repr(Self) -> @debug.Repr
+
+#derive(Eq, @debug.Debug)
+pub(all) enum WValKind {
+  VkWordI32
+  VkF32
+  VkI64
+  VkF64
+}
+pub fn WValKind::equal(Self, Self) -> Bool
+pub fn WValKind::not_equal(Self, Self) -> Bool
+pub fn WValKind::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

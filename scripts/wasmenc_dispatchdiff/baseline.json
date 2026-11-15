@@ -1,0 +1,66 @@
+{
+  "_comment": "REHOST 批 4b-3 基线（as_of 2026-11-15；4b-4 连坐刷新：wide-param 禁译撤除——18 例解锁后实际全含 CallHost 迁入 callhost 桶〔unsupported 26→8/callhost 871→889〕）：九目录桶下限（ok=零 host 对拍例/callhost=host 回接批域/unsupported=静态不可展开/other=须归因新增桶——>0 即红）；compile 为上限。覆盖面退化或桶迁移须连坐本文件。",
+  "baseline": {
+    "ok": 9,
+    "callhost": 527,
+    "unsupported": 7,
+    "other": 0,
+    "compile": 35
+  },
+  "chibicc_port": {
+    "ok": 0,
+    "callhost": 38,
+    "unsupported": 1,
+    "other": 0,
+    "compile": 0
+  },
+  "codegen_skeleton": {
+    "ok": 12,
+    "callhost": 0,
+    "unsupported": 0,
+    "other": 0,
+    "compile": 1
+  },
+  "gap": {
+    "ok": 1,
+    "callhost": 16,
+    "unsupported": 0,
+    "other": 0,
+    "compile": 6
+  },
+  "knr": {
+    "ok": 0,
+    "callhost": 81,
+    "unsupported": 0,
+    "other": 0,
+    "compile": 0
+  },
+  "leetcode": {
+    "ok": 0,
+    "callhost": 138,
+    "unsupported": 0,
+    "other": 0,
+    "compile": 0
+  },
+  "llm_scale": {
+    "ok": 0,
+    "callhost": 6,
+    "unsupported": 0,
+    "other": 0,
+    "compile": 0
+  },
+  "mutator_probe": {
+    "ok": 0,
+    "callhost": 1,
+    "unsupported": 0,
+    "other": 0,
+    "compile": 0
+  },
+  "template_generated": {
+    "ok": 0,
+    "callhost": 82,
+    "unsupported": 0,
+    "other": 0,
+    "compile": 0
+  }
+}

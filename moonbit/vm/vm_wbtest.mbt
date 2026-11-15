@@ -284,6 +284,7 @@ test "register_function_respects_max_functions" {
     local_count: 0,
     param_sizes: [],
     return_type: @ast.Type::Void(false),
+    param_types: [],
     is_variadic: false,
     local_buffers: [],
   }

@@ -251,8 +251,11 @@ fn BytecodeGen::gen_nested_init(
       // #143 连坐：嵌套层（数组元素/深层字段）的 struct 变量值——与
       // emit_field_init 同款整体拷贝（旧形态落本兜底臂：gen_expr 压首
       // 字段 StoreMem 4 字节，`pts[1] = my_pt` 只拷 (7,0)）
-      if target_ty.kind() is TK_Struct &&
-        init.ty().kind() is TK_Struct &&
+      // #515 审阅 P1（2026-11-15）：union 值同款并入——`U arr[2]={a,b}`
+      // 数组元素值初始化落兜底只拷 4 字节（a0=0 应 1.5，审阅探针 p2
+      // 实锤；与 var_decl.mbt emit_field_init 两消费点同批收口）
+      if (target_ty.kind() is TK_Struct || target_ty.kind() is TK_Union) &&
+        (init.ty().kind() is TK_Struct || init.ty().kind() is TK_Union) &&
         !(init is InitList(_, _, _)) {
         self.emit_struct_value_copy(base_temp, offset, init, target_ty, loc)
         return

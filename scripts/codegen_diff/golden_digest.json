@@ -548,7 +548,9 @@
         "union_int_member.c": "aeb30e27",
         "union_member_struct_assign.c": "25ea7de0",
         "union_member_widths.c": "40847cc3",
+        "union_ret_vararg.c": "e6bd7abb",
         "union_size_access.c": "7bd727f8",
+        "union_value_init.c": "d655bdcd",
         "unsigned_add_wrap.c": "53a0dee7",
         "unsigned_cmp_wrap.c": "f72f16ff",
         "unsigned_compound_wrap.c": "21459c6d",
@@ -2252,8 +2254,14 @@
         "union_member_widths.c": {
           "result_sha": "c761b158a74b7b2d"
         },
+        "union_ret_vararg.c": {
+          "result_sha": "bd8998dba5619379"
+        },
         "union_size_access.c": {
           "result_sha": "c111c3bdd6159e2c"
+        },
+        "union_value_init.c": {
+          "result_sha": "9090ec8e60dbb4cd"
         },
         "unsigned_add_wrap.c": {
           "result_sha": "972e3a5bb33a975d"

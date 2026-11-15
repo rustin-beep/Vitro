@@ -3266,11 +3266,23 @@
       "stdout_sha": "e3b0c44298fc1c14",
       "memory_sha": "a4e22ba93b5bf9ca"
     },
+    "baseline/union_ret_vararg.c": {
+      "src_sha": "e6bd7abb",
+      "exit_code": 0,
+      "stdout_sha": "ea267a8973c7752e",
+      "memory_sha": "2a63ca41ccf8f7cd"
+    },
     "baseline/union_size_access.c": {
       "src_sha": "7bd727f8",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
       "memory_sha": "74f081b24f1fa786"
+    },
+    "baseline/union_value_init.c": {
+      "src_sha": "d655bdcd",
+      "exit_code": 0,
+      "stdout_sha": "d982bfae384cdbc4",
+      "memory_sha": "3c08f74bc33e3c2c"
     },
     "baseline/unsigned_add_wrap.c": {
       "src_sha": "53a0dee7",

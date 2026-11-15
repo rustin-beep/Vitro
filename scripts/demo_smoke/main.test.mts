@@ -6,12 +6,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { projectRoot } from "../internal/capi.mts";
 import { ARRAY_SNAPSHOT_KEYS } from "./contract.mts";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(HERE, "../..");
+// 不能按 import.meta 相对定位：mutation gate 的 Stryker 沙箱把本文件复制到
+// scripts/.stryker-tmp/sandbox-*/ 下再跑，相对路径会指进沙箱（ENOENT）。
+// projectRoot() 从 cwd 向上找 corpus/+scripts/，沙箱内同样命中真实仓库根。
+const ROOT = projectRoot();
 
 /** 从生成物文本提取 `ArraySnapshot: [...]` 列表（避免 .mjs↔.d.ts 解析口径差）。 */
 function generatedFields(): string[] {

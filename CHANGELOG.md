@@ -1,5 +1,35 @@
 ## [Unreleased]
 
+### feat(scripts): #523 vitro_cli_smoke 五件产物新鲜度门禁 + #522 销案实测（2026-11-15）
+
+- **#523 四臂（实五产物）新鲜度门禁**：`vitro_cli_smoke` 此前仅有存在性
+  预检（缺件即红）——陈旧产物混过产出 `B[api rc] wasm=1 native=0` 假红
+  （PR #520 审阅 P3 实锤，与 vm_diff native 臂批 3 已修病灶同类）。本批
+  接 `ensureFresh` 复核构建硬门禁（freshness.mts 单源）：vitro_wasm.js
+  胶水 / vitro_js.js / vitro.exe / serve.exe 四件直连；wasm.wasm 走
+  postBuild 后置链（重建后追加 wasmopt，build→wasmopt 同 CI
+  build-artifacts 步骤序）。存在性预检保留（一次列全缺件+完整配方）。
+- **runWasmoptPost 单源收编**：从 vm.mts 私有函数提升为 freshness.mts
+  导出（vm.mts 改 import，调用点零变化）——vitro_cli_smoke 同链复用，
+  防双份漂移。
+- **#522 销案（实测验收）**：postBuild 端口 + vm_diff wasm 臂接线已随
+  #518 追加批在 master（立单时「wasm 臂维持软警告」已过时）。本批补
+  验收实测：vm_diff wasm 臂单例 + touch gateway/wasm 源 → 自动复核
+  构建 + wasmopt 链恢复，产物保优化尺寸 **917840B**（裸产物 1133786B
+  即回退实锤）；触发语义按 freshness.mts 头注勘正口径——stale 必真
+  重建（mtime 触发面），postBuild 无条件跑正确，「产物未变跳过」处方
+  分支已废。
+- **实测（本地 worktree `vitro-w-fresh`，基 origin/master `c8c0a14a`）**：
+  ① touch 壳源 → 五件全触发复核 → 全绿（`--corpus 30` CI 同参）；
+  ② 二次跑非依赖产物 up-to-date 秒级冗余复核（moon 增量不刷 mtime 的
+  已知语义，与 vm_diff 现役同形态，登记不修）；③ **J9 证红**：
+  gateway/wasm 注入语法错误 → `构建失败——修好构建前不给判定` exit 1，
+  撤销后重跑全绿；④ e2e 锚真跑 19.6s 全绿（24 pass）；⑤ CI 零误触发
+  论证：build-products artifact（含 vitro_wasm.js）下载恢复与自建 native
+  的 mtime 均新于 checkout 源。四件套 tsc/oxlint/node:test 全绿。
+- **CI 注释勘正**：ci-engine-gates.yml「vitro_wasm.js 壳不在 artifact」
+  过时表述（实际在 build-products 打包面，ci-build.yml upload 步）。
+
 ### docs: 全库文档对账第九轮——0.9.1 后双主线回灌 + 防线册对 ci.yml 亲证 + 状态权威补漏（2026-11-15）
 
 - **基准与真值**：origin/master `09c42963`（worktree `docs-master-sync`，基云端最新 master）；facts 亲采（含 serve.exe 前置构建）= 1463〔裸 `moon test`〕/ 1539〔native 全量〕/ 警告 98 / lexer 1640 / parser 818 / 语料 578+81+138+23 / 引擎 0.9.1；`facts --strict check` 漂移 0 / 待采集 0 / 坏引用 0（改后复跑同绿）。**合并 #520（`59dfe2d1`，批 4a/4b-1）后真值重采**：1478 / 1554 / 警告 112（dispatch-loop 批中间态 +14，warning 台账随 #520 连坐）——本批现值句已按新基线刷新，设计单 §3.2 冲突融合（采 #520 新批次序为基底 + 批 3 已落回灌并入）。

@@ -274,6 +274,13 @@ jobs:
           node demo/tests/e2e_workspace.mts http://127.0.0.1:8931/
           node demo/tests/e2e_session.mts http://127.0.0.1:8931/
           node demo/tests/e2e_editor.mts http://127.0.0.1:8931/
+          # 批②-5（2026-11-14）：浏览器 V8 digest 锚——同 gateway wasm 产物 ×
+          # 三语料 × 同 invoke 序列，node V8（本进程）与 Chrome V8（CDP 页内）
+          # 帧 digest 对拍——gates-wasm 的 V8 是 node（.node-version 单点），
+          # 浏览器 V8（runner Chrome 漂移）此前零引擎行为对拍（js-string
+          # builtins 等版本敏感面的异构盲区收口）。三语料 digest 互异门量
+          # 防全崩假绿。
+          node demo/tests/e2e_v8digest.mts http://127.0.0.1:8931/
           # bootfail 末位跑：临时改名 dist wasm 产物造装载失败（finally 还原），
           # 串行步骤内安全；若前置步骤红，本步不执行无遗留改名。
           node demo/tests/e2e_bootfail.mts http://127.0.0.1:8931/

@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { compareTriad, normalizeCrlf, validateShape, EXPECTED_LINES, type ArmResult } from "./main.mts";
 
-/** 合法 10 行输出（形状门量全过）——测试基线。 */
+/** 合法 16 行输出（形状门量全过）——测试基线（批②扩容 10→16：尾部追加 6 行数学文本化锚，既有索引 0/2/3/8/9 不动）。 */
 function goodOut(): Buffer {
   const lines = [
     '{"id":1,"ok":true,"result":{"pong":true}}',
@@ -18,6 +18,13 @@ function goodOut(): Buffer {
     "4",
     '{"id":9,"ok":true,"result":{"ok":true,"diagnostics":[]}}',
     '{"id":10,"ok":true,"result":{"status":"finished","return_value":7}}',
+    // 批②扩容 6 行（实际输出形态——三臂逐字节一致实证 2026-11-14）
+    'NaN',
+    'Infinity',
+    '9223372036854775807',
+    '-9223372036854775808',
+    '1e+21',
+    '3735928544',
   ];
   return Buffer.from(lines.join("\n") + "\n", "utf8");
 }
@@ -75,8 +82,8 @@ test("长度差即红（单侧尾部增删，字节计）", () => {
   const longer = Buffer.concat([goodOut(), Buffer.from("extra\n", "utf8")]);
   const v = compareTriad([ok("native", goodOut()), ok("js", longer), ok("wasm-gc", goodOut())]);
   assert.equal(v.ok, false);
-  // 形状门量先拦（11 行 ≠ 10）——本锚同时证门量与长度语义
-  assert.match(v.msg, /行数 11|长度差/);
+  // 形状门量先拦（17 行 ≠ 16）——本锚同时证门量与长度语义
+  assert.match(v.msg, /行数 17|长度差/);
 });
 
 test("CRLF 归一：native 臂介入且标注，js/wasm 零归一", () => {

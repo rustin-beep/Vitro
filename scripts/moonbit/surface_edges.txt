@@ -922,5 +922,6 @@ vitro/engine/vm vitro/engine/wasmenc CallPtrUnsupported
 vitro/engine/vm vitro/engine/wasmenc CallSiteMeta
 vitro/engine/vm vitro/engine/wasmenc DispatchInput
 vitro/engine/vm vitro/engine/wasmenc ExitStackNonEmpty
+vitro/engine/vm vitro/engine/wasmenc Emit
 vitro/engine/vm vitro/engine/wasmenc NotSupportedHeight
 vitro/engine/vm vitro/engine/wasmenc assemble_dispatch_module

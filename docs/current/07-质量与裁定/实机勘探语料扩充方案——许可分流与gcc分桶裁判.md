@@ -89,10 +89,10 @@
 
 ### 2.4 gcc 裁判的接线（脚本改造点）
 
-`scripts/realcode_diff/main.mts`（#273 迁移批前的原 `vitro_clang_diff.go`）：P2 Clang 真值后加 P2.5 gcc 分桶（`gcc -std=c11 -fsyntax-only`，探测顺序 `--gcc` 参数 → PATH → `D:\code\mingw64\bin`）；金样本条目增 `gcc_ok` 字段；`-check` 值域白名单同步。约 +60 行，防线维护通道。
+`scripts/realcode_diff/main.mts`（#273 迁移批前的原 `vitro_clang_diff.go`）：P2 Clang 真值后加 P2.5 gcc 分桶（`gcc -std=c11 -fsyntax-only`，探测顺序 `--gcc` 参数 → PATH → `D:\code\mingw64\bin`）；金样本条目增 `gcc_ok` 字段；`-check` 值域白名单同步。约 +60 行，防线维护通道。**✅ 已落地（2026-11-15 对账批回灌）**：`realcode_diff` 现役形态 = 勘探/仓内语料批均含「Clang + gcc 分桶 + Vitro 三方」对拍（`-corpus` 仓内语料批 + 工程模式 `gccCheckProject`；README 与驱动头注在案）。
 
 ## 三、验收锚与待拍板点
 
 - **已定**（本方案落档即生效的裁定）：许可分流规则；gcc = 分桶裁判非第二真值；chibicc 语料按"扩展边界桶"消费（不做语句表达式提升变换）；haoel/leetcode 排除。
-- **待拍板**：① 试点批（chibicc）开工时机；② 无毒语料勘探接 CI（仓内语料 pinned 可复现——原"勘探不接 CI"拍板的前提变化，条件性重提）；③ include 解析批立项（第三梯队解锁钥匙，同时根治 E1021×104）。
+- ~~**待拍板**~~ **落地回灌（2026-11-15 对账批）**：① 试点批（chibicc）**已落地**——`corpus/chibicc_port/` 39 例入库（#437 语料扩充窗口入库批，2026-11-04；facts `c_e2e_chibicc_port_cases` 机判，clang_direct 九目录在册）；② 无毒语料勘探接 CI **已落地**（精选子集形态）——vitro-green 棘轮分支 166 全绿精选集 × 三臂 compile 对拍接 CI `green_probe` job（PR #513，2026-11-14；分支内容即断言锚、零白名单，棘轮只增不减）；③ include 解析批立项**仍待拍板**（跨目录 quote-include，第三梯队解锁钥匙）。
 - **诚实边界（2026-10-02 已补测）**：初版"救回 ≥77"系 v1 基线漂移假象，已按真实基线修正（本节 1.3）；8cc 的 gcc 口径与 Vitro 引号标准头形态探针仍待补。

@@ -58,8 +58,11 @@ fn BytecodeGen::gen_addr(
     Member(object, member_name, _, _, _) =>
       self.gen_member_addr(object, member_name, loc)
     // 函数按值返回结构体 / 复合字面量：gen_expr 已在栈顶留下地址
+    // #515（2026-11-15）：union 返回调用同款——`U v = makeU()` 的初始化
+    // 拷贝路径 gen_addr(call) 落此处；缺陷版只判 TK_Struct 报「不支持
+    // 的地址生成」编译错（issue 探针 union_ret.c 三臂一致实测）
     CallPtr(_, _, _, ty) =>
-      if ty.kind() is TK_Struct {
+      if ty.kind() is TK_Struct || ty.kind() is TK_Union {
         self.gen_expr(expr)
       } else {
         self.report_error("不支持的地址生成", loc)
@@ -248,8 +251,11 @@ fn BytecodeGen::gen_nested_init(
       // #143 连坐：嵌套层（数组元素/深层字段）的 struct 变量值——与
       // emit_field_init 同款整体拷贝（旧形态落本兜底臂：gen_expr 压首
       // 字段 StoreMem 4 字节，`pts[1] = my_pt` 只拷 (7,0)）
-      if target_ty.kind() is TK_Struct &&
-        init.ty().kind() is TK_Struct &&
+      // #515 审阅 P1（2026-11-15）：union 值同款并入——`U arr[2]={a,b}`
+      // 数组元素值初始化落兜底只拷 4 字节（a0=0 应 1.5，审阅探针 p2
+      // 实锤；与 var_decl.mbt emit_field_init 两消费点同批收口）
+      if (target_ty.kind() is TK_Struct || target_ty.kind() is TK_Union) &&
+        (init.ty().kind() is TK_Struct || init.ty().kind() is TK_Union) &&
         !(init is InitList(_, _, _)) {
         self.emit_struct_value_copy(base_temp, offset, init, target_ty, loc)
         return

@@ -87,6 +87,24 @@ function rebuild(buildArgs: string[]): boolean {
   return true;
 }
 
+// wasm 臂构建后置链（PR #518 追加批，#523 批从 vm.mts 私有函数收编单源）：
+// ensureFresh 复核构建成功后跑 wasmopt 后置优化（与 CI build-artifacts 步骤序
+// build→wasmopt 同链）。不后置的代价实锤：moon 自动重建只产裸 wasm.wasm——
+// 以裸产物覆盖优化产物（gateway/wasm 链，~1.12MB 裸 vs ~908KB 优化）。失败
+// 返回 false 交 ensureFresh 按「构建链失败」die（ENSURE_FRESH_FAIL_MARKS[3]
+// ——facts artifactMissingNote 数组遍历匹配自动认得，不误报为防线红）。
+export function runWasmoptPost(root: string, artifact: string): boolean {
+  const r = spawnSync(process.execPath, [path.join(root, "scripts/wasmopt/main.mts"), artifact], {
+    encoding: "utf8",
+  });
+  if (r.status !== 0) {
+    if (r.stdout) process.stderr.write(r.stdout);
+    if (r.stderr) process.stderr.write(r.stderr);
+    return false;
+  }
+  return true;
+}
+
 // findStaleSource 返回任一比产物新的 moonbit 源（字典序首个）；全新鲜返回空串。
 // moonbitRoot 参数仅供测试注入；默认仓库 moonbit/。
 export function findStaleSource(artifact: string, moonbitRoot?: string): string {

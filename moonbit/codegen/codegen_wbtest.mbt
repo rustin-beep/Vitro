@@ -1996,3 +1996,279 @@ test "skeleton: ptr-to-struct deref as byval arg passes address through (#147)" 
     msg="take(*sp) 恰 2 次 LoadMem（Point 两 word 逐字拷贝）；3 次即缺陷版复发（Deref 多读一层）",
   )
 }
+
+///|
+/// #515 回归锚 A（2026-11-15）：union 按值实参 words 展开——直接标识符
+/// 形态 `takeU(pu)`（pu 为 union 形参局部）。缺陷版 TK_Union 实参落标量
+/// else 臂只压 1 word（gen_expr 压 union 变量地址），callee 形参区按
+/// words=2 读参 → 栈下溢 TRAP（issue 探针 byval=7 在 L6 实测）。断言：f
+/// 体内 LoadLocal 恰 = U 字数（U{int;double} type_size=8 → 2 words，
+/// offset+0 / offset+4 各一）；1 次即缺陷版复发（地址单压）。
+test "skeleton: union byval arg direct identifier words expansion (#515)" {
+  let l = loc(2)
+  // union U { int i; double d; }
+  let decl_u : @ast.StructDecl = {
+    ..Default::default(),
+    loc: l,
+    name: "U",
+    fields: [
+      { ty: @ast.Type::int(), name: "i", },
+      { ty: @ast.Type::double(), name: "d", },
+    ],
+  }
+  // int takeU(U u) —— 存根（签名进 func_table 即可）
+  let take_u : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: l,
+    return_type: @ast.Type::int(),
+    name: "takeU",
+    params: [
+      { ty: @ast.Type::union_type("U"), name: "u", loc: l, default: None, },
+    ],
+    body: Some(@ast.Stmt::Block([], l)),
+    source_file: "t.c",
+  }
+  // void f(U pu) { takeU(pu); }
+  let call : @ast.Stmt = @ast.Stmt::Expr(
+    @ast.Expr::CallPtr(
+      @ast.Expr::Identifier("takeU", l, @ast.Type::void_type()),
+      [@ast.Expr::Identifier("pu", l, @ast.Type::union_type("U"))],
+      l,
+      @ast.Type::int(),
+    ),
+    l,
+  )
+  let f : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: l,
+    return_type: @ast.Type::void_type(),
+    name: "f",
+    params: [
+      { ty: @ast.Type::union_type("U"), name: "pu", loc: l, default: None, },
+    ],
+    body: Some(@ast.Stmt::Block([call, @ast.Stmt::Return(None, l)], l)),
+    source_file: "t.c",
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: l,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(@ast.Stmt::Block([@ast.Stmt::Return(None, l)], l)),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate({
+    structs: [],
+    unions: [decl_u],
+    globals: [],
+    funcs: [take_u, f, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  // callee 帧布局前置断言：takeU 形参 words=2（union type_size=8——
+  // type_size 口径单源 @ast.compute_type_size，非聚合判定的从属面）
+  let take_meta = o.func_table.get("takeU").unwrap()
+  assert_eq(take_meta.param_sizes, [2], msg="takeU(U) 形参 words=2（U=8B）")
+  let f_meta = o.func_table.get("f").unwrap()
+  let mut end_ip = o.code.length()
+  for _, m in o.func_table {
+    if m.ip > f_meta.ip && m.ip < end_ip {
+      end_ip = m.ip
+    }
+  }
+  let mut load_local_count = 0
+  for i in f_meta.ip..<end_ip {
+    if o.code[i].op is @opcode.OpCode::LoadLocal {
+      load_local_count += 1
+    }
+  }
+  assert_eq(
+    load_local_count,
+    2,
+    msg="takeU(pu) 恰 2 次 LoadLocal（U 两 word 展开）；1 次即缺陷版复发（地址单压）",
+  )
+}
+
+///|
+/// #515 回归锚 B（2026-11-15）：union 按值实参 words 展开——Deref 形态
+/// `takeU(*up)`。双重缺陷面：① gen_call_ptr 的 TK_Union 实参落标量臂；
+/// ② Deref 的 pointee 是 union 时落 `_` 兜底 LoadMem 把首成员值读出来当
+/// 拷贝源（#147 struct 直通臂缺 TK_Union 同族——issue probe147b 已证补
+/// Deref 单处不够，须 words 展开臂同修）。断言：g 体内 LoadMem 恰 = U
+/// 字数（2）；1 次即缺陷版复发（Deref 兜底单读）。
+test "skeleton: union byval arg deref words expansion (#515)" {
+  let l = loc(2)
+  // union U { int i; double d; }
+  let decl_u : @ast.StructDecl = {
+    ..Default::default(),
+    loc: l,
+    name: "U",
+    fields: [
+      { ty: @ast.Type::int(), name: "i", },
+      { ty: @ast.Type::double(), name: "d", },
+    ],
+  }
+  // int takeU(U u) —— 存根
+  let take_u : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: l,
+    return_type: @ast.Type::int(),
+    name: "takeU",
+    params: [
+      { ty: @ast.Type::union_type("U"), name: "u", loc: l, default: None, },
+    ],
+    body: Some(@ast.Stmt::Block([], l)),
+    source_file: "t.c",
+  }
+  // void g(U *up) { takeU(*up); }
+  let deref_call : @ast.Stmt = @ast.Stmt::Expr(
+    @ast.Expr::CallPtr(
+      @ast.Expr::Identifier("takeU", l, @ast.Type::void_type()),
+      [
+        @ast.Expr::Unary(
+          @ast.UnaryOp::Deref,
+          @ast.Expr::Identifier(
+            "up",
+            l,
+            @ast.Type::pointer_to(@ast.Type::union_type("U")),
+          ),
+          l,
+          @ast.Type::union_type("U"),
+        ),
+      ],
+      l,
+      @ast.Type::int(),
+    ),
+    l,
+  )
+  let g : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: l,
+    return_type: @ast.Type::void_type(),
+    name: "g",
+    params: [
+      {
+        ty: @ast.Type::pointer_to(@ast.Type::union_type("U")),
+        name: "up",
+        loc: l,
+        default: None,
+      },
+    ],
+    body: Some(@ast.Stmt::Block([deref_call, @ast.Stmt::Return(None, l)], l)),
+    source_file: "t.c",
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: l,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(@ast.Stmt::Block([@ast.Stmt::Return(None, l)], l)),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate({
+    structs: [],
+    unions: [decl_u],
+    globals: [],
+    funcs: [take_u, g, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let g_meta = o.func_table.get("g").unwrap()
+  let mut end_ip = o.code.length()
+  for _, m in o.func_table {
+    if m.ip > g_meta.ip && m.ip < end_ip {
+      end_ip = m.ip
+    }
+  }
+  let mut load_mem_count = 0
+  for i in g_meta.ip..<end_ip {
+    if o.code[i].op is @opcode.OpCode::LoadMem {
+      load_mem_count += 1
+    }
+  }
+  assert_eq(
+    load_mem_count,
+    2,
+    msg="takeU(*up) 恰 2 次 LoadMem（U 两 word 逐字拷贝）；1 次即缺陷版复发（Deref 兜底单读）",
+  )
+}
+
+///|
+/// #515 回归锚 C（2026-11-15）：union 返回值 __ret_ptr 族——`U makeU(void)
+/// { return gu; }`。缺陷版 returns_struct 只判 TK_Struct：union 返回无
+/// __ret_ptr 隐藏形参（param_sizes=[]），调用侧 ret_temp_offset 同漏 →
+/// `U v = makeU(7)` 落「不支持的地址生成」编译错（issue 探针 union_ret.c
+/// 实测）。断言：makeU param_sizes==[1]（__ret_ptr 一 word）——空表即
+/// 缺陷版复发。
+test "skeleton: union return gets hidden ret_ptr param (#515)" {
+  let l = loc(2)
+  // union U { int i; double d; }
+  let decl_u : @ast.StructDecl = {
+    ..Default::default(),
+    loc: l,
+    name: "U",
+    fields: [
+      { ty: @ast.Type::int(), name: "i", },
+      { ty: @ast.Type::double(), name: "d", },
+    ],
+  }
+  // U gu;（全局——return 实参最轻形态）
+  let gu : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc: l,
+    ty: @ast.Type::union_type("U"),
+    name: "gu",
+    init: None,
+  }
+  // U makeU(void) { return gu; }
+  let ret_stmt : @ast.Stmt = @ast.Stmt::Return(
+    Some(@ast.Expr::Identifier("gu", l, @ast.Type::union_type("U"))),
+    l,
+  )
+  let make_u : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: l,
+    return_type: @ast.Type::union_type("U"),
+    name: "makeU",
+    params: [],
+    body: Some(@ast.Stmt::Block([ret_stmt], l)),
+    source_file: "t.c",
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: l,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(@ast.Stmt::Block([@ast.Stmt::Return(None, l)], l)),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate({
+    structs: [],
+    unions: [decl_u],
+    globals: [gu],
+    funcs: [make_u, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let make_meta = o.func_table.get("makeU").unwrap()
+  assert_eq(
+    make_meta.param_sizes,
+    [1],
+    msg="makeU 返回 U 须有 __ret_ptr 隐藏形参（param_sizes=[1]）；空表即缺陷版复发（union 返回被当标量）",
+  )
+}

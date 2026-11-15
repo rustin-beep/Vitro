@@ -221,6 +221,10 @@ fn BytecodeGen::gen_unary(
         // 字段值读出来当拷贝源地址——f(*sp) 作 struct 按值实参双重解引用
         // TRAP 首字段值（探针 NEST_s2 L119 运行中断根因）
         Some(TK_Struct) => ()
+        // #515（2026-11-15）：union 左值同款「值即地址」直通——缺陷版落
+        // `_` 兜底 LoadMem 把首成员值读出来当拷贝源（takeU(*up) 与 #147
+        // struct 形态同族；probe147b 实证单补此臂不够，words 展开臂同批修）
+        Some(TK_Union) => ()
         Some(TK_Char) =>
           if pointee_unsigned {
             self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)

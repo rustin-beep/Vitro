@@ -24,8 +24,11 @@ fn BytecodeGen::enter_function(
   // param_types 与 param_sizes 同游标同步（批 4b-4——dispatch Call 展开
   // 的按值分派源；隐参 __ret_ptr = int 指针）
   let param_types : Array[@ast.Type] = []
+  // #515（2026-11-15）：union 返回值同 struct 走 __ret_ptr 隐藏形参
+  //（与 call.mbt ret_temp_offset / stmt.mbt gen_return 三处同批收口）
   let returns_struct = match self.func_table.get(name) {
-    Some(m) => m.return_type.kind() is TK_Struct
+    Some(m) =>
+      m.return_type.kind() is TK_Struct || m.return_type.kind() is TK_Union
     None => false
   }
   if returns_struct {

@@ -231,7 +231,10 @@ fn BytecodeGen::gen_member_addr(
             }
         }
       _ =>
-        if object.ty().kind() is TK_Struct {
+        // #515 审阅 P2（2026-11-15）：union 返回调用等复杂表达式的成员
+        // 访问同款并入——`makeU(7).i` 落编译错（审阅探针 p3；gen_expr
+        // 对 union 返回调用同 struct 留下地址，成员偏移加法共用）
+        if object.ty().kind() is TK_Struct || object.ty().kind() is TK_Union {
           // 函数按值返回 struct 等复杂表达式：gen_expr 留下地址
           self.gen_expr(object)
         } else {

@@ -641,7 +641,14 @@ fn BytecodeGen::emit_local_array_init(
       })
       // 病 55 codegen 连坐（2026-10-13）：union 元素嵌套 InitList 同路径
       //（typeck 侧 check_array_elem_value 同日扩 TK_Union——两层同漏）
-      if (has_nested_init || has_string_elem) &&
+      // #515 审阅 P1（2026-11-15）：**聚合值元素**（`U arr[2]={a,b}` 的
+      // 变量元素）同须分流到嵌套轨——旧只认 InitList/字符串两形态，变量
+      // 元素落 flat 轨被 gen_expr 压单值 4 字节（a0=0 应 1.5，审阅探针
+      // p2 实锤）；gen_nested_init 的 `_` 兜底整拷臂承接（addr.mbt 同批）
+      let has_aggregate_elem = elements.exists(e => {
+        e.value.ty().kind() is TK_Struct || e.value.ty().kind() is TK_Union
+      })
+      if (has_nested_init || has_string_elem || has_aggregate_elem) &&
         (
           inner_ty.kind() is TK_Struct ||
           inner_ty.kind() is TK_Union ||
@@ -954,8 +961,11 @@ fn BytecodeGen::emit_field_init(
   // 位置序同形）——旧形态落 else 兜底：gen_expr(变量) 压首字段 4 字节
   // StoreMem，只拷首个标量字段其余静默留 0（issue 探针 m3b 实锤）。
   // 拷贝序列与嵌套层共用 emit_struct_value_copy（addr.mbt）。
-  if field_ty.kind() is TK_Struct &&
-    value.ty().kind() is TK_Struct &&
+  // #515 审阅 P1（2026-11-15）：union 值同款并入——`{1, u}` 形态落 else
+  // 兜底只拷 4 字节静默错值（w=0 应 1.5，PR #528 审阅探针 p1/p4b 实锤；
+  // emit_struct_value_copy 按 type_size words 拷贝，union 直接复用）。
+  if (field_ty.kind() is TK_Struct || field_ty.kind() is TK_Union) &&
+    (value.ty().kind() is TK_Struct || value.ty().kind() is TK_Union) &&
     !(value is InitList(_, _, _)) {
     self.emit_struct_value_copy(base_temp, offset, value, field_ty, loc)
     return

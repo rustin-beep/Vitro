@@ -37,6 +37,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { byteSort } from "../internal/text.mts";
+import { ensureFresh, runWasmoptPost } from "../internal/freshness.mts";
 
 let repoRoot = ".";
 let failures = 0;
@@ -160,6 +161,25 @@ export function runMain(argv: readonly string[]): number {
       return 1;
     }
   }
+  // 五件产物新鲜度门禁（#523，2026-11-15）：存在性预检上方保留（一次列全
+  // 缺件+完整构建配方），此处接 ensureFresh 复核构建硬门禁（freshness.mts
+  // 单源——vm_diff 批 3 同款病灶横向铺开：PR #520 审阅实锤陈旧 vitro_wasm.js
+  // 胶水混过存在性检查产出 `B[api rc] wasm=1 native=0` 假红）。语义与
+  // vm_diff/clang_direct 等九处现役一致：任一 moonbit 源新于产物 → 自动
+  // 复核重建（MOON_CC=clang 单源），失败即红；checkout/生成器刷源后本地
+  // 首跑付重建时长、产物 mtime 自愈后续零税，CI 干净构建不触发（freshness.mts
+  // 头注触发语义勘正）。wasm 引擎产物走 postBuild 后置链——重建后追加
+  // wasmopt（build→wasmopt 同 CI build-artifacts 步骤序，防裸产物覆盖
+  // 优化产物，#522 端口）。CI 两侧（ci-tools ubuntu lane 全量显式构建 /
+  // ci-engine-gates cli_smoke slice 自建 native + artifact 供 wasm）产物
+  // mtime 均新于 checkout 源，不误触发。
+  ensureFresh("vitro_cli_smoke", wasmGlue, ["build", "--release", "--target", "js", "cmd/vitro_wasm"]);
+  ensureFresh("vitro_cli_smoke", jsEntry, ["build", "--release", "--target", "js", "cmd/vitro_js"]);
+  ensureFresh("vitro_cli_smoke", nativeExe, ["build", "--release", "--target", "native", "cmd/vitro"]);
+  ensureFresh("vitro_cli_smoke", serveExe, ["build", "--release", "--target", "native", "cmd/serve"]);
+  ensureFresh("vitro_cli_smoke", wasmMod, ["build", "--release", "--target", "wasm-gc", "gateway/wasm"], {
+    postBuild: (artifact) => runWasmoptPost(repoRoot, artifact),
+  });
   const nodeBin = NODE_BIN;
   // node 版本前置闸（P2，2026-10-15 用户审阅提醒；2026-10-17 审阅处置批勘正文案）：
   // vitro_wasm 的 MIN_NODE=22（f49794f6 降 LTS 批——原 25）以下 wasm 壳恒退 rc=5

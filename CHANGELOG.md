@@ -2,7 +2,7 @@
 
 ### docs: 全库文档对账第九轮——0.9.1 后双主线回灌 + 防线册对 ci.yml 亲证 + 状态权威补漏（2026-11-15）
 
-- **基准与真值**：origin/master `09c42963`（worktree `docs-master-sync`，基云端最新 master）；facts 亲采（含 serve.exe 前置构建）= 1463〔裸 `moon test`〕/ 1539〔native 全量〕/ 警告 98 / lexer 1640 / parser 818 / 语料 578+81+138+23 / 引擎 0.9.1；`facts --strict check` 漂移 0 / 待采集 0 / 坏引用 0（改后复跑同绿）。
+- **基准与真值**：origin/master `09c42963`（worktree `docs-master-sync`，基云端最新 master）；facts 亲采（含 serve.exe 前置构建）= 1463〔裸 `moon test`〕/ 1539〔native 全量〕/ 警告 98 / lexer 1640 / parser 818 / 语料 578+81+138+23 / 引擎 0.9.1；`facts --strict check` 漂移 0 / 待采集 0 / 坏引用 0（改后复跑同绿）。**合并 #520（`59dfe2d1`，批 4a/4b-1）后真值重采**：1478 / 1554 / 警告 112（dispatch-loop 批中间态 +14，warning 台账随 #520 连坐）——本批现值句已按新基线刷新，设计单 §3.2 冲突融合（采 #520 新批次序为基底 + 批 3 已落回灌并入）。
 - **REHOST 批 3 漏连坐根治**：核载体迁移设计单 §3.2 批 3 行补 ✅ 已落回灌（master `09c42963` = #518——step 态切换六件 + #512 ci_checklist 驱动集盲区根治 + vm_diff 新鲜度硬门禁；验收实录 STEP-INV --rehost 1035 语料/2.08M 帧 RED 0、rundiff 919 双跑一致、vm_diff 双臂 865 SAME）；架构设计 §3 管线补 `wasmenc` 叶包 + §11 编译目标行补载体迁移注记；**moonbit/AGENTS.md 包清单补 `wasmenc` 行**（批 1a 建包 2026-11-05 起缺失——状态权威漂移）；docs/README 设计单索引行同步批 1a~3 已落。
 - **排期权威补行**：总计划 §10 补 **1.0 / 0.10+ 行**（退役评估 + REHOST 批 4 收口前置窗口〔0.11.0 发版窗口〕+ C# 前端 1.0 后排期）——路线图「1.0 验收锚见总计划 §10」此前为**悬空引用**；docs/README 总计划索引行同步收官口径（原停在「S9 修复批中」）。
 - **防线册对 ci.yml 亲证**：脚本总清单 §1.1 job 清单 **16→19**〔补 arm4-wasmtime（W4 第四臂）/ toolchain-prerelease-sentinel / desktop（PR #417 全量升格）/ release-preflight 四行说明〕；protocol_frames 基线帧数勘正 **33/47→74**（#473 seek 族批扩容漏连坐）；clang_direct 行语言列勘正 Go→`.mts` 现役（#273 迁移批漏连坐）；**§2.1 补登 `wasmenc_emitgate` / `wasmenc_rundiff` / `wasmenc_watcheck` / `step_invariant` 四驱动**（REHOST 产物闸 + STEP-INV 防线资产，入册义务补账）。

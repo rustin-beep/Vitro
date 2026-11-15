@@ -87,9 +87,22 @@ pub fn is_swap_assign_line(line : String) -> Bool {
     return false
   }
   if is_index_text(rhs) {
-    return true
+    // v4（#517 P2-7，2026-11-14）：RHS 下标访问臂**再要求纯下标整体 +
+    // 与 LHS 同数组名**——跨数组拷贝（`tmp[k]=a[i]` 的 merge 暂存）与前缀
+    // 和表达式（`pre[i]=pre[i-1]+dp[i]`）无交换语义（A2/B7 实录 338/225
+    // 帧误标「交换」）。v3 的 is_index_text 只查含 []，表达式拼接照命中。
+    // 交换 = 同数组两下标互换（双向数据流动证据）。
+    match (index_access_name(left), index_access_name(rhs)) {
+      (Some(l), Some(r)) => l == r
+      _ => false
+    }
+  } else {
+    rhs == "temp" ||
+    rhs == "tmp" ||
+    rhs == "t" ||
+    rhs == "hold" ||
+    rhs == "swap"
   }
-  rhs == "temp" || rhs == "tmp" || rhs == "t" || rhs == "hold" || rhs == "swap"
 }
 
 ///|
@@ -235,6 +248,62 @@ fn is_decl_index_read_line(line : String) -> Bool {
 /// 下标访问文本形态（含 [...]——is_swap_assign_line 的侧判定）。
 fn is_index_text(s : String) -> Bool {
   s.contains("[") && s.contains("]")
+}
+
+///|
+/// 纯下标访问整体形态 + 数组名提取（#517 P2-7，2026-11-14）：`name[expr]`
+/// /`name[a][b]` 整体（标识符 + 一层以上下标层，层外无任何余字符）——
+/// 返回数组名；非纯（含表达式拼接 `pre[i-1] + dp[i]`、含取址/调用等）
+/// 返回 None。is_swap_assign_line v4 的 RHS 同名判据消费（跨数组拷贝
+/// `tmp[k]=a[i]` 与前缀和表达式赋值无交换语义——A2/B7 实录 338/225 帧
+/// 误标「交换」形态的根因：v3 的 is_index_text 只查含 []）。
+fn index_access_name(s : String) -> String? {
+  let st = s.trim().to_owned()
+  let t = st.to_array()
+  let n = t.length()
+  let mut i = 0
+  while i < n && is_ident_char_v4(t[i]) {
+    i = i + 1
+  }
+  if i == 0 || i >= n || t[i] != '[' {
+    return None
+  }
+  let name = st[0:i].to_owned()
+  let mut layers = 0
+  while i < n && t[i] == '[' {
+    layers = layers + 1
+    i = i + 1
+    let mut depth = 0
+    let mut closed = false
+    while i < n {
+      if t[i] == '[' {
+        depth = depth + 1
+      } else if t[i] == ']' {
+        if depth == 0 {
+          closed = true
+          i = i + 1
+          break
+        }
+        depth = depth - 1
+      }
+      i = i + 1
+    }
+    if !closed {
+      return None
+    }
+  }
+  if layers == 0 || i != n {
+    return None
+  }
+  Some(name)
+}
+
+///|
+fn is_ident_char_v4(c : Char) -> Bool {
+  (c >= 'a' && c <= 'z') ||
+  (c >= 'A' && c <= 'Z') ||
+  (c >= '0' && c <= '9') ||
+  c == '_'
 }
 
 ///|

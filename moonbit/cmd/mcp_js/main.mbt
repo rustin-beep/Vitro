@@ -110,7 +110,8 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| :root{--bg:#0f1117;--fg:#e6e8ee;--panel:#171a23;--line:#262b38;--muted:#8b93a7;--accent:#5b9dff;--swap:#ff8a4c;--changed:#ffd166;--ok:#3ecf8e;--err:#ff5d73;--code-bg:#12141c;--code-cur:#1f2941;--code-err:#3a1c22}
   #| [data-theme=light]{--bg:#f7f8fa;--fg:#1c2030;--panel:#ffffff;--line:#e3e6ee;--muted:#667;--accent:#2563eb;--swap:#d2601a;--changed:#9a7b00;--ok:#0e8a5f;--err:#d13438;--code-bg:#f2f3f7;--code-cur:#dbe7ff;--code-err:#ffe1e3}
   #| *{box-sizing:border-box}
-  #| html,body{margin:0;height:100%}
+  #| html{margin:0;height:100%}
+  #| body{margin:0;min-height:100%}
   #| body{background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,"Segoe UI","Microsoft YaHei",sans-serif;display:flex;flex-direction:column}
   #| header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
   #| header h1{font-size:16px;margin:0;flex:1;min-width:200px}
@@ -153,6 +154,8 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| #vars{flex:1;overflow:auto;padding:6px 10px}
   #| table{border-collapse:collapse;width:100%;font:12.5px ui-monospace,monospace}
   #| td{padding:3px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  #| #vars td:first-child{white-space:nowrap}
+  #| #vars td.ver{white-space:nowrap;font-size:11px}
   #| td.vv{color:var(--accent);word-break:break-all}
   #| td.changed{color:var(--changed)}
   #| #stack{padding:6px 10px;font:12.5px ui-monospace,monospace}
@@ -178,6 +181,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| var D=window.__VITRO__;
   #| var S={cur:0,playing:false,timer:null,speed:200,frames:D.frames||[],prevC:null,speakOn:false,lastCap:""};
   #| function $(id){return document.getElementById(id)}
+  #| function arrDims(fr,nm){for(var i=0;i<fr.v.length;i++){if(fr.v[i][0]===nm){var m=/\\\[(\\\d+)\\\]\\\[(\\\d+)\\\](?![\\\[])\\s*$/.exec(fr.v[i][1]);if(m)return [+m[1],+m[2]]}}return null}
   #| function ctxMentions(ctx,nm){if(!nm)return false;var esc=nm.replace(/[.*+?^\${}()|[\]\\\\]/g,"\\\\$&");return new RegExp("(^|[^\\\\w.])"+esc+"\\\\s*\\\\[").test(ctx)}
   #| function swapPair(fr,nm,len){
   #| for(var k=0;k<fr.e.length;k++){var ev=fr.e[k];
@@ -203,13 +207,14 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| if(!els.length)continue;var pels=pv&&(pv.r||{})[nm]||[];
   #| var sp=swapPair(fr,nm,els.length);
   #| var max=1;for(var q=0;q<els.length;q++){var fv=parseFloat(els[q]);if(isFinite(fv)&&Math.abs(fv)>max)max=Math.abs(fv)}
-  #| h+='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> \u00b7 '+els.length+' \u5143\u7d20</span></div><div class="cells" style="--n:'+els.length+';--cw:64px">';
+  #| var dm=arrDims(fr,nm);var cols=dm?dm[1]:els.length;var alabel=dm?(dm[0]+'\u00d7'+dm[1]+' \u77e9\u9635'):(els.length+' \u5143\u7d20');
+  #| h+='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> \u00b7 '+alabel+'</span></div><div class="cells" style="--n:'+cols+';--cw:64px">';
   #| for(var i2=0;i2<els.length;i2++){var cls2="cell";var sp2=sp&&(i2===sp.i||i2===sp.j);
   #| if(sp2)cls2+=" swap"; else if(pels.length&&pels[i2]!==els[i2])cls2+=" changed";
   #| var v=parseFloat(els[i2]);var ratio=isFinite(v)?Math.max(.06,Math.abs(v)/max):.3;
-  #| h+='<div class="'+cls2+'" style="--v:'+ratio.toFixed(2)+'"><span class="idx">'+i2+'</span>'+esc(els[i2])+'<span class="bar"></span></div>'}
+  #| h+='<div class="'+cls2+'" style="--v:'+ratio.toFixed(2)+'"><span class="idx">'+(dm?(Math.floor(i2/cols)+','+i2%cols):i2)+'</span>'+esc(els[i2])+'<span class="bar"></span></div>'}
   #| h+="</div>";
-  #| h+='<div class="ptrs" style="--n:'+els.length+';--cw:64px">';
+  #| h+='<div class="ptrs" style="--n:'+cols+';--cw:64px">';
   #| for(var i3=0;i3<els.length;i3++){var p2="";for(var vi=0;vi<fr.v.length;vi++){var va=fr.v[vi];var num=parseInt(va[2]);
   #| if(isFinite(num)&&num===i3&&/^int$/.test(va[1]))p2+=(p2?" ":"")+"\u25be"+va[0]+"="+va[2]}
   #| h+='<div class="ptr">'+p2+'</div>'}
@@ -233,7 +238,7 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| if(k>=S.frames.length-1)stopPlay()}
   #| function stepTo(k){S.cur=Math.max(0,Math.min(S.frames.length-1,k));renderFrame()}
   #| function stopPlay(){S.playing=false;$("btnPlay").textContent="\u25b6 \u64ad\u653e";if(S.timer){clearInterval(S.timer);S.timer=null}}
-  #| function togglePlay(){if(S.playing){stopPlay();return}if(S.cur>=S.frames.length-1)S.cur=0;S.playing=true;$("btnPlay").textContent="\u23f8 \u6682\u505c";S.timer=setInterval(function(){stepTo(S.cur+1)},S.speed)}
+  #| function togglePlay(){if(S.playing){stopPlay();return}if(S.cur>=S.frames.length-1&&!window.__VITRO_STEP__)S.cur=0;S.playing=true;$("btnPlay").textContent="\u23f8 \u6682\u505c";S.timer=setInterval(function(){if(S.cur>=S.frames.length-1&&window.__VITRO_STEP__){if(window.__VITRO_DONE__){stopPlay();return}window.__VITRO_STEP__(200)}stepTo(S.cur+1)},S.speed)}
   #| function showDiagnostics(){var h='<div id="diag">';
   #| for(var i=0;i<D.diagnostics.length;i++){var d=D.diagnostics[i];
   #| h+='<div class="dcard'+(/warn/i.test(d.severity||"")?" warn":"")+'" style="animation-delay:'+(i*220)+'ms"><div class="dcode">'+esc(d.code||"")+" \u00b7 "+esc(d.severity||"error")+'</div><div class="dloc">'+esc(d.filename||"main.c")+":"+d.line+":"+d.column+'</div><div>'+esc(d.message)+"</div>"+(d.fix_suggestion?'<div class="dfix">\ud83d\udca1 '+esc(d.fix_suggestion)+"</div>":"")+"</div>"}
@@ -272,8 +277,9 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| __LASTN__=S.frames.length;
   #| D.rawCount=rawCount;if(S.frames.length&&!stops)renderFrame();else if(S.frames.length){stopPlay();stepTo(S.frames.length-1)}
   #| if(stops&&stops!=="finished")$("cap").innerHTML='<span style="color:var(--swap)">\u23f9 '+esc(stops)+"</span>";
-  #| if(stops==="finished"||stops.indexOf("trapped")===0){try{pullOutputs()}catch(e){}$("btnRunAll").disabled=true;$("btnStep").disabled=true}
+  #| if(stops==="finished"||stops.indexOf("trapped")===0){window.__VITRO_DONE__=true;try{pullOutputs()}catch(e){}$("btnRunAll").disabled=true;$("btnStep").disabled=true}
   #| return stops}
+  #| window.__VITRO_STEP__=function(n){return stepOnce(n||200)};
   #| function bootInteractive(){var bin=Uint8Array.from(atob(D.wasmB64),function(c){return c.charCodeAt(0)});
   #| $("cap").innerHTML='<span class="as">wasm \u5f15\u64ce\u88c5\u8f7d\u4e2d\uff08'+Math.round(bin.length/1024)+'KB\uff09\u2026</span>';
   #| bootEngine(bin).then(function(){
@@ -285,14 +291,14 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| inv("step.begin");
   #| $("bpBox").classList.add("on");
   #| $("btnStep").onclick=function(){stepOnce(1)};
-  #| $("btnRunAll").onclick=function(){if(running)return;running=true;$("btnRunAll").textContent="\u2026\u8fd0\u884c\u4e2d";stepOnce(1e9);
-  #| $("btnRunAll").textContent="\u25b6 \u8fd0\u884c\u5230\u5e95";running=false};
+  #| $("btnRunAll").onclick=function(){if(running)return;running=true;$("btnRunAll").textContent="\u2026\u8fd0\u884c\u4e2d";var t0=Date.now();var tick=function(){var stops=stepOnce(1e9);if(S.frames.length)stepTo(S.frames.length-1);if(!stops&&Date.now()-t0<20000){setTimeout(tick,0);return}running=false;$("btnRunAll").textContent="\u25b6 \u8fd0\u884c\u5230\u5e95";if(stops==="finished"||stops.indexOf("trapped")===0){$("btnRunAll").disabled=true}};tick()};
   #| $("btnBp").onclick=function(){var ln=+$("bpLine").value;if(!ln)return;
   #| var last=S.frames.length;try{inv("breakpoints.set",{lines:[ln]})}catch(e){}
   #| stepOnce(1e9);inv("breakpoints.set",{lines:[]});S.cur=last;stepTo(Math.min(last,S.frames.length-1))};
   #| renderFrame();
   #| var guard=0,hasArr=function(){var f=S.frames[S.frames.length-1];return !!f&&Object.keys(f.r||{}).length>0};
-  #| while(guard++<40&&!hasArr()){stepOnce(400)}
+  #| var stops0="";
+  #| while(guard++<40&&S.frames.length<16&&!stops0){stops0=stepOnce(400)}
   #| stepTo(S.frames.length-1);
   #| $("btnStep").disabled=false;$("btnRunAll").disabled=false;$("btnBp").disabled=false}).catch(function(e){$("cap").innerHTML='<span style="color:var(--err)">\u5f15\u64ce\u88c5\u8f7d\u5931\u8d25\uff1a'+esc(e.message)+"</span>"})}
   #| `;
@@ -417,9 +423,13 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| const html = renderHtml(ro);
   #| const outDir = o.out_dir && String(o.out_dir).length > 0 ? String(o.out_dir) : path.join(process.cwd(), "vitro-out");
   #| fs.mkdirSync(outDir, { recursive: true });
-  #| const ts = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 16);
+  #| // #517 P2-11：秒级时间戳 + pid/随机后缀——修前分钟粒度 + program_ slug
+  #| // 同分钟互吃（A/B 覆盖链 6 轮：多实例共享 vitro-out 时 png/html 互覆，
+  #| // preview_png 渲染出他人页面）；唯一化后并发实例各产各物。
+  #| const ts = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
+  #| const uniq = process.pid.toString(36) + "-" + Math.random().toString(36).slice(2, 6);
   #| const slug = String(o.slug ?? "program").replace(/[^\w-]/g, "_").slice(0, 40);
-  #| const file = path.join(outDir, slug + "_" + ts + "_" + mode + ".html");
+  #| const file = path.join(outDir, slug + "_" + ts + "_" + uniq + "_" + mode + ".html");
   #| fs.writeFileSync(file, html, "utf8");
   #| const size = fs.statSync(file).size;
   #| let pngPath = null, pngB64 = null;

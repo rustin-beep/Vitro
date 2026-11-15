@@ -542,13 +542,15 @@ test("lessonMd：bubble_sort scene 为 v2 锚点形态（六幕全锚点化，#2
   }
   assert.deepEqual(
     doc.scenes.map((s) => [s.id, s.fromAnchor, s.toAnchor, s.lines.join("..")]),
+    // #517 P1-3 连坐（2026-11-15）：形参解引用视图消掉进出函数快照切换
+    // （20 变→16 变）——幕 5/6 改 compare 相位锚（重标见 lesson.md 头注）
     [
-      ["01", "@0", "@arr_change:2", "15..18"],
-      ["02", "@arr_change:2+1", "@arr_change:8", "4..9"],
-      ["03", "@arr_change:8+1", "@arr_change:13", "4..9"],
-      ["04", "@arr_change:13+1", "@arr_change:17", "4..9"],
-      ["05", "@arr_change:17+1", "@arr_change:19", "4..6"],
-      ["06", "@arr_change:19+1", "@last", "18..23"],
+      ["01", "@0", "@arr_change:1", "15..18"],
+      ["02", "@arr_change:1+1", "@arr_change:7", "4..9"],
+      ["03", "@arr_change:7+1", "@arr_change:11", "4..9"],
+      ["04", "@arr_change:11+1", "@arr_change:15", "4..9"],
+      ["05", "@arr_change:15+1", "@compare:10", "4..6"],
+      ["06", "@compare:10+1", "@last", "18..23"],
     ],
   );
   // 元数据剥离 + 课文仍在：首块 h2，且六幕讲解不是正文段落

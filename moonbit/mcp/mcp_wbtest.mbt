@@ -1050,3 +1050,138 @@ test "mcp_files_quote_include_overview_nonempty" {
     msg="overview 函数表含跨文件定义（旧形态 quote-include 下静默空）",
   )
 }
+
+///|
+/// #517 P1-1/P1-5（C3/A1/B3）：采集墙钟预算——无限递归 animate 实测 232s
+/// 阻塞 server 主循环（宿主 30s 超时丢响应、共享队列全池饥饿）。采集循环
+/// 超预算（20s）须收口为 capped@time 终态，不得吞满帧数上限后才返回。
+test "mcp_collect_time_budget_capped" {
+  // 假钟：每读一次走 300ms——advance 每批（256 步）查一次钟，78 批即超
+  // 20s 预算（真实程序 20000 步 ≈ 4s 不触）
+  let ticks : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host={
+    clock_ms: () => {
+      ticks.val = ticks.val + 300.0
+      ticks.val
+    },
+    render: _ => {
+      ob()
+      .b("ok", true)
+      .s("html_path", "/tmp/vitro-test/out.html")
+      .n("size_bytes", 1)
+      .n("frame_count", 0)
+      .s("mode_used", "static")
+      .done()
+    },
+  })
+  ignore(call(srv, "initialize", 1))
+  let src = "int main(void) {\n    long s = 0;\n    for (int i = 0; i < 10000000; i++) {\n        s = s + i;\n    }\n    return (int)s;\n}\n"
+  let open_resp = tool_body(
+    tool_call(srv, 2, "session_open", ob().s("source", src).done()),
+  )
+  assert_eq(
+    jbool_or(jget(open_resp, "compile_ok"), false),
+    true,
+    msg="大循环编译须过",
+  )
+  let body = tool_body(tool_call(srv, 3, "run_to", Json::object(Map([]))))
+  let stopped = jstr_or(jget(body, "stopped"), "")
+  assert_true(
+    stopped.contains("capped@time"),
+    msg="超时预算须收口 capped@time（实际：\{stopped}）",
+  )
+  // 未吞满帧数上限即停（时间先到——否则 300ms/批的假钟下跑满 20000 帧）
+  assert_true(
+    jint_or(jget(body, "frames_collected"), 0) < CAP_FRAMES,
+    msg="时间预算先于帧数上限生效",
+  )
+}
+
+///|
+/// #517 P2-9（D6）：focus 显式数组名不存在须 fail loud——修前静默回显、
+/// 舞台空白、warnings 空照常产出坏产物（拼错名的用户视角 = 无舞台区动画）。
+test "mcp_render_focus_unknown_name_fails_loud" {
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  let open_resp = tool_body(
+    tool_call(srv, 2, "session_open", ob().s("source", bubble_src()).done()),
+  )
+  assert_eq(
+    jbool_or(jget(open_resp, "compile_ok"), false),
+    true,
+    msg="冒泡编译须过",
+  )
+  // focus 指向不存在的数组名：-32602（Proto 路径——error.code）
+  let resp = tool_call(
+    srv,
+    3,
+    "render",
+    ob().sa("focus", ["nonexistent_arr"]).done(),
+  )
+  assert_eq(
+    jint(jget(jget(resp, "error"), "code")),
+    Some(-32602),
+    msg="focus 无效名须 -32602 fail loud（实际：\{resp.stringify()}）",
+  )
+  // 对照：正确数组名 arr 正常渲染
+  let ok_resp = tool_call(srv, 4, "render", ob().sa("focus", ["arr"]).done())
+  assert_true(jget(ok_resp, "result") is Object(_), msg="正确名正常渲染")
+}
+
+///|
+/// #517 P2-10（D1）：files 工程末函数 end 取拼接流全末行——修前取主文件
+/// 区间 end_line（util.c 的末函数 mul 越界：lines=[12,8] end<start；帧行
+/// 号 l=12/13 均在 mul 区间内，end 须 ≥ 帧最大行）。
+test "mcp_files_overview_last_func_end_spliced_stream" {
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  let files = Json::array([
+    ob()
+    .s("filename", "main.c")
+    .s(
+      "source", "#include <stdio.h>\n#include \"util.h\"\nint main(void) {\n    int m = mul(2, 3);\n    printf(\"%d\\n\", m);\n    return 0;\n}\n",
+    )
+    .done(),
+    ob()
+    .s("filename", "util.h")
+    .s(
+      "source", "#ifndef UTIL_H\n#define UTIL_H\nint mul(int a, int b);\n#endif\n",
+    )
+    .done(),
+    ob()
+    .s("filename", "util.c")
+    .s("source", "int mul(int a, int b) {\n    return a * b;\n}\n")
+    .done(),
+  ])
+  let open_resp = tool_body(
+    tool_call(srv, 2, "session_open", ob().j("files", files).done()),
+  )
+  assert_eq(
+    jbool_or(jget(open_resp, "compile_ok"), false),
+    true,
+    msg="多文件编译须过",
+  )
+  let ov = jget(open_resp, "overview")
+  assert_eq(
+    jint_or(jget(ov, "line_count"), 0),
+    10,
+    msg="拼接总行 main.c(7)+util.c(3)",
+  )
+  let funcs = jarr(jget(ov, "functions"))
+  guard funcs.length() == 2 else {
+    fail("main + mul 两函数（实际 \{funcs.length()}）")
+  }
+  let mul = funcs[1]
+  assert_eq(jstr_or(jget(mul, "name"), ""), "mul")
+  let lines = jarr(jget(mul, "lines"))
+  assert_eq(lines.length(), 2)
+  let start = jint_or(lines[0], 0)
+  let end = jint_or(lines[1], 0)
+  assert_true(
+    end >= start,
+    msg="末函数 end 不得小于 start（实际 [\{start},\{end}]）",
+  )
+  assert_eq(end, 10, msg="末函数 end = 拼接流全末行")
+}

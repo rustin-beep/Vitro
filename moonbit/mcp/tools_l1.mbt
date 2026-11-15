@@ -12,7 +12,8 @@ fn Server::tool_frames_summary(
     Err(m) => return Fail(m)
   }
   if e.phase == PHASE_OPENED {
-    match collect_all(e) {
+    let (clock, deadline) = self.collect_budget()
+    match collect_all(e, clock, deadline) {
       Ok(_) => ()
       Err(m) => return Fail(m)
     }
@@ -40,7 +41,8 @@ fn Server::tool_frames_query(
     Err(m) => return Fail(m)
   }
   if e.phase == PHASE_OPENED {
-    match collect_all(e) {
+    let (clock, deadline) = self.collect_budget()
+    match collect_all(e, clock, deadline) {
       Ok(_) => ()
       Err(m) => return Fail(m)
     }
@@ -132,7 +134,8 @@ fn Server::tool_annotations(
     Err(m) => return Fail(m)
   }
   if e.phase == PHASE_OPENED {
-    match collect_all(e) {
+    let (clock, deadline) = self.collect_budget()
+    match collect_all(e, clock, deadline) {
       Ok(_) => ()
       Err(m) => return Fail(m)
     }
@@ -194,7 +197,8 @@ fn Server::tool_run_to(self : Server, args : Json, now : Double) -> ToolOut {
   }
   if bp == 0 && ev.length() == 0 && max_frames == 0 {
     // 都缺省 = 推进到终局
-    match advance(e, CAP_FRAMES - e.frames.length(), 0, "") {
+    let (clock, deadline) = self.collect_budget()
+    match advance(e, CAP_FRAMES - e.frames.length(), 0, "", clock, deadline) {
       Ok(a) => return Done(tool_text(run_to_body(e, a)))
       Err(m) => return Fail("推进失败：\{m}")
     }
@@ -204,7 +208,8 @@ fn Server::tool_run_to(self : Server, args : Json, now : Double) -> ToolOut {
   } else {
     CAP_FRAMES - e.frames.length()
   }
-  match advance(e, budget, bp, ev) {
+  let (clock, deadline) = self.collect_budget()
+  match advance(e, budget, bp, ev, clock, deadline) {
     Ok(a) => Done(tool_text(run_to_body(e, a)))
     Err(m) => return Fail("推进失败：\{m}")
   }
@@ -279,12 +284,13 @@ fn Server::tool_step_next(self : Server, args : Json, now : Double) -> ToolOut {
   } else {
     None
   }
+  let (clock, deadline) = self.collect_budget()
   while got < n &&
         raw < 2000 &&
         !phase_is_terminal(e.phase) &&
         e.frames.length() < CAP_FRAMES {
     let before = e.frames.length()
-    match advance(e, 1, 0, "") {
+    match advance(e, 1, 0, "", clock, deadline) {
       Ok(_) => ()
       Err(m) => return Fail("推进失败：\{m}")
     }
@@ -370,7 +376,8 @@ fn Server::render_entry(
   // 惰性全采（仅 Opened——推进中〔Started/paused〕的会话渲染当前缓冲，
   // 不替 agent 做推进决策；终局渲染完整缓冲）
   if e.phase == PHASE_OPENED {
-    match collect_all(e) {
+    let (clock, deadline) = self.collect_budget()
+    match collect_all(e, clock, deadline) {
       Ok(_) => ()
       Err(m) => return Fail(m)
     }
@@ -401,7 +408,31 @@ fn Server::render_entry(
   for i = from; i < to; i = i + 1 {
     slice.push(e.frames[i])
   }
-  let focus = pick_focus_arrays(slice, jstr_arr(jget(args, "focus")))
+  let explicit_focus = jstr_arr(jget(args, "focus"))
+  // #517 P2-9（D6，2026-11-14）：显式 focus 名不存在须 fail loud——修前
+  // 静默回显、舞台空白、warnings 空照常产出 401 帧坏产物（拼错名的用户
+  // 视角 = 无舞台区动画且零提示，违 fail-loud 纪律）。
+  if explicit_focus.length() > 0 {
+    let known : Map[String, Bool] = Map([])
+    for fr in slice {
+      for name, _ in fr.r {
+        known.set(name, true)
+      }
+    }
+    for n in explicit_focus {
+      if !known.get(n).unwrap_or(false) {
+        let avail : Array[String] = []
+        for name, _ in known {
+          avail.push(name)
+        }
+        return Proto(
+          -32602,
+          "参数 focus 数组名 '\{n}' 不存在于任何帧（可用：\{avail.join(", ")}）——不渲染空舞台产物",
+        )
+      }
+    }
+  }
+  let focus = pick_focus_arrays(slice, explicit_focus)
   // 关键帧恒算（interactive 亦算——壳层无 wasm 回落 static 时「回落即用」，
   // 消「回落成无帧空壳」的双源分叉；真 interactive 时壳层不嵌帧）
   let (idx, thinned) = if slice.length() > 0 {
@@ -440,6 +471,13 @@ fn Server::render_entry(
   }
   if e.phase == PHASE_TRAPPED {
     warnings.push("采集提前停止：\{stopped}")
+  }
+  // #517 P1-1/P1-5：采集上限/墙钟超预算双终态均须显式警示（修前
+  // capped 形态零 warning——agent 以为跑完了全量）
+  if e.phase == PHASE_CAPPED || e.phase == PHASE_CAPPED_TIME {
+    warnings.push(
+      "采集提前停止：\{stopped}——渲染的是已采 \{total} 帧，程序未跑完",
+    )
   }
   if e.phase == PHASE_STARTED && e.paused_at > 0 {
     warnings.push(

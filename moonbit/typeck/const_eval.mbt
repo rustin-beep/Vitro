@@ -606,6 +606,60 @@ fn TypeChecker::report_const_overflow(
 }
 
 ///|
+/// #517 P3-13（C2，2026-11-14）：局部声明的常量初始化器静态探测——纯
+/// 常量树却 const_eval 拒折（除零/移位量越界/INT_MIN÷-1）时报 W3098。
+/// 形态对称：全局/静态初始化器同形态由 fold_static_init 报 **E3075 拒
+/// 编译**（静态存储期必须编译期可求值）；局部是运行期求值域，折不出 =
+/// 运行到此**必 trap**（如除零 E3088）——W 级预警不挡编译（clang
+/// -Wdivision-by-zero 对局部同样静态警告）。探测不改树（init 留给
+/// run 期执行）；顺带收益：探测路径的 const_eval 溢出形态照报 W3090
+/// （局部常量溢出旧零警告——clang -Winteger-overflow 同款）。
+fn TypeChecker::warn_const_eval_failure(
+  self : TypeChecker,
+  init : @ast.Expr,
+) -> Unit {
+  if !ce_pure_const_tree(init) {
+    return
+  }
+  // #517 CI 连坐修正（2026-11-14）：逗号表达式是 const_eval 的**设计性
+  // 拒折**（Comma 非常量——ce_bin_op 返 None），非运算失败——纯常量
+  // 逗号 `(3, 4)` 曾被误报 W3098（comma_expr_stmt.c 实锤）；树含 Comma
+  // 一律跳过（`(1/0, 2)` 因此漏报——保守方向，可接受）。
+  if ce_tree_contains_comma(init) {
+    return
+  }
+  match self.const_eval(init) {
+    Some(_) => ()
+    None =>
+      self.report_warning(
+        "常量表达式含编译期无法求值的运算（除以零、移位量越界或 INT_MIN / -1）：运行到这里将触发运行时错误（如除零 [divide-zero] E3088）——请检查除数/移位量",
+        init.loc(),
+        W3098_ConstDivZero,
+      )
+  }
+}
+
+///|
+/// 树内是否含逗号二元（W3098 的设计性拒折排除面）。
+fn ce_tree_contains_comma(e : @ast.Expr) -> Bool {
+  match e {
+    Binary(op, l, r, _, _) =>
+      if op is Comma {
+        true
+      } else {
+        ce_tree_contains_comma(l) || ce_tree_contains_comma(r)
+      }
+    Unary(_, inner, _, _) => ce_tree_contains_comma(inner)
+    Ternary(c, t, el, _, _) =>
+      ce_tree_contains_comma(c) ||
+      ce_tree_contains_comma(t) ||
+      ce_tree_contains_comma(el)
+    Cast(inner, _, _, _) => ce_tree_contains_comma(inner)
+    _ => false
+  }
+}
+
+///|
 /// 纯常量树判定（A4）：只含字面量 / 一元（非取址）/ 二元 / 三元 / cast /
 /// 类型形态 sizeof——不含任何运行期引用。此类树交给 const_eval 折不出，
 /// 只可能是运算性失败。

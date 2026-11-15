@@ -182,7 +182,18 @@ fn overview_json(e : Entry, source : String) -> Json {
   funcs.sort_by((a, b) => a.1 - b.1)
   let arr : Array[Json] = []
   for i, f in funcs {
-    let end = if i + 1 < funcs.length() { funcs[i + 1].1 - 1 } else { main_end }
+    // #517 P2-10（D1，2026-11-14）：files 工程末函数 end 须取**拼接流全末
+    // 行**（lc）——修前取主文件区间 end_line：util.c 的末函数越界出
+    // mul=[12,8] 的 end<start（帧行 l=12/13 都在 mul 区间内，帧与 dump
+    // 同基拼接流坐标，end 却锚在 main.c 的 8）。单文件形态 main_end==lc
+    // 语义不变。
+    let end = if i + 1 < funcs.length() {
+      funcs[i + 1].1 - 1
+    } else if files_face {
+      lc
+    } else {
+      main_end
+    }
     arr.push(ob().s("name", f.0).j("lines", jints([f.1, end])).done())
   }
   ob().n("line_count", lc).a("functions", arr).done()
@@ -429,7 +440,8 @@ fn Server::tool_animate(self : Server, args : Json, now : Double) -> ToolOut {
   eng.phase = if ok { PHASE_OPENED } else { PHASE_COMPILE_FAILED }
   let e = eng
   if ok {
-    match collect_all(e) {
+    let (clock, deadline) = self.collect_budget()
+    match collect_all(e, clock, deadline) {
       Ok(_) => ()
       Err(m) => return Fail("采集失败：\{m}")
     }

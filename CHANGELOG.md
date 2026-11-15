@@ -13,6 +13,56 @@
 - **diag 码表数字三处口径统一**（120/121/137 三说并存的根治）：moonbit/AGENTS.md / 脚本总清单 gen_diag 行 / 总计划 §4 全部改锚 **gen_diag expectedArms/expectedCatalog fail loud 锚**（亲证现值 126 臂 / catalog 122）——裸数字改引用锚，增删随批连坐生成器不再漂文档。
 - **复核无需更新**（自锚 as_of / 自声明充分）：快速入门 / 构建指南 / CLI 手册（批 3 已连坐）、CSharp 计划（设计稿）、05 教学域 8 份（沿革总注齐）、06 出口 6 份、已知限制与 warning 台账（与真值一致）、语料生成防线方案（#74 open「批次未开工」仍准确——llm 语料系用户投喂入库非 #74 管线产物，a7202d19 在案）、08 发布档案（冻结实录）、审阅报告 v2 / 判定书 / INCIDENTS（档案态）。
 
+### fix(typeck+vm+diag+teaching): PR #519 审阅处置——P1×2 + P2×2 + P3×5（2026-11-15）
+
+- **P1-2 W3099 三误报修（审阅 clang 反证实锤）**：① 循环体（While/
+  DoWhile/For body+step）赋值**传播**（旧「快照回滚」过保守——内层
+  for-init 赋值被外层吃掉，jit_nested_counting_loop 的 printf 读 j 误报
+  而 clang 全档静默；do-while body 先执行是 C 语义保证）；② `if (1)`
+  常量真单分支传播（非常量条件保留回滚——clang 同判，锚④锁）；③
+  **typeck golden 回滚 master**（jit_nested×2 的重冻系误报合法化——
+  「clang 同款方向」断言与实测相反，纪律 4 记录）。锚：
+  `serve_compile_w519_uninit_loop_body_propagation`（四形态含仍警对照）。
+  已知取舍：`while (c) { u=1; }` 后读的「0 次执行」漏报——漏报方向安全。
+- **P1-1 处置回复**（根因①②已在前两 commit 收口）：③ 提交信息验收
+  只写真跑闸（后续批执行——本段列出闸名均为本轮亲跑）；② 「快照流
+  形态变更」连坐清单=course 锚 + e2e 锚 + mcp_smoke 锚 + ta golden
+  （本批三处连坐实证）；① 展示态/可解析值分字段——**登记不做**（动
+  VarSnapshot/protocol 面，parse_int 'c' 折回已收口 display→parse 耦合）。
+- **P2-1 解引用视图精确命中**：`find_covering_array` 改首地址 `==`
+  （`int *p=&a[1];` 区间覆盖取整数组长度读到尾后栈垃圾 [20,30,40,
+  1048544] 实锤——指向内部不产快照，漏报方向安全）。锚：
+  `observe_array_param_deref_interior_ptr_no_snapshot`。
+- **P2-2 char 形态正向锚**：`serve_compile_w519_char_scalar_literal_form`
+  （format_value TK_Char 臂此前唯一探测面是 ta 的负向误报）。
+- **P2-3 登记**：swap 点亮 5→3 系关键帧抽稀稀释（见 mcp_smoke 锚注）
+  ——修法在 v1 抽稀算法权重，列后续批候选。
+- **P3×5**：W3099 新增警告按 (line,column) 排序插回（修非源序）；
+  移位越界 trap ×6 立码 **E3100**（`[shift-range]` 家族形态+卡——臂
+  130/卡 126 基线连坐）；`observe_array_snapshot_scoping` 锚勘正
+  （current_line=10 令函数归属成唯一防线——名副实）；gen_diag 产物头注
+  改 .mts 命令（Go 退役残留）；gold_chibicc extern.c notes 补 PR #519
+  审阅关联。
+- 验收（亲跑闸名）：moon test 全量/typeck_diff 六套件（golden=master
+  零 diff）/gateway 190/vm 124/diag+content_data 30/gen_diag -check/
+  catalog_closure/其余收尾链见 commit 后 CI。
+
+### fix(teaching+course+demo): #517 CI 第二轮三红收口（2026-11-15）
+
+- **根因一（teaching_annotation_diff 16 处 hanoi 错位）**：P3-16 的 char
+  标量 `'A'` 格式化破坏 `VarMap::get_int` 数值解析——hanoi 的 char 参数
+  from/to 解析 None 回落「启动汉诺塔」通配文案。修：`parse_int` 增
+  `'c'` 三字符形态折回码点（hanoi 首条恢复「从 A 柱移动…」）。
+- **根因二（demo B7 六幕点幕失效）**：P1-3 形参解引用视图让被调帧与
+  调用帧的数组快照同源——「进/出函数的快照切换」从差分序数中消失，
+  sorting/bubble_sort 课 20 变→16 变，幕 5/6 旧锚 `@arr_change:17/19`
+  越界解析 -1→clamp 0。修：两课 lesson.md 六幕锚重标（sorting 幕 5/6
+  改用 compare 相位锚 `@compare:10`——实测 10 比较帧=预算 4+3+2+1；
+  basic/bubble 序数锚同位免改，注释帧号更新）+ e2e B2/B7 验证绿
+  （33/35——B9/F6 为本地手册资产缺失面，CI 上轮绿）。
+- 验收：ta 82 模板双向一致 / moon test 1475 / facts --strict 漂移 0 /
+  mcp_smoke 18 / demo_smoke 197 / course_catalog 8 课对账全绿。
+
 ### fix(scripts+vm+ci+docs): PR #518 审阅处置——P2×2 + P3×6 全收口（2026-11-14）
 
 - **P2-1 触发语义勘正（诚实记录）**：freshness「mtime 只作触发、内容 hash
@@ -151,6 +201,1312 @@
   **1539/1539**；STEP-INV **1035 语料 / 2,087,483 帧** RED 0 ZOMBIE 0；
   W4 **1081 cases** AGREE identical；rundiff **919**；vm_diff **865/865**；
   驱动 .mts 口径 **67→70**（批 3 时点 64→69 + #513 green_probe +1）。
+
+### fix(wasmenc+bytecode+scripts): PR #512 审阅处置——P1×1 + P2×1 + P3×6（2026-11-13）
+
+- **P1-1 证人模块导出 main 指向 import（E0）**：`ModuleBuilder::add_func`
+  改返**绝对函数索引**（import 函数数 + 本地序号——wasm 索引空间 import
+  先占；修前 assemble 的 export main 直用本地序号 0 → 指向
+  env.vitro_host_call，本地函数体永不执行，validate 只查索引合法不查
+  指向故批 2a 全绿）。锚三件：export 段字节锚（**先红后绿**——修前实红）、
+  node 实例化冒烟（正确索引 main() 落本地体零宿主调用；错误索引形态
+  宿主被调 1 次——「指向错实体验证器不拦」的引擎行为锚）。
+- **P2-1 「逐位恒等」系构造性恒等，往返/内容级 validate/双跑三面对模板
+  语义错隐形（E0）**：① 措辞三处收窄（wasm_project 头注/rundiff 头注/
+  CHANGELOG——「形状/边界核对 + 槽类 operand 往返」，非「从字节独立推出
+  身份」）；② 装载协议补**纯 A/B 产物盲折叠终裁**（verify_group_table
+  ——不依赖侧车身份的贪心独立分组，两路互证；含 C 类歧义组产物保持
+  侧车裁决〔设计形态〕；wbtest 双裁决锚）；③ rundiff 头注写明本闸证
+  「装载重建后执行路径未受损」非「载体语义等价」。模板表自错盲区登记
+  （softstack 双实现 + watcheck wat 证人是该面守门人——审阅注入实验：
+  UAdd→xor 变异唯 wasmenc 包 7 红）。
+- **P3×6**：① `EffectError::TypeMismatch` 构造点补齐（sim_pop abort →
+  记录式结构化传播，dump_wasm 第四态可达；类型错序列锚先红〔修前
+  abort 崩〕后绿）；② `template_net_effect` 生产死函数删除（wbtest 切
+  emit_group+seq_net_effect 直消费）；③ CHANGELOG 残句与旧测试数修复；
+  ④ CI 注释/baseline.json 旧数字 944/902→957/915；⑤ surface 计数
+  +3→+4（VerifyError 漏计）；⑥ rundiff 头注耗时 ~1 分钟→3-4 分钟 +
+  **程序 stderr 对比**（剥 WASM-REHOST 标记行后逐字节——两臂 STDERR 行
+  分叉此前不可见；node:test 锚：纯标记行差异不红/STDERR 分叉红）。
+
+### feat(vm+gateway+cli+scripts): REHOST 批 2b——run 态装载往返接线 + 双跑对拍闸（2026-11-13）
+
+- **bytecode 装载往返原语**（`wasm_project.mbt`）：`rehost_round_trip`——
+  code → 发射 → 组表引导裁决折叠（形状/边界/还原槽 operand 比对）→
+  重建 Instruction → 与原 code 逐位一致断言。**口径（PR #512 审阅 P2-1
+  收窄）**：断言核的是「形状/边界/槽类 operand 往返」——组身份与 loc 由
+  侧车携带（同源自 code 直填），非从字节独立推出的恒等；独立推导面 =
+  还原槽 operand + 纯 A/B 产物盲折叠终裁（审阅处置补）；模板表自错面
+  由 wasmenc softstack/wat 证人守护。Err 单行诊断：emit-failed /
+  verify-failed / blind-fold-failed / roundtrip-*。
+  白盒 +2：恒等往返（C 类组 + 多档 loc 侧车重建）/ Reserved 拒载。
+- **vm 装载接线**（`setup_from_output` +`wasm_rehost~` 参数，返回状态串
+  ""/"ok groups=N"/"fallback …"）：flag on 时用户 code 走往返装载、
+  **执行消费折叠重建产物**（重定位/合并/装载 12 步消费 base_code）；
+  装载失败回退 legacy（设计单批 2 feature flag 回退点——fail loud 归
+  对拍闸）。step 通道（serve_step）恒 legacy（批 3 域）。白盒 +1：
+  装载往返锚（flag off 零扰动 / flag on ok 状态 + 运行同构 + 1MB 映像
+  逐字节一致）。
+- **协议/CLI 通道**：run 帧参数 `wasm_rehost`（bool——帧参数域，非
+  config.set 白名单）；run 帧 result 可选 `wasm_rehost` 字段（非空才带，
+  老消费者零感知——「前缀只增不改」增量面）；cli `--wasm-rehost` 旗标
+  + stderr 标记行 `// WASM-REHOST <status>`（不进 digest 消费面）。
+- **双跑对拍闸 `scripts/wasmenc_rundiff`**（.mts 四件套）：同一语料
+  legacy vs `--wasm-rehost` 双跑 digest 逐位对拍（stdout 逐字节 + rc +
+  **1MB 映像** --dump-memory + 装载标记断言——**fallback 即红**，静默
+  回退会让双臂恒一致而闸失明）。fail-open 防护同 emitgate（磁盘 .c
+  对账 + baseline.json 钉九目录 + 裸旗 fail loud）；node:test 5 锚
+  （双绿/三不一致/fallback/编译失败两臂同形不红/超时）。
+- **验收实况**：九目录 957 例 = **915 双跑一致 / 0 fallback / 42 编译期
+  两臂同形 / 0 红**（rebase 基 0db534ec 后复跑——#509 收编面自动扩入；
+  开发期首发基 ece3955a 实测 944 例 = 902 一致）；vm_diff
+  golden **861/861 SAME 零漂移**（铁律 1——#509 重冻 golden 新基线）；
+  vitro_cli_smoke 三臂全绿；裸 moon test **1454/1454** + native **1526/1526**
+  （rebase 后实跑真值）。CI bookkeeping 接线 + ci_checklist 自动登记
+  （活行 71）。
+- 连坐：surface 本批实增 **4 边**（dump_wasm→wasmenc assemble_witness_module/
+  AssembleError + bytecode→wasmenc VerifyError + vm→bytecode
+  rehost_round_trip——PR #512 审阅 P3-5 勘正：原写 +3 漏计 VerifyError）；
+  emitgate CI 注释勘正（批 2a 内容级口径）；测试数 1447→1454（+7 =
+  批 2a +4 / 批 2b +3，rebase 基 #509 的 1447）+ native 1519→1526 七文档；
+  设计单批 2 行批 2b 落地注。
+
+### feat(wasmenc+scripts): REHOST 批 2a——垫收模块组装 + wasm-validate 内容级真验证（emitgate 第三级升级，2026-11-13）
+
+- **wasmenc 效应推导器**（`effect.mbt`）：WInstr 穷尽 match 的线性栈模拟
+  （帧栈 + br 截断 + unreachable 作用域 + 欠垫记账）——垫收类型串单源。
+  两处批 2a 开发期实锤修正：`WUnreachable` 作用域 = 最内层块到其 end
+  （原误写全部帧——LoadMem 族 NULL 检查块后指令被误吞）；前垫串返回
+  **底→顶**序（欠记序 = pop 序 = 顶→底，StoreMemD 族「先弹值后弹址」
+  垫序应「先址后值」）。
+- **wasmenc 垫收模块组装器**（`assemble.mbt`）：产物指令区字节 → 完整
+  合法 wasm 模块——组独立 `block void` + 效应前垫（零值常量）+ `drop`×
+  尾剩余包裹 + 段拼装（type 两型 / **import 段镜像 env.vitro_host_call
+  @ 函数索引 0**〔`module.mbt` 补 import 段原语——批 1c 审阅 P1-2 指出的
+  壳缺 import 段遗留在此补齐〕/ memory {16,16} / globals 6 槽 / locals
+  4 runs / export main+memory）。组边界 = 组表侧车，覆盖不完整/越界
+  fail loud（NotCovered/BadBoundary——与 verify_fold_with_table 同族
+  独立防线）。
+- **emitgate 第三级升级**：`readWasm` 解码级 → `readWasm`+`m.validate()`
+  **内容级**（类型/栈/指令签名全检）——批 1c 登记的「拼接级真 validate
+  随批 2 模块组装升级」义务闭环；证人壳 `buildWitnessModule` 退役。
+  J9 锚（main.test.mts）：合法最小模块过 / **栈下溢模块必红**（批 1c
+  直塞片段的原型形态——readWasm 过而 validate 红）/ 翻转末字节必红 /
+  空 module 字段必红。
+- **dump_wasm**：ok 行新增 `module` 字段（垫收证人模块字节 hex）+ 组装
+  fail loud 第四态（AssembleDecode/BadBoundary/NotCovered/Effect）。
+- **全语料 915 例 0 红**（rebase 基 0db534ec 后实跑——#509 基线收编 +13 例；首发基 ece3955a 为 902）：发射 + 装载核对 + **wasm-validate 内容级**
+  三级全过（九目录，基线钉住不变）——「发射字节 = 合法 wasm」的第三方
+  证人自此为标准验证器内容级（此前为解码级 + watcheck 模板级组合）。
+  **升级即抓红实证**：开发期误记 wasm i64 移位签名为 [i64,i32]（实为
+  i64 同型、取模语义内建）改坏 5 处模板（Q 移位族 + SplitD/Q），全语料
+  validate 14 红（expected [i64,i64]）实锤回滚——垫收+真验证闸首跑即
+  证明检出力。
+- **wbtest 四锚**（wasmenc +4，裸 1426→1430）：效应推导 ↔ 人工核对表
+  150 行逐行对拍（witness_effect_rows/witness_a_rows 提为顶层共享——
+  垫收快照单份双消费）/ 可发射面效应推导全覆盖（新增 opcode 自动连坐）/
+  组装段序+import 字节镜像 / 组装 fail-loud（越界+缺口+空程序不误拒）。
+- 连坐：surface 边表 +2（dump_wasm→wasmenc assemble_witness_module/
+  AssembleError）；seq_net_effect/template_net_effect 收面（无跨包消费方
+  不 pub——「漏收」红线教训即改）；测试数 1426→1430 七文档；watcheck
+  40 文件/157 组次/覆盖 150/150 原样绿；facts 漂移 0。
+
+### feat(bytecode+wasmenc): REHOST 批 1c 主体——发射全链路接线 + 全语料产物闸（cmd/dump_wasm + scripts/wasmenc_emitgate，2026-11-13）
+
+- **bytecode 投影层**（`wasm_project.mbt`，L6→L0 新边 wasmenc）：`wasm_triples`
+  （code→组三元组直投影）+ `wasm_emit_ctx`（EmitCtx 装配：常量池直填 /
+  symbol_sizes 逐符号 `compute_type_size` / host_argv_ptr=global_data_end 4
+  对齐〔H2 参数窗口约定地址〕/ argc·argv·fallthrough 填 0 近似——批 2 基块
+  划分器与装载协议精化点逐项登记于头注）+ `build_wasm_product`（组表+字节
+  一体，`wasmenc.build_group_table` 单源驱动；失败定位循环补 gip）。白盒
+  4 锚：保序透传 / ctx 装配口径 / Ok 路径装载核对双通道（**盲折叠对含 C 类
+  组产物按设计拒载的边界显式锁死**）/ Reserved 拒载定位。
+- **cmd/dump_wasm**（native only，dump_compile 先例形态）：管线复用 +
+  发射 + `verify_fold_with_table` 装载核对内建，JSONL stdout（ok 行携
+  groups/bytes/hex；emit/verify 失败行携 gip/op/kind 定位——产物闸判红
+  主体）。**零扰动设计**：不碰 CompileOutput schema、dump_compile 的 A 级
+  14 键面与 CLI 协议——legacy code 字段照发，wasm 面按需消费（批 2 run 态
+  装载接线时再升 schema 增量字段双发）。
+- **产物闸** `scripts/wasmenc_emitgate`（.mts 四件套，设计单 §3.2 批 1
+  验收面①③落地）：ensureFresh 新鲜度门禁构建 dump_wasm → 9 语料目录
+  批跑 → 三级判定（编译成功例 100% 发射 + 装载核对全过 + **hex 指令区拼
+  证人壳过 wabt readWasm 解码级〔结构〕验证**——段结构固定 type ()->()/
+  memory {16,16}/6 globals 装载约定/locals 4 runs；审阅 P1-2 勘正：
+  readWasm 只解码不校验类型/栈，真类型验证在 watcheck 模板级〔parseWat
+  编译=类型检查〕——两级组合，拼接级真 validate 随批 2 模块组装升级）；编译期失败例计数不判红
+  （lex/parse/type/gen 属 codegen_diff 既有防线域——负例语料编译失败是
+  预期）；禁译表 deferred.json 首版空。**基线：902 ok / 47 编译期 / 0 红**（含 #486 B10 新增 5 语料，rebase 后复测）。
+  CI 接线 bookkeeping slice；过程实锤一枚：`../` 前缀路径形态下 e2_include
+  族 8 例 include 链失败（518 vs 526 ok）——dump_compile 同款既有面（登记
+  不修，非本批范围），emitgate 用绝对路径口径。
+- 铁律 1 零扰动实证：**codegen_diff golden 560/560 逐位一致**（schema/dump
+  零改动的机制论证 + 实跑双证）；全仓 moon test **1405/1405**；watcheck
+  回归 40 文件/157 组次/覆盖 150/150 原样绿；ci_checklist（活行 70）/
+  surface（新边 28 + 白名单 1 登记）/ pkg_deps（52 包）/ mbti_sync /
+  editorconfig / source_hygiene 全绿。
+
+### test(wasmenc+scripts): REHOST 批 1c-前置——wat 逐字节对拍证人入 CI + memory.fill 规范修复 + .wat 小单元全量覆盖对账（2026-11-13）
+
+- **wat 逐字节对拍证人**（`scripts/wasmenc_watcheck/`，40 wat 文件 / 157 组次
+  全 PASS）：cases/*.wat 手写样例经 **wabt**（npm 钉版 1.0.39）编译的函数体
+  指令字节 ↔ wasmenc 单源发射器扁平字节（witness_dump 现场跑打印行）
+  **逐字节恒等**——码位/编码形态（sleb/uleb 最短性、对齐立即数、f64 小端）
+  的 node 侧第三方证人，比 wasm-validate 内容级更强（同一指令序列两编码器
+  分歧即红）；CI 接线 bookkeeping slice（npm ci + main.mts，wabt 入
+  scripts/package.json + lockfile），.mts 四件套齐（tsc/oxlint/node:test
+  6 锚含逐组定位与尾部锚两新锚）。
+- **memory.fill 单 memidx 规范修复**（批 1b 分支实锤、master 遗留）：fill
+  只操作一个 memory——曾多发一个 0x00（validate 不拦的字节错位面，多余
+  字节被验证器当下一条指令解析）；编码（bulk_fill）/解码（bulk_decode
+  参数化 n_idx：copy=2/fill=1）/码位锚三处连坐，旧 4 字节产物装载即拒载。
+- **witness_dump 扩全量**（67→150 行）：B/C 63 + 双形态 3（常量池第二索引
+  PushConstD(1)/PushConstQ(0) + 负字面量 TrapBounds(-3)）+ **A 类全量 84
+  条**（含 CastD2UQ）——watcheck 的 dump 侧真源从样本面升全量。
+- **.wat 小单元逐条化 + 全量覆盖对账**（本批核心补强）：对拍改**逐组切片**
+  断言（失败精确到组名+组内偏移，不再只报文件级首异偏移）；新增**覆盖对账**
+  ——witness dump 150 条（147 可发射 + 双形态 3）须逐条被 wat 小单元覆盖，
+  新增可发射 opcode 不配用例即红 / 删条目不撤用例即红（J9 证红：临时抽
+  PushArgv 组即报 4 条缺失）。**对账首跑抓到批 1b「147 全量」声明的存量
+  漏网 3 条**（Not/UDiv/UMod 从未入 cases，靠重复组次凑数）——已补
+  （a_core3.wat +Not、a_i32_arith.wat +UDiv/UMod），终态 40 文件 / 157
+  组次 / 覆盖 150/150。
+- 零行为自证：wasmenc 仍为纯增量叶包（零现役消费方），digest/golden 零
+  触碰；全仓 moon test 1401/1401 裸口径全绿；ci_checklist/surface/
+  pkg_deps/mbti_sync/source_hygiene 全绿。
+### fix(gateway+cli+scripts): PR #509 审阅处置——P3-1/2/3/4/5 全收口（2026-11-13）
+
+- **P3-1 入口解析单源**：`units_from_params(params, method)` 抽出（posix_name
+  归一/缺省/空表→Err 带方法名文案）——serve_compile_frame 与
+  serve_typeck_dump_frame 的 params→units 逐字重复收一（第三张 dump 面接
+  files 时的第三份复制预防）。
+- **P3-2 step 帧级判据结构化**：主循环 ok 判定从 contains 子串改结构化
+  外层位（`json_parse_opt` + `jfield(f,"ok") is False`）——与上方 run 臂
+  同源；contains 绑死紧凑序列化形态，协议面换带空格 stringify 即静默退
+  化回十万次空转。解析失败（None）同 run 臂视同帧级失败 fail loud。
+- **P3-3 prove 分桶判定器出库**：`scripts/prove_bucket/main.mts`（钩子原
+  node -e 内联抽出——#273 四件套合规）+ `main.test.mts` J9 五形态（全
+  no-prover/混合/纯 goal 红/failures 空/文件缺）；pre-push 钩子只留单行
+  调用；ci_checklist exceptions 登记本地工具；package.json lint/test 清单
+  连坐。端到端三路径验证（infra→0 / infra→0 / 缺文件→1）。
+- **P3-4 assemble_units 返回 5→3 元**：merged_spans/main_name 是不动点循
+  环内部件（lex_full_source 具名实参消费），对两消费方皆死——release 构建
+  两条 unused_value 警告归零（moon check + release build 双验）。
+- **P3-5 gateway 级 files 面锚**：`serve_dump_typeck_files_face_quote_include`
+  （quote-include 工程 vfs 展开 + typed_ast 非空 + 跨文件 funcs——修前
+  gateway 包该面零用例仅 mcp 跨包覆盖）。
+- **演化候选入册**：D22「抽取单源只抽下半截——入口解析仍双份」（03 缺陷
+  形态清单）+「node -e 内联判定逃出 .mts 四件套」（02 门禁审计）。
+- **P3-6 勘误**（PR 评论登记）：`75c4980c` 提交信息「protocol_frames(双
+  臂）」与实跑不符——rust 臂不可用，实跑单臂 74 帧（MoonBit 单臂基线比）。
+### fix(engine+cli+mcp): 只测不修轮三案红→绿——seek 清 paused · step 帧级 rc 传导 · overview files 面（2026-11-13）
+
+- **time_travel replay_to 清 is_paused**（暂停死锁）：越窗重放复位 finished/
+  trapped/last_trap_message 三态唯独漏 is_paused——暂停态引擎 seek 后批循环
+  闸门永久吞批（step.next 空批 + paused:true 死锁，唯一逃生门 =
+  breakpoints.set []）；VM 层「重放命中即时解除」在引擎层无对应（不对称实
+  锤）。修 = replay_to 补清；直返臂（窗口内 seek）不清（视口移动不动执行控
+  制开关，与终态粘性 M31 A-2 同侧语义）。锚 `engine_seek_overwindow_clears_engine_paused`（红→绿）。
+- **cli step 帧级 ok:false → rc=1 即时传导**（对齐 api 两层判据先例
+  §4.5）：step.next 主循环只匹配三态标记，无标记错误帧落 batch_cap 兜底
+  空转（cap = max_steps+16 次调用后以「协议破损」文案 rc=1——归因变形；
+  默认预算十万次）。修 = 三态后补 `contains "\"ok\":false"` → 即时 rc=1
+  （合法 trap 帧外层 ok:true 不含该子串，rc=2/3 语义不变）。消费方核查
+  （2026-11-13 变基后全量）：无任何依赖「失败帧 rc=0」者；step_invariant
+  rc∈{0,1,2,3} 白名单已含 1、红绿走帧解析，变更透明。协议 §5 补登传导条
+  款（追加非改值——1 在 api 已兼「帧含失败」）。锚
+  `stepnext帧级okfalse_即时rc1传导`（调用计数断言：1 次 ≠ 旧 cap 次空转）。
+- **mcp overview files 面（DEF-1「编译成功但 overview 静默空」）**：files
+  工程的 overview 只把主文件原文喂 typeck.dump（Entry 不存 files +
+  gateway typeck.dump 无 files 面）→ quote-include 工程空 vfs E1021 →
+  typed_ast:null → functions 静默空而 compile_ok=true。修 = gateway
+  typeck.dump 增 files 参数（装配逻辑抽 `assemble_units` 单源——头文件
+  过滤+拼接+vfs 注入+#364 不动点，compile 管线与 dump 共用、抽取零行为
+  变更）；mcp Entry 留存 files、overview files 面产出即拼接坐标**不叠
+  offset**（双重偏移由 PR #457 P2-2 既有锚拦下）。锚
+  `mcp_files_quote_include_overview_nonempty`（红→绿）。
+- **连坐**：CLI_PROTOCOL_V1 §5 step 退出码传导句 + §3 run `--max-steps`
+  补登（实现面 #133 起存在、语法行一直漏登）；pre-push prove 门判据双通道
+  （stdout 三形态 + proof.json `failures[].result` 全 no-prover 形态 →
+  infra 红不阻断——J9 实锤：本机 why3 全灭期旧钩子误判 goal 红阻断
+  push）；moonbit/AGENTS.md 陷阱 46 入册；codegen codegen_skeleton
+  digest 补冻 12 例（PR #504 两轮「基线族连坐重冻」均漏第七节）；
+  perf_budget note 勘正 568/868 → 574/874（git ls-tree 三时点实证原数
+  少数 6）；facts 重采与文档连坐（根 README/快速入门/标准库防线
+  1422→1440；moonbit/README 裸数 1419→1440、native 1484→1511——
+  rebase 62193ec3 后真值）。
+### feat(corpus): #437 修复后入库批——审阅红锚随 B 轮翻面解冻 10 份 + chibicc 修复解锁回收 3 份 + 方言面 2 份入 gap（2026-11-12）
+
+- **review_after_fix 27 份暂存锚三方预检定态**（Win clang 22.1.4 × vitro js+native 双臂）：
+  20 GREEN + 7 仍红。查重甄别后 8 份有增量形态入 `corpus/baseline/`（其余 12 份与 B 轮
+  各修复批随批入库语料形态重复——B1×2/Z16-Z18、B2×3/Z19-Z21/Z1-Z4、B4×2/P5-P8、B5×2/
+  S1·S5、B6×1/E1-E3·E8、#471 cast、#427 vprintf 各自已被 `char_global_*`、
+  `compound_assign_fp_rhs`、`logic_judge_zero`、`p427_printf_missing_arms`、
+  `scanf_c_width`、`ungetc_eof_noop`、`string_escape_latin1_bytes`、
+  `ll_float_casts_domain` 覆盖，不重复入桶）；5 份仍红维持暂存（B10 EOF 族×4 +
+  Z22 Duff——对应修复未落地）。
+- **baseline +8**（翻面批号与速查表行入头注）：`logical_not_zero_domain`（Z5/Z6 Not
+  判零域，#425）、`static_fold_promo_sign`（Z12-Z14 Shl/BitNot/Neg 定型提升，#426）、
+  `static_fold_shortcircuit_saturate`（Z7 短路 + Z11 饱和，#426）、
+  `static_fold_unsigned_domain`（Z8-Z10 无符号域除法 + 静态=运行期对照，#426）、
+  `printf_g17_normalize`（G1-G4 规格化，G2/G4 增量格，#427）、`printf_g17_subnormal`
+  （G5-G7 次正规，G6 增量格，#427）、`printf_nan_case_family`（G8-G10 NaN 族——
+  m21_printf_inf_nan 头注预告的修复后入库面，#427）、`string_escape_exact_fit`
+  （E5-E7 局部/二维恰满计长，#429）。
+- **gap +2 + known_direct 登记**：`printf_hexfloat_a_dialect`（P3/P4——%a/%A 十六进制
+  小数位数实现定义域：UCRT 13 位全印 vs glibc 最短真值间自分歧，Vitro 择 glibc，
+  digest 470eb6b4）、`printf_n_writeback_ucrt`（P1——Win UCRT 出厂禁 %n 整程 fail-fast
+  崩 rc=0xC0000409，真值采 WSL gcc，digest 40b2dac5）。
+- **chibicc_port +3**（B 轮修复解锁的行级剔除面回收，探针 T1-T11 三方对拍定档）：
+  `float_not_judge`（float.c:83-86 ! 浮点判零，#425）、`cast_ll_float_roundtrip`
+  （cast.c:54-55 LL→F→LL 往返，#471）、`literal_shift_i64`（literal.c:39-47 64 位移位
+  族 LLP64 口径改写 ULL 形态）；仍红 8 主题（char 返回窄化/_Bool 参数归一/_Bool 转换
+  归一/_Alignof 无符号/'\x80' 符号性/标量复合字面量/union 写广播/先定义后暂定）登
+  CHIBICC_ASSESSMENT 台账候批。
+- **连坐**：C 真值速查表 B4 面 21 行连坐标 ✐（G1-G10/P1-P8/S7——as_of 刷 2026-11-12）；
+  perf_budget 分解式 823→874 亲跑校数（原记 868 系少数 6，2026-11-13 rebase 后复核勘正）；五家 digest 重冻 + fuzz 判定域增量 + facts
+  `--run --strict`；known_direct 16→18 条。
+- **s7_vprintf_stack_underflow 翻面实证**（速查表 S7 行连坐）：vprintf %s len≥4 栈
+  下溢已随 #427 codegen CallVar word 计数修复消失（三方一致），形态由
+  p427_printf_missing_arms.c t1 段锁定。
+
+### fix(engine): #446/#447/#448/#471/#465 收口扫除批二——引擎散件五单（2026-11-05）
+
+- **#471 浮点→无符号整型域内转换四路径单源治本**（C11 6.3.1.4 定义行为被饱和
+  截断）：新增 opcode 156 **CastD2UQ**（f64→u64 饱和无符号——`Double::to_uint64`
+  语义，域内 [0,2^64) 无损含 [2^63,2^64) 段；负值→0、≥2^64→UINT64_MAX 为 UB 域
+  安全降级，js/native 双臂探针实证）；codegen 侧 cast 双链合一为
+  `emit_conversion` 单源（gen_cast_expr 与 gen_expr_with_cast 原两份同构 if-else
+  链 B1 类冗余，后者还缺 LL←D/LL←int 防御臂——typeck insert_implicit_cast
+  前置插节点使其不可达，单源化自然补齐），四处路径共用（cast 双链 + var_decl
+  防御收口 + emit_compound_narrow 复合臂）：uint 目标 D2UQ+Q2I 低 32 位、ULL 目标
+  D2UQ、float 源先 F2D 归一。域内真值四方一致（Win clang / MinGW gcc / WSL gcc /
+  vitro js+native+wasm 三臂）：3e9→3000000000、1.8e19→18000000000000000000（修前
+  全饱和 2147483647 / 9223372036854775807）。
+- **#471 B 轮连坐（速查表 C1/C2/C10/C11——LL↔float 域内 A 面）**：signed LL→F
+  旧 CastI2F 直喂 i64 栈低 32 位（(float)5000000000LL 产 705032704 位模式值）改
+  CastQ2D+CastD2F 双跳；F→LL 旧**零发射**（f32 位模式直塞 i64 槽，-2.5f 产
+  -1071644672）补 CastF2D+CastD2Q 双跳——速查表 C 族域内 A 类全销（C1/C2/C8/
+  C9/C10/C11/C12），C3 经 #465 WSL 复核改判 D 类（截断值 -2 不可被 ULL 表示，
+  UB 域不追值；B 轮锚面改用真域内五格）。语料两份：`fp_to_unsigned_domain.c` /
+  `ll_float_casts_domain.c`（clang_direct 逐位一致 + 四家 digest 冻结入账）。
+- **#447 E1001 报错列指向非法字符本体**（裁定 = lexer 违约，B 案）：《列号口径
+  冻结》§2.4 规范语气「应指向本体」+ 契约先于实现（S1 → S2 词法器 765b4c09）+
+  族内其余码（E1002/E1003/E1006/E1010）均指向本体/断点——独 E1001 两发射点
+  （scanner 兜底臂 + 行内 stray `#` 臂）照搬 Rust "advance 后报错" +1 违约；修 =
+  err 前置到 advance 之前：`中` 报 2:7（修前 2:10，非 ASCII 形状放大 +3）、`@`
+  报 2:15（修前 2:16）、`#` 报 4:13（修前 4:14）；红锚「scan_raw E1001 column
+  points at offending char body」修前红/修后绿；重冻面核实为零（corpus 语料/
+  gold_signatures 仅计数/教学数据均不锁 E1001 列值）；文档连坐（列号口径冻结
+  §4 落实补记 + source_loc §4 注释）。
+- **#448 fs utf8_compat to_utf8_bytes 孤立代理项收口**（#363 解码方向的编码
+  配对）：孤立前导（串尾越界 / 后随非尾伴 unwrap None）修前三臂三结局崩（js
+  可捕获异常 / wasm 裸 unreachable / native 0xC0000409 进程崩）、孤立尾代理静默
+  产 ED A0 80 非法 UTF-8——统一各折一个 U+FFFD（WHATWG 孤立代理方向，正常域
+  String 恒合法唯 `unsafe_to_char` 脏串可达）；红锚
+  `utf8_encode_replaces_lone_surrogates_with_ufffd`（四形态：串尾孤立前导/前导
+  +ASCII/孤立尾代理/合法对回归）修前红；三臂（js/wasm/native）13/13 全绿；
+  THIRD_PARTY.md 本地逻辑修复表 +1 行 + 文件头改动编号 ⑤；`vendor_drift` 不触
+  （比上游 main 不比本仓文件）。
+- **#446 names type_mangle_suffix 撞码形态沿革登记**（S9 C++ 批前置）：头注补
+  沿革风险登记（对齐 `has_overloads` 形态）——Reference/RValueRef 同码 `R`（&
+  vs && 合法重载对撞名 → 静默错派发，D1 事故漏网维度）、Array 丢 dims、
+  Struct/Union/Class 同前缀、TemplateId 无定界，四条翻案清单落注；wbtest 同码
+  锚加注释「黄金值 = 已知撞码形态，C++ 批翻案对象」（锚值不改、C 域行为冻结）。
+- **#465 chibicc 对表差异候选台账消费**（逐条裁定落档速查表 §七.5，30+ 条三
+  分）：**真差异 9 族待后续批认领**（_Bool 归一化三路同根 / fp→_Bool 判零 /
+  char 返回窄化 / `sizeof(0L)` L 后缀域 / case unsigned 域 / 先定义后暂定 /
+  _Alignof 符号性 / 静态复合字面量取址链 / struct 赋值链 E0）；**已知族销条 4**
+  （D7/E 族/M17/Z11×D7）；**台账过期销条 10**（!浮点判零、union 重解释、
+  `(int){1}`、LShr 移位量、函数体内 #define 函数宏、designated 混排/成员链、
+  宏重定义、`sizeof(*a)`、`\e` 已改 E1001 显式拒收——2026-11-03 预检后各批已
+  承接）；**gap 留观 8 项**（位域/__FUNCTION__/GNU 混型/逆下标/多级解引用/
+  typeof(int) 类型参数/多声明数组维/空实参族——主控拍板收录面，本批不动）。
+  连坐：速查表 C3 行改标 D + C 族九行翻面更新。
+- **PR #485 审阅处置（同日追记）**：P2-1 单源化收实——var_decl
+  `emit_scalar_cast_store`（12 条手抄 if）与 assign `emit_compound_narrow`
+  fp 域（Int/LL/Float 左值）改调 emit_conversion 单源（**手抄同构体 4 份→
+  1 份**；两处白盒分叉格 F/D←signed LL 零发射随之归一双跳——typeck 前置
+  收口使常规管线不可达、digest 全量零翻、直驱锚
+  `vardecl defensive cast store drives emit_conversion` 锁防御层）；char
+  窄化与 Q 域（方向相反格）本地保留。P3-1 vm 数字勘误（见上）；P3-2
+  opcode 条数三处文档连坐 154 条（AGENTS.md/README.md×2）；P3-3 C1 负值
+  面 -5e9 进语料 ll_float_casts_domain.c（三端一致，五家 digest 重冻）；
+  P3-4 孪生防复活锚边界注释诚实化（配置断言——链级复活检测归 --discover）。
+- **digest 受控重冻逐条归因**：codegen `compound_assign_fp_rhs.c`（REFRESH——
+  uint 复合臂指令序列 CastD2I→CastD2UQ+CastQ2I，值不变）+ 新语料两份 ADD；
+  vm_diff 新增 2 例后全量 832 全 SAME（行为零漂移；PR #485 审阅 P3-1
+  勘误：原稿「重算 548」串号自 codegen 的 549，实测口径 = golden
+  830→832 全 SAME）；parser/typeck 仅 ADD（E1001 列变对语料零扰动）；
+  facts 双口径：`moonbit_test_passed` 1329（裸）/ 
+  `moonbit_test_passed_native` 1378。
+
+### test(vm+scripts): #482/#483 M08 复核缺口清账——折叠↔运行期一致性闸双上下文直拍锚 + facts 前置缺失 fail loud（2026-11-05）
+
+- **#482 方案 A 补锚**：`vm/m08_consistency_wbtest.mbt` 新增 10 条双上下文锚——每条表达式族
+  「VM 真跑值（直驱 codegen 发射形态 opcode，vm_exec_wbtest 同款最轻形态零 spawn）vs 折叠求值核
+  直调值（typeck/const_eval 接核后的同一求值入口 @arith.eval_int_binary）」直接同值断言，第三重对
+  clang 四端真值字面量（防两侧同漂移盲区）。覆盖 g1-g4（LL/uint 混除、uchar 提升除、LL 算术右移、
+  ULL 比较域）+ 1e300 饱和 + LLONG_MAX+1 回绕 + 移位边界 62/64（值面与故障面）+ DivQ 三格
+  （合法/LLONG_MIN÷-1/除零）+ UDivQ 位模式域 + **INT_MAX+1 i32 溢出分划契约锚**（VM trap vs 核
+  Err(AddOverflow) vs 折叠照折回绕——设计单 §五·2 分划不翻案的锚形态，静默统一即撞锚）。
+  补洞实证（J9 杀阵实录）：改坏 DivQ 臂 I64→U64 → g1/divq_fault 两新锚红（连带既有
+  exec_longlong 锚 trap 面红）；改坏 ShrQ 臂 I64→U64 → **仅 m08c_g3 独红**（既有 vm 锚无 ShrQ
+  值锚——#482「锚密度缺口」的直接实证；还原后包测试全绿，master 基底三组突变
+  注入红面经 PR 审阅阶段 4 重演复现〔ShrQ 独红 / DivQ 三红 / 核阈值红〕）。
+- **#483 fail loud**：`facts.mts` 采集器（replay/serve_smoke 两键）在「未解析到汇总行/未自报断言
+  总数」分支前置 `artifactMissingNote` 检测——命中 ensureFresh die 形态（「不存在——先跑」）时
+  note/stderr 双面透传显式文案「前置缺失：先跑 cd moonbit && moon build --target native
+  cmd/serve（见 issue #483）」+ 子脚本原行，环境前置缺失与真防线红在文案上分开；未命中保持原
+  形态（防反向遮蔽）。测试锚 `facts/prelude_fail.test.mts` 三路（命中/多行拼接/真防线红不误报）
+  J9 先红（export 缺失 SyntaxError 实录）后绿；端到端实录（serve.exe 移名态）：修前 note=「未解析
+  到汇总行（exit=1）」→ 修后 note 含前置缺失文案。
+- **测试数**：裸口径 1362→1376 / native 全量 1411→1425（+10 vm 双上下文锚 + 审阅 P3-5 补 4 条 codegen parity 锚——基底为 rebase 后 master 现值 fecc1c61）。
+- **连坐**：8 处测试数文档消费点同步（含 moonbit/README 双口径批注尾追加）；
+  surface_edges vm→arith 新四边登记（f2i_saturate_i32/AddOverflow/DivOverflow/
+  ShiftOutOfRange——wbtest 直接构造故障值是新引用面）；scripts/package.json 两清单
+  登记新测试文件（master 侧 mcp_smoke/step_invariant 新条目并列合并）。carrier 线
+  8775f5a0 设计单 143 行源码行号 95-100 被回放断言数规则误绑的豁免条目不随本 PR
+  携带——master 基底无该文件，条目悬空即 fail loud（豁免机制防僵尸设计如实生效）。
+- **验证**：moon check 0 error；moon test 1376/1376；MOONBIT_NEW_NATIVE=0+clang native 1425/1425；
+  vm_diff SAME=842 DIFF=0（master 基线 fecc1c61 零漂移）；testcount/facts --run --strict check/
+  surface/pkg_deps/mbti_sync/source_hygiene/facts 面 tsc+oxlint+node:test 全绿。
+- **PR #487 审阅处置（P3×5，2026-11-05）**：①CHANGELOG 同条目旧基线数字清理
+  （SAME=810 旧句删、杀阵口径句改为 master 基底重演佐证）；②artifactMissingNote
+  修复命令改从 die 行动态提取（wasm 臂 gateway/wasm 命令不再被硬编码 native
+  cmd/serve 遮蔽）；③freshness 导出 ENSURE_FRESH_FAIL_MARKS 三 die 标记单源
+  （die 文案以常量引用拼装，检测器/测试只引此处——手写字面量脱钩的 fail-open
+  封死；测试另以子进程真调 ensureFresh 捕获真实 die 行锚定真源）；④三种 die
+  （产物缺失/构建失败/构建成功仍缺失）全覆盖归前置缺失；⑤codegen parity 锚
+  补 4 条（ULtQ/ShlQ/AddQ/CastD2I——m08_consistency 手写序列所涉 opcode 的
+  发射面，杀阵实录：unsigned_q 右判据致盲 → parity_cmp_ll_ull_emits_ultq 独
+  红〔既有 32 位锚不兜 Q 族右操作数面〕）。
+  vm_diff SAME=842 DIFF=0（master 基线 fecc1c61 零漂移）；testcount/facts --run --strict check/
+  surface/pkg_deps/mbti_sync/source_hygiene/facts 面 tsc+oxlint+node:test 全绿。
+
+### fix(engine+util): #429 审阅 v2 批 B6——json_parse 孤立代理入口拒绝 + C 字节串「码元=字节」承载治本（2026-11-03）
+
+- **json_parse `\uXXXX` 孤立代理拒绝**（M38 A2 / M06 A1，serde_json / RFC 8259 §8.2
+  口径）：高代理 D800-DBFF 后必须紧跟 `\uDC00-DFFF` 转义（否则 JsonParseError）、
+  孤立低代理一律拒——原放行使 String 携带孤代理，下游 `utf8_len`/`utf8_bytes`
+  （@utf8.encode 薄包）panic "invalid surrogate pair"（abort 不可恢复）且 core
+  encode 三后端分叉（js U+FFFD / native panic / wasm trap）。本入口即全仓孤代理
+  唯一闸门（gateway protocol / cmd vitro_wasm invoke 不受信面全经此函数）——修后
+  M06 A1 三臂三形态分叉（api `"\uD800"` 载荷）**不可达**，三臂同回协议错
+  `{"kind":"protocol","message":"非法 JSON 请求"}`（82B 逐字节同）；#419 lexer
+  源码侧 lone surrogate 是同族另一面，归 W4 尾件批（边界在案）。
+- **json_parse 大指数线性 DoS 销案**（M38 A1）：`1e2147483647` 实测 js 臂 ~2.9s
+  （exp Int32 累积 wrap + 21 亿次乘法空转）——修复双件：指数**饱和累积**（|exp|>1e6
+  停止累加，wrap 错值 `1e4294967297`→10.0 一并治）+ 域边界 **break**（v 到
+  inf/±0 后继续乘除恒等空转）；循环 O(1)（≤~700 次达 Double 域边界），三臂
+  `{"method":…,"id":1e2147483647}` 载荷 236ms 三臂同回包；strtod 语义 ±inf/0、
+  repr 保真通道不受影响（stringify 恒输出原文）。
+- **C 字符串字面量「码元=字节」承载治本**（M22 A-1 / M07 A6 / M09 D1 四层定责
+  闭环）：StringLiteral.value 统一 Latin-1 双射承载——解码层（scanner/string.mbt）
+  非转义源字符按 UTF-8 **字节拆装**码元（转义路径产码元=字节值系 P4 既有形态），
+  `\xE4` 落单字节 E4、源内「你」按 UTF-8 落 3 字节——**两面同时对齐三方编译器**
+  （Win clang 22.1.4 / WSL gcc 15.2 / WSL clang 21.1.8；修前 `\xE4`→`C3 A4` 双
+  字节膨胀，sizeof("\xE4")=2 vs clang 1、strlen/strspn/strcmp 字节口径函数连带
+  错值）。口径史收束：P4 双分支（转义对/源字符错）→ #66 整串 UTF-8（源字符对/
+  转义错）→ B6 拆装（两面全对——「String 承载不区分来源」的时代性妥协终结）。
+- **四层消费侧同步换口径**（计长=码元数 `length()`）：typeck 三处
+  （resolve_string_literal 定型 / init W3008 判定 / char g[] 回写）+ parser 预定型
+  + bytecode cstring 单源（bytes 逐码元直出 / len=码元数）+ vm write_cstring——
+  「同实现两符号」等价约束延续；**argv 通道拆分**（write_cstring_utf8——宿主
+  Unicode 串按 UTF-8 写入，与 argv_region_footprint 计账同口径，中文 argv 无尾部
+  间隙回归）；host 层零改动（printf %s / puts / fputs 已字节直推——M22「错在
+  喂进来的字节」定责成立，装载修复后自动对齐）。
+- **A2 锚翻面**（B 批红锚清单销案）：锚 A9 `char_arr_deduce_size_writeback_utf8_ds`
+  （3→**2**）/ A10 `char_arr2d_substring_w3008_utf8_ds`（W3008 假警→**零警**）/
+  `string_literal_byte_len`（\xff 计 2→**1**）/ `cstring_bytes_utf8_passthrough_66`
+  （wbtest 改拆装形态，引擎行为不变）——KNOWN_DIVERGENCE 全部销案标注；A10 补
+  反向锚（真实超长 `"ab"` 进 char[1][2] 仍 W3008，防翻面过宽）。
+- **语料与基线连坐**：新语料 `corpus/baseline/string_escape_latin1_bytes.c`
+  （M22 p04 全形态：hex/八进制/源字符混装 + strspn/sizeof/char g[] 面，双臂 ==
+  clang 逐字节）；五家 digest 受控重冻（lexer 7 + parser 6 + typeck 6 + codegen 5
+  + vm 3，全部归因字面量 text 拆装 / array_size / 运行期字节，无未知漂移——knr/
+  leetcode/gap 三套件复跑零漂移）；clang_direct 全量 SAME=876 **DIFF=0**，known
+  白名单空转 2 条（string_escape_octal_hex / string_escape_nul_term）随销移除
+  （18→16，双向监控）；已知限制与差异 ③-14 销案改写 + C 真值速查表 §四 E1-E8
+  全族翻面（连坐更新，免重跑真值源）。
+- **叙事修正**（M38 A2 处方②）：util 头注「@utf8.encode 非法输入静默产空串 ⇒
+  长度 0」推翻——实测 panic（abort），S2/S5 时代 core 语义已变（三后端分叉，
+  M06 A1）；入口侧 json_parse 拒孤代理后协议面对该 panic 不可达，头注如实改写。
+- **W4（#466）三锚翻面**（2026-11-04 第三轮 rebase 裁定）：W4 尾件批的
+  `json_parse_lone_surrogate_transparent_466` / `serve_compile_lone_surrogate_
+  {no_abort,files_no_abort}` 三锚锁「\uD800 **转义形态**透传」——与 B6 拒绝
+  口径正面冲突，翻面为协议错期望；**#419 清洗续跑语义保留给码元直排形态**
+  （真孤代理码元不经 \u 转义、走普通字符路径透传 → protocol 层
+  `sanitize_source` 清洗 U+FFFD → 编译续跑）——补
+  `serve_compile_lone_surrogate_{raw,files_raw}_b6` 双直排锚实证（gateway
+  170/170）。两通道分工：**转义=json_parse 拒（#429，fail loud 优先）、
+  直排=透传+边界清洗（#419）**；「不 abort」不变量两形态均成立。翻面以
+  #429 任务授权为准（M38 A2 处方 + serde_json/RFC 8259 §8.2），主控终审
+  可覆议。
+- **锚与验证**：新增 10 测试（util json_parse 孤代理 2 + 代理对/回归 1 + 大指数
+  值锚 2、typeck 反向锚 1、bytecode cstring 1、scanner 拆装 1、gateway 直排
+  2），修前全红实录
+  （J9）；变异证锚 4 组（typeck 计长回退 ×2 / json_parse 校验短路 / cstring 回退
+  UTF-8）全红后还原全绿；moon check 0 err / moon test **1252**（裸）与
+  **1301**（native 全量）双口径 +10（基 B2 后 master 1242/1291；四轮 rebase 逐轮重采）；三臂探针（孤代理/hex escape/DoS）ALL-ARMS-SAME。
+### fix(engine): W4 尾件批——普查钉出的四缺陷修复（abort 族×2 + note 泄漏 + 栈迭代化，Closes #418 #419 #420 #421，2026-11-04）
+
+- **#418（dump 族深嵌套 abort）**：合法深 AST 的 dump JSON 深度可达数百层
+  （legal_deep `paren_30_add_100` ≈200+ 层），`dump_parse_or_abort` 自检上限
+  128 < 可达深度 → 合法输入整实例 abort（W4 §4.3(a)，两侧同 trap）。
+  修：`@util.json_parse` 新增 `depth_limit~` 具名参数（默认 128 不变——协议
+  入口防 DoS 口径；`depth_limit~` 即测试侧放宽消费面）；dump 族六消费点
+  （ast/typeck×3 + probe + codegen.dump）统一走新 `dump_frame_ok`——结构深度
+  ≤128 走原全量自检（emitter bug 真 fail loud 不变），>128 经 `json_structural_depth`
+  （O(n) 迭代、字符串/转义感知的配平扫描）结构校验后**文本直拼**进帧（Json 值
+  中转两处递归〔parse_value / core stringify〕在 wasm 栈不可持续——unary_chain
+  十万层语料数十万层 JSON）；帧内空白与浅路径紧凑化形态分叉（JSON 语义等值，
+  注释明示）。连坐：codegen.dump 原 `catch { Json::null() }` 把 emitter bug
+  静默吞成 null 帧违反 fail loud 纪律，同改走 `dump_frame_ok`。arm4：
+  `paren_30_add_100` TRAP_BOTH→AGREE。
+- **#419（lone surrogate 源码 abort）**：协议 `source` 字段是合法 JSON 可达
+  形态（`"\ud800"` 转义），lexer pp 层 `strip_bom`/`split_physical_lines` 与
+  pipeline 的 `diagnostics.split_lines` 多处 `@utf8.encode` 对孤立代理项 abort
+  （W4 §4.3(b)，#363 族）。修：`Pp::run_pp` 入口 `sanitize_surrogates`
+  （孤立代理各替换一个 U+FFFD——WHATWG 最大子部分、#363 同口径；合法代理对
+  整码点保留；快路径零重写；include 递归内容同过）+ 协议边界双形态清洗
+  （`dispatch` 对 `params.source` 与 `params.files[].source`——files 形态为
+  arm4 语料帧实锤的漏网点，trap 于 diagnostics.split_lines）。L1 raw 通道不经
+  清洗（diff_gate 对拍域，输入为语料文件无此形态）。对拍：clang/gcc 对注释位
+  U+FFFD 与 CESU-8 孤立代理字节（ED A0 80）形态均零警告接受——C 字节流全容，
+  U+FFFD 替换是 UTF-16 输入域唯一无损策略。arm4：surrogate 四例
+  （comment/string/all_bmp/params 对抗帧）TRAP_BOTH→AGREE。
+- **#420（note 通道跨会话泄漏）**：`session.create/reset/destroy` 不清
+  `vm.output`（`vm.reset` 纪律性不碰 output——跨 run 存活语义），run 的
+  `not_compiled` 早退又在 `serve_execute_run` 的 `output.clear()` 之前——
+  前一会话「程序运行完成，返回值：N」附注泄漏到下一会话（W4 §4.2）。定责：
+  **实现错**——协议文档 `create_semantics: clear-and-rebuild` 与
+  `reset_semantics: 清空编译/运行状态` 承诺在先。修：
+  `reset_session_preserving_config` 显式 `vm.output.clear()`（OutputLog::clear
+  连坐清 note 预算环形计数与双 truncation 位）+ `serve_run_frame` 早退分支
+  同清。protocol_frames 基线 48 帧零漂移（基线不含泄漏形态序列）。
+- **#421（struct 嵌套递归迭代化）**：`parse_struct_body` 对成员位置嵌套
+  `struct|union … {}` 自递归（wasm 栈 ~400B/层）——wasmtime 默认 512KiB 栈
+  1500 层 StackOverflow（W4 唯一 TRAP_ONE 形态）、V8 默认 6000 层。修：
+  NestFrame 显式栈迭代化（外层 body 现场压栈、内层收口后弹出续跑拦截段
+  后半——anonymous 表/声明器组；AST 产出与递归版逐字段同构）。红锚 20000
+  层 parse 存活；parser/lexer/typeck/codegen 四 digest 存量零漂移（同构性
+  机判）；arm4：struct_nest_6000/8000/12000 TRAP_BOTH→AGREE（迭代化后
+  栈预算无关——双侧全梯度 1500..12000 AGREE；1500–4000 档的 TRAP_ONE
+  已由前批 #461 的跑器 2MiB 对齐先转，本批归因口径相对 #461 冻结基线，
+  详见审阅修正）。
+- **语料与基线连坐**：corpus/baseline 新增 `paren_nest_legal_deep.c`（clang
+  直拍 exit=101 一致）；四 diff 闸 + vm_diff digest 入账（存量零漂移）；arm4
+  synth_baseline 受控重冻（相对 #461 冻结基线 **17 例 TRAP_BOTH→AGREE**：
+  #418 面 10 + #419 面 4 + #421 面 3〔struct_nest≥6000〕；零恶化零 DIFF，
+  冻结复验 69/69 identical）。`struct_nest_deep.c` 首版曾入 baseline 后撤出
+  （CI 首轮红：perf_budget 的 `struct_or_union_defs` max_per_file=8 是
+  **真实语料规模前提**，250 层合成对抗语料不属该域——#421 回归防护由
+  三层锚承担：parser wbtest 20000 层 + arm4 synth struct_nest 全梯度基线 +
+  四 digest 同构闸，corpus 副本冗余）。
+- 锚：新增 9 测试（深 ast/typeck 帧 + 扫描器口径 / surrogate 端到端×2 + pp
+  单元字节级 / 跨会话 note 零残留×2 / 20000 层 parse），J9 全先证红
+  （abort/泄漏/栈溢出原始形态实录）；变异抽样：#418 深路径阈值变异→双帧
+  红→还原复绿。
+### fix(engine): #466 审阅处置——P1×1 + P2×2 + P3×5（2026-11-04）
+
+- **P1（阈值越界一格）**：json_parse 的 depth 是递归栈深（末层标量占
+  一层），结构深度 k ⇒ 栈深 k+1——浅路径上限实际只容 k≤127；`d <= 128`
+  把 k=128 的合法帧送进浅路径必然超限 abort（审阅端点复现：56 项合法
+  加法链包 if，rc=0xC0000409；wasm 臂同点一致崩）。修：`d < 128` + 边界
+  两侧锚（k=127 浅路径安全档 / k=128 深路径，A1-c 形态：分界点外取样
+  全绿≠无病）。锚 `dump_frame_ok_threshold_boundary_466`（修前 abort
+  实录证红）。
+- **P2-1（深路径值级裸奔）**：纯配平扫描对 `{"a":01}` / `"x\qy"` 等坏值
+  返回正值——深链直拼出非法 JSON 帧的静默降级（深链修前直接 abort，
+  从无可比对帧，「浅层对拍锁定 ⇒ 深层同构」论证不成立）。修：
+  `json_structural_depth` 升级为 O(n) 迭代词法校验状态机（JPhase 七态
+  + 容器栈；值级与 json_parse 同强度——转义八式 + \uXXXX 四 hex + 裸
+  控制字符禁放 + 数字 RFC 8259〔@util.valid_json_number pub 化单源复用〕
+  + true/false/null 精确匹配 + 键必引号 + 尾逗号/缺逗号/尾随内容）。
+  锚 `json_lex_value_level_fail_loud_466` 13 断言（修前前导零判不出
+  证红；尾逗号两形态系实现期自查补——Comma 后态须禁立即闭括号）。
+- **P2-2（#420 第二修复点零锚）**：run 的 not_compiled 早退 clear 被跨
+  会话锚的 create clear 掩盖（删该 clear 后 165 测试全绿——审阅突变
+  实锤）。补同会话锚 `note_zero_residue_not_compiled_same_session_466`
+  （compile ok→run→compile 失败→run not_compiled→note total=0）；变异
+  复核：删早退 clear → 该锚精确红 → 复原绿。
+- **P3 五项**：①「新增 8 测试」勘误 9；②arm4 改善归因修正（21→17 例、
+  #421 面= struct_nest≥6000 三条——1500–4000 系前批 #461 栈预算转的）；
+  ③synth_baseline note 知识恢复（V8 临界版本依赖面/5000 flaky 勿加档
+  整段追加保留）+ 冻结机制改**追加式**（main.mts 读旧 note 拼接，模板
+  覆盖不再丢知识）；④#429 登记修正（json_parse 三后端透传实测 +
+  `json_parse_lone_surrogate_transparent_466` 锚）；⑤既有分叉
+  （`struct A { int; }` E2005 vs clang warning）审阅登记，非本批面。
+- 复验：gateway 168/168 + util 18/18（默认 + wasm-gc 双后端）；`moon check`
+  0 errors。
+
+- 边界登记（不越界）：json_parse 的 `\uXXXX` 转义 write_char 对孤立代理在
+  wasm-gc 后端 abort 是 #429 面（B6 批）；`input.feed`/argv 运行时字节域
+  通道的 surrogate 形态另行登记。
+### fix(corpus+scripts): PR #464 审阅处置批——P2×2 落地（fuzz 采样域 + facts 计数键）+ P3×7 连坐（2026-11-04）
+
+- **P2-1 fuzz 采样域**：`corpus_fuzz/rules.json` `suites` 加 `chibicc_port` + 一次 `-freeze`（纯增量
+  +184 行；total 318→378，PASS 全绿、旧键零僵尸——pickSeeds 按 suite 独立 hash 序实锤他桶种子不动）；
+  freeze 显式报告两条 leetcode 桶值迁移（`CLANG_REJECT→AGREE`，上次 js 臂陈旧产物时代的误判桶值
+  修正为全量真跑值——#412「freeze 不得无声吸收」设计内）。
+- **P2-2 facts 计数键**：`c_e2e_chibicc_port_cases`（count_dir 扫 corpus/chibicc_port/）+ 脚本总清单
+  §1.3 四键段→五键连坐（llm_scale/llm_multifile 缺键为既有缺口，本批不扩）。
+- **P3-1 文档口径×4**：脚本总清单 lexer「四语料」→六语料（CI 循环同形）、codegen「骨架面+四语料」→
+  六语料、Clang直拍门禁.md 八目录→九目录（两处）。
+- **P3-2 口径矛盾**：`initializer_globals.c` main 内旧注（rebase 前的「运行期 NULL deref」结论）改为与
+  头注一致的 E3075 编译期拒绝口径（issue #465 台账指针）。
+- **P3-3 UB/ID 域披露统一**：`arith_ptr_diff_expr.c`（越界指针算术=UB 折叠值，头注披露）、
+  `arith_bitwise_ternary.c`（`%d %lld`×LLP64 long 的 ABI 零扩展巧合，ID 域披露）、
+  `const_qualified_basic.c`（`const int bq;` 仅解析面，读未初始化 UB 不锁）。
+- **P3-4**：`alignof_nopad.c` 删 `_Alignof(表达式)` 两行（GNU 扩展，与头注「剔写」口径对齐）。
+- **P3-5**：perf_budget `_corpus_note` 613 历史数→亲跑校数 823（分解列全）。
+- **P3-6/P3-7 挂号**：`@category` 头注无现役消费、corpus MIT 许可全文/THIRD_PARTY 缺位（与 knr/leetcode
+  同级先例）——登记 issue 台账，本批不处置。
+- **根因**：`vitro-baseline-corpus-workflow` SKILL.md 补「加桶接线清单」六条（fuzz/facts/文档三面即
+  本次人肉枚举漏项，PR #464 审阅建档）。
+- **未深审项①补做**：chibicc 上游 36 份忠实度对账（`tmp/corpus_staged/precheck/upstream_audit.mjs`）——
+  字面直接覆盖 336/deferred 登记 40/缺口 359（改写形态字面不命中的下界口径）；真遗漏 1 项
+  （builtin.c 未登记不 port——ASSESSMENT 已补）+ alignof 尺寸面补登记。
+- 语料 5 份注释/删行变更随五家 digest 重冻（重算 5、全绿：四家 rc=0 / vm 双臂 SAME=810）。
+
+### feat(corpus): #437 语料扩充窗口入库批——chibicc_port 外部基准新桶 + 审阅探针即可入库批（2026-11-03）
+
+- **`corpus/chibicc_port/` 新桶 36 份**（chibicc/test MIT port，© 2019 Rui Ueyama 溯源行逐份头注）：
+  ASSERT→printf 基线改写、statement expression 拆变量、GNU 扩展/case range/computed goto 按六阶段
+  port 手册剔写、真值按 Win clang 22.1.4（LLP64）实跑重采（原集 LP64 期望只作线索）。预检三方对拍
+  （clang × vitro js+native 双臂）36/36 逐位一致；WSL 副判（gcc 15.2 + clang 21.1.8）除
+  `sizeof_types_llp64`（主题即 Win 口径锁值）外全 same；第三方 thirdparty（git.sh GPL v2 混居）零取用。
+- **`corpus/baseline/` +13 份**（审阅 v2「无发现面」绿锚：M12 地址族/自增/float 全链、M13 ++/-- 矩阵、
+  M21 格式化好面五份、M22 strncpy 矩阵、M23 fseek 二进制臂/EOF 同形面、M20 305KB 大输出）——
+  预检 13/13 三方一致实证后入桶锁防静默回归。
+- **新桶接线四处**：clang_direct `corporaDefault`、diff_gate/vm `DEFAULT_CORPORA`、ci.yml 四闸
+  suite 循环、perf_budget `corpus_dirs`（顶层档）。
+- **五家 digest**：四家（lexer/parser/typeck/codegen）新段 `chibicc_port` 首冻（`--freeze-mb` 对
+  新段无路径，按 13 号纪律 .json 手改预登记空段后入账——纯增量 559 行）+ vm 扁平键新增 49 例、
+  存量重算 761 例零漂移（freeze 前重建 cmd/run/vitro_js/wasm 三臂产物）。
+- **预检副产物（另行挂账不入库）**：27 份修复后入库红锚暂存 `tmp/corpus_staged/review_after_fix/`
+  （随 B1-B10 逐族解冻）；chibicc 对表挖出速查表外差异候选 ~30 条 + 速查表 C3 行 UB 域口径修正
+  建议（`(ULL)-2.5f` 为 UB 域非「域内」——WSL 副判实锤三方各异）。
+- **fuzz 零动**：新指纹 0/桶恶化 0/僵尸 0（PASS 与基线一致；修复前一度报桶恶化 2 条，根因 =
+  cmd/vitro_js 产物陈旧〔重建后消失〕——非本批语料引入，教训：fuzz 判定面含 js 臂产物新鲜度）。
+### feat(moonbit): DSH 插件 v2——MCP server 核心 MoonBit 化（新包 vitro/engine/mcp + cmd/mcp_js 壳，随 0.10.0 节奏发，2026-11-03）
+
+- **新包 `vitro/engine/mcp`（L9，MCP 宿主层；消费面 gateway/session/util 全 ≤L8）**：
+  JSON-RPC 2.0 协议层 + **12 工具动词化**（L0 永驻 5：animate/diagnose/capabilities/
+  sessions/**session_open〔解锁触发器〕** + L1 会话解锁 7：frames_summary/frames_query/
+  annotations/run_to/step_next/render/session_close）+ 会话池（每会话独立
+  `@session.Session`，LRU 8 / 空闲 5 分钟惰性逐出）+ 渐进披露（tools/list 按会话态
+  过滤 + `notifications/tools/list_changed` 布尔级切换，翻转即通知）+ 返回值投影
+  （frames_query 默认 {i,l,f,s}、≤50 帧/页，fields 显式扩 r/v/c/e/a/h，filter
+  label_prefix/line/func/has_vis_event）+ readOnlyHint 元数据表（只读探查 6 工具标
+  true——DSH tools/pre-execute allow/deny/ask 门对接）。**design.md「11 工具 / L0 4」
+  勘误**：session_open 无会话时必须可见才能被调用（解锁触发器），L0 可见集 5、
+  总计 12；§3.3 的 available_now/unlocks 拆分（5+7）即权威口径。
+- **gateway 加法出口 `invoke_on(session, line)`（零行为改动）**：`serve_handle` 本就
+  Session 参数化纯函数，本出口把它暴露给包外——同进程多会话隔离（每会话独立引擎态）
+  无需起多 wasm 实例；全局单例 `invoke` 路径逐字不变（digest/golden 零漂移）。
+  探针结论（三项全通，批报告详）：①stdin 行流事件驱动（readline on line → mbt 闭包
+  回调，主函数返回后进程靠监听存活；EOF 后 writeSync 标记帧完整落盘再 exit）②wasm
+  实例 `#external` 句柄持有（同步 instantiate 2 实例 23ms + Map 持有 + 双实例状态
+  隔离成立——本批降为备选路径证据）③stdout 二进制安全（198,912 字节帧逐字节一致，
+  中文/emoji/控制字符转义保真）。
+- **cmd/mcp_js 壳（+js 单目标，vitro_js 同款形态）**：行循环/墙钟/渲染落盘全走
+  extern "js"，协议与工具零逻辑（壳核心分层纪律）；产物 = node 直跑单文件
+  （`moon build --release --target js cmd/mcp_js`）。渲染壳层 = v1 lib/render.mjs +
+  keyframes.mjs + build.mjs 落盘段整体移植入 extern 块（用户拍板「TS 仅限无法 mbt 化
+  的壳层」——HTML/播放器/PNG 截图是浏览器资产；帧数据逻辑〔关键帧判据/预算抽稀/
+  聚焦选择〕已在 mbt 侧单源）。interactive 模式经 `VITRO_MCP_WASM` /
+  `./engine/wasm.wasm` / `./wasm.wasm` 取 gateway wasm；**缺失自动回落 static**
+  （mbt 恒算关键帧——回落即用，响应 mode/frame_count 取壳层实测值，消双源分叉）。
+- **run_to 三停形态**：断点行（引擎 breakpoints.set——StepEvent 命中置 paused，
+  unpause 后从下一条指令续跑，同行重设须下次进入才触发）/ 首个可视事件（swap/
+  compare/any，逐帧精确推进）/ max_frames 上限；终局会话零推进 + 回看提示
+  （design §4.2 约束如实：终局不可回退推进）。step_next = n 个关键帧（权重判据
+  v1 keyWeight 逐条照搬，参照帧聚焦集 = 两帧出现过的全部数组）。
+- **测试**：mcp 白盒 22 条三 target 全绿（native/js/wasm-gc——**裸口径含 mcp**
+  （审阅 v2 实测注入必红断言后裸 1239 变 1238/1 failed）；锁披露切换/LRU/TTL/
+  投影分页/事件锚 1126 步·swap7=逆序对·compare54/首交换帧 93 行 8/run_to 断点/
+  E2005 诊断/渲染钩子契约 + 审阅批锚：P1-1 输出回采双锚 / 披露恒真四锚 /
+  P2-1 to 旁路 / P2-2 files 行号对齐 / P2-3 通知静默 / P2-4 schema /
+  P3-② 诊断卡可交付）；
+  裸/native 双口径各 +22（mcp 挂 `+wasm` 随 gateway B3 口径）；随 master 合流（#462/#464 后）批末终值 = 裸 1275 / native 1324（mcp 22 条全入〔随 #466/#467 基 1275/1324 重对〕，双 README 连坐）。
+  黑盒验收 accept.mts 28 断言全绿（对 js 产物跑：会话池建/复用/LRU 逐出/披露切换/
+  每工具 happy path/投影页边界/readOnlyHint/run_to 断点/错误帧形态/PNG image 块/
+  interactive 双形态/编译错诊断卡）——TTL 5 分钟黑盒不可假钟，白盒覆盖；
+  CI 产物闸 `mcp_smoke` 18 断言（含 #468/#469 语法门与 PLAYER 驱动对拍）。
+- **登记连坐**：pkg_deps rules.json（mcp=L9）+ surface 边表 10 条（cmd/mcp_js→
+  mcp/gateway/util×N、mcp→gateway/session/util×N）+ mcp pkg.generated.mbti（canonical=wasm
+  随 gateway B3 批的 +wasm 通道可达，无需豁免）+
+  moonbit/AGENTS.md 包清单行 + docs 说明文档（docs/current/06-出口与协议/DSH-MCP服务器.md）。
+  + **CI 接线**：scripts/moonbit/mcp_smoke（产物 stdio 冒烟闸 16 断言——协议/披露/
+  池/run_to 事件锚/投影/render 落盘/interactive 无 wasm 回落/EOF exit 0；锚值与
+  wbtest 同源）入 ci.yml cli_smoke slice + scripts-ts 四件套（package.json 三清单
+  + node:test 纯件 5 例）+ ci_checklist 活行对账。
+  发版动作（mooncakes 0.10.0 / npm publish）不在本批——待拍板。
+
+### fix(scripts): #410+#412 corpus_fuzz 判定域语义批——clang 侧崩溃域识别（CLANG_CRASH）+ bucketOf 臂选择对称化 + freeze 恶化翻桶闸（2026-11-02）
+
+- **#410 主案（clangOutcome 崩溃域失明）**：clang 运行段进程崩溃/超时一律
+  `status:"OK"`、退出码只作 `EXIT:<code>` 尾行进比对域——两侧等价死被判
+  `VITRO_TRAP`（桶语义「vitro 挂 clang 无事」失真）。新纯函数
+  `clangRunCrashOf(rc, errCode, signal)`（rc<0 哨兵域〔ETIMEDOUT 语义化
+  TIMEOUT〕/ win32 NT 异常码域 ≥0x80000000 / POSIX 信号形态）→ clangOutcome
+  运行段崩溃态改判 `CLANG_CRASH`（与 parseVitro 的 CRASH 对称）；`bucketOf`
+  新分支：vitro 侧 TRAP/CRASH = 两侧等价死 → **AGREE**（vitro 活着跑完 =
+  行为分歧面归 WRONG_VALUE）。
+- **#410 EXIT 哨兵可读化 + 超时收割**：`EXIT:TIMEOUT` / `EXIT:<信号名>` /
+  `EXIT:SPAWN:<code>` / `EXIT:<NT码>` 人类可读优先（原 `EXIT:-98` 读者
+  误读为平台差异崩溃码）；win32 超时路径 `taskkill /T /F /IM` 收割（运行中
+  exe 文件被锁，收割须在 rmSync 前——死循环变体超时残留实锤，本批重冻
+  实战触发 1 次）。
+- **#410 P2-2（bucketOf 臂选择不对称）**：删「js 非 OK + native OK → 取
+  native」第二分支——js 臂 TRAP/CRASH 在「native 输出同 clang」时被静默
+  吞成 AGREE（只有 native 臂异常会报警）。既有锚 1 处随语义翻新
+  （`bucketOf(ok, CRASH_js, ok_native)` AGREE→ARM_DIVERGENCE，依据 issue
+  评论亲跑六组表第 2 行）。
+- **#412（freeze 恶化翻桶无闸）**：1f61dfb3 一次 55 条环境伪影翻转静默入库
+  的病灶面——新 `FREEZE_FLIP_GATE=5` 常量 + `gateWorseningFlips`（rank
+  升高且非 volatile；改善方向不拦）+ freeze 落盘前恶化 ≥5 条 fail loud
+  （rc=2 逐条清单），`-confirm-flips` 显式放行；volatile 豁免与对账侧
+  classifyAgainstBaseline 语义对称；非 freeze 传 `-confirm-flips` 即红。
+- **基线重冻**（判定域语义变更连坐）：318 条全量真跑，翻桶 2 条全为预测
+  改善方向——`lc_108|div2shift`、`lc_704|div2shift` 均 `VITRO_TRAP→AGREE`
+  （clang 栈溢出真崩/20s 超时 = 两侧等价死归位）；`lc_75|static_inject`
+  保持（clang UB 碰幸不崩）；P2-2 零恶化翻桶（无存量吞条目，修复为防
+  未来面）；重冻后对账轮 PASS（AGREE 251→253、判缓存 318 全命中）。
+- 锚：新增 4 测试（clangRunCrashOf 域 / CLANG_CRASH 分桶等价死 / P2-2
+  臂对称 / #412 闸边界 4-5-豁免三态），J9 双层红实录（SyntaxError 层 +
+  行为断言层 VITRO_TRAP↔AGREE 双红）；`scripts/corpus_fuzz` 测试 34 绿。
+### test(moonbit): 审阅 v2 批 A2——测试锚诚实化（修锚不修行为：双形态锚 + KNOWN_DIVERGENCE 标注，2026-11-01）
+
+- **语义**：锚断言值 = 当前实际行为（CI 真绿非假绿），与 C 真值不一致处紧邻注释标
+  `KNOWN_DIVERGENCE` + clang 真值 + 出处——即 B 批行为修复的现成红锚清单；本批零引擎
+  代码改动（vm_diff golden SAME=147 DIFF=0；libc_boot_diff/gen_diag/gen_stubs/gen_host_route/
+  single_source/perf_budget/mbti_sync/surface/hygiene/libc_single_source/pkg_deps 全绿）。
+- **M20 host_io_wbtest**：`format_g_powi_oracle_alignment` 7 处 + `format_fixed` NaN 1 处偏差锚
+  加 KNOWN_DIVERGENCE（Win clang 22.1.4-UCRT 真值表；报告点名 5 处 + A2 探针新增
+  `1.5e126`/`8.88e-320`/`2.5e-323` 三处 `%.17g` 分叉）；变异证红：锚换 clang 值即红（183/182/1）。
+- **M26 serve_step_wbtest**：`serve_step_seek_roundtrip_and_payload_get` 尾断言
+  `assert_false(contains("error"))` 恒真（auto_step_result_json 无 error 键；nx 置垃圾串仍绿实证）
+  → 换 `step_index` 在 + `finished:false` 双断言。
+- **M28 serve_more_wbtest**：`serve_memory_dump_roundtrip` 帧 source 单反斜杠 `\n`（裸 LF）致
+  compile 从未发生、三断言在默认映像上恒绿（加 compiled 断言即红 158/157/1）→ `\\n` 转义修活
+  + 前置可观测断言（修活后真实 run 映像往返仍绿，非行为缺陷）；B4 清场 catch 改 fail loud；
+  B2 死变量 s2 改真实消费；B3 孤立 `///|` 删。
+- **M23 vfs_wbtest**：38 行定责——形态是**短读**（请求 100 仅得 6）非恰满，clang feof=1 与 vitro
+  一致，**非病锚**（与 M23 报告「病锚」结论不同，A2 探针 feof.c 亲证），仅改误导 msg；新锚
+  `vfs_feof_exact_fill_known_divergence` 锁 fread 恰满 / fgetc 末字节后 / fgets 恰到尾三形态
+  （vitro 1 / clang 0，KNOWN_DIVERGENCE；过读形态双侧一致）；B2 perror 注释对齐实现 `No error\n`
+  + 断言由 length>0 升为完整 stderr 逐字节。
+- **M15 verify_wbtest**：补 23 条红锚（C-1 缺口全覆盖 + 审阅 P3-1 补漏列「wrapper 段缺 Call main」1 条：串区上界 / globals32·64 越 MEM_SIZE /
+  键集⊇⊂ / code 空 / 首段非 1 / meta.ip=0 / param_sizes 非正 / param_count≠len / local_count
+  不覆盖参数区 / local_buffer 越帧 / PushConstQ / TrapBounds / func_index 无 main / PushArgv⇔2 参
+  / wrapper 段尾 / wrapper_ip=0）+ **L609 用户段 Call 栈深双形态锚**（当前零违约 = A-1 被
+  `>=1000` 无上界吞；library 模式同构造红 = 规则存在性正锚）；**结构性发现**：L359 段间无缝
+  （idx≥1 不可达）/ L377 wrapper 起点（expected_ip 恒等 wrapper_ip）两条规则为死分支，对应锚
+  改锁真实兜底规则（L538 段尾非控制类 / L824 wrapper 越界）；变异抽样证红（关 L415 即对应锚红
+  58/57/1）。E6 远越界自崩形态（A-2）本批不锚留 B 批。
+- **M15 B-1/B-2**：gen_host_route 模板「14 个 PURE 名」/「114 对逐条断言 Some(id)」改动态计数
+  （13 / 101+13，产物再生成 -check OK）；bytecode_test 同款勘误；libc_pair_anchor 头注退役路径
+  `native/...` 改指档案 tag `rust-oracle-freeze` + 现役单源。
+- **M09 typeck**：init_wbtest 两条 `\xff` hex-escape 锚统一 KNOWN_DIVERGENCE（clang 1 字节口径：
+  `char g[]` 定型尺寸 2 / `char w[1][2]` 恰满零警）；`errs2`→`warns2` 命名勘误（3 处 warnings
+  通道）；decl_wbtest 两处脚手架残留（`fn run` 即 ignore / `tc3` 即 ignore）删。
+- **M34b teaching/steps**：steps_wbtest 头注「锚值来源声明」——Rust 删区后锚为无 oracle 历史快照
+  + M34b 七处推断失真面零锚登记；**只标不修**（实质修复留教学真值源批）。
+- **计数连坐**：裸 971→995、native 1167→1191（+24 = verify 23 + vfs 1）；根 README×3 / moonbit
+  双 README / docs/current×3；testcount + facts `--run --strict check` 双绿。
+
+### fix(scripts): PR #414 审阅处置批——#410/#412 判定域语义修正九案（2026-11-02）
+
+- **P1（合法 uint32 返回码误判崩溃，真回归）**：原判据 `rc >= 0x80000000`
+  把 `return -1` 的 win32 进程码 0xFFFFFFFF / INT_MIN 的 0x80000000 误判
+  CLANG_CRASH（合法返回值域与 NT STATUS 域重叠、无区分力）——收窄为
+  **`(rc & 0xFFFF0000) >>> 0 === 0xC0000000`**（NT 严重码子域 0xC000xxxx：
+  栈溢出 0xC00000FD / 访问违例 0xC0000005 / 段错误 0xC0000011）。反例锚
+  4294967295/INT_MIN→null + `return -1` 三方同形端到端 AGREE 锚。**坑：
+  JS `&` 结果是 int32（0xC0000000 位型为负），与正数字面量比较恒 false，
+  须 `>>> 0` 转 uint32——单测实测踩中**。
+- **P2-1（编译段进程级异常混入 REJECT 桶）**：clang spawn 失败/超时
+  （PATH 竭尽/锁文件连败）原判 REJECT——正是 1f61dfb3 一次 55 条
+  AGREE→CLANG_REJECT 伪影的机理面；编译段同走 `clangRunCrashOf` →
+  CLANG_CRASH（`EXIT:SPAWN:<code>` 并入 out 可诊断）。
+- **P2-2（taskkill /IM 误杀，收割移除）**：`taskkill /T /F /IM a.exe`
+  按映像名收割会误杀并发 worktree 的同名 a.exe（审阅 probe_taskkill
+  实测杀到无辜进程、目标早被 spawnSync 清掉、全量 freeze 实战 rc=128
+  无匹配）；#410 登记的残留形态在 node 26.12.1+典型死循环未复现——
+  误杀面实锤 vs 残留未复现，删收割。
+- **P3-1（闸接线无锚）**：抽 `shouldBlockFreezeFlips(worseCount, confirmed)`
+  纯函数 + 闸三连轮 e2e（mini 真跑 9 条 CLANG_REJECT 篡改基线构造恶化 ≥5
+  → 闸红 rc=2 + **mtime 零写副作用断言** + `--confirm-flips` 放行 rc=0）；
+  **突变实验 M6（闸恒假）/M7（删 confirm 守卫）双实证被 e2e 杀**。
+- **P3-2（die 前已落副作用）**：freeze 轮 judgeCachePut 收集 pending、
+  闸判定通过后统一写盘（含 pruneJudgeEpochs）——闸红路径零写副作用，
+  杜绝「缓存新桶+基线旧值 ⇒ 下轮误报桶恶化」。
+- **P3-3（`--confirm-flips` 双破折号）**：parseArgs 双破折号归一（issue
+  处方文案与 CLI 惯例兼容，单破折号原形态不回归）。
+- **P3-4（CLANG_CRASH × REJECT 混桶）**：clang 崩 + vitro 编译拒绝归
+  **VITRO_REJECT**（rank 2，原 WRONG_VALUE rank 4——「编译拒绝」与
+  「值不同」分桶，且不再易误触发 freeze 恶化闸）；两臂 OK 但互不相同仍
+  ARM_DIVERGENCE 抢先（臂间分歧优先）。
+- **P3-5 挂账（等价死不看死因）**：crash 类别 × trap 类别配对表待 trap
+  结构化出口（机器可读 trap_code）后落地——现「clang 段错误(UB) + vitro
+  步数耗尽」同判 AGREE 的粗糙面保留，由对账轮与 #412 闸兜底。
+- **P3-6**：`Outcome.status` 注释补 CLANG_CRASH。
+- 锚：处置批新增 7 测试（P1 反例/端到端、P3-4、P3-1 纯函数四态、P3-3、
+  P2-1 编译段 e2e、闸三连轮 e2e），分案红实录 5 红（35 绿）；全量 41/41
+  绿；tsc/oxlint 全绿。
+- **突变轮与重 e2e 解耦**（Mutation gate 时长爆炸治本）：闸三连轮 e2e
+  真跑 ~130s，survived 突变体逐个跑满完整闭包 ⇒ 乘法爆炸（同批无三连轮
+  2.4min vs 含三连轮 26min+ 未完实锤）——mutation_gate 干跑与 Stryker
+  spawn 两处设 `CF_SKIP_E2E=1`，三连轮在该轮 skip（40 pass + 1 skipped，
+  秒级）；**代价（诚实口径）**：M6/M7 类只有 e2e 能杀的接线突变在突变轮
+  判 survived——survived 清单含 e2e-only 可杀体，杀阵由常规轮 CI test 步
+  全量跑 + 本地突变实录（M6/M7 双实证）保证。
+
+### fix(gateway): #399 step.next 批=1 逐帧口径行末不变量治本——跨批 pending 清标注改 pop 前批首帧参照 + 锚双形态化（2026-10-31）
+
+- **缺陷**：`serve_step_next` 跨批 pending 分支的同行清标注判据在 pop 之后
+  读 `payloads[0]` 且以 `length()>0` 守卫——批=1（`params:{}`，demo 前端
+  worker `engine.worker.ts` 真实口径）时 pop 走唯一帧后守卫恒 false ⇒ 清标注
+  恒跳过、pending 帧永远带标注发布。同源码（bubble.c 1041 帧）只换批量参数：
+  单批 36 标注帧/0 违例 vs 逐帧 **832 标注帧/796 行中间违例**——前端真机语义
+  标注过密 20 倍（时间轴密度/phase 徽标/锚点兜底通道全站受影响）。
+- **修复**（`gateway/serve_step.mbt`）：参照改 **pop 前批首帧**——批=1 时批首帧
+  即 curr 本身（pending 的发布后继，帧发布滞后一帧语义），frames>1 时与旧判据
+  逐位等价，两形态统一；非 flushed ⇒ payloads 必非空，`[0]` 恒安全。
+- **锚双形态化**（`gateway/serve_step_wbtest.mbt`）：`#225` 行末不变量锚原本只跑
+  `frames=50` 批形态、批=1 形态零锚（本缺陷漏网根因）——重构为参数化收集
+  （哨兵惯例辅助函数）+ 双形态各跑全程断言，并新增**同构判据**：两形态
+  code_line 流与标注在位流逐位一致（修复前红锚：批=1 形态「行中间帧带标注
+  line=3 段长 13 第 1 帧」，修复后 156/156 绿）。**锚只在一种批量下绿 ≠
+  不变量成立**。
+- **契约文升级**（`protocol/schema.mbt`）：`algorithm_step_line_end_sparsity`
+  尾句补「批参数不改变发布流本身，两形态逐位同构（#399 锚定）」——原「行为
+  一致」声称从无锚升级为锚定事实；enforced_by 补双形态信息（快照
+  `schema_wbtest.mbt` 连坐更新，diff 纯增量两处）。
+- **密度回归**（js 臂 `cmd/vitro_js api --batch` 探针）：逐帧口径标注帧
+  832→36、行中间违例 796→0、双口径帧流差异字段分布 `[]`（修复前唯一差异
+  字段即 algorithm_step）——与单批口径逐位一致。
+- 连坐（PR #397 合并后衔接）：`demo/tests/e08_live.mts` 头注「两口径不同构
+  待修复退役」口径声明**退役**（改为已同构注记——本批处方第 4 点闭环）；
+  e08-export 标注健康位机判保留（防复发闸，注释引用同步）。
+- 演化归族：B20「输出内容依赖拉取形状」（#324 审阅批登记，随 PR #397 落库）
+  ——本修复即该族治理件。
+
+- 防线连坐（CI 红补）：`protocol_frames` 基线重锚（帧 11 contracts 契约文
+  连坐，native/wasm 双臂 47 帧一致）；`teaching_annotation_diff` golden 重冻
+（闸采集为裸 step.next 批=1 口径，golden 系修复前病态形态——重冻后 82/82、
+  净 -216 行标注收敛，missing@旧行号/extra@正确行末的错位修复形态）。
+
+### fix(scripts): #361 corpus_fuzz 采样键平台归一——path 恒 POSIX 相对形态，冻结基线可跨平台迁移（Windows/Linux 对拍实测，2026-10-31）
+
+- **缺陷**：`collectSeeds`（原 main() 内联）用 `path.join` 拼种子路径——win32
+  产出 `\` 分隔符、POSIX 产出 `/`，分隔符直接进 sha256 采样键（shaPath 排序）
+  与字节序主排序/gen 缓存键：同一语料集合两平台采样序不同 ⇒ 指纹集/僵尸集
+  必然漂移、冻结基线不可跨平台迁移（#361 实测：Linux 101 变体新指纹/僵尸
+  53/53 等量互换、桶恶化 0——纯采样序漂移非判桶回归）。
+- **修复**（`scripts/corpus_fuzz/main.mts`）：种子收集 + 确定性采样抽纯函数
+  `collectSeeds`/`pickSeeds`（readdir 注入——单测锚挂点），path 恒 POSIX
+  相对形态（`corpus/<suite>/<name>.c`）。归一后采样序、缓存键、DetRand 的
+  path.length RNG 种子全链跨平台一致（`\`→`/` 等长，RNG 种子不变量保持）。
+- **J9 红→绿**：新锚「采样键平台归一」（win32 上直接锚「path 无 `\`」）——
+  突变验证：归一拼回 `path.join` 后锚红（`corpus\wn361a\...` 反斜杠实锤），
+  恢复后 29/29 绿（含既有 Go 金样本逐字节锚——重构零破坏）。
+- **跨平台对拍实证**：探针（collectSeeds/pickSeeds 纯函数 + 真 rules + 真
+  语料 760 种子）双平台跑——win32 node 26.12.1 与 WSL2 linux node 25.9.0
+  采得 pick 集 sha256 **逐位一致**（86 pick）——治本实证且对 node 大版本
+  不敏感。
+- **基线重冻（换键口径声明）**：采样键由「win32 path.join 形态」换为「POSIX
+  归一形态」⇒ 采样集变化 ⇒ 基线指纹集整体换血，`-freeze` 重冻
+  （318 条 → 318 条：同键 159 条掉出 + 159 条新增——86 个 pick 种换血
+  53 个 62%，条目数相等恰好掩盖换血事实）；重冻后旧键口径基线退役。
+  CI corpus-fuzz job（windows-latest）与新键自动一致。
+- **同键桶值迁移 33 条披露（PR #405 审阅 P1-A）**：32 条 CLANG_REJECT→
+  AGREE（引擎演进修正旧陈旧值——校验面「变好即 ok」永不报，重冻曾静默
+  吸收零披露）+ lc_108|div2shift ARM_DIVERGENCE→VITRO_TRAP（现象翻转
+  ——旧「两臂都跑完输出不同」的真病候选被栈 trap 盖住，挂账 #409）。
+  **freeze 侧治本**：新增纯函数 `bucketMigrationOf`——freeze 落盘前打印
+  「桶值迁移 N 条（fp: 旧 → 新）」明细，**双向入列**（rank 降=演进修正、
+  rank 升=现象翻转都须过目）；单测锚挂点 + 突变证红（改成单向报即红）。
+- **PR #405 审阅处置（2026-11-01）**：P1-B lc_84|static_inject
+  ARM_DIVERGENCE 真病候选随采样退役——**挂账 #409 不静默销案**，
+  lc_108|div2shift 标 `volatile:true`（桶位随栈余量在 trap/分叉间翻转）
+  + note 写实两侧真实现象；P2 lc_704 note 平台口径双注（win32
+  `EXIT:-98`=runCmd spawnSync 超时哨兵**非进程退出码**；POSIX rc=124=
+  timeout 命令形态）、clangOutcome 崩溃/超时一律记 OK 的判定面失真挂
+  #410、`collectSeeds` readdir 注入保留 Dirent 结构面（`isFile()` 过滤
+  ——目录条目撞 `.c` 后缀形态有判别锚）、`pickSeeds` 输入序不敏感锚
+  （全取套件双文件）替换恒真断言；**处置批瞬态定性**：`baseline/
+  conditional_compile.c|init_partial` epoch 换血全量真跑一次判 WRONG_VALUE、
+  probe 三方 + 删缓存单条重判双复跑均 AGREE（`1 3 6 8` 三方一致）——
+  init_partial UB 抖动域（#285 先例同族），标 `volatile:true` 漂移只报告
+  不判红。跨平台 CI 面（ubuntu lane）另案拍板。
+- 四件套：tsc strict / oxlint / node:test（30/30 + 全清单绿）/
+  npm ci lockfile 钉版。
+
+### fix(teaching+scripts): #409 ARM_DIVERGENCE 真病候选销案（freeze 环境伪影实证，零代码）+ N1 E0 兜底卡「内部错误」撒谎文案治本（2026-11-01）
+
+- **#409 定性（零代码销案）**：`leetcode/lc_84.c|static_inject` 旧基线
+  ARM_DIVERGENCE 只在 2026-10-30 审计批（1f61dfb3）一版存在——10-18→10-29
+  十二版稳定 VITRO_REJECT；master 与 1f61dfb3 两时点干净构建三臂亲跑均
+  **一致 REJECT**（`static int stack[100000]` 400KB 超 60KB 全局数据区上限
+  ——#271 设计边界，五条诊断逐字相同，js↔native diag 帧 sha 逐位一致）。
+  同版 freeze 另有 **53 条 AGREE→CLANG_REJECT** 风暴（当前基线 32 条已自愈
+  回 AGREE、21 条退役——真拒不会自愈）+ 2 条 CRASH 型翻桶：单机环境灾难
+  （clang 侧锁文件连败 + 某臂 20s 超时 rc=-98 → NDJSON 无 diag 帧 →
+  `parseVitro` CRASH → `bucketOf:861` 归 ARM_DIVERGENCE），非引擎病。真实
+  桶 VITRO_REJECT 监测面已有 `issue92_gen_error_orders_before_warnings`
+  白盒锚（容量文案在列）。
+- **N1 E0 兜底卡撒谎治本**（真源 `scripts/moonbit/diagnostics_data/catalog.json`
+  → gen_diag 再生成 `content_data/catalog_data_gen.mbt`）：codegen 无码错误
+  （#38 立码前：容量超限 / 级联未声明等**用户代码错误**）统一落 E0 卡，旧
+  title「内部错误（未分类）」+ explanation 断言「而不是你的代码有明确的
+  语义错误。请反馈维护者」与 message「请减小全局数组」自相矛盾（#409 深挖
+  实证：static 400KB 超限五条 E0 全挂此文案）。改中性引导：title「未分类
+  错误」/ explanation「以上方错误信息为准…指向你的代码则按提示修改；难以
+  理解或确认无误再反馈」/ common_causes 换用户侧两条成因（容量上限 +
+  级联未声明「优先修第一条」）+ 编译器边界一条。红锚
+  `content_data/contract_wbtest::e0_fallback_card_neutral_not_blaming_compiler`
+  （修前红于「不得断言『不是你的代码问题』」，修后 7/7 绿）。
+- **e08 连坐**：payload 两份重导（`core.json`/`diagband-trap.json` catalog
+  段 E0 卡——经 `e08-export` js 臂实产；`core.json` 顺带对齐 #399 批
+  contracts 段实产〔#399 改 `schema.mbt` 文案未连坐重导的欠账〕）+ golden
+  `refindex-diagnostics.html` 重冻 1 行（E0 title）；e08 测试 19/19 绿。
+- **计数连坐**：测试数 +1（裸 970→971、native 全量 1166→1167）——根
+  README×2 行 + `moonbit/README.md`/`README.mbt.md` 双口径 + docs/current
+  两份机改；facts `--strict check` 绿 + testcount 闸 PASS。
+- **挂账**：级联伪错误（`bump_global_offset` 返 None 后符号未登记，带出
+  4 条「未声明的标识符」噪音——clang 无此形态）挂 #38 评论；freeze 大面积
+  翻桶无闸（55 条恶化向伪影翻转静默入库〔含 lc_150 UB 合法抖动改善向共
+  56〕、`bucketMigrationOf` 只覆盖换键路径）立案 #412（#410 判定域同族）。
+- **PR #411 审阅处置（2026-11-02）**：**P2-1 采纳**——新 explanation 曾把
+  「标识符未声明」列为「指向你的代码」举例，与 causes 第 2 条「级联伪错误」
+  自相矛盾（级联归用户账 = 半撒谎）：举例只留容量上限，级联语义只落
+  causes 第 2 条；锚加第四断言 `explanation` 不得含「未声明」（修前红）+
+  **P3③ 连坐注释**（causes 第 2 条描述 #38 立码前引擎级联缺陷行为，#38 修
+  后须连坐改写）；e08 payload 两份各 1 行重导（golden 零变——explanation
+  不进渲染）。**P2-2 登记 #410**（不本批修——判定域结构变更）：
+  `bucketOf` 臂选择不对称——`js TRAP/CRASH + native OK → AGREE`（js 臂异常
+  被吞），反向才 VITRO_TRAP/ARM_DIVERGENCE；#409 机理句不受影响（lc_84
+  语境 native 必 REJECT，`js CRASH + native REJECT → ARM_DIVERGENCE` 亲验
+  成立，任一臂 CRASH 均可达）。P3① E0 卡级联重复 N 次（FIX 行按码去重）
+  登记 #38；P3② icon `unsupported` 不动（protocol_frames 帧 9 结构锚，
+  且「未分类」语义不撒谎）。
+
+### fix(scripts+ci): arm4-wasmtime 第四臂产品化——跑器栈预算 2MiB 对齐 V8（#421 预算型 TRAP_ONE 清零）+ 驱动级超时护栏 + 基线随配置重冻（2026-11-03）
+
+- **栈预算 2MiB 入跑器默认**（`scripts/wasmtime_arm/rs/src/main.rs`）：
+  wasmtime 出厂 512KiB 在 struct 嵌套链（~400 B/层，#421）下临界 (1000,1500]，
+  比对照臂 V8 默认（~1MB 原生栈；其预算随 node 版本漂移——版本依赖面，CI 对照臂版本看仓根 .node-version）浅 3 倍——纯预算
+  型差异混进 TRAP_ONE 桶（synth 基线 4 例常驻）。默认改 2MiB（临界
+  ∈(5000,6000]）后 4 例 TRAP_ONE→AGREE，预算面对齐才谈「同预算对拍」；
+  `W4_MAX_WASM_STACK` 旋钮保留（≤32MiB 安全，64MB 子线程栈约束），**非法值
+  fail loud**（原静默回落 512KiB）；汇总行加 stack=N KiB 可观测（顺手修参数
+  错位——typed/inline/stack 三位串行的既有显示 bug；KiB 粒度免非整 MiB 显示错）。
+- **边界断言 = 梯度锚定两侧稳定窗**（`lib.mts` 注释钉死 + 基线承载）：
+  struct_nest_4000=AGREE / 6000=TRAP_BOTH(stack 类) 两档都在两侧各自临界的
+  稳定侧（wasmtime 2MiB 临界 ∈(5000,6000] 本批实测——补 W4 §6b.4「Poly 形态
+  临界未复测」留白；V8 4000 稳过/6000 稳溢）；**5000 档勿加——PR #461 审阅
+  P1 勘正**：5000 落 V8 临界**邻域**而非「两临界之间必 TRAP_ONE」——孤立 22
+  帧溢出、全量驱动上下文（同进程前置他例后）AGREE，3/3 稳定翻转 ⇒ verdict
+  随执行历史漂移，加档即不可复现的 flaky 红。门槛由对照臂 V8 栈预算决定
+  （node 版本依赖面，升级须复测）。
+- **synth 基线随配置重冻**（69 例 = AGREE 52 / TRAP_BOTH 17 / TRAP_ONE 0）：
+  改善按 checkBaseline 设计先红（improved×4 指引）再 `--freeze-baseline`；
+  note 记重冻理由与 5000 禁区。verdict 级基线非字节冻结面——产物随 master
+  演进（本轮 975cdbef…），双侧一致判定口径不变。
+- **驱动级超时护栏**（`main.mts --timeout-ms`，默认 900s / 0 关）：单侧跑器
+  挂死或病态语料早红（报超时+wall+指引 --cases 缩面定位），不再拖到 CI job
+  timeout 零信息；失败现场保全：非零 rc 时 stdout 尾部透传（诊断走 stderr 已
+  全量）、信号终止单列。J9 端到端证红：挂死假跑器 1.5s 被杀报超时 rc=1 /
+  rc=3 假跑器 stdout 现场保全两形态均实证。
+- **档位裁定：spot→全量已在 W4 §11 审阅处置落成（CI corpus 步 --all 977 例
+  deep-nomem 21,490 帧 + synth 基线轮）——本批实测定档维持单档全量**：CI
+  全量档实测 **391s**（run 933，含冷编）<8min 目标；本地 corpus 全量
+  wasmtime 65s / node 21s / 全流程 88s，977 例 identical 双侧 sha eabe8f6a…
+  一致；synth 终验轮基线 PASS（69 例 0 问题）。不降双档（PR 全量+日常 spot
+  的复杂度无成本必要性）。
+- 引擎侧四登记项 #418（dump 族深嵌套 abort）/#419（lone surrogate abort）/
+  #420（note 会话态泄漏）/#421（struct 嵌套递归）均 open 在途（W4 尾件批），
+  本批只引用不修——基线 17 例 TRAP_BOTH 即 #418/#419 的 CI 回归面。
+- 四件套：tsc 严格档 rc=0 / oxlint 0 warning / node:test 14/14 / node 直跑；
+  ci_checklist 三向对账 PASS（wasmtime_arm 无例外、CI 活行在册）。
+- **PR #461 审阅处置（rustin-beep，全采纳）**：P1「5000 必 TRAP_ONE」定性被
+  证伪（全量上下文 AGREE/孤立 TRAP_ONE 稳定翻转——临界邻域 flaky），四处
+  表述统一勘正（lib.mts/main.rs/下游配方文档/本节）+「完全重合」降级「区间
+  重叠」+ 配方文档过闸建议连坐更新为 CI 全量常驻形态；P2 对照臂版本依赖
+  登记进注释（V8 预算随 node 版本漂移，CI 对照臂=.node-version，升级须复测）；
+  P3 三项——VarError 分形态（NotPresent 回落默认/NotUnicode 等其余 fail
+  loud）、W4_GC_HEAP_MB 同款收严（原静默回落）、假跑器护栏固化 node:test
+  两锚（超时杀/stdout 现场保全）+ stack 显示改 KiB。审阅侧已证基线有牙
+  （W4_MAX_WASM_STACK=524288 模拟回退 → 4 例 worsened rc=3 红）。
+
+### fix(engine): #427 审阅 v2 批 B4——printf 缺臂族修复（%n/%F/%a/%A 执行臂 + %05.0d 三臂崩溃 + vprintf 变参栈下溢 + %.17g/.17e 精确路径，2026-11-03）
+
+- **%n 执行臂**（M20 A-1）：写回「到此处已输出字符数」（C11 7.21.6.1p8），
+  长度修饰分档（hh=1/h=2/默认·l=4（LLP64）/ll=8）；与 scanf 侧 %n（#269）
+  对称补齐。typeck 判据同步正向化（M10c A-5：旧与 d/i 同组判值类型——
+  合法 `&x` 误报 W3062、非法 `42` 误收零警；现判指针性 + pointee int）。
+- **%F/%a/%A 执行臂**（M20 A-2 / M21 A3）：%F = f 臂 + 大写 inf/nan；
+  %a/%A hexfloat 随 glibc「最短精确」（`0x1.8p+0`——UCRT 13 位全印属实
+  现定义域平台分叉，速查表 P3）；va_spec_width 四符补臂（四消费者口径
+  收口——旧计数面认、输出臂无、预取层不步进的三重分裂致参数错位）。
+  typeck a/A 补判据臂（conv_specs 闸 divergence 清零：printf 族两面
+  18/18 一致）。
+- **%05.0d 三臂进程崩溃治本**（M21 A1）：apply_width 空串索引守卫前置 +
+  C11「d/i/o/u/x/X 精度在场 → 0 旗标被忽略」（`%05.0d` 0 → 空格×5，旧
+  三臂 Index-out-of-bounds/abort 崩溃）。
+- **vprintf 族 len≥4 字符串实参 VM 栈下溢治本**（M21 A2）：根因在
+  codegen `gen_call_ptr` 变参 word 计数——数组类型实参（字符串字面量
+  定型 char[N]）按 `type_size` 4 字节对齐计 word（"abcd"=char[5]→2），
+  而压栈侧按退化指针恒压 1 word → CallVar 多弹即值栈下溢。修：数组实参
+  word 恒 1（C 调用约定数组退化）。
+- **%.17g/%.17e 十进制精确路径**（M20 A-7/A-8 + A2 锚 A2-A8 翻面 + t_prec
+  补探）：format_g/format_e 尾数与指数均改 bigint 精确有理数 half-even
+  （`abs_val / powi10(exp)` 浮点商 ulp 误差根除——1e23 尾数不规格化/指数
+  差 1、1.5e126 丢 15 位有效、次正规 8.88e-320 偏差、DBL_TRUE_MIN
+  `infe-324` 除零泄漏全清）；%f NaN 拼法 `NaN`→`nan`（C11 小写；UCRT
+  `-nan(ind)` 符号/payload 属平台域）。连坐 A2 批 KNOWN_DIVERGENCE 锚
+  8 值全翻面（`format_g_decimal_exact_oracle_alignment`）。
+- **%q 门条件退役**（M21 A4）：未知转换符输出与实参余量无关（clang 恒
+  丢 % 输出字母）；旧门条件参数耗尽位短路致 `[%q]`/`[%d%q]`/`[%5q]`
+  三配置三种输出。
+- **%hhd/%hd/%hhu/%hu 截断**（M20 A-4）+ **%#08x 前缀位置**（M20 A-5：
+  前缀属数值部分经 apply_width `prefix~` 传参——`0x0000ff`）+ **%#g 保
+  尾零**（M20 A-6）+ **scanf %Nc 宽度**（M20 A-3，范围外顺手：#71 病 23
+  宽度修复漏了 %c 臂——双臂同修）。
+- **锚**：新 `host_b4_printf_wbtest.mbt` 11 锚（全部 clang 真值，变异抽样
+  三处证红）；corpus +2（`p427_printf_missing_arms.c`/`p427_scanf_width_c.c`
+  ——%a/%n 平台方言域不入 clang 直拍语料，wbtest 直锚）；三臂（js/native/
+  wasm）探针 25 文件全一致 + vm_diff golden 763 SAME/0 DIFF（freeze 仅
+  新增 2 例零既有漂移）+ clang_direct 876 SAME/0 DIFF + corpus_fuzz PASS。
+
+### fix(engine): PR #462 审阅处置批——P1 sprintf/snprintf float 变参提升 + P2 `#` 族三缺口 + P3 typeck %n 判据扩段（2026-11-04）
+
+- **P1（静默错值）**：`sprintf`/`snprintf` 的 float 实参未提升 double——
+  codegen `CastF2D` 白名单只认 printf/fprintf 两名，float 位模式被当
+  double 位模式直传 CallHost（`sprintf(b,"%f",3.25f)` → `0.000000`、
+  `%g` → `5.33e-315`）。白名单扩为 host printf 家族全枚举四名
+  （printf/fprintf/sprintf/snprintf；vprintf 族变参来自 va_list 无
+  float 直传面，用户变参函数走 8 字节槽路径不经此臂）。语料
+  `p427_printf_missing_arms.c` 扩 float 段（clang 逐位一致）。
+- **P2-1/P2-2（%#o）**：`#` 对 o 的 C11 7.21.6.1p6 语义 =「**提高精度**
+  强制首位 0」——与精度补零同一件事非叠加（旧 pad 补零再拼 prefix 双重
+  给零：`%#.3o` 8 → `0010` vs clang `010`）；非零值+# 精度提至
+  max(prec, 位数+1)、prefix 退役；括号句特例「值 0+精度 0 → 单 0」
+  （`%#.0o` 0 旧空串）；`%#o` 0 不提精度。
+- **P2-3（# 恒含小数点）**：a/A/e/E/f/F/g/G 族的 `#` 恒含点——
+  `format_fixed_case`/`format_e` 补 `alt~` 参数（`%#.0f` 1.5 → `2.`、
+  `%#.0e` → `2.e+00`、大写族同）；g/a 的 alt 路径旧已含此语义。
+- **P3-2（typeck）**：printf `%n` 判据的 l/ll 段补 'n'（pointee 对应
+  宽度）+ 新增 h/hh 段（旧落 `_ => true`——`%hhn` 错实参零警）。
+- **P3-1（登记）**：速查表 D7 备注补 `%hn`×short 交互的变量级口径
+  （写回宽度对、short 4 字节只覆写低半与 C 分叉属架构裁剪下游，不另
+  立案）。
+- **锚**：+2（`printf_b4_hash_o_precision_semantics`/
+  `printf_b4_hash_decimal_point_family`，clang 真值含大写族）；
+  五臂 golden 重算 1 条（语料扩段，digest 受控变化）；裸 1188/1188 +
+  native 1237/1237。
+
+### feat(scripts+ci): vitro-green 棘轮分支三臂对拍闸 + ci-summary 三面机判化（PR #513，2026-11-14）
+
+- **green_probe 新闸**（`scripts/green_probe/main.mts`，四件套齐）：外部 C
+  语料棘轮防线——fork `rustin-beep/C@vitro-green` 分支（166 全绿精选集 +
+  2 本地 .h，GPL 样本永不进仓，**分支内容即断言锚**：零白名单零签名文件）
+  × 三臂（js/native/wasm 统一入口 `scripts/bin/vitro`）compile 零 error +
+  臂间诊断签名一致双断言；J9 红证 = 首轮 3 份 E1021（建支漏拷本地 .h）真红
+  EXIT=1。配套 fork 三分支：vitro-green@0e0d691（锚）/ vitro-probe-fix2@
+  c428e73（43 文件 C 侧自身问题修复探针态：缺 include×24 + LeetCode 平台
+  struct 注入×10 + 双解法删重×6 + K&R×3 + 原型×3 + UCRT 宏×2；complex
+  双件 UCRT ABI 死局不修）/ baseline@462074f 未动。审阅处置批连坐：stderr
+  尾部入 detail（判因）+ MIN_FILES=166 棘轮下限 + rc/ok 口径补强 + 超时
+  taskkill /T 杀树 + `!TIMEOUT!` 系签名可读化 + CI clone 重试×3 +
+  timeout-minutes 15。
+- **ci_checklist ⑤ 新判据**（PR #513 审阅 P1-1：**「闸的闸面漏登记」第三次
+  同形复发后机判化**——green_probe 漏 ci-summary needs，红/被 skip 时汇总
+  仍绿，防遮蔽失效）：gate job 集 ⊆ needs + env 面 == needs 面 + pairs 数
+  == needs 数三面机判（schedule-only job 自动豁免、mutation-gate 观察期
+  显式豁免表）；单测双向证红 5 锚 + 真仓红证（`漏 needs: green_probe`）
+  → 三面补入转绿（J9 闭环）。前科：10-30 backend-triage、10-31
+  release-preflight。
+- **fix(scripts)**: `realcode_diff/main.mts` 剥壳重试 cwd 迁移回归——Go 版
+  `serveBatchKeys` 首参是弃用死参（`exec.Command` 不设 Dir），.mts 迁移激活
+  cwd 语义后沿传 repoAbs（fork 仓根无 moon.mod）致剥壳批全灭；红证 = 25
+  候选 0 回填，修后 4/4 回填。审阅 P2-1 处置：`serveBatch/serveBatchKeys/
+  serveBatchFiles/runCompare` 首参改名 `serveCwd`（命名如实——根因面）+
+  真跑锚单测（cwd 空目录必 reject，fail loud 语义钉进单测）。
+- **文档连坐**：`脚本总清单与必跑防线.md` §1.1 CI job 名单（15→16）+ §2
+  脚本清单登记 green_probe。
+### fix(scripts+vm+ci+docs): PR #518 审阅处置——P2×2 + P3×6 全收口（2026-11-14）
+
+- **P2-1 触发语义勘正（诚实记录）**：freshness「mtime 只作触发、内容 hash
+  由 moon 增量把关、touch 复核秒过 / 假阳性已消化」与实测不符——审阅实测
+  touch 后 native `moon build` 37.6s、wasm 触发链 66.8s（wasmopt 48.8s），
+  产物 907754→1121825→907754 证真重编（moon 增量判定同以 mtime 为触发
+  面）。本地 checkout/生成器刷源后首跑付重建时长（重建后 mtime 自愈后续
+  零税；CI 干净构建不触发）。freshness 头注 / vm.mts 两段注 / 本 PR 两条
+  CHANGELOG 的不实表述全部勘正（保留原述 + 勘正括注，不抹史）。
+- **P2-2 findStaleSource 补 `*_gen.mbt` 排除**：被删 warnStaleExe 的该
+  排除（「均实测误报过」）在双臂统一走 findStaleSource 时丢失——实测
+  触发源正是 `moonbit/vm/libc_data_gen.mbt`（构建刷 mtime），每次构建后
+  多一轮重建。回搬排除 + J9 锚先红后绿（红证：现状返回 `error_code_gen.mbt`
+  路径非空）。
+- **P3-1 editorconfig hermetic 回归锚**：cwd 锚定修复（追加批）原无
+  hermetic 锚——干净 CI 检出撤掉不红。补 git init fixture 锚（cwd≠base
+  形态，正是 CI npm test 在 scripts/ 下跑的失配形态）；撤修复红证
+  （`ignored\bad.txt（缺末行换行）` 漏豁免）→ 恢复绿。
+- **P3-2 b3 锚值自指修复**：`gip_on==gip_off` 两侧同源（各自 snap.gip），
+  gip:0 注入不红（审阅注入实验实锤——靠既有 gate3/seek 两锚才红）。补
+  独立来源互证：drive 逐步收集 (snapshot.gip, vm.ip) 对外层逐对断言 +
+  restore 前互证；gip:0 注入红证（「flag on 快照 gip ≡ 执行态 ip（步 0）」
+  FAILED）→ 恢复 121/121 绿（vm 包，测试数不变）。
+- **P3-3 CLI 手册同步**：step 用法行补 `--wasm-rehost`（含 stderr 标记行
+  说明）；`step.begin` 参数格补 `wasm_rehost`（bool 缺省 false）。
+- **P3-4 CHANGELOG 数字回填**：批 3 条目补 rebase 后复验口径（1463/1539、
+  1035 语料/2,087,483 帧、W4 1081、rundiff 919、vm_diff 865、驱动 67→70）。
+- **P3-5 ci_checklist 双形态计数**：双形态目录（go+mts 同目录，clang_direct
+  实形）walk 序 go 先占 driverSet rel 时 mts 漏计（71 个 main.mts 摘要报
+  70）。go/mts 形态各自独立收集（`双形态目录各计其形`尾注——形态和可大于
+  驱动总数）；J9 锚先红（`.mts 0`）后绿；真实摘要 `驱动 72（.go 2 /
+  .mts 71）`。
+- **P3-6 CI 接线 `--rehost`**：PR 轮 step_invariant 加 `--sample 40
+  --rehost` 活行（此前 CI 无该旗标，覆盖只剩 wbtest 两锚）；本地同款实测
+  绿（40 语料 RED 0 ZOMBIE 0）。
+- 验收（亲跑）：node:test 全量 877/0（freshness/editorconfig/ci_checklist
+  各 +1 处置锚 + prelude_fail 连坐零回归）；tsc 0 err /
+  oxlint 0 err；moon test 裸 1463/1463 + native 1539/1539（vm_wbtest 锚
+  加固不加数）；facts `--strict check` EXIT=0；vm_diff 双臂 SAME=865。
+
+### feat(scripts): vm_diff wasm 臂新鲜度硬门禁收口——freshness 构建后置钩子 + editorconfig gitignored 豁免 cwd 锚定修复（REHOST 批 3 收尾追加，PR #518，2026-11-14）
+
+- **freshness 构建后置钩子（`EnsureFreshOpts.postBuild`）**：产物链含构建
+  后覆盖步骤的消费方（wasmopt 后置优化等）传 postBuild——复核构建成功后
+  同批执行后置链，自动重建不再以裸产物覆盖优化产物。失败按「构建链失败」
+  die（`ENSURE_FRESH_FAIL_MARKS` 第四条「后置优化失败」——facts
+  artifactMissingNote 数组遍历匹配自动认得，不误报为防线红）；产物缺失
+  die 的修复命令随链带上后置段。moonbitRoot/rebuildRunner 为测试注入
+  端口（hermetic，findStaleSource 先例同款）。J9 双锚先红后绿（旧代码
+  postBuild 永不被调/不 die，✖✖ 实证后实现转绿）。
+- **vm_diff wasm 臂软警告退役**：`ensureFresh` + postBuild 接线 wasmopt
+  后置链（与 CI build-artifacts 步骤序 build→wasmopt 同链），批 3 登记的
+  「升级待 freshness 支持构建后置钩子」未竟边界关闭；warnStaleExe 删除
+  （双臂均硬门禁后零消费方）。VITRO_WASM_MOD 显式指定面跳过（外部产物
+  不在本地构建链管辖，与存在性检查同款语义）。真跑实证：touch 引擎源 →
+  触发「旧于源——跑构建复核」→ [PR #518 审阅 P2-1 勘正：此处为一次真实
+  重建（非「内容 hash 增量秒过」——moon 增量判定同以 mtime 为触发面），
+  本地首跑付重建时长、重建后自愈] → wasmopt 后置重写实锤（产物 mtime
+  刷新、size 保持优化态 907754 而非裸产物 1121825——后置链承重，审阅
+  注入「postBuild 跳过」后端到端留裸产物）→ 判定 SAME=865 不回归；
+  native 臂同步回归 SAME=865。
+- **editorconfig gitignored 豁免 cwd 锚定修复（红→绿）**：loadGitIgnored
+  的 `git ls-files` 无 cwd 锚定——输出相对进程 cwd 的路径，与 walk 的
+  仓库根 rel 前缀失配 → gitignored 豁免静默失效。CI 干净检出无 cargo
+  target 故未暴露；本地跑过 W4 前置 cargo build（生成 rs/target/，已被
+  .gitignore:156 覆盖）即 node:test 红（数百条「缺末行换行」假红实证）。
+  修复 = spawnSync 锚定 cwd: base；修复后 node:test 全量 874/0（scripts/
+  cwd 同 CI 形态）。
+- **同病面登记（不连坐，后续批接线）**：clang_direct / protocol_frames /
+  replay / serve_smoke / teaching_annotation_diff / teaching_truth 六处
+  wasmMod `ensureFresh` 触发复核时同样以裸产物覆盖优化产物——行为等价
+  （wasmopt 等价性有 #120 CI vm_diff 背书）零红面，纯产物优化态卫生
+  问题；后续连坐批逐点接 postBuild。
+- 验收（亲跑）：node:test 874/0（freshness 6/6 含新双锚 + prelude_fail
+  10/10 连坐零回归）；tsc 0 err / oxlint 0 err；vm_diff 双臂 SAME=865
+  DIFF=0；触发链实测如上。
+
+### fix(scripts): vm_diff native 臂新鲜度软警告升级 ensureFresh 复核构建硬门禁（REHOST 批 3 连坐，2026-11-14）
+
+- **S05-C2 降软的代价实锤**：本地 release run.exe 陈旧（exe 日期早于 #511 的
+  lexer 改动——依赖面源码变更不触发本地重建），warnStaleExe 软警告打了 stderr
+  第 2 行但**不阻断**，vm_diff 产出 DIFF=2 假红（三提交 worktree 归因才闭环）。
+  native 臂升级 `ensureFresh`（freshness.mts 单源——clang_direct/rundiff 等
+  九处现役同源）：stale → 自动复核构建（`MOON_CC=clang moon build --release
+  --target native cmd/run`）→ 真陈旧自动重建，假红根除；构建失败红（陈旧
+  产物假红/假绿由此封死）。wasm 臂维持软警告（产物链含 wasmopt 后置覆盖，
+  自动重建会以裸产物覆盖优化产物——升级待 freshness 支持构建后置钩子另批）。
+  J9 场景实测：touch 源 →「旧于源——跑构建复核」触发 → 复核后判定 SAME。
+  [PR #518 审阅 P2-1 勘正] 本条原述「mtime 只作触发、内容 hash 由 moon 增量
+  把关——checkout 假阳性秒过」与实测不符：mtime 触发的是一次**真实重建**
+  （moon 增量判定同以 mtime 为触发面——touch 后 native 37.6s / wasm 链
+  66.8s 含 wasmopt 48.8s，产物 907754→1121825→907754 证真重编），本地
+  checkout/生成器刷源后首跑付此税（重建后 mtime 自愈后续零税、CI 干净构建
+  不触发）。
+
+### feat(vm+gateway+cli+scripts): REHOST 批 3——step 态切换 + time_travel 采集适配 + ci_checklist 驱动集盲区根治（2026-11-14）
+
+- **step 态独立 flag 接线（设计单 §3.2 批 3 回退点：与批 2 run 态 flag
+  并行可单独关）**：`step.begin` 帧参数 `wasm_rehost`（bool 缺省 false，
+  与 run 帧同形态）→ `setup_from_output(wasm_rehost~)` 装载走 wasm 载体
+  往返（`rehost_round_trip` 单源——折叠重建产物驱动取指，**单步=组**：
+  一组恰一条 Instruction，`code[gip]` 取指即组粒度）；返回帧携带
+  `wasm_rehost` 状态串（非空才带——前缀只增不改，老消费者零感知）。
+  CLI `step --wasm-rehost` 旗标 + stderr 标记行 `// WASM-REHOST-STEP
+  <status>`（与 run 通道 `// WASM-REHOST` 区分；不进 digest 消费面）。
+- **VMSnapshot.ip → gip 换名不换义（设计单 §2.4）**：快照字段语义 =
+  组索引（组=装载原子执行单元；与 legacy 指令下标一一同构，值域/行为
+  零变化——`rehost_step_semantics_gip_breakpoint_b3` 锚锁 flag on/off
+  同位快照 gip 同值 + restore 回填执行态 ip 一致）；VM 执行态字段仍名
+  `ip`（批 4 收口统一）。断点判定经组表侧车 loc/operand 同构（StepEvent
+  语义原样——铁律 2：单步/断点/VisEvent 职权在引擎侧零迁移）。
+- **step_invariant --rehost 透传 + 装载断言**：`--rehost` 旗标透传
+  `vitro step --wasm-rehost`；`rehostMarkerViolation` 纯函数判定（终态
+  rc 0/2/3 须含 `// WASM-REHOST-STEP ok`——**fallback/缺失即红**，批 2b
+  rundiff「fallback 即红」同款纪律；rc=1 编译失败早退不在断言面）。
+- **ci_checklist 驱动集盲区根治（#512 彻查连坐）**：原判据「main.mts 且
+  shebang 首行」——无 shebang 的 main.mts **静默逃逸驱动集**，「存在即
+  接入」对账零检出力（前科 gen_course〔S08-6 补个案未根治〕；#505/#512
+  的 wasmenc_emitgate/wasmenc_rundiff 重蹈 + 存量 clang_direct/
+  demo_smoke/docs_preview/mcp_smoke 同盲区——六件活行碰巧在场故无行为
+  缺口，纯防线盲）。判据改 **main.mts 文件名即驱动**（shebang 只是可执行
+  直跑标记非身份判据）；J9 双锚先红后绿（无 shebang 无活行必红 / 有活行
+  不误伤）；emitgate/rundiff 补 shebang 形态归一。驱动 .mts 64→69。
+- **验收（全部亲跑）**：裸 moon test 1462/1462；STEP-INV 全量 flag on
+  （--rehost --audit-known）1033 语料 / **2,084,521 帧 RED 0 / ZOMBIE 0 /
+  装载断言零红**（INV3a step_index 严格 +1 最强锚过）；W4 wasmtime_arm
+  deep-nomem 1079 cases / 23,734 帧 AGREE 全 identical 零 DIFF；rundiff
+  917 双跑一致 / 0 红；vm_diff golden 863/863 SAME 零漂移（首轮 DIFF=2
+  经三提交 worktree 归因 = **陈旧 release 产物假红**〔exe 日期早于 #511
+  的 lexer 改动，新鲜度门禁只看 cmd/run 包内源不追依赖面〕——重建后全绿，
+  #511/批 2/批 3 三方无嫌疑）；flag on/off 帧流逐位一致（端到端 + gateway
+  wbtest 帧流同构锚）；native 全量冷构建（MOONBIT_NEW_NATIVE=0
+  MOON_CC=clang）数字见 facts。
+  [PR #518 rebase 后复验口径] rebase 到 master f4264274 后全防线复跑同绿，
+  计数面随 #514 收案语料平移：moon test 裸 **1463/1463** + native
+  **1539/1539**；STEP-INV **1035 语料 / 2,087,483 帧** RED 0 ZOMBIE 0；
+  W4 **1081 cases** AGREE identical；rundiff **919**；vm_diff **865/865**；
+  驱动 .mts 口径 **67→70**（批 3 时点 64→69 + #513 green_probe +1）。
+### fix(typeck+scripts): #517 P3 批 CI 九红连坐处置（2026-11-14 第二轮）
+
+- **W3099 四误报修（语料实测）**：① 函数原型声明（体内 `int f();`
+  以函数指针形态进 VarDecl）→ pointee 链含 Function 不追踪（kr_2_8 把
+  函数名 'wordlength' 误报实锤）；② `CallPtr` callee 按读处理 → 不读
+  （C 输入统一在 CallPtr——第二路径）；③ KNR 参数声明（体内 `int a,b;`
+  与形参同名）→ 挂点传形参名集不追踪（kr_5_8/kr_5_14 实锤）；④
+  `(void)u` 惯用法 → 显式抑制不报（clang 同款；chibicc attribute.c/
+  const_qualified_basic.c 实锤）。
+- **W3098 逗号误报修**：常量逗号 `(3, 4)` 是 const_eval 的**设计性
+  拒折**（Comma 非常量）非运算失败——树含 Comma 一律跳过
+  （comma_expr_stmt.c 实锤）；`(1/0, 2)` 因此漏报（保守方向）。
+- **golden/gold/基线连坐**：typeck_diff `--freeze-mb` 重冻 2 hash
+  （jit_nested×2——嵌套 for-init 赋值被外层循环快照回滚后的真未初始化
+  读，clang 同款方向）；realcode gold_chibicc.json 手改 1 条（extern.c
+  +W3099——体内 extern 是 C 子集不支持形态〔E2003 在案〕错误恢复期的
+  级联警告，Stmt 层无存储类位 + typeck 无 parser 错可见 + 恢复造点
+  不改三重不可达，_meta 登记已知形态）；protocol_frames
+  `--update-baseline`（catalog 帧纳入三新码）。
+- **testcount 漏数三处**：moonbit/README.md 裸口径 1460→1472 + 两文档
+  native 全量 1536→1548（P3 批 +12 测试连坐）。
+- **surface 边表**：time_travel→vm 的 CallFrame 消费边登记
+  （P1-1 深栈截断锚的帧构造 helper 跨包类型引用）。
+- 验收：typeck_diff 六套件 / realcode 双 corpus / protocol_frames 双臂 /
+  testcount / surface / facts --strict / mcp_smoke 18 / catalog_closure /
+  libc_boot / consumer / demo_smoke 197 / replay wasm 61 全绿；三臂
+  moon test 1472(js)+579+579。
+
+### fix(diag+typeck+vm+time_travel+cmd): #517 缺陷猎杀批余项——P3×4 全修（2026-11-14）
+
+- **诊断码表 +3**（E3097/W3098/W3099——全补教学卡闭合，catalog_closure
+  双向绿；臂基线 126→129、卡基线 122→125，gen_diag/README.mbt.md/
+  content_data 基线锚连坐）。
+- **P3-13 常量除零静态缺口（C2）**：局部声明的常量初始化器静态探测
+  （`warn_const_eval_failure`——纯常量树却 const_eval 拒折〔除零/移位量
+  越界/INT_MIN÷-1〕报 **W3098**；全局/静态同形态既有 E3075 拒编译不动，
+  局部是运行期求值域→W 级预警「运行到此必 trap」，clang
+  -Wdivision-by-zero 同口径）。增益：探测路径顺带让局部常量溢出报
+  W3090（旧零警告）。真机：`int x=1/0;` 零诊断→W3098。
+- **P3-14 未初始化读取静态缺位（C7）**：保守数据流 pass
+  （`typeck/uninit_read.mbt`——clang -Wuninitialized 子集，**漏报方向
+  安全零误报优先**：只查标量局部；赋值/取址〔&u 经 scanf/传参〕视为
+  初始化；if-else 双分支都赋值才传播；单分支/循环体内赋值不传播；全局
+  /参数不查；每名一次）。锚：gateway 黑盒 6 件（stash 挂点+diag 证红
+  3 红→186 绿）；连坐 2 个既有锚的脚手架无意未初始化形态（补 init——
+  测试语义不变）。真机：`int u; int v=u+1; int w; …` 零诊断→W3099×2。
+- **P3-15 溢出 trap 无类别/E 码前缀（C4）**：6 处有符号溢出 trap
+  （Add/Sub/Mul/Div MIN÷-1/Mod MIN%-1/Neg -INT_MIN）升格
+  `[overflow] 整数X溢出 (E3097)：…[cause]…[fix]…` 家族形态（对齐
+  E3086 `[deny]`/E3088 `[divide-zero]`——修前裸文本单句）；trap_code
+  锚两处连坐。真机：加法溢出 trapped 文案全段形态。
+- **P3-16 变量面板挤行 + char 标量不格式化**：① `format_value` 补
+  TK_Char 臂（可打印 `'c'` 形态/低 8 位符号解释——与数组快照元素同
+  口径，修前标量恒数值 `char 65`）；② 产物 CSS `#vars` 的 name/类型列
+  nowrap（挤行根因=值列 break-all 压缩邻列）。真机：`c char 'A'`。
+- 验收：moon test **1472**（js 全量）/native+wasm-gc 受影响七包
+  646+646（三臂）；mcp_smoke 18/18；facts `--run --strict` 漂移 0
+  （moonbit_check_warnings 98 持平）；gen_diag/-check、catalog_closure
+  双向闭合绿。
+
+### fix(vm+time_travel+teaching+mcp+cmd): 缺陷猎杀批 #517——P1×4 修 + P2×6 修/登记（2026-11-14）
+
+- **P1-1 无限递归阻塞 server 主循环 232s（C3）双修复**：① collector
+  call_stack 快照**深栈截断**（`MAX_CALL_STACK_SNAPSHOT=256` 保顶部——
+  深递归每帧 O(深度)×20000 步 = O(n²) 膨胀实测 232s 全池阻塞；≤256 层
+  正常程序零影响；超限段 annotations 深度判定封顶登记已知限制）；②
+  mcp 采集**墙钟预算** `COLLECT_TIME_BUDGET_MS=20s`（`PHASE_CAPPED_TIME`
+  终态 + stopped `capped@time` + render warning；collect_all/advance/
+  run_to/step_next 全链传 deadline，step_next 循环共享一份防逐次重置）。
+  真机：无限递归 animate 232s→20.3s（capped@time 收口，产物 5.4MB→
+  322KB）。锚：`collect_call_stack_deep_truncation`（红→绿）+
+  `mcp_collect_time_budget_capped`（红→绿，拨假钟 300ms/批）。
+- **P1-3 数组参数帧作用域解析坏（B2/A1-A4）双修复**：①
+  `get_array_snapshots` 补**作用域过滤**（与 get_variable_snapshot 同源
+  三判据——修前无过滤，被调帧把 main 的数组符号按当前帧 locals_base
+  连读，舞台首格=形参指针值 1048560、后续=lo/hi/pivot 冒充）；② 数组
+  形参**解引用视图**（形参 ty=int* decay，指针值→全局/活跃帧地址覆盖
+  数组取长度〔slot_covers 单源〕→按元素类型读真身；malloc 堆/悬垂无
+  覆盖符号不产——诚实空态；双指针只解一层）。教学正收益：bubble_sort
+  帧的 arr 舞台从恒定垃圾恢复为逐步真变。锚：
+  `observe_array_snapshot_scoping` + `observe_array_param_deref_view`
+  （双双红→绿）；mcp_smoke PLAYER swap 锚 5→3 重锚（缺陷形态基线
+  〔被调帧数组恒定→关键帧权重集小〕随修复翻转——301 预算下 hi 集均匀
+  抽稀保留 3）。
+- **P1-5 队列饥饿/30s 超时丢响应（A1+B3）**：仓内可修面 = P1-1② 墙钟
+  预算（慢请求 20s 硬收口，不再吞满共享池）；宿主侧形态（宿主 30s 超时
+  丢响应不快速失败、server 完成后落盘）登记 issue #517——MCP stdio 协
+  议下单请求同步语义，无中断通道。
+- **P1-6 interactive 页内 wasm 引擎不可用（实拍）**：引擎本体健康
+  （CDP 实测 stdout 全对、invoke 响应）——坏在 INTERACTIVE 模板三处：
+  ①自动引导「有数组即停」停在 main 序幕 4 帧全 0 → 改采 16 关键帧/终
+  态；②「运行到底」按钮每点一次只推进 1 关键帧（stepOnce 的关键帧
+  break）→ 改 tick 循环（20s 预算 + setTimeout 让出主线程 + 终态禁用）；
+  ③播放键只回放已采帧 → 到达已采末帧时自动 `__VITRO_STEP__` 拉新帧续
+  播（static 模式行为不变）。真机：4/4 卡死 → 16 帧开场 + 运行到底
+  468 帧（抽稀自 1126 步）+ 终态按钮禁用。
+- **P1-2 产物假绿×2+批量删除窗口（B1+哨兵）**：定性**环境侧**——grep
+  全仓无删除 vitro-out 产物的代码路径；哨兵实录 04:12:07.286-.370 六
+  文件毫秒级连删 = 外部进程（共享工作区并发代理 shell）`rm vitro-out/*`
+  形态；server 侧写盘+statSync 真实成功（哨兵录到 61571B 落盘后 10s 被
+  删）。登记 issue #517；连坐缓解 = P2-11 唯一化（互吃面消除）。
+- **P1-4 L1 解锁链宿主侧断裂（A5+D2-D8）**：定性**宿主侧**——server 侧
+  `notifications/tools/list_changed` 通知在 session_open 响应帧之前正
+  确发出（mcp_disclosure_flow 锚锁），宿主 agent 会话内工具清单不刷新
+  属宿主 tools/list 重拉缺失；登记 issue #517（7 题 blocked 的根因）。
+- **P2-7 swap 字幕双向失真（A2/A3+B3/B7）**：误报臂修——is_swap_
+  assign_line v4：RHS 下标访问臂**再要求纯下标整体 + 与 LHS 同数组名**
+  （跨数组拷贝 `tmp[k]=a[i]` 338 帧 / 前缀和表达式 `pre[i]=pre[i-1]+dp[i]`
+  225 帧误标「交换」清零；主行/回写行维持）。锚：
+  `semantic_swap_v4_cross_array_copy_not_swap`（stash 证红→绿）。漏报臂
+  （heap_sort 真交换零字幕）当前基线不复现（176 交换字幕+循环字幕正
+  常——A3 实测疑旧产物），不修不登记。
+- **P2-8 2D 数组舞台压平（A7）**：PLAYER 从 fr.v 的 ty_name 尾两维解析
+  维度（`arrDims`），header `2×3 矩阵`、grid 列数=列宽、下标 `r,c` 形
+  态；3D+ 回落一维。真机：m[2][3]/t[3][2] 双数组 cols=3/2 可区分。
+- **P2-9 focus 无效名 fail-silent（D6）**：显式 focus 数组名不存在 →
+  -32602 报错（含可用名清单），不再静默产出空舞台坏产物。锚：
+  `mcp_render_focus_unknown_name_fails_loud`（红→绿）。
+- **P2-10 多文件 overview 行号错乱（D1）**：files 工程末函数 end 修前
+  取主文件区间 end_line（util.c 函数越界 mul=[12,8] end<start）→ 取
+  拼接流全末行；帧行号与 dump 同基拼接流坐标锚不变。锚：
+  `mcp_files_overview_last_func_end_spliced_stream`（红→绿）。
+- **P2-11 产物文件名分钟粒度覆盖+跨代理截图竞态（A/B 覆盖链+B5）**：
+  时间戳秒级 + `pid36-随机4` 后缀（同分钟/同秒并发实例各产各物，
+  preview_png 与 html 一一对应——截图互吃面消除）。
+- **P2-12 Gen UI 内嵌纵向拉长**：产物 CSS `html,body{height:100%}` →
+  `html{height:100%}+body{min-height:100%}`（iframe 卡片语境解循环
+  依赖；直接打开满屏形态不变）。
+- 验收：moon test 全量 **1467**（js）/native/wasm-gc 受影响四包 288+288
+  全绿（三臂口径）；mcp_smoke 18/18（PLAYER 锚重锚 3）；facts
+  `--run --strict` 漂移 0（moonbit_check_warnings 98 持平零新增）。
 
 ### fix(wasmenc+bytecode+scripts): PR #512 审阅处置——P1×1 + P2×1 + P3×6（2026-11-13）
 

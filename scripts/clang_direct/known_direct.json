@@ -70,7 +70,10 @@
   {
     "case": "MF-CRYPTO",
     "digest": "8e17c3b5",
-    "reason": "同上首跑：vitro LShr 移位量 60 越界受检 trap（32 位宽）vs clang x86 掩码静默产出——C UB 面（移位量≥位宽），教学白箱 fail loud 既有口径（同 array_bound_const_index 形态）"
+    "reason": "同上首跑：vitro LShr 移位量 60 越界受检 trap（32 位宽）vs clang x86 掩码静默产出——C UB 面（移位量≥位宽），教学白箱 fail loud 既有口径（同 array_bound_const_index 形态）。第四形态（CI run 43680543081，2026-11-15）：#519 审阅处置批 P3 移位越界 trap 立码 E3100——moonbit 首行文案改版（// TRAP: [shift-range] LShr 移位量越界 (E3100)…），本地热增量构建 digest 8e17c3b5（原值兼容）/CI 冷构建 69a16724 入跨环境集（trap 文案截断形态对产物二进制布局敏感——bTree 第四形态同款噪声面，语义零变化）。",
+    "digests": [
+      "69a16724"
+    ]
   },
   {
     "case": "MF-GAME",

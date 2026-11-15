@@ -51,11 +51,16 @@ fn ensure_started(e : Entry) -> Result[Unit, String] {
 ///|
 /// 推进：最多 max_raw 原始帧；breakpoint>0 = 到该行暂停；stop_event 非空
 /// （swap/compare/any）= 到首个此类可视事件帧停（逐帧精确推进）。
+/// 墙钟预算（#517 P1-1/P1-5）：deadline 为绝对时刻（调用方 = 入口钟 +
+/// COLLECT_TIME_BUDGET_MS），每批 step.next 后查一次——超时置
+/// PHASE_CAPPED_TIME 收口（终态判定优先于超时：同批 trap/finished 先成立）。
 fn advance(
   e : Entry,
   max_raw : Int32,
   breakpoint : Int32,
   stop_event : String,
+  clock : () -> Double,
+  deadline : Double,
 ) -> Result[Advance, String] {
   match ensure_started(e) {
     Ok(_) => ()
@@ -139,6 +144,11 @@ fn advance(
     if empties >= 3 {
       break
     }
+    // 墙钟预算（每批一次——钟由宿主注入，测试可拨假钟证红）
+    if clock() > deadline {
+      e.phase = PHASE_CAPPED_TIME
+      break
+    }
   }
   if e.frames.length() >= CAP_FRAMES && !phase_is_terminal(e.phase) {
     e.phase = PHASE_CAPPED
@@ -154,8 +164,13 @@ fn advance(
 }
 
 ///|
-/// 惰性全采：推进到终局或上限（已终局/已采满则空操作）。
-fn collect_all(e : Entry) -> Result[Unit, String] {
+/// 惰性全采：推进到终局或上限（已终局/已采满则空操作）。墙钟预算同
+/// advance（clock/deadline 由调用方传——单次工具调用全程一份）。
+fn collect_all(
+  e : Entry,
+  clock : () -> Double,
+  deadline : Double,
+) -> Result[Unit, String] {
   if e.phase == PHASE_COMPILE_FAILED {
     return Err(
       "会话编译失败——无帧可采（看 session_open 返回的 diagnostics）",
@@ -165,7 +180,7 @@ fn collect_all(e : Entry) -> Result[Unit, String] {
   while !phase_is_terminal(e.phase) && guard_n < 512 {
     guard_n += 1
     let before = e.frames.length()
-    match advance(e, CAP_FRAMES - e.frames.length(), 0, "") {
+    match advance(e, CAP_FRAMES - e.frames.length(), 0, "", clock, deadline) {
       Ok(_) => ()
       Err(m) => return Err(m)
     }
@@ -206,4 +221,11 @@ fn run_summary_json(e : Entry) -> Json {
       .done()
     _ => Json::null()
   }
+}
+
+///|
+/// 采集预算对（时钟闭包 + 绝对 deadline）——单次工具调用全程一份
+///（step_next 循环内多次 advance 共享同一 deadline，防逐次重置永不触发）。
+fn Server::collect_budget(self : Server) -> (() -> Double, Double) {
+  (() => self.now(), self.now() + COLLECT_TIME_BUDGET_MS)
 }

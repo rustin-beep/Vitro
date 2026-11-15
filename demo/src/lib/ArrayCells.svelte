@@ -15,6 +15,7 @@
   import { goldenNumbers } from "./golden.ts";
   import { motion, pulse } from "./motion.svelte.ts";
   import { swapPairs, type SwapPair } from "./visEvents.ts";
+  import { arrayIndexLabel } from "../../js/util.ts";
   import type { ArraySnapshot, StepPayload } from "../../js/types.ts";
 
   let { snap, frame, source, before, heldFrom = -1, frameIdx = undefined }: { snap: ArraySnapshot; frame: StepPayload | undefined; source: string; before: StepPayload | undefined; heldFrom?: number; frameIdx?: number | undefined } = $props();
@@ -49,11 +50,9 @@
   const dims = $derived(snap?.dims && snap.dims.length > 0 ? snap.dims : [elements.length]);
   const is2d = $derived(dims.length > 1);
   const cols = $derived(is2d ? (dims[dims.length - 1] ?? elements.length) : elements.length);
-  /** 扁平下标 → 显示标签（一维 `a[i]`，二维 `m[r][c]`）。 */
+  /** 扁平下标 → 显示标签（一维 `a[i]`；多维按 dims 逐维展开 `m[r][c][k]`）。 */
   function cellLabel(i: number): string {
-    if (!is2d) return `${snap.name}[${i}]`;
-    const c = cols > 0 ? cols : 1;
-    return `${snap.name}[${Math.floor(i / c)}][${i % c}]`;
+    return `${snap.name}${arrayIndexLabel(i, dims)}`;
   }
   const shapeText = $derived(is2d ? dims.map((d) => `[${d}]`).join("") : `[${elements.length}]`);
   const changed = $derived.by(() => {

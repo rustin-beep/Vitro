@@ -74,7 +74,8 @@ export interface VizDecl {
   series: string[];
   /** 投影器 id：cells / bars / line / grid2d / polar / spectrum（宿主实现）。 */
   projector: string;
-  /** 额外选项（`k=v` 形态，如 `axis=x`、`gain=2`）；未知键宿主原样保留。 */
+  /** 额外选项（`k=v` 形态，如 `gain=2`）；词表当前只登记已实现的 `gain`，
+   *  未知键原样保留不判错（课程与宿主可各自演进）。 */
   opts: Record<string, string>;
   /** 声明在整个 viz 注释块内的行号（1 起；版本行=1、块内注释计入；报错定位用）。 */
   line: number;
@@ -294,7 +295,8 @@ function extractViz(body: string): { body: string; vizs: VizDecl[] } {
     }
     vizs.push({ series, projector, opts, line: lineNo });
   }
-  if (vizs.length === 0) throw new LessonParseError("viz 元数据为空");
+  // 空块/全注释块 = 零声明（三端同口径：引擎 Ok([]) / MCP 零声明 / demo 零声明）——
+  // 课源把 viz 行全注释掉不应让整篇叙述被 parse 异常吞掉（PR #521 审阅 P3-6）。
   return { body: rest, vizs };
 }
 

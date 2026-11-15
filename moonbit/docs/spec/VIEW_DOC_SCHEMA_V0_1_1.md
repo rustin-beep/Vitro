@@ -40,7 +40,7 @@
   "pv": "0.1.1",
   "default": "cells",
   "projectors": [
-    {"id":"bars","seriesMin":1,"seriesMax":1,"minDims":0,"opts":["baseline","gain"],"note":"柱状：幅值 / 频谱幅度"}
+    {"id":"bars","seriesMin":1,"seriesMax":1,"minDims":0,"opts":["gain"],"note":"柱状：幅值 / 频谱幅度"}
   ],
   "series_decl": [
     {"series":["re","im"],"projector":"polar","opts":{"gain":"1"}}
@@ -76,7 +76,7 @@
 |---|---|---|
 | `series` | string[] | 参与同一投影的序列名；顺序 = 绘制顺序（同组即同图） |
 | `projector` | string | 投影器 id（未知 = 消费点错误面板，不静默回落） |
-| `opts` | object | 选项键值对（字符串；如 `gain` / `baseline` / `axis` / `group`）；键按字节序发射 |
+| `opts` | object | 选项键值对（字符串；当前词表只登记两端已实现的 `gain`；未知键原样保留不判错）；键按字节序发射 |
 
 ### 3.1 声明文法（单源 = `@view.parse_series_decl`）
 

@@ -1294,21 +1294,23 @@ test "mcp_render_viz_fail_loud" {
     jstr_or(jget(jget(bad, "error"), "message"), "").contains("viz"),
     msg="错误文案点名 viz 参数",
   )
-  // 只有注释 → 「文本非空但零声明」同样 fail loud
-  let only_comment = tool_call(
-    srv,
-    3,
-    "animate",
-    ob()
-    .s("source", bubble_src())
-    .s("viz", "// 注释而已")
-    .b("preview_png", false)
-    .done(),
+  // P3-6：只有注释 → 零声明（三端同口径），不拒绝、不静默丢正文
+  let only_comment = tool_body(
+    tool_call(
+      srv,
+      3,
+      "animate",
+      ob()
+      .s("source", bubble_src())
+      .s("viz", "// 注释而已")
+      .b("preview_png", false)
+      .done(),
+    ),
   )
   assert_eq(
-    jint(jget(jget(only_comment, "error"), "code")),
-    Some(-32602),
-    msg="零声明非空文本 -32602",
+    jbool(jget(only_comment, "ok")),
+    Some(true),
+    msg="零声明非空文本 = 正常产物（无 viz）",
   )
 }
 

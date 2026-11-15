@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import assert from "node:assert/strict";
 
-import { latin1ToUtf8, esc, isArrayAnimCase, annotateGroups, coalesceStmt } from "../js/util.ts";
+import { latin1ToUtf8, esc, isArrayAnimCase, annotateGroups, coalesceStmt, arrayIndexLabel } from "../js/util.ts";
 import { buildCallTree } from "../js/calltree.ts";
 import { heapSpanOf } from "../js/memory.ts";
 import { toPosix, isSourceFile, shouldSkipDir, orderForCompile } from "../js/workspace.ts";
@@ -51,6 +51,8 @@ import {
   planViews,
   declError,
   FALLBACK_PROJECTOR,
+  SVG_IMPLEMENTED,
+  svgImplemented,
 } from "../src/lib/viewProjection.ts";
 import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
 import { flushPendingOnClose, isTransientNavigationError } from "./cdp.mts";
@@ -382,7 +384,7 @@ order: 1
   }
 });
 
-test("lessonMd：viz 格式错误 fail loud（缺版本 / 未闭合 / 行形态 / 选项 / 版本 / 空块）", () => {
+test("lessonMd：viz 格式错误 fail loud（缺版本 / 未闭合 / 行形态 / 选项 / 版本）+ 空块零声明", () => {
   const wrap = (body: string): string => `---
 id: bad
 kind: case
@@ -398,8 +400,15 @@ ${body}
   assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\nseries -> cells\n-->")), /viz 行不是/);
   assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\nseries a -> cells k\n-->")), /viz 选项须为 k=v/);
   assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v2\nseries a -> cells\n-->")), /不支持的 viz 版本/);
-  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\n-->\n")), /viz 元数据为空/, "顶格闭合的空块");
-  assert.throws(() => parseLessonMd(wrap("<!-- vitri-viz v1\n// 只有注释\n-->\n")), /viz 元数据为空/, "纯注释块");
+  // P3-6：空块 / 全注释块 = 零声明（三端同口径），不吞整篇叙述
+  for (const [name, block] of [
+    ["顶格闭合的空块", "<!-- vitri-viz v1\n-->\n"],
+    ["纯注释块", "<!-- vitri-viz v1\n// 只有注释\n-->\n"],
+  ] as const) {
+    const doc = parseLessonMd(wrap(block));
+    assert.deepEqual(doc.vizs, [], name);
+    assert.equal(must(doc.blocks[0]).type, "h2", `${name}：正文须保留`);
+  }
   assert.deepEqual(parseLessonMd(wrap("## 无声明\n")).vizs, [], "无 viz 块的课 = 空声明（宿主退回默认投影）");
 });
 
@@ -424,6 +433,16 @@ test("viewProjection：宿主绘制器注册表覆盖词表全族（新增 id �
   assert.equal(RENDERERS[FALLBACK_PROJECTOR], "cells", "默认回退须有宿主实现");
   assert.equal(RENDERERS.polar, "svg");
   assert.equal(RENDERERS.grid2d, "cells");
+});
+
+test("viewProjection：SVG 实现清单 ≡ RENDERERS 的 svg 子集（P2-1 实现对账）", () => {
+  const svgIds = Object.entries(RENDERERS)
+    .filter(([, kind]) => kind === "svg")
+    .map(([id]) => id)
+    .sort();
+  assert.deepEqual([...SVG_IMPLEMENTED].sort(), svgIds, "词表 svg 类新增而 SeriesView 无分支时本锚必红");
+  assert.equal(svgImplemented("bars"), true);
+  assert.equal(svgImplemented("heatmap"), false, "未实现 id 必须判 false（消费点出错误面板）");
 });
 
 test("viewProjection：无 viz 声明 = 全量 cells（旧渲染面不变）", () => {
@@ -458,6 +477,20 @@ test("viewProjection：cells / grid2d 声明展开为索引格，不重复渲染
   const grid = planViews([decl(["m"], "grid2d")], [snap("m", ["1", "2", "3", "4"], [2, 2])]);
   assert.equal(grid.length, 1);
   assert.equal(must(grid[0]).kind, "cells");
+});
+
+test("arrayIndexLabel：行主序多维下标（P3-3，≥3 维不再只拼两维）", () => {
+  assert.equal(arrayIndexLabel(3, [4]), "[3]");
+  assert.equal(arrayIndexLabel(3, [6]), "[3]");
+  assert.equal(arrayIndexLabel(4, [2, 3]), "[1][1]");
+  assert.equal(arrayIndexLabel(5, [2, 3, 4]), "[0][1][1]");
+  assert.equal(arrayIndexLabel(13, [2, 3, 4]), "[1][0][1]");
+  assert.equal(arrayIndexLabel(23, [2, 3, 4]), "[1][2][3]");
+});
+
+test("viewProjection：seriesMax 上限分支有判别力（polar 3 条必红，P3-2）", () => {
+  const three = [snap("a", ["1"]), snap("b", ["1"]), snap("c", ["1"])];
+  assert.match(declError(decl(["a", "b", "c"], "polar"), three, []) ?? "", /至多 2 条/);
 });
 
 test("viewProjection：声明不合法 fail loud（不静默降级为 cells）", () => {

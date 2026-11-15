@@ -357,12 +357,7 @@ fn parse_viz_arg(args : Json) -> Result[Array[@view.SeriesDecl], String] {
   }
   match @view.parse_series_decl_block(text) {
     Err(m) => Err(m)
-    Ok(ds) =>
-      if ds.length() == 0 {
-        Err("文本非空但无有效声明行（只有空行/注释？）")
-      } else {
-        Ok(ds)
-      }
+    Ok(ds) => Ok(ds)
   }
 }
 

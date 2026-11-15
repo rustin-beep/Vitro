@@ -215,6 +215,7 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
   #| var DOC=D.doc||{pv:"",default:"cells",projectors:[],series_decl:[]};
   #| function projSpec(id){var ps=DOC.projectors||[];for(var i=0;i<ps.length;i++){if(ps[i].id===id)return ps[i]}return null}
+  #| function dimLabel(i,dm){var out="",rest=i,idx=[];for(var k=dm.length-1;k>=0;k--){var d=dm[k]||1;idx.unshift(d>0?rest%d:0);rest=d>0?Math.floor(rest/d):0}for(var q=0;q<idx.length;q++)out+="["+idx[q]+"]";return out}
   #| function arrHtml(fr,pv,nm){var els=(fr.r||{})[nm]||[];if(!els.length)return"";
   #| var pels=pv&&(pv.r||{})[nm]||[];
   #| var dm=((fr.rd||{})[nm])||arrDims(fr,nm)||null;var cols=dm?(dm[dm.length-1]||1):els.length;
@@ -224,7 +225,7 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| for(var i2=0;i2<els.length;i2++){var cls2="cell";var sp2=sp&&(i2===sp.i||i2===sp.j);
   #| if(sp2)cls2+=" swap";else if(pels.length&&pels[i2]!==els[i2])cls2+=" changed";
   #| var v=parseFloat(els[i2]);var ratio=isFinite(v)?Math.max(.06,Math.abs(v)/max):.3;
-  #| var lab=dm?('['+Math.floor(i2/cols)+']['+(i2%cols)+']'):i2;
+  #| var lab=dm?dimLabel(i2,dm):i2;
   #| h+='<div class="'+cls2+'" style="--v:'+ratio.toFixed(2)+'"><span class="idx">'+lab+'</span>'+esc(els[i2])+'<span class="bar"></span></div>'}
   #| h+="</div>";
   #| h+='<div class="ptrs'+(dm?' grid2d':'')+'" style="--n:'+els.length+';--cw:64px'+(dm?';--cols:'+cols:'')+'">';

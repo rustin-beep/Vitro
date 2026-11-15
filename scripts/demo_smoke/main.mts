@@ -22,6 +22,7 @@ import path from "node:path";
 import vm from "node:vm";
 import { instantiateGateway } from "../wasm_load.mts";
 import type { GatewayExports } from "../wasm_load.mts";
+import { ARRAY_SNAPSHOT_KEYS } from "./contract.mts";
 
 type Json = any;
 
@@ -362,7 +363,7 @@ async function run(): Promise<void> {
       }
       const arrSnap = payloads.find((p) => p.array_snapshots && p.array_snapshots.length);
       if (arrSnap) {
-        for (const f of ["name", "element_ty", "elements"]) {
+        for (const f of ARRAY_SNAPSHOT_KEYS) {
           check(f in arrSnap.array_snapshots[0], `ArraySnapshot 字段 ${f}`, "缺键");
         }
       } else {

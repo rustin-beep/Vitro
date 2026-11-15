@@ -34,6 +34,17 @@ export function rendererIds(): string[] {
   return Object.keys(RENDERERS).sort();
 }
 
+/** SeriesView **已实现分支**的投影器 id 集（渲染实现清单，不是词表）。
+ *  与 `RENDERERS` 的 svg 子集双向对账（pure.test.mts）：词表新增 svg 类投影器
+ *  而不写绘制分支时对账红——集合对账 ≠ 实现对账，本清单是后者的锚
+ *  （PR #521 审阅 P2-1）。 */
+export const SVG_IMPLEMENTED: readonly ProjectorId[] = ["bars", "line", "polar", "spectrum"];
+
+/** id 是否有 SVG 绘制分支（未知/future id → false，消费点出错误面板）。 */
+export function svgImplemented(id: string): boolean {
+  return (SVG_IMPLEMENTED as readonly string[]).includes(id);
+}
+
 export interface CellsView {
   kind: "cells";
   snap: ArraySnapshot;
@@ -57,6 +68,9 @@ export function declError(decl: VizDecl, found: readonly ArraySnapshot[], missin
   const at = `（课程 viz 第 ${decl.line} 行）`;
   const spec = projectorSpec(decl.projector);
   if (!spec) return `未知投影器 ${decl.projector}${at}；已登记：${PROJECTORS.map((p) => p.id).join("、")}`;
+  if (RENDERERS[spec.id as ProjectorId] === "svg" && !svgImplemented(spec.id)) {
+    return `宿主未实现投影器 ${decl.projector}${at}（词表已登记但 SeriesView 无绘制分支）`;
+  }
   if (missing.length > 0) return `序列未出现在本帧快照中：${missing.join("、")}${at}`;
   if (found.length < spec.seriesMin) {
     return `${decl.projector} 需至少 ${spec.seriesMin} 条序列，实得 ${found.length}${at}`;

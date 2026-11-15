@@ -1,7 +1,7 @@
 ---
 id: fourier
 kind: case
-order: 7
+order: 8
 title: 傅里叶变换（DFT）· 相量图与频谱
 ---
 

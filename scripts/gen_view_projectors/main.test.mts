@@ -48,7 +48,7 @@ test("真源：全族枚举 + 默认投影器 + id 字节序", () => {
   const polar = doc.projectors.find((p) => p.id === "polar");
   assert.deepEqual(
     [polar?.seriesMin, polar?.seriesMax, polar?.minDims, polar?.opts],
-    [2, 2, 0, ["group", "gain"]],
+    [2, 2, 0, ["gain"]],
   );
   const grid = doc.projectors.find((p) => p.id === "grid2d");
   assert.equal(grid?.minDims, 2, "grid2d 须有 dims");

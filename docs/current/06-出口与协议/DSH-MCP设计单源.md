@@ -37,7 +37,7 @@ DSH 侧暴露名 = `mcp__vitro__<name>`。
 数组数据）。渲染钩子 data 恒带 `doc` 字段：
 ```json
 {"pv":"0.1.1","default":"cells",
- "projectors":[{"id":"bars","seriesMin":1,"seriesMax":1,"minDims":0,"opts":["baseline","gain"],"note":"…"}],
+ "projectors":[{"id":"bars","seriesMin":1,"seriesMax":1,"minDims":0,"opts":["gain"],"note":"…"}],
  "series_decl":[{"series":["re","im"],"projector":"polar","opts":{"gain":"1"}}]}
 ```
 `projectors` 发全族规格（宿主消费同一词表，不自带序列条数/维度约束副本）；

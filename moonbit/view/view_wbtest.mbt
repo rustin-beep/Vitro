@@ -25,9 +25,8 @@ test "projector_polar_and_grid2d_spec" {
       assert_eq(p.series_min, 2)
       assert_eq(p.series_max, 2)
       assert_eq(p.min_dims, 0)
-      assert_eq(p.opts.length(), 2)
-      assert_eq(p.opts[0], "group")
-      assert_eq(p.opts[1], "gain")
+      assert_eq(p.opts.length(), 1)
+      assert_eq(p.opts[0], "gain")
     }
   }
   match projector("grid2d") {
@@ -61,8 +60,12 @@ test "check_decl_dims_gate" {
 
 ///|
 test "known_opt_unknown_key_is_soft" {
-  assert_true(known_opt("polar", "group"))
+  // P3-5：词表只登记两端已实现的键（gain）；group/baseline/axis 已摘除。
   assert_true(known_opt("polar", "gain"))
+  assert_false(
+    known_opt("polar", "group"),
+    msg="未实现的选项键不得登记为已知",
+  )
   assert_false(
     known_opt("polar", "future_key"),
     msg="未知键不判错、只报未登记",
@@ -226,10 +229,27 @@ test "doc_json_roundtrip_and_determinism" {
   let s1 = doc_json(decls)
   let s2 = doc_json(decls)
   assert_eq(s1, s2, msg="同输入字节确定")
-  // opts 键字节序（axis 在 gain 前）
+  // 有牙锚（PR #521 审阅 P3-1）：**输入序不同 ⇒ 输出仍同字节**（删掉
+  // opts.sort_by 即红），并断言键的真实位置（只查子串存在 = 恒真锚）。
+  let decls_rev : Array[SeriesDecl] = [
+    {
+      series: ["z", "a"],
+      projector: "line",
+      opts: [("axis", "y"), ("gain", "3")],
+    },
+  ]
+  assert_eq(s1, doc_json(decls_rev), msg="opts 输入序不同仍须同字节")
+  let ia = match s1.find("\"axis\":\"y\"") {
+    Some(i) => i
+    None => -1
+  }
+  let ig = match s1.find("\"gain\":\"3\"") {
+    Some(i) => i
+    None => -1
+  }
   assert_true(
-    s1.find("\"axis\":\"y\"") is Some(_),
-    msg="opts 键序错：\{s1}",
+    ia >= 0 && ig >= 0 && ia < ig,
+    msg="opts 键须按字节序发射（axis 在 gain 前）",
   )
   let back = @util.json_parse(s1) catch { _ => Json::null() }
   match back {

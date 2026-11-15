@@ -7,6 +7,7 @@
   // 的一条普通声明）。配色一律走 StylePack 语义槽（--vr-*），五主题自动换肤。
   import type { ArraySnapshot } from "../../js/types.ts";
   import type { VizDecl } from "./lessonMd.ts";
+  import { svgImplemented } from "./viewProjection.ts";
 
   let {
     decl,
@@ -22,6 +23,9 @@
   const H = 132;
   const PAD = 16;
   const COLORS = ["s0", "s1", "s2", "s3", "s4"];
+  /** 组件内兜底（P2-1）：词表新增 svg 类投影器而本组件没有分支时，
+   *  必须出错误面板而不是画一张只有坐标轴的空图。 */
+  const supported = $derived(svgImplemented(decl.projector));
 
   function num(s: string): number | null {
     const v = Number.parseFloat(s);
@@ -125,6 +129,8 @@
   </div>
   {#if error !== null}
     <p class="vr-empty vr-viz-error" role="status">{error}</p>
+  {:else if !supported}
+    <p class="vr-empty vr-viz-error" role="status">宿主未实现投影器 {decl.projector}（SeriesView 无绘制分支）</p>
   {:else}
     <svg class="vr-viz-svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} preserveAspectRatio="xMidYMid meet">
       <line class="vr-viz-axis" x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} />

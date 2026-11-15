@@ -516,6 +516,10 @@
     {
       "name": "W3099_UninitializedRead",
       "code": 3099
+    },
+    {
+      "name": "E3100_ShiftRange",
+      "code": 3100
     }
   ]
 }

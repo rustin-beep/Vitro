@@ -440,12 +440,15 @@ fn VitroVM::snapshot_elements(
 
 ///|
 /// 地址覆盖归属的数组长度查找（#517 P1-3 形参解引用视图的长度源）：
-/// 全局先行、活跃帧由内向外（find_variable_name_at_addr 同序）；命中 =
-/// target 落在数组元素区间（slot_covers 单源——含首地址精确命中）。
+/// 全局先行、活跃帧由内向外（find_variable_name_at_addr 同序）。
+/// PR #519 审阅 P2-1 勘正：要求**首地址精确命中**——`int *p = &a[1];`
+/// 指向数组内部的指针按「区间覆盖」取整数组长度会读到尾后栈垃圾
+/// （p=[20,30,40,1048544] 实锤）；非首命中不产快照（漏报方向安全——
+/// 指向内部的展示走 pointer_snapshots 面）。
 fn VitroVM::find_covering_array(self : VitroVM, target : UInt32) -> Int32? {
   for sym in self.symbols {
     if !sym.is_local && sym.ty.kind() is TK_Array {
-      if slot_covers(self, sym, @bytecode.GLOBAL_START + sym.addr, target) {
+      if @bytecode.GLOBAL_START + sym.addr == target {
         return Some(sym.ty.array_size())
       }
     }
@@ -458,7 +461,7 @@ fn VitroVM::find_covering_array(self : VitroVM, target : UInt32) -> Int32? {
       if sym.is_local &&
         sym.ty.kind() is TK_Array &&
         sym.func_name == f.func_name {
-        if slot_covers(self, sym, f.locals_base + sym.addr, target) {
+        if f.locals_base + sym.addr == target {
           return Some(sym.ty.array_size())
         }
       }

@@ -78,7 +78,43 @@ fn TypeChecker::check_uninitialized_reads(
   for e in self.errors {
     st.error_lines.add(e.line)
   }
+  // PR #519 审阅 P3：pass 挂在函数尾，逐条 report 会令 W3099 全部落到
+  // 定型期警告（如 W3053）之后——非源序。先收后按 (line, column) 插回
+  // 既有段（线性找位，旧段大体行序）。
+  let before_len = self.warnings.length()
   self.uninit_walk_stmt(body, st)
+  let added = self.warnings.length() - before_len
+  if added > 1 {
+    // 取出新段排序后拼回（pop 出的为逆序，sort 后无碍）
+    let tail : Array[TypeError] = []
+    while self.warnings.length() > before_len {
+      match self.warnings.pop() {
+        Some(w) => tail.push(w)
+        None => ()
+      }
+    }
+    tail.sort_by((a, b) => {
+      if a.line != b.line {
+        a.line - b.line
+      } else {
+        a.column - b.column
+      }
+    })
+    for w in tail {
+      self.warnings.push(w)
+    }
+  }
+}
+
+///|
+/// 单分支常量真判定（`if (1)` / `if (2)`——体内赋值必然生效形态）。
+fn uninit_const_true(e : @ast.Expr) -> Bool {
+  match e {
+    Literal(v, _, _) => v != 0
+    LongLiteral(v, _, _) => v != 0L
+    Unary(_, inner, _, _) => uninit_const_true(inner)
+    _ => false
+  }
 }
 
 ///|
@@ -147,24 +183,30 @@ fn TypeChecker::uninit_walk_stmt(
           }
           st.pending = restored
         }
-        None => {
-          // 单分支：体内赋值不传播（快照恢复——漏报方向安全）
-          let snap = st.pending.copy()
-          self.uninit_walk_stmt(then_s, st)
-          st.pending = snap
-        }
+        None =>
+          // 单分支常量真（PR #519 审阅 P1-2：`if (1) { u = 7; }` 后读——
+          // clang 静默，体内赋值必然生效）：直接传播；非常量条件保留快照
+          // 恢复（`if (c) { u = 1; }` 后读——clang 警，c 假路径未初始化）
+          if uninit_const_true(cond) {
+            self.uninit_walk_stmt(then_s, st)
+          } else {
+            let snap = st.pending.copy()
+            self.uninit_walk_stmt(then_s, st)
+            st.pending = snap
+          }
       }
     }
+    // 循环体赋值传播（PR #519 审阅 P1-2 勘正：旧「快照恢复」过保守——
+    // 内层 for-init 赋值被外层循环体回滚吃掉，jit_nested_counting_loop 的
+    // printf 读 j 误报 W3099 而 clang 全档静默实锤）。代价：`while (c)
+    // { u = 1; }` 后读的「0 次执行」真未初始化漏报——漏报方向安全（本
+    // pass 设计原则）；do-while 的 body 先执行是 C 语义保证，赋值必生效
     While(cond, body_s, _) => {
       self.uninit_walk_expr(cond, st)
-      let snap = st.pending.copy()
       self.uninit_walk_stmt(body_s, st)
-      st.pending = snap
     }
     DoWhile(body_s, cond, _) => {
-      let snap = st.pending.copy()
       self.uninit_walk_stmt(body_s, st)
-      st.pending = snap
       self.uninit_walk_expr(cond, st)
     }
     For(init_s, cond, steps, body_s, _) => {
@@ -176,12 +218,11 @@ fn TypeChecker::uninit_walk_stmt(
         Some(c) => self.uninit_walk_expr(c, st)
         None => ()
       }
-      let snap = st.pending.copy()
+      // 步进/体内赋值传播（同 While——审阅 P1-2 勘正，见 While 臂注）
       for s in steps {
         self.uninit_track_expr(s, st)
       }
       self.uninit_walk_stmt(body_s, st)
-      st.pending = snap
     }
     Return(e, _) =>
       match e {

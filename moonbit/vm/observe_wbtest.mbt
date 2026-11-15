@@ -429,7 +429,10 @@ test "observe_array_snapshot_scoping" {
   // show 帧：base+4 起是被调函数局部区（形参指针 + n/lo/hi —— 修前 a 的
   // 四格恰好读到这里）
   vm.call_stack.push(mkframe("show", 0x6000U, 0))
-  vm.current_line = 5
+  // PR #519 审阅 P3 勘正：current_line=10 > a.decl_line=9——**函数归属**
+  // 过滤成为唯一防线（修前 current_line=5 被 decl_line>cur 兜住，锚名
+  // 不副实——抽掉 func 过滤仍绿）
+  vm.current_line = 10
   ignore(vm.memory.store_u32(vm.mem_map, 0x6000U + 4U, 1048556U))
   ignore(vm.memory.store_u32(vm.mem_map, 0x6000U + 8U, 4U))
   ignore(vm.memory.store_u32(vm.mem_map, 0x6000U + 12U, 0U))
@@ -507,4 +510,39 @@ test "observe_array_param_deref_view" {
   assert_eq(pv.elements, ["3", "1", "4", "1"])
   assert_false(has_a, msg="调用方数组符号不直接入被调帧快照")
   assert_eq(pv.element_ty, "int")
+}
+
+///|
+/// PR #519 审阅 P2-1：指向数组**内部**的指针（&a[1]）不产解引用快照——
+/// 修前按区间覆盖取整数组长度，末格读到尾后栈垃圾（[20,30,40,1048544]
+/// 实锤）；精确命中（p == 数组首）才产。
+test "observe_array_param_deref_interior_ptr_no_snapshot" {
+  let vm = VitroVM::new()
+  let arr_ty : @ast.Type = Array(Int(false, false), 4, [4], false, false, [])
+  let ptr_ty : @ast.Type = Pointer(Int(false, false), false)
+  vm.set_symbols([
+    mksym("a", 4U, true, arr_ty, "main", 2),
+    mksym("p", 8U, true, ptr_ty, "main", 3),
+  ])
+  vm.call_stack.push(mkframe("main", 0x5000U, 0))
+  vm.current_line = 4
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 4U, 10U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 8U, 20U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 12U, 30U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 16U, 40U))
+  // p 指向 a[1]（数组内部）
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 8U + 0U, 0U))
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5008U, 0x5008U))
+  let mut p_view = false
+  let mut a_view = false
+  for s in vm.get_array_snapshots() {
+    if s.name == "p" {
+      p_view = true
+    }
+    if s.name == "a" {
+      a_view = true
+    }
+  }
+  assert_false(p_view, msg="指向内部的 p 不得产解引用快照")
+  assert_true(a_view, msg="数组本体照常")
 }

@@ -168,6 +168,7 @@ pub(all) enum ErrorCode {
   E3097_IntOverflow
   W3098_ConstDivZero
   W3099_UninitializedRead
+  E3100_ShiftRange
 }
 pub fn ErrorCode::all() -> Array[Self]
 pub fn ErrorCode::catalog(Self) -> CatalogEntry?

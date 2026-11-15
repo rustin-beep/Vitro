@@ -84,8 +84,8 @@ test "catalog_content_escape_probe" {
   install_baked()
   assert_eq(
     @diag.catalog_texts.length(),
-    125,
-    msg="125 卡基线（#517 P3 批 +E3097/W3098/W3099）",
+    126,
+    msg="126 卡基线（#519 审阅 +E3100；#517 P3 批 +3）",
   )
   let e2 = @diag.ErrorCode::from_code(1002).unwrap().catalog().unwrap()
   assert_eq(e2.title, "字符串未闭合")

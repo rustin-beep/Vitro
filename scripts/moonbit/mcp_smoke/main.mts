@@ -276,7 +276,11 @@ async function drive(): Promise<number> {
     // P1-3 重锚（2026-11-14）：形参解引用视图修复后 bubble_sort 帧的 arr
     // 逐帧真变（修前恒为跨帧垃圾、arrays_eq 恒等）——关键帧 w=3 集从少数
     // 事件帧膨胀到几乎全帧，301 预算下 hi 集均匀抽稀，7 个 swap 帧保留
-    // 3（旧锚 5 系「被调帧数组恒定」缺陷形态的基线）。
+    // 3（旧锚 5 系「被调帧数组恒定」缺陷形态的基线）。PR #519 审阅 P2-3
+    // 登记已知权衡：7 个 swap 帧仅 3 个点亮=关键帧抽稀稀释（数组逐帧
+    // 真变令 w=3 集膨胀至近全帧、301 预算均匀抽稀）——产物质量回退面，
+    // 修法在 extract_keyframes 权重/ararrays_eq 粒度（v1 照搬算法），列
+    // 后续批候选，本批以锚值吸收不改算法。
     const pa = probeHtml(rendered.html_path);
     chk.check("render 产物 script 语法门 + PLAYER 驱动（BUBBLE_C swap 锚 3/#468·#469/#517）",
       pa.ok && pa.swapFrames === 3 && pa.total === 301,

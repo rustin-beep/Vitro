@@ -310,9 +310,10 @@ fn VitroVM::execute_bitwise(
         (_, _, Ok(r)) => self.push_i32(r.to_int())
         (_, b, Err(_)) =>
           self.trap(
-            "Shl 移位量越界：\{b}（必须是 0~31）",
+            "[shift-range] Shl 移位量越界 (E3100)：\{b}（必须是 0~31）",
             line,
             column,
+            code="E3100",
           )
       }
     Shr =>
@@ -320,9 +321,10 @@ fn VitroVM::execute_bitwise(
         (_, _, Ok(r)) => self.push_i32(r.to_int())
         (_, b, Err(_)) =>
           self.trap(
-            "Shr 移位量越界：\{b}（必须是 0~31）",
+            "[shift-range] Shr 移位量越界 (E3100)：\{b}（必须是 0~31）",
             line,
             column,
+            code="E3100",
           )
       }
     LShr => {
@@ -339,9 +341,10 @@ fn VitroVM::execute_bitwise(
         Ok(r) => self.push(r.reinterpret_as_uint64())
         Err(_) =>
           self.trap(
-            "LShr 移位量越界：\{b}（必须是 0~31）",
+            "[shift-range] LShr 移位量越界 (E3100)：\{b}（必须是 0~31）",
             line,
             column,
+            code="E3100",
           )
       }
     }
@@ -374,9 +377,10 @@ fn VitroVM::execute_bitwise(
         Ok(r) => self.push(r.reinterpret_as_uint64())
         Err(_) =>
           self.trap(
-            "Shl 移位量越界：\{b}（必须是 0~63）",
+            "[shift-range] Shl 移位量越界 (E3100)：\{b}（必须是 0~63）",
             line,
             column,
+            code="E3100",
           )
       }
     }
@@ -387,9 +391,10 @@ fn VitroVM::execute_bitwise(
         Ok(r) => self.push(r.reinterpret_as_uint64())
         Err(_) =>
           self.trap(
-            "Shr 移位量越界：\{b}（必须是 0~63）",
+            "[shift-range] Shr 移位量越界 (E3100)：\{b}（必须是 0~63）",
             line,
             column,
+            code="E3100",
           )
       }
     }
@@ -406,9 +411,10 @@ fn VitroVM::execute_bitwise(
         Ok(r) => self.push(r.reinterpret_as_uint64())
         Err(_) =>
           self.trap(
-            "LShr 移位量越界：\{b}（必须是 0~63）",
+            "[shift-range] LShr 移位量越界 (E3100)：\{b}（必须是 0~63）",
             line,
             column,
+            code="E3100",
           )
       }
     }

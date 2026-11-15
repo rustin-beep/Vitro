@@ -100,3 +100,64 @@ test "serve_compile_w517_uninit_fixed_paths_no_warn" {
     msg="全局零初始化保证不得警（实际：\{r4}）",
   )
 }
+
+///|
+/// PR #519 审阅 P1-2：W3099 三误报形态回归锚（clang 全档静默实锤——修前
+/// 「循环体快照回滚」过保守产物，golden 曾被重冻合法化后经审阅回滚）：
+/// ① 嵌套 for-init 赋值后读（jit_nested_counting_loop 形态）零警；
+/// ② do-while body 先执行（C 语义保证）零警；③ if (1) 常量真单分支零警；
+/// ④ 对照：if (c) 非常量单分支赋值后读**仍警**（clang 同判）。
+test "serve_compile_w519_uninit_loop_body_propagation" {
+  // ① 嵌套 for-init
+  let s1 = @session.Session::new()
+  let (r1, _) = serve_handle(
+    s1, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main(void) {\\n    int i, j, inner = 0;\\n    for (i = 0; i < 3; i++) {\\n        for (j = 0; j < 200; j++) {\\n            inner = inner + 1;\\n        }\\n    }\\n    return inner + i + j;\\n}\\n\"}}",
+  )
+  assert_false(r1.contains("W3099"), msg="嵌套 for-init 后读不得警")
+  // ② do-while
+  let s2 = @session.Session::new()
+  let (r2, _) = serve_handle(
+    s2, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main(void) {\\n    int u;\\n    do { u = 7; } while (u < 0);\\n    return u;\\n}\\n\"}}",
+  )
+  assert_false(r2.contains("W3099"), msg="do-while body 必执行不得警")
+  // ③ if (1) 常量真
+  let s3 = @session.Session::new()
+  let (r3, _) = serve_handle(
+    s3, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main(void) {\\n    int u;\\n    if (1) { u = 7; }\\n    return u;\\n}\\n\"}}",
+  )
+  assert_false(r3.contains("W3099"), msg="常量真单分支不得警")
+  // ④ if (c) 非常量——仍警（clang 同判）
+  let s4 = @session.Session::new()
+  let (r4, _) = serve_handle(
+    s4, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main(void) {\\n    int c = 1;\\n    int u;\\n    if (c) { u = 7; }\\n    return u;\\n}\\n\"}}",
+  )
+  assert_true(
+    r4.contains("W3099"),
+    msg="非常量单分支后读须警（clang 同判）",
+  )
+}
+
+///|
+/// PR #519 审阅 P2-2：char 标量 `'c'` 形态的端到端锚——format_value 的
+/// TK_Char 臂此前零探测面（唯一 CI 面是 teaching_annotation_diff 的
+/// hanoi 误报，负向）；正向锚：局部变量值经 frames 全链出口为 'A'。
+test "serve_compile_w519_char_scalar_literal_form" {
+  let s = @session.Session::new()
+  let (r0, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main(void) { char c = 65; char d = 66; return c + d; }\\n\"}}",
+  )
+  assert_true(r0.contains("\"ok\":true"), msg="编译须过")
+  let (r1, _) = serve_handle(s, "{\"id\":2,\"method\":\"run\",\"params\":{}}")
+  ignore(r1)
+  let (r2, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"step.begin\",\"params\":{}}",
+  )
+  ignore(r2)
+  let (r3, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"step.next\",\"params\":{\"frames\":24}}",
+  )
+  assert_true(
+    r3.contains("'A'") && r3.contains("'B'"),
+    msg="局部变量 char 值须 'A'/'B' 字面形态",
+  )
+}

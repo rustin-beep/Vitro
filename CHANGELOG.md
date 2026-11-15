@@ -1,5 +1,40 @@
 ## [Unreleased]
 
+### fix(typeck+vm+diag+teaching): PR #519 审阅处置——P1×2 + P2×2 + P3×5（2026-11-15）
+
+- **P1-2 W3099 三误报修（审阅 clang 反证实锤）**：① 循环体（While/
+  DoWhile/For body+step）赋值**传播**（旧「快照回滚」过保守——内层
+  for-init 赋值被外层吃掉，jit_nested_counting_loop 的 printf 读 j 误报
+  而 clang 全档静默；do-while body 先执行是 C 语义保证）；② `if (1)`
+  常量真单分支传播（非常量条件保留回滚——clang 同判，锚④锁）；③
+  **typeck golden 回滚 master**（jit_nested×2 的重冻系误报合法化——
+  「clang 同款方向」断言与实测相反，纪律 4 记录）。锚：
+  `serve_compile_w519_uninit_loop_body_propagation`（四形态含仍警对照）。
+  已知取舍：`while (c) { u=1; }` 后读的「0 次执行」漏报——漏报方向安全。
+- **P1-1 处置回复**（根因①②已在前两 commit 收口）：③ 提交信息验收
+  只写真跑闸（后续批执行——本段列出闸名均为本轮亲跑）；② 「快照流
+  形态变更」连坐清单=course 锚 + e2e 锚 + mcp_smoke 锚 + ta golden
+  （本批三处连坐实证）；① 展示态/可解析值分字段——**登记不做**（动
+  VarSnapshot/protocol 面，parse_int 'c' 折回已收口 display→parse 耦合）。
+- **P2-1 解引用视图精确命中**：`find_covering_array` 改首地址 `==`
+  （`int *p=&a[1];` 区间覆盖取整数组长度读到尾后栈垃圾 [20,30,40,
+  1048544] 实锤——指向内部不产快照，漏报方向安全）。锚：
+  `observe_array_param_deref_interior_ptr_no_snapshot`。
+- **P2-2 char 形态正向锚**：`serve_compile_w519_char_scalar_literal_form`
+  （format_value TK_Char 臂此前唯一探测面是 ta 的负向误报）。
+- **P2-3 登记**：swap 点亮 5→3 系关键帧抽稀稀释（见 mcp_smoke 锚注）
+  ——修法在 v1 抽稀算法权重，列后续批候选。
+- **P3×5**：W3099 新增警告按 (line,column) 排序插回（修非源序）；
+  移位越界 trap ×6 立码 **E3100**（`[shift-range]` 家族形态+卡——臂
+  130/卡 126 基线连坐）；`observe_array_snapshot_scoping` 锚勘正
+  （current_line=10 令函数归属成唯一防线——名副实）；gen_diag 产物头注
+  改 .mts 命令（Go 退役残留）；gold_chibicc extern.c notes 补 PR #519
+  审阅关联。
+- 验收（亲跑闸名）：moon test 全量/typeck_diff 六套件（golden=master
+  零 diff）/gateway 190/vm 124/diag+content_data 30/gen_diag -check/
+  catalog_closure/其余收尾链见 commit 后 CI。
+
+
 ### fix(teaching+course+demo): #517 CI 第二轮三红收口（2026-11-15）
 
 - **根因一（teaching_annotation_diff 16 处 hanoi 错位）**：P3-16 的 char

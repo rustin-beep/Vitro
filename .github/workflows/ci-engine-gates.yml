@@ -124,7 +124,10 @@ jobs:
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target js cmd/vitro_js && cd ..
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known
+            # schedule 档 --rehost = #520 处置批（2026-11-14）两档接线形态
+            # （rebase 连坐 2026-11-15 手动吸收：master 该增量改在原 ci.yml，
+            # 拆分后 step_invariant 步骤宿主迁本文件）
+            node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known --rehost
             # 批② native 臂（2026-11-14）：夜间全量档双臂对称
             node scripts/step_invariant/main.mts --corpus corpus --jobs 8 --timeout-ms 600000 --audit-known --arm native
           else

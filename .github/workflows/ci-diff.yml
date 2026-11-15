@@ -18,7 +18,9 @@ on:
         type: boolean
 jobs:
   gates-diff:
-    name: Diff gate (${{ matrix.driver }}${{ matrix.shard && format('/%s', matrix.shard) || '' }})
+    # name 片标识：format 占位符是 {0}（.NET 风格）——首跑 %s 字面泄漏
+    # 实锤（run 1235），本轮修正。
+    name: Diff gate (${{ matrix.driver }}${{ matrix.shard && format('/{0}', matrix.shard) || '' }})
     runs-on: windows-latest
     strategy:
       # 闸级可见性全开：实例互不取消（一红不见其余）。

@@ -476,7 +476,10 @@ jobs:
           cd .. && node scripts/wasmenc_rundiff/main.mts
 
       - name: Cache cargo target (wasmtime_arm dispatch 跑器——PR #526 审阅 P3：windows 首编全量 wasmtime 分钟级)
-        if: always() && matrix.slice == 'bookkeeping'
+        # rebase 连坐（2026-11-15）：本步服务 dispatchdiff（cargo 首编），提速批 P1
+        # 把 dispatchdiff 路由到独立 dispatch 片——cache 路由随行（留 bookkeeping
+        # = 服务错片白做，dispatch 片继续冷编）。
+        if: always() && matrix.slice == 'dispatch'
         uses: actions/cache@v4
         with:
           path: scripts/wasmtime_arm/rs/target

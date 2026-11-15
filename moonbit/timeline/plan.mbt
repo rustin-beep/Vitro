@@ -130,6 +130,32 @@ fn context_mentions(ctx : String, name : String) -> Bool {
 }
 
 ///|
+/// 同名快照去重后的名字清单（首见序）——全局数组与数组形参解引用视图可能
+/// 同名双发（vm/observe `get_array_snapshots` 不去重；壳层 `r[name]=` 是
+/// Map，天然后写覆盖）。重名不是归属歧义。
+fn distinct_names(fr : FrameView) -> Array[String] {
+  let out : Array[String] = []
+  for t in fr.arrays {
+    if !out.contains(t.0) {
+      out.push(t.0)
+    }
+  }
+  out
+}
+
+///|
+/// 同名快照的长度：后写覆盖（与壳层 Map 同口径）。
+fn snapshot_len(fr : FrameView, name : String) -> Int32? {
+  let mut out : Int32? = None
+  for t in fr.arrays {
+    if t.0 == name {
+      out = Some(t.1)
+    }
+  }
+  out
+}
+
+///|
 /// 本帧交换归属：按事件序取首个「context 唯一点名一个本帧数组 + 下标合法
 /// （0 ≤ i != j < len）」的 ty=2 事件；归属缺失/歧义/越界 → 不猜、看下一
 /// 事件，全无则无 sw（旧规则逐数组过滤的引擎侧等价收口）。
@@ -140,10 +166,10 @@ fn swap_of(fr : FrameView) -> SwapPair? {
     }
     let mut matched : String? = None
     let mut hits = 0
-    for t in fr.arrays {
-      if context_mentions(ev.context, t.0) {
+    for name in distinct_names(fr) {
+      if context_mentions(ev.context, name) {
         hits += 1
-        matched = Some(t.0)
+        matched = Some(name)
       }
     }
     if hits != 1 {
@@ -158,11 +184,9 @@ fn swap_of(fr : FrameView) -> SwapPair? {
     if i < 0 || i == j {
       continue
     }
-    let mut len = -1
-    for t in fr.arrays {
-      if t.0 == name {
-        len = t.1
-      }
+    let len = match snapshot_len(fr, name) {
+      Some(n) => n
+      None => -1
     }
     if len < 0 || j >= len {
       continue

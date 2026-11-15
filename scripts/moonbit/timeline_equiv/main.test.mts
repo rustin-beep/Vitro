@@ -7,8 +7,10 @@ import {
   displayedNames,
   escHtml,
   expectedOld,
+  mutatePlanForDivergence,
   oldCaption,
   oldSwapPair,
+  replaceVitroData,
 } from "./main.mts";
 import type { FrameProbe } from "../mcp_smoke/main.mts";
 
@@ -114,4 +116,31 @@ test("compareCase：J9 突变必红（DOM/归属/字幕/丢步）", () => {
     data.doc!.timeline!.steps!.pop();
     assert.ok(compareCase(data, probes, "a").mismatches.some((m) => m.includes("步骤错位")));
   }
+});
+
+test("replaceVitroData：字符串内的 }; 不截断，前后缀保留", () => {
+  const script = 'var a=1;window.__VITRO__={"source":"x};y","n":1};var tail="ok";';
+  const out = replaceVitroData(script, { source: "z", n: 2 });
+  assert.equal(out, 'var a=1;window.__VITRO__={"source":"z","n":2};var tail="ok";');
+});
+
+test("replaceVitroData：无赋值/非对象/未闭合 fail loud", () => {
+  assert.throws(() => replaceVitroData("var a=1;", {}), /无 window\.__VITRO__=/);
+  assert.throws(() => replaceVitroData("window.__VITRO__=[1];", []), /不是 JSON 对象/);
+  assert.throws(() => replaceVitroData("window.__VITRO__={\"a\":1", {}), /未闭合/);
+});
+
+test("mutatePlanForDivergence：注入帧带 sw+哨兵字幕，移除帧删 sw", () => {
+  const { data } = synthetic();
+  const m = mutatePlanForDivergence(data, "a");
+  // 帧 0 原本有 sw（off 候选按扫描序先命中）；帧 1 无 sw 且有 a 数组（on）
+  assert.equal(m.off, 0);
+  assert.equal(m.on, 1);
+  const steps = m.data.doc?.timeline?.steps ?? [];
+  assert.deepEqual(steps[m.on]?.sw, { name: "a", i: 0, j: 1 });
+  assert.equal(steps[m.on]?.cap?.t, "MUT-PLAN-ON");
+  assert.equal(steps[m.off]?.sw, undefined);
+  assert.equal(steps[m.off]?.cap?.t, "MUT-PLAN-OFF");
+  // 原数据不被修改（深拷贝）
+  assert.equal(data.doc?.timeline?.steps?.[0]?.sw?.name, "a");
 });

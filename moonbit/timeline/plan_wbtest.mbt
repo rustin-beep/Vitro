@@ -185,3 +185,28 @@ test "timeline_context_mentions_identifier_boundary" {
   assert_false(context_mentions("arrj]", "arr"), msg="缺 [ 不算")
   assert_false(context_mentions("", "arr"), msg="空串不算")
 }
+
+///|
+test "timeline_swap_duplicate_snapshot_names_not_ambiguous" {
+  // 全局数组 + 数组形参解引用视图可能同名双发（vm/observe 不去重）：
+  // 重名按 Map 语义折叠为一个名字（后写覆盖长度），不得当歧义丢弃。
+  let dup = tlfv("交换", [("arr", 4), ("arr", 6)], [
+    tlev(2, 0, 5, "arr[j]:arr[j + 1]"),
+  ])
+  match plan([dup]).steps[0].sw {
+    Some(sw) => {
+      assert_eq(sw.name, "arr", msg="重名折叠后归属唯一")
+      assert_eq(sw.i, 0, msg="下界")
+      assert_eq(sw.j, 5, msg="j=5 合法（后写长度 6 生效）")
+    }
+    None => fail("同名双发不得当歧义——须产 sw")
+  }
+  // 后写覆盖（非取最大）：后一条长度 4 时 j=5 越界丢弃
+  let dup2 = tlfv("交换", [("arr", 6), ("arr", 4)], [
+    tlev(2, 0, 5, "arr[j]:arr[j + 1]"),
+  ])
+  assert_true(
+    plan([dup2]).steps[0].sw is None,
+    msg="长度后写覆盖：末条 4 生效，j=5 越界",
+  )
+}

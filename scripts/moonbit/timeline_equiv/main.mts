@@ -12,7 +12,8 @@
 // plan 必须同样丢，否则 56 vs 54 即红）。
 //
 // 旧规则副本是**冻结 oracle**：不得随实现演进修改（改了就不是对拍）；plan
-// 生成器在 moonbit/timeline，壳层已删旧函数（只读 plan）。
+// 生成器在 moonbit/timeline。静态壳层只读 plan（旧 swapPair 已删）；interactive
+// 路径仍留 legacySwapPair 回退（运行时帧流与 plan 不同源，批二 EMBED 镜像后删）。
 // 前置：moon build --release --target js cmd/mcp_js（CI 上一步已建）。
 // 用法：node scripts/moonbit/timeline_equiv/main.mts
 import { spawn } from "node:child_process";
@@ -62,6 +63,10 @@ int main(void) {
 const BUBBLE_SORT_A = `// @category: baseline
 int main() { int a[5] = {5,3,4,1,2}; for (int i = 0; i < 4; i++) for (int j = 0; j < 4-i; j++) if (a[j] > a[j+1]) { int t = a[j]; a[j] = a[j+1]; a[j+1] = t; } printf("%d", a[0]); return 0; }
 `;
+
+/// 同名快照语料（PR #530 审阅 P1-1）：全局 `arr` + 数组形参 `arr` 双发
+/// （vm/observe 不去重）——plan 必须按 name 折叠后照常归属。
+const SAME_NAME_C = "int arr[4] = {4,3,2,1}; void sort(int arr[], int n) { for (int i = 0; i < n - 1; i++) for (int j = 0; j < n - 1 - i; j++) if (arr[j] > arr[j + 1]) { int t = arr[j]; arr[j] = arr[j + 1]; arr[j + 1] = t; } } int main(void) { sort(arr, 4); return arr[0]; }";
 
 /** 旧壳层 swapPair 的冻结副本（逐行照搬改造前 `cmd/mcp_js` PLAYER 函数）。 */
 export function oldSwapPair(fr: MiniFrame, name: string): { i: number; j: number } | null {
@@ -223,6 +228,74 @@ export function compareCase(
   return { mismatches, stats };
 }
 
+/** 产物脚本里替换 `window.__VITRO__=<json>` 的数据段（只替换第一个赋值；
+ *  字符串/转义感知的括号扫描——JSON 内出现 `};` 不会截断）。 */
+export function replaceVitroData(script: string, data: unknown): string {
+  const prefix = "window.__VITRO__=";
+  const at = script.indexOf(prefix);
+  if (at < 0) throw new Error("replaceVitroData: 产物脚本无 window.__VITRO__= 赋值");
+  const start = at + prefix.length;
+  if (script[start] !== "{") throw new Error("replaceVitroData: 赋值不是 JSON 对象");
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  let end = -1;
+  for (let i = start; i < script.length; i++) {
+    const ch = script[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        end = i + 1;
+        break;
+      }
+    }
+  }
+  if (end < 0) throw new Error("replaceVitroData: 数据 JSON 未闭合");
+  return script.slice(0, start) + JSON.stringify(data) + script.slice(end);
+}
+
+export interface DivergencePlan {
+  data: VitroData;
+  on: number;
+  off: number;
+  onCap: string;
+  offCap: string;
+}
+
+/** P2-1 人造分叉（PR #530 审阅）：把一帧顺手改成「有 sw+哨兵字幕」、另一帧
+ *  sw 删掉——DOM 必须跟 plan 走；若壳层仍读 frames/旧规则，本锚必红。 */
+export function mutatePlanForDivergence(data: VitroData, realName: string): DivergencePlan {
+  const clone = JSON.parse(JSON.stringify(data)) as VitroData;
+  const frames = clone.frames ?? [];
+  const steps = clone.doc?.timeline?.steps;
+  if (!Array.isArray(steps)) throw new Error("mutatePlanForDivergence: 缺 doc.timeline.steps");
+  let on = -1;
+  let off = -1;
+  for (let k = 0; k < frames.length; k++) {
+    const len = (frames[k]?.r?.[realName] ?? []).length;
+    const sw = steps[k]?.sw;
+    if (off < 0 && sw !== undefined && sw.name === realName) off = k;
+    if (on < 0 && sw === undefined && len >= 2) on = k;
+  }
+  if (on < 0 || off < 0) throw new Error("mutatePlanForDivergence: 找不到可注入/可移除帧");
+  const onCap = "MUT-PLAN-ON";
+  const offCap = "MUT-PLAN-OFF";
+  steps[on] = { sw: { name: realName, i: 0, j: 1 }, cap: { t: onCap, w: 2, dur: 1 } };
+  const offStep = steps[off] ?? {};
+  delete offStep.sw;
+  offStep.cap = { t: offCap, w: 1, dur: 0 };
+  steps[off] = offStep;
+  return { data: clone, on, off, onCap, offCap };
+}
+
 interface FrameOut {
   id?: number | null;
   result?: unknown;
@@ -267,11 +340,12 @@ async function drive(): Promise<number> {
   try {
     void await wait(send("initialize", { protocolVersion: "2025-03-05" }));
     srv.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
-    const cases: Array<[string, string, Record<string, unknown>, string, number]> = [
-      ["bubble（真名=展示名 arr）", BUBBLE_C, { budget: 300 }, "arr", 3],
-      ["bubble_sort（真名 a ≠ 展示名 arr）", BUBBLE_SORT_A, {}, "a", 54],
+    const cases: Array<[string, string, Record<string, unknown>, string, number, boolean]> = [
+      ["bubble（真名=展示名 arr）", BUBBLE_C, { budget: 300 }, "arr", 3, true],
+      ["bubble_sort（真名 a ≠ 展示名 arr）", BUBBLE_SORT_A, {}, "a", 54, false],
+      ["same-name（全局 arr + 形参 arr 双快照）", SAME_NAME_C, {}, "arr", 37, false],
     ];
-    for (const [label, source, extra, realName, expectSwFrames] of cases) {
+    for (const [label, source, extra, realName, expectSwFrames, divergence] of cases) {
       const r = JSON.parse((await call("animate", { source, preview_png: false, out_dir: outDir, ...extra })).text) as {
         ok: boolean;
         html_path: string;
@@ -287,6 +361,22 @@ async function drive(): Promise<number> {
       chk.check(`${label}: 交换帧集合锚 ${expectSwFrames}`, stats.domSwapFrames === expectSwFrames && stats.oldSwapFrames === expectSwFrames,
         `旧=${stats.oldSwapFrames} DOM=${stats.domSwapFrames}`);
       if (mismatches.length === 0) console.log(`timeline_equiv: ${label} OK——${detail}`);
+      if (divergence) {
+        // 人造分叉：plan 与 frames 故意不一致 → DOM 必须跟 plan 走。
+        // 若壳层静默回退旧规则（如 LIVE 反写成 true），本锚必红。
+        const mut = mutatePlanForDivergence(d.data as VitroData, realName);
+        const mutScript = replaceVitroData(extractScript(readFileSync(r.html_path, "utf8")), mut.data);
+        const mdrv = driveScript(mutScript);
+        const onP = mdrv.probes[mut.on];
+        const offP = mdrv.probes[mut.off];
+        chk.check(
+          `${label}: 人造分叉——DOM 跟 plan 走（静态路径真消费）`,
+          onP !== undefined && offP !== undefined &&
+            onP.swap === 2 && onP.cap.startsWith(mut.onCap) &&
+            offP.swap === 0 && offP.cap.startsWith(mut.offCap),
+          `on 帧 ${mut.on}: swap=${onP?.swap} cap=${JSON.stringify(onP?.cap.slice(0, 32))}; off 帧 ${mut.off}: swap=${offP?.swap} cap=${JSON.stringify(offP?.cap.slice(0, 32))}`,
+        );
+      }
     }
   } catch (e) {
     chk.check("驱动异常（超时/畸形帧）", false, e instanceof Error ? e.message : String(e));

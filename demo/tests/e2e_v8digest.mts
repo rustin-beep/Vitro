@@ -85,10 +85,14 @@ async function main(): Promise<number> {
     lines.push(g.invoke(JSON.stringify({ id: 3, method: "output.delta", params: { cursor: 0, stream: "stdout" } })));
   }
   const nodeDigestAll = sha256(lines.join("\n"));
-  // 互异门量：逐语料 digest（compile 帧单独）——全崩形态下三者相同即红
-  const perSource = SOURCES.map((src) => sha256(g.invoke(JSON.stringify({ id: 1, method: "compile", params: { source: src } }))));
+  // 互异门量：逐语料三帧组 digest（compile+run+output）。CI 首跑校准勘误
+  // （run 43675106579）：原门量锚单 compile 帧——三个合法无诊断程序的
+  // compile 响应完全同构（ok:true+diagnostics:[]，帧无源码回显）恒红，
+  // 是门量锚错帧非引擎分叉。改锚三帧组：stdout（13/15/vitro-v8）天然
+  // 互异；全崩形态（compile 错误帧三同）仍被互异断言检出。
+  const perSource = [0, 1, 2].map((i) => sha256(lines.slice(i * 3, i * 3 + 3).join("\n")));
   if (perSource[0] === perSource[1] || perSource[1] === perSource[2]) {
-    console.error(`e2e_v8digest: 判别门量红——三语料 compile digest 互同（compile 面全崩假形态）：${perSource.join(",")}`);
+    console.error(`e2e_v8digest: 判别门量红——三语料帧组 digest 互同（compile/run 面全崩假形态）：${perSource.join(",")}`);
     return 1;
   }
 

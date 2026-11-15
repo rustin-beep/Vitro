@@ -214,7 +214,13 @@ jobs:
       # 探测链：PATH google-chrome（ubuntu 形态）→ Windows Chrome 标准
       # 安装路径（runner 镜像自带）→ Edge 兜底（CDP 同源，注释既定口径）。
       # 闸内显式回显所用浏览器——静默兜底违反 fail loud 纪律。
-      - name: F4 browser E2E (headless chrome, 107 anchors)
+      # E2E 步骤级拆分（2026-11-15 红遮红终局治理）：原 7 脚本单步形态下
+      # 步名只报「F4 browser E2E 红」——哪个脚本红须翻日志（run 43686664411
+      # 实锤观感：v8digest 红但 run 页只见步级红）。拆形：setup 步（chrome
+      # 起动 + 静态服）+ 每脚本一步（if: always() 独立红绿上 run 页）——
+      # 步名即脚本名，PR 页扫视即达。setup 红（环境 fail loud）时后续步
+      # 各自因 CDP 不可达而红（红不遮红，且每步都指向 setup）。
+      - name: E2E setup (headless chrome + static server)
         if: always()
         run: |
           CHROME_BIN="$(command -v google-chrome || true)"
@@ -264,37 +270,46 @@ jobs:
               exit 1
             fi
           fi
-          # E2E 脚本群累计失败（批②续 2026-11-15）：原 set -e 串行形态首红
-          # 断链——后面脚本的独立红全遮蔽（run 43677043207 实锤：v8digest
-          # 红遮 bootfail；gates-diff 套件循环 2026-10-18 同款治理线收口）。
-          # 单脚本红仍 job 红（闸强度不变），全部脚本跑完再退出非零——
-          # 多脚本红一屏尽收。bootfail 仍末位（finally 还原语义，累计下同安）。
-          rc=0
-          run_e2e() {
-            echo "== E2E: $1 =="
-            if ! node "demo/tests/$1.mts" http://127.0.0.1:8931/; then
-              rc=1
-              echo "::error::E2E $1 红（后续脚本继续跑——红不遮红）"
-            fi
-          }
-          # 样式契约 selftest（本地判定，无 URL）
-          echo "== E2E: style_contract --selftest =="
-          node demo/tests/style_contract.mts --selftest || { rc=1; echo "::error::style_contract selftest 红"; }
-          run_e2e style_contract
-          run_e2e e2e_diagcard
-          run_e2e e2e_workspace
-          run_e2e e2e_session
-          run_e2e e2e_editor
-          # 批②-5（2026-11-14）：浏览器 V8 digest 锚——同 gateway wasm 产物 ×
-          # 三语料 × 同 invoke 序列，node V8（本进程）与 Chrome V8（CDP 页内）
-          # 帧 digest 对拍——gates-wasm 的 V8 是 node（.node-version 单点），
-          # 浏览器 V8（runner Chrome 漂移）此前零引擎行为对拍（js-string
-          # builtins 等版本敏感面的异构盲区收口）。三语料 digest 互异门量
-          # 防全崩假绿（门量锚三帧组——compile 帧对合法程序同构，首跑勘误）。
-          run_e2e e2e_v8digest
-          # bootfail 末位跑：临时改名 dist wasm 产物造装载失败（finally 还原）。
-          run_e2e e2e_bootfail
-          exit $rc
+          sleep 2
+        shell: bash
+
+      - name: "E2E: style_contract (selftest + 5 主题 × 19 选择器)"
+        if: always()
+        run: |
+          node demo/tests/style_contract.mts --selftest
+          node demo/tests/style_contract.mts http://127.0.0.1:8931/
+        shell: bash
+      - name: "E2E: e2e_diagcard (诊断带 S1-S5)"
+        if: always()
+        run: node demo/tests/e2e_diagcard.mts http://127.0.0.1:8931/
+        shell: bash
+      - name: "E2E: e2e_workspace (W1-W17 工作区/回放/设置)"
+        if: always()
+        run: node demo/tests/e2e_workspace.mts http://127.0.0.1:8931/
+        shell: bash
+      - name: "E2E: e2e_session (F1-F8 会话族)"
+        if: always()
+        run: node demo/tests/e2e_session.mts http://127.0.0.1:8931/
+        shell: bash
+      - name: "E2E: e2e_editor (N1-N9 + 编辑器 10 锚)"
+        if: always()
+        run: node demo/tests/e2e_editor.mts http://127.0.0.1:8931/
+        shell: bash
+      # 批②-5（2026-11-14）：浏览器 V8 digest 锚——同 gateway wasm 产物 ×
+      # 三语料 × 同 invoke 序列，node V8（本进程）与 Chrome V8（CDP 页内）
+      # 帧 digest 对拍——gates-wasm 的 V8 是 node（.node-version 单点），
+      # 浏览器 V8（runner Chrome 漂移）此前零引擎行为对拍（js-string
+      # builtins 等版本敏感面的异构盲区收口）。三语料 digest 互异门量
+      # 防全崩假绿；页内 wasm URL = node 侧直读 dist/assets 哈希名（两轮
+      # CI 勘误定案：根路径 404 + Worker resource timing 不入主页面表）。
+      - name: "E2E: e2e_v8digest (浏览器 V8 ≡ node V8, wasm-gc 帧流)"
+        if: always()
+        run: node demo/tests/e2e_v8digest.mts http://127.0.0.1:8931/
+        shell: bash
+      # bootfail 末位：临时改名 dist wasm 产物造装载失败（finally 还原）。
+      - name: "E2E: e2e_bootfail (装载失败横幅)"
+        if: always()
+        run: node demo/tests/e2e_bootfail.mts http://127.0.0.1:8931/
         shell: bash
 
       # demo UI 字符串契约对账（2026-10-02，防线维护）：JS↔CSS 类名/CSS

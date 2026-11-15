@@ -16,7 +16,7 @@
 //   node tests/e2e_v8digest.mts http://127.0.0.1:8931/
 // 前置：demo/wasm.wasm 就位（构建期资产 cp，E2E 主步同款）。
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { connectCdp } from "./cdp.mts";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:8931/";
@@ -28,17 +28,33 @@ const SOURCES = [
   'int main(){printf("vitro-v8");return 0;}',
 ];
 
+/** 页内 wasm URL：node 侧直读 dist/assets/ 哈希名（两轮 CI 勘误的定案）——
+ * ① 根路径 wasm.wasm 404（vite build 产物是 assets/wasm-<hash>.wasm）；
+ * ② performance resource 表发现也失效——wasm 在 Worker 内部加载，Worker
+ * 的 resource timing 不计入主页面（本地 headless 实证：boot 后 total=5、
+ * wasm 条目零）。产物文件 node 侧就在 dist 里，直接读名传入——零页内
+ * 发现逻辑、零路径猜测；形态漂移（无 assets/）时回落根路径并显式报错。 */
+function distWasmUrl(): string {
+  try {
+    // 哈希名在 JS chunk 里不在 index.html（?url import 形态）——直扫 assets
+    // 目录取 wasm 文件（产物唯一）；多文件形态取首并显式列出（fail loud）。
+    const dir = new URL("../dist/assets/", import.meta.url);
+    const names = readdirSync(dir).filter((f) => f.endsWith(".wasm"));
+    if (names.length === 1) return BASE + "assets/" + names[0];
+    if (names.length > 1) throw new Error(`dist/assets 多 wasm 产物（${names.join(",")}）——路径发现面漂移，须人工定锚`);
+  } catch (e) {
+    process.stderr.write(`e2e_v8digest: dist/assets 扫描失败（${e instanceof Error ? e.message : String(e)}）——回落根路径\n`);
+  }
+  return BASE + "wasm.wasm";
+}
+
 /** invoke 序列（compile→run→output.delta stdout）——两端同构的唯一真源（字符串模板注入页内）。 */
 const RUNNER_JS = `
   async function digestInPage(sources) {
-    // wasm URL 发现（CI 首跑勘误 run 43677043207：vite build 后产物是
-    // assets 哈希名，根路径 wasm.wasm 404 → 空 buffer → CompileError@+0）：
-    // 页面 boot 时 worker 已 instantiate 过 wasm——performance resource
-    // 表里就有真实 URL（零路径猜测）；缺席才回落根路径并显式报错。
-    const ent = performance.getEntriesByType("resource").find((e) => e.name.endsWith(".wasm"));
-    const url = ent !== undefined ? ent.name : ${JSON.stringify(BASE + "wasm.wasm")};
-    const buf = await (await fetch(url)).arrayBuffer();
-    if (buf.byteLength === 0) throw new Error("wasm 拉取为空: " + url);
+    const buf = await (await fetch(WASM_URL)).arrayBuffer();
+    if (buf.byteLength === 0) throw new Error("wasm 拉取为空: " + WASM_URL);
+    const head = Array.from(new Uint8Array(buf.slice(0, 4))).map((b) => b.toString(16).padStart(2, "0")).join("");
+    if (head !== "0061736d") throw new Error("非 wasm 字节（magic " + head + "）: " + WASM_URL);
     // 装配（与 node 侧对称）：枚举 "_" 常量 + options 编译（js-string builtins）
     const bare = new WebAssembly.Module(buf);
     const consts = {};
@@ -105,9 +121,10 @@ async function main(): Promise<number> {
 
   // ── Chrome V8 侧（CDP 页内——E2E 主步已起 Chrome 9222 + 静态服）──
   const cdp = await connectCdp();
-  // evaluate 内建 awaitPromise：RUNNER_JS 是 async 函数声明，IIFE 直呼返回 digest
+  // evaluate 内建 awaitPromise：RUNNER_JS 是 async 函数声明，IIFE 直呼返回
+  // digest；WASM_URL 由 node 侧 dist 实名注入（见 distWasmUrl 头注）。
   const pageDigest = await cdp.evaluate<string>(
-    `(async () => { ${RUNNER_JS} return await digestInPage(${JSON.stringify(SOURCES)}); })()`,
+    `(async () => { const WASM_URL = ${JSON.stringify(distWasmUrl())}; ${RUNNER_JS} return await digestInPage(${JSON.stringify(SOURCES)}); })()`,
   );
   cdp.close();
   console.log(`node  V8 digest: ${nodeDigestAll}`);

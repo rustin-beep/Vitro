@@ -83,5 +83,5 @@ node scripts/clang_direct/main.mts
 
 ---
 
-*框架位置：驱动 `scripts/clang_direct/main.go`（Go，零第三方依赖）；语料 `corpus/{baseline,knr,leetcode,gap,codegen_skeleton,template_generated}/`；白名单 `scripts/clang_direct/known_direct.json`；缓存 `.clang_cache_cd/`（gitignore）。
+*框架位置：驱动 `scripts/clang_direct/main.mts`（TS 现役，node 直跑——2026-10-25 #273 迁移批；`main.go` 转纯回退面）；语料 `corpus/{baseline,knr,leetcode,gap,codegen_skeleton,template_generated,llm_multifile,llm_scale,chibicc_port}/`；白名单 `scripts/clang_direct/known_direct.json`；缓存 `.clang_cache_cd/`（gitignore）。
 前身《影子验证框架》已归档：[`docs/archive/ARCHIVE_影子验证框架.md`](../../archive/ARCHIVE_影子验证框架.md)（2026-05-17 起的用例演化史与转义历史口径在档）。*

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1258" role="img" aria-label="vitro MoonBit 包切分分层图">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1412" role="img" aria-label="vitro MoonBit 包切分分层图">
   <title>MoonBit 迁移 · 包切分分层（L0–L6 编译侧）</title>
   <!-- 由 scripts/gen_svg 生成（勿手改）：对账 MoonBit迁移总计划.md §4 包切分总图逐层文字；实/虚线与在架版本机器对账 facts（moonbit_built_packages / moonbit_engine_version），批次权威=总计划 §10 -->
   <style>
@@ -31,7 +31,7 @@
       .tm, .tc { fill: #94A3AD; }
     }
   </style>
-  <rect class="bg" width="1200" height="1258"/>
+  <rect class="bg" width="1200" height="1412"/>
   <defs>
     <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" class="ahf"/>
@@ -39,7 +39,7 @@
   </defs>
 <text class="tt" x="600" y="56" text-anchor="middle">MoonBit 迁移 · 包切分分层（L0–L6 编译侧）</text>
 <text class="tm" x="600" y="94" text-anchor="middle">module vitro/engine · 依赖严格单向无环 · .mbti 取代 ABI 版本化成为对外义务载体</text>
-<rect class="card" x="20" y="118" width="1160" height="96" rx="12"/>
+<rect class="card" x="20" y="118" width="1160" height="250" rx="12"/>
 <text class="t" x="40" y="152" text-anchor="start">L0</text>
 <text class="tc" x="40" y="180" text-anchor="start">零依赖</text>
 <text class="tc" x="1065" y="152" text-anchor="start">0.9.1 在架</text>
@@ -48,71 +48,86 @@
 <text class="tc" x="191" y="180" text-anchor="start">SourceLoc + 坐标契约（字节偏移 +1 · 双坐标）</text>
 <rect class="card" x="622" y="130" width="433" height="60" rx="10"/>
 <text class="ts" x="638" y="156" text-anchor="start">vitro/engine/opcode</text>
-<text class="tc" x="638" y="180" text-anchor="start">135 opcodes 稳定编号（44–46 C# 异常三件 + 47–49 空号）</text>
-<rect class="card" x="20" y="232" width="1160" height="96" rx="12"/>
-<text class="t" x="40" y="266" text-anchor="start">L1</text>
-<text class="tc" x="40" y="294" text-anchor="start">诊断契约</text>
-<text class="tc" x="1065" y="266" text-anchor="start">0.9.1 在架</text>
-<rect class="card" x="175" y="244" width="880" height="60" rx="10"/>
-<text class="ts" x="191" y="270" text-anchor="start">vitro/engine/diag</text>
-<text class="tc" x="191" y="294" text-anchor="start">ErrorCode 137 臂 + Severity + SourceLang + catalog JSON + 覆盖率断言</text>
-<rect class="card" x="20" y="346" width="1160" height="96" rx="12"/>
-<text class="t" x="40" y="380" text-anchor="start">L2</text>
-<text class="tc" x="40" y="408" text-anchor="start">抽象语法</text>
-<text class="tc" x="1065" y="380" text-anchor="start">0.9.1 在架</text>
-<rect class="card" x="175" y="358" width="880" height="60" rx="10"/>
-<text class="ts" x="191" y="384" text-anchor="start">vitro/engine/ast</text>
-<text class="tc" x="191" y="408" text-anchor="start">Type 17 / Expr 26 / Stmt 16 + depth + 判等渲染单源</text>
-<rect class="card" x="20" y="460" width="1160" height="96" rx="12"/>
-<text class="t" x="40" y="494" text-anchor="start">L3</text>
-<text class="tc" x="40" y="522" text-anchor="start">名字单源</text>
-<text class="tc" x="1065" y="494" text-anchor="start">0.9.1 在架</text>
-<rect class="card" x="175" y="472" width="880" height="60" rx="10"/>
-<text class="ts" x="191" y="498" text-anchor="start">vitro/engine/names</text>
-<text class="tc" x="191" y="522" text-anchor="start">InstKey→InstId→mangled Name 唯一产出口（parser / typeck 共依赖）</text>
-<rect class="card" x="20" y="574" width="1160" height="178" rx="12"/>
-<text class="t" x="40" y="608" text-anchor="start">L4</text>
-<text class="tc" x="40" y="636" text-anchor="start">前端</text>
-<text class="tc" x="1065" y="608" text-anchor="start">0.9.1 在架</text>
-<rect class="card" x="175" y="586" width="433" height="60" rx="10"/>
-<text class="ts" x="191" y="612" text-anchor="start">vitro/engine/lexer</text>
-<text class="tc" x="191" y="636" text-anchor="start">独立预处理 pass + LineMap + 宿主 IO</text>
-<rect class="card" x="622" y="586" width="433" height="60" rx="10"/>
-<text class="ts" x="638" y="612" text-anchor="start">vitro/engine/parser</text>
-<text class="tc" x="638" y="636" text-anchor="start">token→AST · 瀑布 + 声明符螺旋 · depth 守卫</text>
-<rect class="plan" x="175" y="668" width="880" height="60" rx="10"/>
-<text class="ts" x="191" y="694" text-anchor="start">csharp/lexer + csharp/parser</text>
-<text class="tc" x="191" y="718" text-anchor="start">〔CS 批·S6 后〕C# 前端；插值字符串 hole 级 span</text>
-<rect class="card" x="20" y="770" width="1160" height="178" rx="12"/>
-<text class="t" x="40" y="804" text-anchor="start">L5</text>
-<text class="tc" x="40" y="832" text-anchor="start">语义</text>
-<text class="tc" x="1065" y="804" text-anchor="start">在建 2/3</text>
-<rect class="card" x="175" y="782" width="280" height="60" rx="10"/>
-<text class="tn" x="191" y="808" text-anchor="start">vitro/engine/typeck</text>
-<text class="tc" x="191" y="832" text-anchor="start">定型 + lowering（4 Pass）</text>
-<rect class="plan" x="475" y="782" width="280" height="60" rx="10"/>
-<text class="tn" x="491" y="808" text-anchor="start">vitro/engine/containers</text>
-<text class="tc" x="491" y="832" text-anchor="start">JSON 数据驱动 · S9 裁定</text>
-<rect class="card" x="775" y="782" width="280" height="60" rx="10"/>
-<text class="tn" x="791" y="808" text-anchor="start">vitro/engine/libc</text>
-<text class="tc" x="791" y="832" text-anchor="start">单表签名 57 + 放行 175</text>
-<rect class="plan" x="175" y="864" width="880" height="60" rx="10"/>
-<text class="ts" x="191" y="890" text-anchor="start">csharp/typeck</text>
-<text class="tc" x="191" y="914" text-anchor="start">〔CS 批〕引用语义 / 类系统 / 异常类型链 / ARC 插桩点判定（共享切线=表达式/语句层）</text>
-<rect class="card" x="20" y="966" width="1160" height="178" rx="12"/>
-<text class="t" x="40" y="1000" text-anchor="start">L6</text>
-<text class="tc" x="40" y="1028" text-anchor="start">发射</text>
-<text class="tc" x="1065" y="1000" text-anchor="start">0.9.1 在架</text>
-<rect class="card" x="175" y="978" width="433" height="60" rx="10"/>
-<text class="ts" x="191" y="1004" text-anchor="start">vitro/engine/codegen</text>
-<text class="tc" x="191" y="1028" text-anchor="start">compile/compile_library 双入口 · 槽位 v1</text>
-<rect class="card" x="622" y="978" width="433" height="60" rx="10"/>
-<text class="ts" x="638" y="1004" text-anchor="start">vitro/engine/bytecode</text>
-<text class="tc" x="638" y="1028" text-anchor="start">产物 schema + libc 固定索引 + 路由表单源</text>
-<rect class="plan" x="175" y="1060" width="880" height="60" rx="10"/>
-<text class="ts" x="191" y="1086" text-anchor="start">csharp/codegen</text>
-<text class="tc" x="191" y="1110" text-anchor="start">〔CS 批〕ARC 插桩 / 异常映射 trap→Throw / 顶层语句入口合成</text>
-<text class="tc" x="600" y="1186" text-anchor="middle">硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量</text>
-<text class="tc" x="600" y="1214" text-anchor="middle">虚线框 = 包目录未建（机器对账 facts: moonbit_built_packages）</text>
-<text class="tc" x="600" y="1242" text-anchor="middle">权威：总计划 §10 · 漂移重生成：node scripts/gen_svg/main.mts packages</text>
+<text class="tc" x="638" y="180" text-anchor="start">154 opcodes 稳定编号（44–46 C# 异常三件 + 47–49 空号 + 自扩段至 156）</text>
+<rect class="card" x="175" y="212" width="433" height="60" rx="10"/>
+<text class="ts" x="191" y="238" text-anchor="start">vitro/engine/util</text>
+<text class="tc" x="191" y="262" text-anchor="start">零语义机械件单源（utf8_len / str_cmp / json_escape 族）</text>
+<rect class="card" x="622" y="212" width="433" height="60" rx="10"/>
+<text class="ts" x="638" y="238" text-anchor="start">vitro/engine/arith</text>
+<text class="tc" x="638" y="262" text-anchor="start">共享算术核（折叠器↔VM 语义单源；镜像证明 proofs/arith_mirror）</text>
+<rect class="card" x="175" y="294" width="433" height="60" rx="10"/>
+<text class="ts" x="191" y="320" text-anchor="start">vitro/engine/fs</text>
+<text class="tc" x="191" y="344" text-anchor="start">vendored 自 moonbitlang/x（模块零外部依赖）</text>
+<rect class="card" x="622" y="294" width="433" height="60" rx="10"/>
+<text class="ts" x="638" y="320" text-anchor="start">vitro/engine/wasmenc</text>
+<text class="tc" x="638" y="344" text-anchor="start">wasm 子集发射/折叠编码器（REHOST 载体迁移 #505）</text>
+<rect class="card" x="20" y="386" width="1160" height="96" rx="12"/>
+<text class="t" x="40" y="420" text-anchor="start">L1</text>
+<text class="tc" x="40" y="448" text-anchor="start">诊断契约</text>
+<text class="tc" x="1065" y="420" text-anchor="start">0.9.1 在架</text>
+<rect class="card" x="175" y="398" width="880" height="60" rx="10"/>
+<text class="ts" x="191" y="424" text-anchor="start">vitro/engine/diag</text>
+<text class="tc" x="191" y="448" text-anchor="start">ErrorCode 码表 gen_diag 单源（fail loud 锚 · E4 段已腾空）</text>
+<rect class="card" x="20" y="500" width="1160" height="96" rx="12"/>
+<text class="t" x="40" y="534" text-anchor="start">L2</text>
+<text class="tc" x="40" y="562" text-anchor="start">抽象语法</text>
+<text class="tc" x="1065" y="534" text-anchor="start">0.9.1 在架</text>
+<rect class="card" x="175" y="512" width="880" height="60" rx="10"/>
+<text class="ts" x="191" y="538" text-anchor="start">vitro/engine/ast</text>
+<text class="tc" x="191" y="562" text-anchor="start">Type 17 / Expr 26 / Stmt 16 + depth + 判等渲染单源</text>
+<rect class="card" x="20" y="614" width="1160" height="96" rx="12"/>
+<text class="t" x="40" y="648" text-anchor="start">L3</text>
+<text class="tc" x="40" y="676" text-anchor="start">名字与标准库事实</text>
+<text class="tc" x="1065" y="648" text-anchor="start">0.9.1 在架</text>
+<rect class="card" x="175" y="626" width="433" height="60" rx="10"/>
+<text class="ts" x="191" y="652" text-anchor="start">vitro/engine/names</text>
+<text class="tc" x="191" y="676" text-anchor="start">InstKey→InstId→mangled Name 唯一产出口（parser / typeck 共依赖）</text>
+<rect class="card" x="622" y="626" width="433" height="60" rx="10"/>
+<text class="ts" x="638" y="652" text-anchor="start">vitro/engine/stdlib</text>
+<text class="tc" x="638" y="676" text-anchor="start">标准库事实包（headers() 清单唯一真源）</text>
+<rect class="card" x="20" y="728" width="1160" height="178" rx="12"/>
+<text class="t" x="40" y="762" text-anchor="start">L4</text>
+<text class="tc" x="40" y="790" text-anchor="start">前端</text>
+<text class="tc" x="1065" y="762" text-anchor="start">0.9.1 在架</text>
+<rect class="card" x="175" y="740" width="433" height="60" rx="10"/>
+<text class="ts" x="191" y="766" text-anchor="start">vitro/engine/lexer</text>
+<text class="tc" x="191" y="790" text-anchor="start">独立预处理 pass + LineMap + 宿主 IO</text>
+<rect class="card" x="622" y="740" width="433" height="60" rx="10"/>
+<text class="ts" x="638" y="766" text-anchor="start">vitro/engine/parser</text>
+<text class="tc" x="638" y="790" text-anchor="start">token→AST · 瀑布 + 声明符螺旋 · depth 守卫</text>
+<rect class="plan" x="175" y="822" width="880" height="60" rx="10"/>
+<text class="ts" x="191" y="848" text-anchor="start">csharp/lexer + csharp/parser</text>
+<text class="tc" x="191" y="872" text-anchor="start">〔CS 批·S6 后〕C# 前端；插值字符串 hole 级 span</text>
+<rect class="card" x="20" y="924" width="1160" height="178" rx="12"/>
+<text class="t" x="40" y="958" text-anchor="start">L5</text>
+<text class="tc" x="40" y="986" text-anchor="start">语义</text>
+<text class="tc" x="1065" y="958" text-anchor="start">在建 2/3</text>
+<rect class="card" x="175" y="936" width="280" height="60" rx="10"/>
+<text class="tn" x="191" y="962" text-anchor="start">vitro/engine/typeck</text>
+<text class="tc" x="191" y="986" text-anchor="start">定型 + lowering（4 Pass）</text>
+<rect class="plan" x="475" y="936" width="280" height="60" rx="10"/>
+<text class="tn" x="491" y="962" text-anchor="start">vitro/engine/containers</text>
+<text class="tc" x="491" y="986" text-anchor="start">JSON 数据驱动 · S9 裁定</text>
+<rect class="card" x="775" y="936" width="280" height="60" rx="10"/>
+<text class="tn" x="791" y="962" text-anchor="start">vitro/engine/libc</text>
+<text class="tc" x="791" y="986" text-anchor="start">单表签名 57 + 放行 175</text>
+<rect class="plan" x="175" y="1018" width="880" height="60" rx="10"/>
+<text class="ts" x="191" y="1044" text-anchor="start">csharp/typeck</text>
+<text class="tc" x="191" y="1068" text-anchor="start">〔CS 批〕引用语义 / 类系统 / 异常类型链 / ARC 插桩点判定（共享切线=表达式/语句层）</text>
+<rect class="card" x="20" y="1120" width="1160" height="178" rx="12"/>
+<text class="t" x="40" y="1154" text-anchor="start">L6</text>
+<text class="tc" x="40" y="1182" text-anchor="start">发射</text>
+<text class="tc" x="1065" y="1154" text-anchor="start">0.9.1 在架</text>
+<rect class="card" x="175" y="1132" width="433" height="60" rx="10"/>
+<text class="ts" x="191" y="1158" text-anchor="start">vitro/engine/codegen</text>
+<text class="tc" x="191" y="1182" text-anchor="start">compile/compile_library 双入口 · 槽位 v1</text>
+<rect class="card" x="622" y="1132" width="433" height="60" rx="10"/>
+<text class="ts" x="638" y="1158" text-anchor="start">vitro/engine/bytecode</text>
+<text class="tc" x="638" y="1182" text-anchor="start">产物 schema + libc 固定索引 + 路由表单源</text>
+<rect class="plan" x="175" y="1214" width="880" height="60" rx="10"/>
+<text class="ts" x="191" y="1240" text-anchor="start">csharp/codegen</text>
+<text class="tc" x="191" y="1264" text-anchor="start">〔CS 批〕ARC 插桩 / 异常映射 trap→Throw / 顶层语句入口合成</text>
+<text class="tc" x="600" y="1340" text-anchor="middle">硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量</text>
+<text class="tc" x="600" y="1368" text-anchor="middle">虚线框 = 包目录未建（机器对账 facts: moonbit_built_packages）</text>
+<text class="tc" x="600" y="1396" text-anchor="middle">权威：总计划 §10 · 漂移重生成：node scripts/gen_svg/main.mts packages</text>
 </svg>

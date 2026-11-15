@@ -1,6 +1,6 @@
 # 算法标注 golden 人审清单（防线 6 · U1#1 ①，**v5 2026-09-14**）
 
-> **S8 承接现状（2026-10-04 注）**：本清单的 golden 体系已随 S8 进 MoonBit 引擎——`algorithm_annotations_v3.json` 37 模板/311 条首现作为 teaching/steps 批的对拍真值，族级对拍器 `scripts/teaching_annotation_diff`（Go，82 模板全绿 / 311 条逐条一致）已接 CI；compile 帧新增 `algorithm_matches` wire 出口（0.8.0）。人审主册职责维持（后续新增模板仍走本清单 §6 流程），三份审阅过程记录已归档至 `docs/archive/`。
+> **S8 承接现状（2026-10-04 注；2026-11-15 对账批勘正驱动语言口径）**：本清单的 golden 体系已随 S8 进 MoonBit 引擎——`algorithm_annotations_v3.json` 37 模板/311 条首现作为 teaching/steps 批的对拍真值，族级对拍器 `scripts/teaching_annotation_diff`（`.mts` 现役——2026-10-24 #273 重资产批自 Go 迁移、CI 三处引用切 node；82 模板全绿 / 311 条逐条一致）已接 CI；compile 帧新增 `algorithm_matches` wire 出口（0.8.0）。人审主册职责维持（后续新增模板仍走本清单 §6 流程），三份审阅过程记录已归档至 `docs/archive/`。
 
 ## 0. 当前状态
 

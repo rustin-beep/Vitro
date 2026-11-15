@@ -90,20 +90,21 @@ export function genArch(root: string): void {
   });
   const base: { x: number; name: string; desc: string }[] = [
     { x: 64, name: "memory", desc: "MemoryMap + check_access 单入口" },
-    { x: 428, name: "host", desc: "路由表 + Bytes 输出通道" },
-    { x: 792, name: "vm", desc: "穷尽 executor + VMSnapshot" },
+    { x: 336, name: "host", desc: "路由表 + Bytes 输出通道" },
+    { x: 608, name: "vm", desc: "穷尽 executor + VMSnapshot" },
+    { x: 880, name: "wasmenc", desc: "153 码表→wasm 子集发射/折叠（REHOST）" },
   ];
   for (const c of base) {
-    const cx = c.x + 172;
+    const cx = c.x + 129;
     P.push(
-      box(c.x, 224, 344, 62, "zone", 10),
+      box(c.x, 224, 258, 62, "zone", 10),
       textF(cx, 250, "tn", c.name, ""),
       textF(cx, 274, "tc", c.desc, ""),
     );
   }
   P.push(
     box(64, 302, 1072, 32, "card", 10),
-    textF(600, 324, "tm", "S9 收官（0.9.0 · 2026-10-25）：脱钩删区 · 缺陷海修复 · 三后端单壳 · S8 教学四件（time_travel / teaching / diagnostics / protocol）", ""),
+    textF(600, 324, "tm", "S9 收官（0.9.0 · 2026-10-25）· 0.9.1 在架（2026-10-31）· REHOST 载体迁移批 1a~3 已落（--wasm-rehost run/step 双态；批 4 收口挂 0.11.0）", ""),
   );
   P.push(
     box(64, 348, 1072, 32, "card", 10),
@@ -132,7 +133,7 @@ export function genArch(root: string): void {
     if (i < diffs.length - 1) P.push(arrow(c.x + 190, 498, c.x + 216, 498, "edge"));
   });
   P.push(
-    textF(600, 552, "tc", "对拍真值 = 冻结 golden（工序③固化锚）· 层 2 直拍 clang_direct（Clang 唯一真值）· facts check · 生成器 -check 闸", ""),
+    textF(600, 552, "tc", "对拍真值 = 冻结 golden（工序③固化锚）· 层 2 直拍 clang_direct（Clang 唯一真值）· wasmenc 双跑对拍（rundiff）· facts check · 生成器 -check 闸", ""),
   );
   // 底部：Rust oracle 退役档案条
   P.push(
@@ -443,7 +444,15 @@ export function genPackages(root: string, fd: FactsDoc): void {
       rows: [
         [
           { name: "vitro/engine/source", desc: "SourceLoc + 坐标契约（字节偏移 +1 · 双坐标）", builtAs: "source", extra: false },
-          { name: "vitro/engine/opcode", desc: "135 opcodes 稳定编号（44–46 C# 异常三件 + 47–49 空号）", builtAs: "opcode", extra: false },
+          { name: "vitro/engine/opcode", desc: "154 opcodes 稳定编号（44–46 C# 异常三件 + 47–49 空号 + 自扩段至 156）", builtAs: "opcode", extra: false },
+        ],
+        [
+          { name: "vitro/engine/util", desc: "零语义机械件单源（utf8_len / str_cmp / json_escape 族）", builtAs: "util", extra: false },
+          { name: "vitro/engine/arith", desc: "共享算术核（折叠器↔VM 语义单源；镜像证明 proofs/arith_mirror）", builtAs: "arith proofs/arith_mirror", extra: false },
+        ],
+        [
+          { name: "vitro/engine/fs", desc: "vendored 自 moonbitlang/x（模块零外部依赖）", builtAs: "fs", extra: false },
+          { name: "vitro/engine/wasmenc", desc: "wasm 子集发射/折叠编码器（REHOST 载体迁移 #505）", builtAs: "wasmenc", extra: false },
         ],
       ],
       note: "",
@@ -452,7 +461,7 @@ export function genPackages(root: string, fd: FactsDoc): void {
       tag: "L1",
       name: "诊断契约",
       rows: [
-        [{ name: "vitro/engine/diag", desc: "ErrorCode 137 臂 + Severity + SourceLang + catalog JSON + 覆盖率断言", builtAs: "diag", extra: false }],
+        [{ name: "vitro/engine/diag", desc: "ErrorCode 码表 gen_diag 单源（fail loud 锚 · E4 段已腾空）", builtAs: "diag", extra: false }],
       ],
       note: "",
     },
@@ -466,9 +475,12 @@ export function genPackages(root: string, fd: FactsDoc): void {
     },
     {
       tag: "L3",
-      name: "名字单源",
+      name: "名字与标准库事实",
       rows: [
-        [{ name: "vitro/engine/names", desc: "InstKey→InstId→mangled Name 唯一产出口（parser / typeck 共依赖）", builtAs: "names", extra: false }],
+        [
+          { name: "vitro/engine/names", desc: "InstKey→InstId→mangled Name 唯一产出口（parser / typeck 共依赖）", builtAs: "names", extra: false },
+          { name: "vitro/engine/stdlib", desc: "标准库事实包（headers() 清单唯一真源）", builtAs: "stdlib", extra: false },
+        ],
       ],
       note: "",
     },
@@ -528,28 +540,34 @@ export function genPackages(root: string, fd: FactsDoc): void {
     },
     {
       tag: "L8",
-      name: "会话/协议",
+      name: "会话/协议/编排",
       rows: [
         [
           { name: "vitro/engine/session", desc: "SessionConfig 值对象", builtAs: "session", extra: false },
           { name: "vitro/engine/protocol", desc: "schema + stream 差分", builtAs: "protocol", extra: false },
           { name: "vitro/engine/gateway", desc: "wasm-gc 导出 + NDJSON", builtAs: "gateway", extra: false },
         ],
+        [
+          { name: "time_travel", desc: "seek / 检查点重放（2026-10-01 自 L9 降层）", builtAs: "time_travel", extra: false },
+          { name: "teaching/steps", desc: "算法步骤语义（同批降层）", builtAs: "teaching/steps", extra: false },
+          { name: "diagnostics", desc: "根因 / 误区 · 教学七元组", builtAs: "diagnostics", extra: false },
+        ],
+        [
+          { name: "teaching/assets · langpack · content_data", desc: "教学文案 / 语言包 / 内容数据（md+.c 单源入包）", builtAs: "teaching/assets teaching/langpack teaching/content_data", extra: false },
+        ],
       ],
-      note: "",
+      note: "── time_travel / teaching 经 VmObserver / SourceProvider / AlgorithmContext 接口依赖反转，不依赖 session",
     },
     {
       tag: "L9",
-      name: "教学智能",
+      name: "教学智能 / MCP 宿主",
       rows: [
         [
-          { name: "time_travel", desc: "seek / 检查点重放", builtAs: "time_travel", extra: false },
-          { name: "teaching/steps", desc: "算法步骤语义", builtAs: "teaching/steps", extra: false },
-          { name: "analysis", desc: "cfg / algorithms", builtAs: "analysis", extra: false },
-          { name: "diagnostics", desc: "根因 / 误区", builtAs: "diagnostics", extra: false },
+          { name: "vitro/engine/mcp", desc: "MCP 宿主层（DSH · 12 工具 · 随 0.10.0 待发）", builtAs: "mcp", extra: false },
+          { name: "analysis", desc: "cfg / algorithms——M14 已迁 time_travel；M7/M8 不照搬（#32 重设计候选）", builtAs: "", extra: true },
         ],
       ],
-      note: "── 经 VmObserver / SourceProvider / AlgorithmContext 三接口依赖反转，不依赖 session",
+      note: "",
     },
   ];
 
@@ -659,8 +677,8 @@ export function genPackages(root: string, fd: FactsDoc): void {
   };
 
   const sub = "module vitro/engine · 依赖严格单向无环 · .mbti 取代 ABI 版本化成为对外义务载体";
-  drawLayers("MoonBit 迁移 · 包切分分层（L0–L6 编译侧）", sub, compile, 1258, "docs/current/01-定位与路线/moonbit-package-layers-compile.svg", false);
-  drawLayers("MoonBit 迁移 · 包切分分层（L7–L9 执行与智能侧）", sub, runtime, 748, "docs/current/01-定位与路线/moonbit-package-layers-runtime.svg", true);
+  drawLayers("MoonBit 迁移 · 包切分分层（L0–L6 编译侧）", sub, compile, 1412, "docs/current/01-定位与路线/moonbit-package-layers-compile.svg", false);
+  drawLayers("MoonBit 迁移 · 包切分分层（L7–L9 执行与智能侧）", sub, runtime, 920, "docs/current/01-定位与路线/moonbit-package-layers-runtime.svg", true);
 }
 
 // ─── 图 F：统一模式架构总览（源：统一模式设计.md §3 ASCII 架构图）────────────
@@ -1068,10 +1086,10 @@ export function genGates(root: string): void {
   // moonbit_test_passed 机判行 + scripts/moonbit/testcount 三向对账承载。
   const P: string[] = svgOpen(
     1200,
-    940,
+    1064,
     "vitro MoonBit 自建验证防线全景",
     "MoonBit 自建验证防线 · 对拍链与闸卫",
-    "对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml hygiene job；结构图无数字锚（测试数见 README 机判行）",
+    "对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml 现役 job；结构图无数字锚（测试数见 README 机判行）",
   );
   // 顶条：引擎白盒测试
   P.push(
@@ -1111,10 +1129,10 @@ export function genGates(root: string): void {
     textF(513, 574, "tc", "工序③固化 · 五闸对拍锚", ""),
     textF(513, 596, "tc", "oracle 退役后自持", ""),
   );
-  // 右列：闸卫家族（12 行——2026-10-31 第八轮翻新批对账 ci.yml 现役闸单扩容）
+  // 右列：闸卫家族（17 行——2026-11-15 第九轮对账批补 REHOST 产物闸/帧流不变量/棘轮三臂/注册表）
   P.push(
-    box(700, 190, 460, 465, "zone", 14),
-    textF(930, 224, "t", "闸卫家族（-check 硬闸 · CI hygiene）", ""),
+    box(700, 190, 460, 594, "zone", 14),
+    textF(930, 224, "t", "闸卫家族（-check 硬闸 · CI）", ""),
   );
   const guards: { name: string; desc: string }[] = [
     { name: "moonbit_surface", desc: "对外面/消费边双闸" },
@@ -1129,6 +1147,10 @@ export function genGates(root: string): void {
     { name: "host_contract_map", desc: "host 契约对账" },
     { name: "host_route_coverage", desc: "路由 110 覆盖" },
     { name: "toolchain_probe / vendor_drift", desc: "工具链/上游漂移" },
+    { name: "wasmenc 三闸", desc: "emitgate·rundiff·watcheck（REHOST）" },
+    { name: "step_invariant", desc: "step 帧流不变量（夜间全量）" },
+    { name: "green_probe", desc: "vitro-green 棘轮三臂对拍" },
+    { name: "ci_checklist", desc: "驱动存在即接入注册表" },
     { name: "mutation_gate", desc: "突变闸（观察期）" },
   ];
   guards.forEach((g, i) => {
@@ -1139,20 +1161,20 @@ export function genGates(root: string): void {
       textL(962, y + 19, "tc", g.desc),
     );
   });
-  // 底部：真值源与删区敞口清算
+  // 底部：真值源与删区敞口清算（2026-11-15 第九轮批随 guards 扩容整体下移）
   P.push(
-    box(40, 668, 1120, 76, "warn", 12),
-    textF(600, 698, "t", "真值源", ""),
-    textF(600, 726, "tc", "Clang = golden 唯一来源 · 对拍锚 = 冻结 golden（工序③固化）· Rust oracle 已退役（档案 tag rust-oracle-freeze）", ""),
+    box(40, 800, 1120, 76, "warn", 12),
+    textF(600, 830, "t", "真值源", ""),
+    textF(600, 858, "tc", "Clang = golden 唯一来源 · 对拍锚 = 冻结 golden（工序③固化）· Rust oracle 已退役（档案 tag rust-oracle-freeze）", ""),
   );
   P.push(
-    box(40, 760, 1120, 96, "warn", 12),
-    textF(600, 792, "t", "删区敞口清算（2026-10-05 删区批）", ""),
-    textF(600, 820, "tc", "oracle 测试体量随删区消失——语料域差量经 clang_direct 吸收（shadow 685 ⊆ 698 差量 0）+ MoonBit 自建测试 + fuzz 不变量自检承接；", ""),
-    textF(600, 844, "tc", "遗留敞口与逐项清算以总计划 §10 为权威", ""),
+    box(40, 892, 1120, 96, "warn", 12),
+    textF(600, 924, "t", "删区敞口清算（2026-10-05 删区批）", ""),
+    textF(600, 952, "tc", "oracle 测试体量随删区消失——语料域差量经 clang_direct 吸收（shadow 685 ⊆ 698 差量 0）+ MoonBit 自建测试 + fuzz 不变量自检承接；", ""),
+    textF(600, 976, "tc", "遗留敞口与逐项清算以总计划 §10 为权威", ""),
   );
   P.push(
-    textF(600, 890, "tc", "对账 脚本总清单与必跑防线.md §1/§2 · 漂移重生成：node scripts/gen_svg/main.mts gates", ""),
+    textF(600, 1022, "tc", "对账 脚本总清单与必跑防线.md §1/§2 · 漂移重生成：node scripts/gen_svg/main.mts gates", ""),
   );
   writeSVG(root, "docs/current/02-构建与上手/moonbit-verification-gates.svg", P);
 }

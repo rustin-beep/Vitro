@@ -948,9 +948,10 @@ I/O：printf、scanf、sprintf、snprintf、sscanf、fprintf、puts、getchar、
 宏/类型：NULL、EOF、INT_MAX、INT_MIN、bool、true、false、size_t、ptrdiff_t、
          EXIT_SUCCESS、EXIT_FAILURE
 
-不支持：bitfield、_Complex、_Static_assert、_Alignas、
+不支持：bitfield、_Complex、_Alignas、
        _Noreturn/_Thread_local/_Atomic、`__attribute__((cleanup(...)))` 等 GCC 扩展属性、
        自定义变参函数（`va_list` 自建变参；内建变参 printf/scanf 与 E2 预处理器已支持，见 §2.10~§2.11）
+       （`static_assert`/`_Static_assert` 双拼写**已支持**编译期真求值——E3 批次 §2.12，2026-11-15 对账批自本清单移除）
 ```
 
 这个范围覆盖了 C 语言的核心教学价值（变量、控制流、函数、指针、内存、字符串、类型系统、标准库），

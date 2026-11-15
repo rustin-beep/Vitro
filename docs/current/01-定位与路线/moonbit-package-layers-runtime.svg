@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 748" role="img" aria-label="vitro MoonBit 包切分分层图">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 920" role="img" aria-label="vitro MoonBit 包切分分层图">
   <title>MoonBit 迁移 · 包切分分层（L7–L9 执行与智能侧）</title>
   <!-- 由 scripts/gen_svg 生成（勿手改）：对账 MoonBit迁移总计划.md §4 包切分总图逐层文字；实/虚线与在架版本机器对账 facts（moonbit_built_packages / moonbit_engine_version），批次权威=总计划 §10 -->
   <style>
@@ -31,7 +31,7 @@
       .tm, .tc { fill: #94A3AD; }
     }
   </style>
-  <rect class="bg" width="1200" height="748"/>
+  <rect class="bg" width="1200" height="920"/>
   <defs>
     <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" class="ahf"/>
@@ -55,9 +55,9 @@
 <rect class="plan" x="622" y="212" width="433" height="60" rx="10"/>
 <text class="ts" x="638" y="238" text-anchor="start">vitro/engine/jit</text>
 <text class="tc" x="638" y="262" text-anchor="start">〔S9 裁定批〕必须可整体移除</text>
-<rect class="card" x="20" y="314" width="1160" height="96" rx="12"/>
+<rect class="card" x="20" y="314" width="1160" height="276" rx="12"/>
 <text class="t" x="40" y="348" text-anchor="start">L8</text>
-<text class="tc" x="40" y="376" text-anchor="start">会话/协议</text>
+<text class="tc" x="40" y="376" text-anchor="start">会话/协议/编排</text>
 <text class="tc" x="1065" y="348" text-anchor="start">0.9.1 在架</text>
 <rect class="card" x="175" y="326" width="280" height="60" rx="10"/>
 <text class="tn" x="191" y="352" text-anchor="start">vitro/engine/session</text>
@@ -68,27 +68,33 @@
 <rect class="card" x="775" y="326" width="280" height="60" rx="10"/>
 <text class="tn" x="791" y="352" text-anchor="start">vitro/engine/gateway</text>
 <text class="tc" x="791" y="376" text-anchor="start">wasm-gc 导出 + NDJSON</text>
-<rect class="card" x="20" y="428" width="1160" height="122" rx="12"/>
-<text class="t" x="40" y="462" text-anchor="start">L9</text>
-<text class="tc" x="40" y="490" text-anchor="start">教学智能</text>
-<text class="tc" x="1065" y="462" text-anchor="start">在建 3/4</text>
-<rect class="card" x="175" y="440" width="210" height="60" rx="10"/>
-<text class="tn" x="191" y="466" text-anchor="start">time_travel</text>
-<text class="tc" x="191" y="490" text-anchor="start">seek / 检查点重放</text>
-<rect class="card" x="398" y="440" width="210" height="60" rx="10"/>
-<text class="tn" x="414" y="466" text-anchor="start">teaching/steps</text>
-<text class="tc" x="414" y="490" text-anchor="start">算法步骤语义</text>
-<rect class="plan" x="621" y="440" width="210" height="60" rx="10"/>
-<text class="tn" x="637" y="466" text-anchor="start">analysis</text>
-<text class="tc" x="637" y="490" text-anchor="start">cfg / algorithms</text>
-<rect class="card" x="844" y="440" width="210" height="60" rx="10"/>
-<text class="tn" x="860" y="466" text-anchor="start">diagnostics</text>
-<text class="tc" x="860" y="490" text-anchor="start">根因 / 误区</text>
-<text class="tc" x="175" y="534" text-anchor="start">── 经 VmObserver / SourceProvider / AlgorithmContext 三接口依赖反转，不依赖 session</text>
-<rect class="warn" x="20" y="568" width="1160" height="60" rx="12"/>
-<text class="t" x="40" y="604" text-anchor="start">仓库外</text>
-<text class="tm" x="175" y="604" text-anchor="start">脚本防线层（.mts 现役 · Go 存量触达即迁 #273）· Node engine-host（golden 生成宿主）· spike 目录</text>
-<text class="tc" x="600" y="670" text-anchor="middle">硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量</text>
-<text class="tc" x="600" y="698" text-anchor="middle">虚线框 = 包目录未建（机器对账 facts: moonbit_built_packages）</text>
-<text class="tc" x="600" y="726" text-anchor="middle">权威：总计划 §10 · 漂移重生成：node scripts/gen_svg/main.mts packages</text>
+<rect class="card" x="175" y="408" width="280" height="60" rx="10"/>
+<text class="tn" x="191" y="434" text-anchor="start">time_travel</text>
+<text class="tc" x="191" y="458" text-anchor="start">seek / 检查点重放（2026-10-01 自 L9 降层）</text>
+<rect class="card" x="475" y="408" width="280" height="60" rx="10"/>
+<text class="tn" x="491" y="434" text-anchor="start">teaching/steps</text>
+<text class="tc" x="491" y="458" text-anchor="start">算法步骤语义（同批降层）</text>
+<rect class="card" x="775" y="408" width="280" height="60" rx="10"/>
+<text class="tn" x="791" y="434" text-anchor="start">diagnostics</text>
+<text class="tc" x="791" y="458" text-anchor="start">根因 / 误区 · 教学七元组</text>
+<rect class="card" x="175" y="490" width="880" height="60" rx="10"/>
+<text class="ts" x="191" y="516" text-anchor="start">teaching/assets · langpack · content_data</text>
+<text class="tc" x="191" y="540" text-anchor="start">教学文案 / 语言包 / 内容数据（md+.c 单源入包）</text>
+<text class="tc" x="175" y="574" text-anchor="start">── time_travel / teaching 经 VmObserver / SourceProvider / AlgorithmContext 接口依赖反转，不依赖 session</text>
+<rect class="card" x="20" y="608" width="1160" height="96" rx="12"/>
+<text class="t" x="40" y="642" text-anchor="start">L9</text>
+<text class="tc" x="40" y="670" text-anchor="start">教学智能 / MCP 宿主</text>
+<text class="tc" x="1065" y="642" text-anchor="start">0.9.1 在架</text>
+<rect class="card" x="175" y="620" width="433" height="60" rx="10"/>
+<text class="ts" x="191" y="646" text-anchor="start">vitro/engine/mcp</text>
+<text class="tc" x="191" y="670" text-anchor="start">MCP 宿主层（DSH · 12 工具 · 随 0.10.0 待发）</text>
+<rect class="plan" x="622" y="620" width="433" height="60" rx="10"/>
+<text class="ts" x="638" y="646" text-anchor="start">analysis</text>
+<text class="tc" x="638" y="670" text-anchor="start">cfg / algorithms——M14 已迁 time_travel；M7/M8 不照搬（#32 重设计候选）</text>
+<rect class="warn" x="20" y="722" width="1160" height="60" rx="12"/>
+<text class="t" x="40" y="758" text-anchor="start">仓库外</text>
+<text class="tm" x="175" y="758" text-anchor="start">脚本防线层（.mts 现役 · Go 存量触达即迁 #273）· Node engine-host（golden 生成宿主）· spike 目录</text>
+<text class="tc" x="600" y="824" text-anchor="middle">硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量</text>
+<text class="tc" x="600" y="852" text-anchor="middle">虚线框 = 包目录未建（机器对账 facts: moonbit_built_packages）</text>
+<text class="tc" x="600" y="880" text-anchor="middle">权威：总计划 §10 · 漂移重生成：node scripts/gen_svg/main.mts packages</text>
 </svg>

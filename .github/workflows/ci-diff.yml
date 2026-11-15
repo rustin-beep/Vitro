@@ -18,15 +18,22 @@ on:
         type: boolean
 jobs:
   gates-diff:
-    name: Diff gate (${{ matrix.driver }})
+    name: Diff gate (${{ matrix.driver }}${{ matrix.shard && format('/%s', matrix.shard) || '' }})
     runs-on: windows-latest
     strategy:
-      # 闸级可见性全开：九实例互不取消（一红不见其余）。
+      # 闸级可见性全开：实例互不取消（一红不见其余）。
       # exe 需求分两类（2026-10-11 校正）：parser/lexer/typeck/codegen 四家
       # 驱动内部 `moon run --target native cmd/dump_*` 现场构建（只要 moon
       # 在 PATH，自建增量 2-4 分钟并行无妨）；vm_diff / clang_direct（含批②
-      # js 臂两实例——vitro_js.js 同源 artifact）读 release 路径产物
+      # js 臂实例——vitro_js.js 同源 artifact）读 release 路径产物
       # （全量构建分钟级——消费 artifact 免重复）。
+      # CI 提速批 P2（2026-11-15）：js 两臂全量串行是 diff 组长板（run 1229
+      # 实测 clang_direct_js 10.2min / vm_diff_js 8.5min）——按语料目录拆
+      # matrix 片并行（逐例 digest 对拍与目录无关，分片=例集子集判定等价）。
+      # **native 两臂保持全量不动**（vm 1.0 / clang 2.9min）：golden 僵死 +
+      # 白名单空转防腐化只在 full 模式触发（vm.mts `if (full)` /
+      # clang_direct `fullCorpusRun()`），native 全量继续承担防腐化面——
+      # js 分片零防线损失。片内多目录累计失败（批③样板）。
       fail-fast: false
       matrix:
         include:
@@ -50,10 +57,23 @@ jobs:
           # （js 臂红不与 native 臂混灯——臂间分叉即 js 实例红 native 绿，
           # arm_divergence 的原始语料面首次可见）。产物 = artifact 的
           # vitro_js.js（needs_artifact 同上两类）。
+          # P2 分片：vm 6 目录拆 2 / clang 9 目录拆 3（均衡按例数与文件
+          # 规模估分——首跑实测后再调平）。
           - driver: vm_diff_js
             needs_artifact: true
+            shard: a
+          - driver: vm_diff_js
+            needs_artifact: true
+            shard: b
           - driver: clang_direct_js
             needs_artifact: true
+            shard: a
+          - driver: clang_direct_js
+            needs_artifact: true
+            shard: b
+          - driver: clang_direct_js
+            needs_artifact: true
+            shard: c
           # realcode 仓内语料对拍（2026-10-24 接线批）：-corpus 全量真跑
           # （Clang+gcc 分桶 + serve 三方）后与在库 gold 逐字段对账——77 语料
           # 此前只有 -check 静态闸（运行时防线为零）。moon 现场构建 serve
@@ -146,7 +166,17 @@ jobs:
             vm_diff_js)
               # 批② js 臂（2026-11-14）：共享 golden 直比——js 输出与 native
               # 任一分叉即红（arm_divergence 原始语料面）。
-              node scripts/diff_gate/main.mts vm --backend js
+              # P2 分片（2026-11-15）：全量 8.5min 按语料目录拆两片并行；
+              # --corpus 单目录判定与全量同构（逐例 digest 对拍）。
+              rc=0
+              case "${{ matrix.shard }}" in
+                a) dirs="baseline leetcode gap" ;;
+                b) dirs="knr llm_scale chibicc_port" ;;
+              esac
+              for d in $dirs; do
+                node scripts/diff_gate/main.mts vm --backend js --corpus "$d" || rc=1
+              done
+              exit $rc
               ;;
             clang_direct)
               # 2026-10-25 #273 迁移批：Go→.mts（双跑对拍通过），CI 引用切 TS。
@@ -154,7 +184,17 @@ jobs:
               ;;
             clang_direct_js)
               # 批② js 臂（2026-11-14）：与 clang 真值三方对拍的 js 侧。
-              node scripts/clang_direct/main.mts --backend js
+              # P2 分片（2026-11-15）：全量 10.2min 按语料目录拆三片并行。
+              rc=0
+              case "${{ matrix.shard }}" in
+                a) dirs="baseline knr" ;;
+                b) dirs="leetcode gap codegen_skeleton template_generated" ;;
+                c) dirs="llm_multifile llm_scale chibicc_port" ;;
+              esac
+              for d in $dirs; do
+                node scripts/clang_direct/main.mts --backend js --corpus "$d" || rc=1
+              done
+              exit $rc
               ;;
             realcode_corpus)
               # 仓内语料批运行时对拍（#273 迁移批 2026-10-25）：勘探与对账

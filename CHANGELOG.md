@@ -1,5 +1,60 @@
 ## [Unreleased]
 
+### perf(ci): CI 提速批——concurrency PR 轮取消（P0）+ static 五片（P1）+ diff js 臂目录分片（P2）（2026-11-15）
+
+- **实测基线**：run 1229 步级数据——总时长 15.2min ≈ 最长 job
+  static/bookkeeping 15.1min（零排队、公开仓免费无配额）；木桶=执行最短板
+  + concurrency pending。观感 20-27min（run 1224=27.4）系 pending 等待：
+  PR 轮不取消旧轮，同 PR 连推时新轮挂起 11min 实锤。
+- **P0 PR 轮 cancel-in-progress（ci.yml）**：`event_name == 'push'` →
+  `!= 'schedule'`——被取消旧轮对应过时 commit、结果无消费价值（required
+  checks 只看最新 commit），零防线损失；schedule 夜间全量轮保持不受打断
+  （group 事件后缀分流，跨事件互斥本就不发生）。拍板理由：agent 批次连推
+  节奏下 pending 10min 级纯等待。
+- **P1 static-gates 三片→五片（ci-static.yml）**：bookkeeping 独重
+  15.1min（rundiff 6.4 + testcount 5.3 + facts 1.9 互不相干）——wasmenc
+  三闸独立成片、dispatchdiff（批 4b-3 三方对拍含 cargo 冷编）再独立成片；
+  五片并行 ~8min 封顶。同闸同语料仅并发分片，零语义变化。
+- **P2 diff js 臂按语料目录分片（ci-diff.yml）**：clang_direct_js 10.2 /
+  vm_diff_js 8.5 是 diff 组长板——matrix 加 shard 维度（vm 6 目录×2 片 /
+  clang 9 目录×3 片，片内累计失败），逐例 digest 对拍与目录无关、分片=
+  例集子集判定等价。**native 两臂保持全量不动**（vm 1.0 / clang 2.9min）
+  ——golden 僵死 + 白名单空转防腐化只在 full 模式触发，native 全量继续
+  承担防腐化面，js 分片零防线损失。
+- 预期：关键路径 15.2 → ~9.7min（build 4.2 + diff 分片后 ~5）；job 数
+  30→36 零排队现状下安全。**首跑实测后再滚动 P3-P5**（engine wasm 分片 /
+  build 三臂并行 / fuzz 分片）。run 页效果不可本地复现——CI 首跑验收。
+
+### fix(ci): 红遮红批③——gates-native/static-gates/gates-wasm 步间 if: always() + 聚合步累计失败 + G11 孤儿注释清尾（2026-11-15）
+
+- **gates-native（ci-engine-gates.yml）**：9 检查步原零 always() 串行——
+  前步红则后续全 skipped（步级红才见、翻日志才知谁红，批① E2E 治理
+  run 43686664411 同款观感的引擎闸剩余面）。检查步统一加
+  `if: always()`（批① ci-frontends.yml 同款形态）：各自独立红绿上
+  run 页，多步红一屏尽收；job 结论仍红（闸强度不变）。环境四步
+  （checkout/Node/artifact/工具链）不升格——环境红全停且各检查步红均
+  指向前置（fail loud 不伪装成断言失败）。step_invariant 步内三臂
+  （抽样主跑 / rehost 装载 / native）改累计失败（ci-diff.yml 2026-10-18
+  样板）：单臂红不遮其余臂健康面。
+- **gates-wasm（ci-engine-gates.yml，批③观察项拍板连坐）**：matrix 拆分
+  （2026-10-17）只治了 slice 间遮蔽，serve_channel（8 步）/ cli_smoke
+  （5 步）片内串行一步红仍遮本片后续步——检查步 if 路由升格
+  `always() &&`；consumer_smoke 步内 selftest+主检改累计失败。
+  vm_diff / clang_direct 各单检查步、唯一前置为环境步，无片内遮蔽面
+  ——不升格（升格零收益）。
+- **static-gates（ci-static.yml）**：matrix 三片拆分（2026-10-17）只治了
+  片间遮蔽，片内串行一步红仍遮本片后续步——35 检查步 if 路由统一升格
+  `always() &&`（步间红不遮红）；步内多闸聚合改累计失败：freshness
+  七闸 / fix-diffusion 四闸 / host_contract 与 ledger 的 selftest+主检 /
+  install_skills 三件（node:test/tsc/oxlint）——全跑完聚齐失败再
+  exit，单闸红不遮其余闸健康面（前置类命令 build/npm ci 保持链式，
+  红即断属 fail loud 指向前置）。
+- **G11 孤儿注释删除**（P2 杂项清单项）：ci-static.yml 尾部 6 行注释
+  指向已退役的看板步骤（步骤体已不存在、注释悬空零宿主）——清除。
+- 验证：python yaml.safe_load 两文件解析 ✓；rc=0 / exit $rc 累计块
+  配对 ✓（grep 断言）；run 页步级红绿效果不可本地复现——待
+  CI 首跑观察（诚实登记，遮蔽证据锚批① run 43686664411 形态引证）。
+
 ### feat(bytecode+codegen+vm+wasmenc): REHOST 批 4b-4——wide-param 禁译撤除（误判定谳）+ 参数搬运弹序勘正 + 宽返回双通道（2026-11-15）
 
 - **wide-param 禁译撤除（4b-1 误判定谳）**：PR #520 审阅 P2-1 的「word/

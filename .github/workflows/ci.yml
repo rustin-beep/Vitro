@@ -32,16 +32,23 @@ on:
 # 工具链追新是既定策略（MoonBit 未到 1.0，breaking 只能跟着走），故
 # toolchain_probe 红属 hygiene：含义是「该走 moon-toolchain-upgrade-playbook
 # 迁移流程了」，不是「代码坏了」。
-# 过时 push 的 run 自动取消（2026-10-03 拆批接线）：连续 push 时只有最新
+# 过时 run 自动取消（2026-10-03 拆批接线）：连续 push 时只有最新
 # commit 的 run 跑满全程（此前每笔 push 都烧满 ~19 分钟——9981ac2 三笔连红
 # 实证）。group 加事件后缀（2026-11-01 审阅 v2 S13b-P6 修正）：GitHub 语义
 # 是「新 run 的 cancel 表达式决定是否取消组内正在跑的旧 run」——不加后缀时
 # schedule 轮（cancel=false）只保护它前面的 run，不保护它自己，夜间全量
 # 重算轮（CF_JUDGE_REFRESH 覆写 / Clang Golden 强制重算）可被任何到达的
 # push 轮取消且无留痕；加后缀后各事件分流取消，同事件同 ref 互斥不变。
+# CI 提速批 P0（2026-11-15 拍板，实测 run 1224/1230 实锤）：PR 轮也开
+# cancel——原只 push 轮取消时，同 PR 连续推 commit（agent 批次推送节奏）
+# 旧 PR 轮跑满全程 ~15.5min、新轮全程 pending（1224 = pending 11min +
+# 实跑 16.2min = 27.4min 观感）。被取消的旧轮对应过时 commit、其结果无
+# 消费价值（required checks 只看最新 commit 的 run）——零防线损失。
+# schedule 轮保持不取消（夜间全量重算不受打断；dispatch 组独立同ref
+# 连发时最新意图胜出）。
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
 
 # ── 闸级 job 化（2026-10-11，防线建设批）────────────────────────────────

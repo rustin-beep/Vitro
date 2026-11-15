@@ -164,6 +164,26 @@ fn EffectSim::sim_step(
       self.unreach_ends = 1
       Ok(())
     }
+    WIf => {
+      // if void 入帧（与 block 同构——出口无值；WEnd 弹帧）
+      self.frames.push(self.stack.length())
+      Ok(())
+    }
+    WReturn => {
+      // return（批 4a 骨架：出口块 return G_RV / 预算 return -1）——
+      // 其后不可达（函数级退出——保守按「全部帧关闭后不可达」处理：
+      // end 序数 = 剩余帧数）
+      self.unreach_ends = self.frames.length()
+      Ok(())
+    }
+    WBrTable(_, _) => {
+      // br_table（批 4a dispatch 骨架）：弹索引 i32 后必跳走（default
+      // 兜底）——其后到最内块 end 不可达（骨架里紧跟各块结构 end，块体
+      // 在 end 后恢复可达——与 WUnreachable 同作用域口径）
+      self.sim_pop(WT_I32, at)
+      self.unreach_ends = 1
+      Ok(())
+    }
     WDrop => {
       self.sim_pop_any()
       Ok(())

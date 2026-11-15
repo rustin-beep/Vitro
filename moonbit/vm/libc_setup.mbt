@@ -120,8 +120,9 @@ pub fn load_libc_artifact() -> LibcArtifact {
 /// 故收 (line, ty, ctx) 三元组而非 AlgorithmMatch（oracle compile_pipeline
 /// 在 engine 层做同款投影，分层同构）。
 ///
-/// `wasm_rehost`（批 2b，默认 false）：run 态装载走 wasm 载体往返
-/// （`@bytecode.rehost_round_trip`——step 态调用方不传恒 legacy）。
+/// `wasm_rehost`（批 2b，默认 false；**批 3 起两态独立接线**——run 帧
+/// 参数与 step.begin 帧参数各持旗标，调用方显式传）：装载走 wasm 载体
+/// 往返（`@bytecode.rehost_round_trip`）。
 /// **返回值 = 往返状态串**（调用方塞 run 帧/标记行，双跑对拍闸消费）：
 /// `""` = flag 未开 / `"ok groups=N"` = 往返装载成功（执行消费折叠重建
 /// 产物）/ `"fallback <reason>"` = 装载失败回退 legacy（过渡期设计单

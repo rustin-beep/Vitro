@@ -18,7 +18,7 @@ description: Vitro mooncakes（vitro/engine）发版与彩排手册——版本�
   - 日常档 `node scripts/release_preflight/main.mts`——**闸进程零网络零 login**：`moon package` 产物非退化（>400 条/>100KB——**模块目录被 .gitignore 覆盖时** 22 字节空 zip rc=0 实锤形态〔审阅批 2026-10-31 勘正归因：与是否 git 仓库无关，无 git 目录打包正常；CI 可达形态 = 忽略规则误伤 moonbit/〕）+ 根级四件在位 + 版本状态探针（moon.mod vs 本地 registry index 尾行，同号=未 bump 预期态，不判红）。import 断供防线由 moon check/test 的 Hygiene job 承担。
   - 发版彩排档 `--release`——dry-run 须 rc=0（版本已 bump 且 registry 无冲突；**须发版本机有 moon login**——CI 无登录会被 `Registry login is required` 拦，实测 2026-10-31）+ 日常档全部三件。**发版日 bump 版本后、publish 前必跑绿**。
   - **反刷量约束（用户拍板 2026-10-31）**：闸全程零 mooncakes zip GET（日常档完全零网络，release 档 dry-run 只有 publish 查重 API）；「干净消费工程 `moon add` + build」是真实下载计数，**永不进 CI**——只在发版日人工跑一次（§5 验收）。
-- **连坐面**：`moon.mod` description（模块页直接展示）、CHANGELOG（破坏面置顶）、README 包表与测试数、包图徽标（facts 锚机械派生，改包集/版本必连坐）、`docs/current/02-构建与上手/脚本总清单与必跑防线.md`。
+- **连坐面**：`moon.mod` description（模块页直接展示）、CHANGELOG（破坏面置顶）、README 包表与测试数、包图徽标（facts 锚机械派生，改包集/版本必连坐）、`docs/current/02-构建与上手/脚本总清单与必跑防线.md`、**「字段 ↔ 最低版本」表 HEAD 转正**（`docs/current/02-构建与上手/CLI使用手册.md`——表内 `HEAD（未发布）` 条目随本次发版逐条改为实版号，并反向核查该版新增的协议字段/方法/参数面是否漏登〔landing commit 日期 > 上一版发布日即属本版——2026-11-16 #116 收尾批立此连坐，防 0.9.0 时代「表未随发版更新即失步」复发〕）。
 - **README 示例里的 API 调用 = 消费边（2026-10-26 实锤，0.9.0 发版批）**：改 `moonbit/README.md` 示例代码若引入包从未被根 README 消费过的符号（如快速上手补 `@content_data.install_baked()`），即新增一条 surface 消费边——须连坐登记 `scripts/moonbit/surface_edges.txt`（根 README 的 consumer 记 `.`），否则 `moonbit_surface -check` 双向对账红（Scripts TS gate e2e ×2 + Static gates 同根双红）。**主 CI concurrency cancel-in-progress 会把前一提交的被红 run 掩成静默**——push 前逐提交核验触发面，别只看最新 run。
 
 ## 3. moon publish 机械事实（踩过的实锤）
@@ -48,4 +48,4 @@ description: Vitro mooncakes（vitro/engine）发版与彩排手册——版本�
 ## 权威源与时效
 - `moonbit/AGENTS.md` §发布流程；`docs/current/08-发布档案/` 各版本档案
 - **相关规程**：`vitro-facts-reconciliation`（徽标/测试数为 facts 锚，改版本必连坐）、`vitro-generator-contract`（包图由生成器出）、`vitro-toolchain-upgrade`（升级后发版的先后关系）
-- as_of: 2026-10-31（ds 批③：release_preflight 双档闸入 §2/§5 + 反刷量约束；0.5.0/0.6.0 两轮 + 0.9.0 发版批沉淀：README 示例消费边连坐 surface_edges.txt + cancel-in-progress 掩红坑）
+- as_of: 2026-11-16（#115/#116 收尾批：连坐面补「字段↔最低版本表 HEAD 转正」义务；0.9.1 在架仍为最新——本版注记经 CHANGELOG 无新版本节佐证）；2026-10-31（ds 批③：release_preflight 双档闸入 §2/§5 + 反刷量约束；0.5.0/0.6.0 两轮 + 0.9.0 发版批沉淀：README 示例消费边连坐 surface_edges.txt + cancel-in-progress 掩红坑）

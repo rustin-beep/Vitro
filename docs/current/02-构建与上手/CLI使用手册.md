@@ -1,6 +1,6 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-11-09（**配方 A 编译器勘正批**——`MOON_CC=clang-cl` 裸名形态被 moon 静默解析成发现的 cl.exe〔0 警告假绿，obj 指纹实锤，moon#2480〕，配方 A 翻案回 `MOON_CC=clang`〔release 面认裸 clang，下游独立 module stub.obj 指纹实锤〕；2026-11-08 的「`clang`→`clang-cl` 勘正」系依 #117 口径误改，本批再勘）。前一沿革 2026-11-08（**字段版本表复核批**——「字段 ↔ 最低版本」表逐条亲解在架 0.9.0/0.9.1 包源码复核：原 10 条「HEAD（未发布）」实已随 **0.9.0** 转正、`vfs.list` 随 **0.9.1**，建表时推定已失步〔0.8.0 时代写的表未随 0.9.0/0.9.1 两版发布连坐〕；配方 A `MOON_CC=clang`→`clang-cl` 勘正（拷出 `.mooncakes` 即独立 module，#117 口径——与快速入门同场景口径对齐）。前一沿革 2026-10-31（**第八轮全库翻新批**——compile 多单元 unity-build 语义补注〔#364：被引用 .c unit 转 vfs-only + 不动点剔除〕+ 源码/输入 UTF-8 解码语义成节〔#363：三臂统一 U+FFFD 替换解码，坏字节源码 E1001 三臂同形〕。前一沿革 2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。更前 2026-10-07 图标语义批〔#27〕、2026-10-06 统一入口批〔#49 批一〕、2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
+> 最后核对日期：2026-11-16（**#115/#116 收尾销案批**——「字段 ↔ 最低版本」表补登 11-08 复核后漏登的四条新增面（`max_checkpoints`→0.9.1、`file_ranges`/`wasm_rehost`/`timeline.plan`→HEAD，landing commit 亲核日期定版）；在架版本注记复核仍 = 0.9.1（CHANGELOG 无新版本节佐证）。前一沿革 2026-11-09（**配方 A 编译器勘正批**——`MOON_CC=clang-cl` 裸名形态被 moon 静默解析成发现的 cl.exe〔0 警告假绿，obj 指纹实锤，moon#2480〕，配方 A 翻案回 `MOON_CC=clang`〔release 面认裸 clang，下游独立 module stub.obj 指纹实锤〕；2026-11-08 的「`clang`→`clang-cl` 勘正」系依 #117 口径误改，本批再勘）。前一沿革 2026-11-08（**字段版本表复核批**——「字段 ↔ 最低版本」表逐条亲解在架 0.9.0/0.9.1 包源码复核：原 10 条「HEAD（未发布）」实已随 **0.9.0** 转正、`vfs.list` 随 **0.9.1**，建表时推定已失步〔0.8.0 时代写的表未随 0.9.0/0.9.1 两版发布连坐〕；配方 A `MOON_CC=clang`→`clang-cl` 勘正（拷出 `.mooncakes` 即独立 module，#117 口径——与快速入门同场景口径对齐）。前一沿革 2026-10-31（**第八轮全库翻新批**——compile 多单元 unity-build 语义补注〔#364：被引用 .c unit 转 vfs-only + 不动点剔除〕+ 源码/输入 UTF-8 解码语义成节〔#363：三臂统一 U+FFFD 替换解码，坏字节源码 E1001 三臂同形〕。前一沿革 2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。更前 2026-10-07 图标语义批〔#27〕、2026-10-06 统一入口批〔#49 批一〕、2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
 > 出口定位：本文档是 CLI **使用指南**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`CLI_PROTOCOL_V1.md`](../../../moonbit/docs/spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。完整出口清单与职责边界见 [出口分档与宿主策略.md](../06-出口与协议/出口分档与宿主策略.md)。
 
 ## 统一入口（推荐——agent / 脚本默认形态）
@@ -119,7 +119,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `session.create` / `session.reset` / `session.destroy` | — | 会话生命周期（响应带 `session` 拓扑语义字段，见上表"会话拓扑"）|
 | `shutdown` | — | 结束 serve 进程（EOF 亦可） |
 
-**字段 ↔ 最低版本（#116，2026-10-16 起；2026-11-08 逐条复核）**：协议纪律「只增不改」的版本归属落点——下游按在架版写消费代码前先查此表。在架 mooncakes 最新版 = **0.9.1**（2026-10-31）；本表 2026-11-08 逐条亲解在架 0.9.0 / 0.9.1 包源码复核（`grep` 实证，非沿用建表时的「HEAD」推定——原 10 条「HEAD（未发布）」随 0.9.0 发布已转正，表未随之更新即失步）：
+**字段 ↔ 最低版本（#116，2026-10-16 起；2026-11-08 逐条复核）**：协议纪律「只增不改」的版本归属落点——下游按在架版写消费代码前先查此表。在架 mooncakes 最新版 = **0.9.1**（2026-10-31）；本表 2026-11-08 逐条亲解在架 0.9.0 / 0.9.1 包源码复核（`grep` 实证，非沿用建表时的「HEAD」推定——原 10 条「HEAD（未发布）」随 0.9.0 发布已转正，表未随之更新即失步）；2026-11-16 增补批补登 11-08 复核后漏登的新增面四条（`max_checkpoints`=0.9.1 / `file_ranges`、`wasm_rehost`、`timeline.plan`=HEAD，landing commit 亲核）：
 
 | 字段 / 方法 / 参数 | 载体 | 最低版本 | 出处 |
 |---|---|---|---|
@@ -136,6 +136,10 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `texts.install` 方法帧 | 方法表 | **0.9.0** | #130 装载门（protocol_frames 基线 47 帧内容位更新） |
 | `texts.get` 方法帧 | 方法表 | **HEAD（未发布）** | #323 读口（install 的读-改-写闭环半边；方法清单 30→31，protocol_frames 基线第 25 帧方法列表更新） |
 | `texts.install` 段级合并语义 + `cleared` 响应字段 | 方法语义 | **HEAD（未发布）** | #323 治②/④（整表替换 → 逐键合并；空段 ≠ 清空；`__clear__` 显式清空）——0.9.0 在架版仍是整表替换语义，升级须注意载荷形态差异 |
+| `config.set` / `config.get` 键 `max_checkpoints` | 配置键 | **0.9.1** | #87 检查点保留数旋钮（85d2fe6e，2026-10-28 落地——0.9.1〔10-31〕已含；11-16 增补批登记：11-08 复核漏登 HEAD 新增面的补全） |
+| compile 响应 `file_ranges` | compile 帧 | **HEAD（未发布）** | #509（0db534ec，2026-11-13）——多文件工程合并编译单元的区间表（overview 行号 ↔ 原文件映射；只增不改） |
+| run 帧可选字段 `wasm_rehost` | run 帧 | **HEAD（未发布）** | #505 批 2b/3（09c42963，2026-11-14）——`rehost_status` 非空时携带（"ok groups=N" 等）；传统解释器执行不携带，零感知 |
+| `timeline.plan` 方法帧 | 方法表 | **HEAD（未发布）** | #470/#530（2398b97e，2026-11-15）——动效编排 TimelinePlan v0.1（协议方法 31→32） |
 
 > 本表人工维护、以 `vitro api help` 生成物与 protocol_frames 基线为行为权威；**新字段上帧时必须在此登记版本归属**（#116），「HEAD」条目随发版改为实版号。表中未列出 = 0.8.0 在架已携带。
 

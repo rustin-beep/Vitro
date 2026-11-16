@@ -462,6 +462,7 @@
         "sscanf_scanset.c": "5050f21f",
         "sscanf_struct_member_addr.c": "e73214b2",
         "static_assert_sizeof.c": "eaff46b4",
+        "static_dense_verify_matrix.c": "74dcdc6e",
         "static_fold_promo_sign.c": "33f537b4",
         "static_fold_shortcircuit_saturate.c": "bdfee670",
         "static_fold_unsigned_domain.c": "dfe911fe",
@@ -1991,6 +1992,9 @@
         "static_assert_sizeof.c": {
           "result_sha": "95a7098fb51a95e8"
         },
+        "static_dense_verify_matrix.c": {
+          "result_sha": "2bae0db888d56e1d"
+        },
         "static_fold_promo_sign.c": {
           "result_sha": "bcb813d378418abb"
         },
@@ -2384,6 +2388,8 @@
         "control_goto_break.c": "17fbd732",
         "control_stmt_basic.c": "faf01a79",
         "control_switch.c": "416918f5",
+        "decl_multi_symbols.c": "da7b60e6",
+        "extern_tentative_array.c": "ca9b8a6f",
         "float_compare_arith.c": "47a45441",
         "float_conv_matrix.c": "35731106",
         "float_not_judge.c": "1d9a3594",
@@ -2454,6 +2460,12 @@
         },
         "control_switch.c": {
           "result_sha": "5315ba40b231c29e"
+        },
+        "decl_multi_symbols.c": {
+          "result_sha": "e7adc321364b9ffc"
+        },
+        "extern_tentative_array.c": {
+          "result_sha": "be4f0406236b0d5e"
         },
         "float_compare_arith.c": {
           "result_sha": "f0d6acfbc1da5966"
@@ -2602,6 +2614,7 @@
         "inline_asm.c": "b4fdb8d1",
         "keyword_compat.c": "ce1212f3",
         "loop_var_shadow.c": "67d2073f",
+        "offsetof_packed_layout.c": "29ba7820",
         "p2d_parser_preproc_batch.c": "f629bffd",
         "printf_hexfloat_a_dialect.c": "bd202812",
         "printf_n_writeback_ucrt.c": "36a80339",
@@ -2654,6 +2667,9 @@
         },
         "loop_var_shadow.c": {
           "result_sha": "59c84a2ffb83e363"
+        },
+        "offsetof_packed_layout.c": {
+          "result_sha": "05e845db368c05ed"
         },
         "p2d_parser_preproc_batch.c": {
           "fail": true,

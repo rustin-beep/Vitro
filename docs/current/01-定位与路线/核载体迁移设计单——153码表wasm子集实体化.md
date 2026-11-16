@@ -32,7 +32,7 @@
 | 3 | **丧失受控子集**（标准 C 指针算术/UB 全暴露） | **翻案** | 受控子集由**前端**界定（C 子集 typeck + builtin 放行名全集 175），载体消费的是受控 bytecode 的换形——子集边界是编译器属性不是执行器属性。jit_survey §3.2 同结论〔已验证〕 |
 | 4 | **编译器体积 50MB+**（打包 clang/LLVM wasm 版） | **翻案** | 不打包 clang：发射器 = 引擎内 MoonBit 代码（LEB128+段编码器，§7 估 ~1.5k 行），模块零外部依赖纪律不破 |
 | 5 | **调试困难**（DWARF→wasm→SourceMap 多层映射） | **翻案** | 单步在引擎侧：**步锚组 = 步**（§2.4），`source_map` 侧车原样（`moonbit/bytecode/schema.mbt:87`），断点判定仍在 `StepEvent` 语义内（`exec_debug.mbt:37-44`）——调试协议零变化，不给 wasm 载体配 DWARF |
-| 6 | **内存可视化**（wasm 线性内存单一数组、无区域划分） | **翻案** | R1 区域化地址方案**直落**线性内存：`MEM_SIZE=1MB / NULL_TRAP 0x1000 / GLOBAL_START 0x1000 / HEAP_START 0x5000 / GLOBAL_REGION_LIMIT 64KB / STACK_START=MEM_SIZE`（`moonbit/bytecode/memory.mbt:15-40` 亲读）即 wasm memory 的地址语义；regions/quarantine/UAF 元数据是引擎侧 `MemoryMap` 状态，不进载体（§5） |
+| 6 | **内存可视化**（wasm 线性内存单一数组、无区域划分） | **翻案** | R1 区域化地址方案**直落**线性内存：`MEM_SIZE=1MB / NULL_TRAP 0x1000 / GLOBAL_START 0x1000 / HEAP_START 0x5000 / GLOBAL_REGION_LIMIT 320KB（#271 起，原 64KB） / STACK_START=MEM_SIZE`（`moonbit/bytecode/memory.mbt:15-40` 亲读）即 wasm memory 的地址语义；regions/quarantine/UAF 元数据是引擎侧 `MemoryMap` 状态，不进载体（§5） |
 | — | 方案 B 隐含前提「**废弃 CideVM**」 | **形态转移（仍成立的部分）** | 本命题不废弃执行器只换编码载体；但「引入第二载体」本身的新工程风险（发射↔折叠互逆一致性、V8 语义非确定面、host ABI 跨界开销）真实存在——进 §7.3 风险表，逐条给缓解机制 |
 
 **复核纪律注**：上表未全盘翻案也未全盘维持——第 6 条的「区域划分」在 wasm 侧确实不存在（维持缺点的事实部分），但可视化协议本来就消费引擎侧 regions 元数据，故**结论**翻案。逐条给机制如上。

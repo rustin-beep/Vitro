@@ -31,9 +31,16 @@ pub const HEAP_START : UInt32 = 0x5000
 /// 绝对地址。
 ///
 /// R1 ② 判据单源化：所有"全局区还能不能长"的判断统一以本常量为界
-/// （取代 codegen 与 VM 的两套魔数）；取值与旧字符串字面量判据
-/// （MEM_SIZE / 16 = 64KB）一致，不收紧存量行为。
-pub const GLOBAL_REGION_LIMIT : UInt32 = MEM_SIZE / 16
+/// （取代 codegen 与 VM 的两套魔数）。
+///
+/// #271（2026-11-15）64KB → 320KB：旧值 MEM_SIZE/16 只对齐 R1 之前的
+/// 字符串字面量判据（中位 13 行语料时代的口径），千行档（corpus/llm_scale）
+/// 标准教学设计——对象池 / 稠密验证矩阵（128×128 double ×2）/ 大 DP 表——
+/// 实测需求 61KB~263KB，被旧值整体拒绝（clang/gcc 正常跑）。320KB 覆盖
+/// 需求并给堆留 ~704KB（LZ78 1MB 堆类需求属 #133 堆扩展段域，不在此解）。
+/// argv 场景的 argv 锚 / 堆起点随本常量联动（无 argv 场景堆起点只随
+/// global_data_end，存量地址零漂移）。
+pub const GLOBAL_REGION_LIMIT : UInt32 = MEM_SIZE * 5 / 16
 
 ///|
 /// 栈区起始地址（从高地址向低地址增长）。vm 的 `mem_stack_top` 初值。

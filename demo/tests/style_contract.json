@@ -1,0 +1,1112 @@
+{
+  "ice": {
+    "vars": {
+      "--vr-bg": "#eaf2fc",
+      "--vr-panel": "#fff",
+      "--vr-ink": "#1a2740",
+      "--vr-ink-3": "#5b6b82",
+      "--vr-amber": "#1d4ed8",
+      "--vr-rule": "#dbe5f0",
+      "--vr-mono": "ui-monospace, \"Cascadia Mono\", \"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace"
+    },
+    "styles": {
+      ".vr-masthead": {
+        "background-color": "rgba(255, 255, 255, 0.94)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(26, 39, 64)",
+        "border-left-color": "rgb(26, 39, 64)",
+        "border-bottom-color": "rgb(219, 229, 240)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-title": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(26, 39, 64)",
+        "border-left-color": "rgb(26, 39, 64)",
+        "border-bottom-color": "rgb(26, 39, 64)",
+        "font-family": "\"Iowan Old Style\", \"Palatino Linotype\", \"Songti SC\", STSong, SimSun, Georgia, serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "0.155px",
+        "text-transform": "none"
+      },
+      ".vr-status": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(91, 107, 130)",
+        "border-top-color": "rgb(91, 107, 130)",
+        "border-left-color": "rgb(91, 107, 130)",
+        "border-bottom-color": "rgb(91, 107, 130)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-stagehead": {
+        "background-color": "rgba(37, 99, 235, 0.08)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(219, 229, 240)",
+        "border-left-color": "rgb(37, 99, 235)",
+        "border-bottom-color": "rgb(219, 229, 240)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-code": {
+        "background-color": "rgb(251, 253, 255)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(219, 229, 240)",
+        "border-left-color": "rgb(219, 229, 240)",
+        "border-bottom-color": "rgb(219, 229, 240)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-codehead": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(91, 107, 130)",
+        "border-top-color": "rgb(91, 107, 130)",
+        "border-left-color": "rgb(91, 107, 130)",
+        "border-bottom-color": "rgb(219, 229, 240)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".cm-line": {
+        "background-color": "rgb(246, 249, 254)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(26, 39, 64)",
+        "border-left-color": "rgb(26, 39, 64)",
+        "border-bottom-color": "rgb(26, 39, 64)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active": {
+        "background-color": "rgba(37, 99, 235, 0.08)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(26, 39, 64)",
+        "border-left-color": "rgb(37, 99, 235)",
+        "border-bottom-color": "rgb(26, 39, 64)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active .vr-beat-note": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(70, 88, 114)",
+        "border-top-color": "rgb(70, 88, 114)",
+        "border-left-color": "rgb(70, 88, 114)",
+        "border-bottom-color": "rgb(70, 88, 114)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-cell": {
+        "background-color": "rgb(255, 255, 255)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(195, 210, 228)",
+        "border-left-color": "rgb(195, 210, 228)",
+        "border-bottom-color": "rgb(195, 210, 228)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-colnow": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(26, 39, 64)",
+        "border-left-color": "rgb(219, 229, 240)",
+        "border-bottom-color": "rgb(26, 39, 64)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-coldock": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(219, 229, 240)",
+        "border-left-color": "rgb(26, 39, 64)",
+        "border-bottom-color": "rgb(26, 39, 64)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-transport": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(26, 39, 64)",
+        "border-top-color": "rgb(26, 39, 64)",
+        "border-left-color": "rgb(26, 39, 64)",
+        "border-bottom-color": "rgb(26, 39, 64)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-label": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(91, 107, 130)",
+        "border-top-color": "rgb(91, 107, 130)",
+        "border-left-color": "rgb(91, 107, 130)",
+        "border-bottom-color": "rgb(91, 107, 130)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "0.945px",
+        "text-transform": "uppercase"
+      },
+      ".vr-note p": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(70, 88, 114)",
+        "border-top-color": "rgb(70, 88, 114)",
+        "border-left-color": "rgb(70, 88, 114)",
+        "border-bottom-color": "rgb(70, 88, 114)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-notefull > summary": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(91, 107, 130)",
+        "border-top-color": "rgb(91, 107, 130)",
+        "border-left-color": "rgb(91, 107, 130)",
+        "border-bottom-color": "rgb(91, 107, 130)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-chip": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(70, 88, 114)",
+        "border-top-color": "rgb(195, 210, 228)",
+        "border-left-color": "rgb(195, 210, 228)",
+        "border-bottom-color": "rgb(195, 210, 228)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-btn.vr-primary": {
+        "background-color": "rgb(26, 39, 64)",
+        "color": "rgb(234, 242, 252)",
+        "border-top-color": "rgb(26, 39, 64)",
+        "border-left-color": "rgb(26, 39, 64)",
+        "border-bottom-color": "rgb(26, 39, 64)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-blockhead .vr-meta": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(91, 107, 130)",
+        "border-top-color": "rgb(91, 107, 130)",
+        "border-left-color": "rgb(91, 107, 130)",
+        "border-bottom-color": "rgb(91, 107, 130)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      }
+    }
+  },
+  "rose": {
+    "vars": {
+      "--vr-bg": "#f9f1f4",
+      "--vr-panel": "#fffdfd",
+      "--vr-ink": "#2e2428",
+      "--vr-ink-3": "#75666e",
+      "--vr-amber": "#a83b62",
+      "--vr-rule": "#f0dfe6",
+      "--vr-mono": "ui-monospace, \"Cascadia Mono\", \"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace"
+    },
+    "styles": {
+      ".vr-masthead": {
+        "background-color": "rgba(255, 253, 253, 0.94)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgb(46, 36, 40)",
+        "border-left-color": "rgb(46, 36, 40)",
+        "border-bottom-color": "rgb(240, 223, 230)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-title": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgb(46, 36, 40)",
+        "border-left-color": "rgb(46, 36, 40)",
+        "border-bottom-color": "rgb(46, 36, 40)",
+        "font-family": "\"Iowan Old Style\", \"Palatino Linotype\", \"Songti SC\", STSong, SimSun, Georgia, serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "0.155px",
+        "text-transform": "none"
+      },
+      ".vr-status": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(117, 102, 110)",
+        "border-top-color": "rgb(117, 102, 110)",
+        "border-left-color": "rgb(117, 102, 110)",
+        "border-bottom-color": "rgb(117, 102, 110)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-stagehead": {
+        "background-color": "rgba(212, 89, 122, 0.1)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgb(240, 223, 230)",
+        "border-left-color": "rgb(212, 89, 122)",
+        "border-bottom-color": "rgb(240, 223, 230)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-code": {
+        "background-color": "rgb(255, 253, 253)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgba(0, 0, 0, 0)",
+        "border-left-color": "rgba(0, 0, 0, 0)",
+        "border-bottom-color": "rgba(0, 0, 0, 0)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-codehead": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(117, 102, 110)",
+        "border-top-color": "rgb(117, 102, 110)",
+        "border-left-color": "rgb(117, 102, 110)",
+        "border-bottom-color": "rgb(240, 223, 230)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".cm-line": {
+        "background-color": "rgb(250, 242, 245)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgb(46, 36, 40)",
+        "border-left-color": "rgb(46, 36, 40)",
+        "border-bottom-color": "rgb(46, 36, 40)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active": {
+        "background-color": "rgba(212, 89, 122, 0.1)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgb(46, 36, 40)",
+        "border-left-color": "rgb(212, 89, 122)",
+        "border-bottom-color": "rgb(46, 36, 40)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active .vr-beat-note": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(107, 87, 96)",
+        "border-top-color": "rgb(107, 87, 96)",
+        "border-left-color": "rgb(107, 87, 96)",
+        "border-bottom-color": "rgb(107, 87, 96)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-cell": {
+        "background-color": "rgb(255, 253, 253)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgba(0, 0, 0, 0)",
+        "border-left-color": "rgba(0, 0, 0, 0)",
+        "border-bottom-color": "rgba(0, 0, 0, 0)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-colnow": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgb(46, 36, 40)",
+        "border-left-color": "rgb(240, 223, 230)",
+        "border-bottom-color": "rgb(46, 36, 40)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-coldock": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgb(240, 223, 230)",
+        "border-left-color": "rgb(46, 36, 40)",
+        "border-bottom-color": "rgb(46, 36, 40)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-transport": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(46, 36, 40)",
+        "border-top-color": "rgb(46, 36, 40)",
+        "border-left-color": "rgb(46, 36, 40)",
+        "border-bottom-color": "rgb(46, 36, 40)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-label": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(117, 102, 110)",
+        "border-top-color": "rgb(117, 102, 110)",
+        "border-left-color": "rgb(117, 102, 110)",
+        "border-bottom-color": "rgb(117, 102, 110)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "0.945px",
+        "text-transform": "uppercase"
+      },
+      ".vr-note p": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(107, 87, 96)",
+        "border-top-color": "rgb(107, 87, 96)",
+        "border-left-color": "rgb(107, 87, 96)",
+        "border-bottom-color": "rgb(107, 87, 96)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-notefull > summary": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(117, 102, 110)",
+        "border-top-color": "rgb(117, 102, 110)",
+        "border-left-color": "rgb(117, 102, 110)",
+        "border-bottom-color": "rgb(117, 102, 110)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-chip": {
+        "background-color": "rgb(255, 253, 253)",
+        "color": "rgb(107, 87, 96)",
+        "border-top-color": "rgba(0, 0, 0, 0)",
+        "border-left-color": "rgba(0, 0, 0, 0)",
+        "border-bottom-color": "rgba(0, 0, 0, 0)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-btn.vr-primary": {
+        "background-color": "rgb(46, 36, 40)",
+        "color": "rgb(249, 241, 244)",
+        "border-top-color": "rgba(0, 0, 0, 0)",
+        "border-left-color": "rgba(0, 0, 0, 0)",
+        "border-bottom-color": "rgba(0, 0, 0, 0)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-blockhead .vr-meta": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(117, 102, 110)",
+        "border-top-color": "rgb(117, 102, 110)",
+        "border-left-color": "rgb(117, 102, 110)",
+        "border-bottom-color": "rgb(117, 102, 110)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      }
+    }
+  },
+  "soft": {
+    "vars": {
+      "--vr-bg": "#0d1428",
+      "--vr-panel": "#131a2e",
+      "--vr-ink": "#e6ebf7",
+      "--vr-ink-3": "#7d89ad",
+      "--vr-amber": "#93a9ee",
+      "--vr-rule": "#222c47",
+      "--vr-mono": "ui-monospace, \"Cascadia Mono\", \"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace"
+    },
+    "styles": {
+      ".vr-masthead": {
+        "background-color": "rgba(13, 20, 40, 0.94)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(230, 235, 247)",
+        "border-left-color": "rgb(230, 235, 247)",
+        "border-bottom-color": "rgb(34, 44, 71)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-title": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(230, 235, 247)",
+        "border-left-color": "rgb(230, 235, 247)",
+        "border-bottom-color": "rgb(230, 235, 247)",
+        "font-family": "\"Iowan Old Style\", \"Palatino Linotype\", \"Songti SC\", STSong, SimSun, Georgia, serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "0.155px",
+        "text-transform": "none"
+      },
+      ".vr-status": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 137, 173)",
+        "border-top-color": "rgb(125, 137, 173)",
+        "border-left-color": "rgb(125, 137, 173)",
+        "border-bottom-color": "rgb(125, 137, 173)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-stagehead": {
+        "background-color": "rgba(122, 148, 230, 0.16)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(34, 44, 71)",
+        "border-left-color": "rgb(122, 148, 230)",
+        "border-bottom-color": "rgb(34, 44, 71)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-code": {
+        "background-color": "rgb(16, 23, 43)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(34, 44, 71)",
+        "border-left-color": "rgb(34, 44, 71)",
+        "border-bottom-color": "rgb(34, 44, 71)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-codehead": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 137, 173)",
+        "border-top-color": "rgb(125, 137, 173)",
+        "border-left-color": "rgb(125, 137, 173)",
+        "border-bottom-color": "rgb(34, 44, 71)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".cm-line": {
+        "background-color": "rgb(22, 30, 53)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(230, 235, 247)",
+        "border-left-color": "rgb(230, 235, 247)",
+        "border-bottom-color": "rgb(230, 235, 247)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active": {
+        "background-color": "rgba(122, 148, 230, 0.16)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(230, 235, 247)",
+        "border-left-color": "rgb(122, 148, 230)",
+        "border-bottom-color": "rgb(230, 235, 247)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active .vr-beat-note": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(154, 166, 198)",
+        "border-top-color": "rgb(154, 166, 198)",
+        "border-left-color": "rgb(154, 166, 198)",
+        "border-bottom-color": "rgb(154, 166, 198)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-cell": {
+        "background-color": "rgb(19, 26, 46)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(51, 64, 95)",
+        "border-left-color": "rgb(51, 64, 95)",
+        "border-bottom-color": "rgb(51, 64, 95)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-colnow": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(230, 235, 247)",
+        "border-left-color": "rgb(34, 44, 71)",
+        "border-bottom-color": "rgb(230, 235, 247)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-coldock": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(34, 44, 71)",
+        "border-left-color": "rgb(230, 235, 247)",
+        "border-bottom-color": "rgb(230, 235, 247)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-transport": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(230, 235, 247)",
+        "border-top-color": "rgb(230, 235, 247)",
+        "border-left-color": "rgb(230, 235, 247)",
+        "border-bottom-color": "rgb(230, 235, 247)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-label": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 137, 173)",
+        "border-top-color": "rgb(125, 137, 173)",
+        "border-left-color": "rgb(125, 137, 173)",
+        "border-bottom-color": "rgb(125, 137, 173)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "0.945px",
+        "text-transform": "uppercase"
+      },
+      ".vr-note p": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(154, 166, 198)",
+        "border-top-color": "rgb(154, 166, 198)",
+        "border-left-color": "rgb(154, 166, 198)",
+        "border-bottom-color": "rgb(154, 166, 198)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-notefull > summary": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 137, 173)",
+        "border-top-color": "rgb(125, 137, 173)",
+        "border-left-color": "rgb(125, 137, 173)",
+        "border-bottom-color": "rgb(125, 137, 173)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-chip": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(154, 166, 198)",
+        "border-top-color": "rgb(51, 64, 95)",
+        "border-left-color": "rgb(51, 64, 95)",
+        "border-bottom-color": "rgb(51, 64, 95)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-btn.vr-primary": {
+        "background-color": "rgb(230, 235, 247)",
+        "color": "rgb(13, 20, 40)",
+        "border-top-color": "rgb(230, 235, 247)",
+        "border-left-color": "rgb(230, 235, 247)",
+        "border-bottom-color": "rgb(230, 235, 247)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-blockhead .vr-meta": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 137, 173)",
+        "border-top-color": "rgb(125, 137, 173)",
+        "border-left-color": "rgb(125, 137, 173)",
+        "border-bottom-color": "rgb(125, 137, 173)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      }
+    }
+  },
+  "paper": {
+    "vars": {
+      "--vr-bg": "#efe7d8",
+      "--vr-panel": "#f8f3e8",
+      "--vr-ink": "#1d1a15",
+      "--vr-ink-3": "#6b6252",
+      "--vr-amber": "#96520a",
+      "--vr-rule": "#d8ccb6",
+      "--vr-mono": "ui-monospace, \"Cascadia Mono\", \"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace"
+    },
+    "styles": {
+      ".vr-masthead": {
+        "background-color": "rgba(248, 243, 232, 0.94)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(29, 26, 21)",
+        "border-left-color": "rgb(29, 26, 21)",
+        "border-bottom-color": "rgb(216, 204, 182)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-title": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(29, 26, 21)",
+        "border-left-color": "rgb(29, 26, 21)",
+        "border-bottom-color": "rgb(29, 26, 21)",
+        "font-family": "\"Iowan Old Style\", \"Palatino Linotype\", \"Songti SC\", STSong, SimSun, Georgia, serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "0.155px",
+        "text-transform": "none"
+      },
+      ".vr-status": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(107, 98, 82)",
+        "border-top-color": "rgb(107, 98, 82)",
+        "border-left-color": "rgb(107, 98, 82)",
+        "border-bottom-color": "rgb(107, 98, 82)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-stagehead": {
+        "background-color": "rgba(150, 82, 10, 0.09)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(216, 204, 182)",
+        "border-left-color": "rgb(176, 104, 20)",
+        "border-bottom-color": "rgb(216, 204, 182)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-code": {
+        "background-color": "rgb(246, 239, 225)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(216, 204, 182)",
+        "border-left-color": "rgb(216, 204, 182)",
+        "border-bottom-color": "rgb(216, 204, 182)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-codehead": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(107, 98, 82)",
+        "border-top-color": "rgb(107, 98, 82)",
+        "border-left-color": "rgb(107, 98, 82)",
+        "border-bottom-color": "rgb(216, 204, 182)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".cm-line": {
+        "background-color": "rgb(242, 235, 220)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(29, 26, 21)",
+        "border-left-color": "rgb(29, 26, 21)",
+        "border-bottom-color": "rgb(29, 26, 21)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active": {
+        "background-color": "rgba(150, 82, 10, 0.09)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(29, 26, 21)",
+        "border-left-color": "rgb(176, 104, 20)",
+        "border-bottom-color": "rgb(29, 26, 21)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active .vr-beat-note": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(81, 74, 60)",
+        "border-top-color": "rgb(81, 74, 60)",
+        "border-left-color": "rgb(81, 74, 60)",
+        "border-bottom-color": "rgb(81, 74, 60)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-cell": {
+        "background-color": "rgb(248, 243, 232)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(191, 174, 145)",
+        "border-left-color": "rgb(191, 174, 145)",
+        "border-bottom-color": "rgb(191, 174, 145)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-colnow": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(29, 26, 21)",
+        "border-left-color": "rgb(216, 204, 182)",
+        "border-bottom-color": "rgb(29, 26, 21)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-coldock": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(216, 204, 182)",
+        "border-left-color": "rgb(29, 26, 21)",
+        "border-bottom-color": "rgb(29, 26, 21)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-transport": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(29, 26, 21)",
+        "border-top-color": "rgb(29, 26, 21)",
+        "border-left-color": "rgb(29, 26, 21)",
+        "border-bottom-color": "rgb(29, 26, 21)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-label": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(107, 98, 82)",
+        "border-top-color": "rgb(107, 98, 82)",
+        "border-left-color": "rgb(107, 98, 82)",
+        "border-bottom-color": "rgb(107, 98, 82)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "0.945px",
+        "text-transform": "uppercase"
+      },
+      ".vr-note p": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(81, 74, 60)",
+        "border-top-color": "rgb(81, 74, 60)",
+        "border-left-color": "rgb(81, 74, 60)",
+        "border-bottom-color": "rgb(81, 74, 60)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-notefull > summary": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(107, 98, 82)",
+        "border-top-color": "rgb(107, 98, 82)",
+        "border-left-color": "rgb(107, 98, 82)",
+        "border-bottom-color": "rgb(107, 98, 82)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-chip": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(81, 74, 60)",
+        "border-top-color": "rgb(191, 174, 145)",
+        "border-left-color": "rgb(191, 174, 145)",
+        "border-bottom-color": "rgb(191, 174, 145)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-btn.vr-primary": {
+        "background-color": "rgb(29, 26, 21)",
+        "color": "rgb(239, 231, 216)",
+        "border-top-color": "rgb(29, 26, 21)",
+        "border-left-color": "rgb(29, 26, 21)",
+        "border-bottom-color": "rgb(29, 26, 21)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-blockhead .vr-meta": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(107, 98, 82)",
+        "border-top-color": "rgb(107, 98, 82)",
+        "border-left-color": "rgb(107, 98, 82)",
+        "border-bottom-color": "rgb(107, 98, 82)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      }
+    }
+  },
+  "blueprint": {
+    "vars": {
+      "--vr-bg": "#08111a",
+      "--vr-panel": "#0e1a26",
+      "--vr-ink": "#dbe8f4",
+      "--vr-ink-3": "#7d93a8",
+      "--vr-amber": "#ff8a3c",
+      "--vr-rule": "#1e3446",
+      "--vr-mono": "ui-monospace, \"Cascadia Mono\", \"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace"
+    },
+    "styles": {
+      ".vr-masthead": {
+        "background-color": "rgba(8, 17, 26, 0.94)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(219, 232, 244)",
+        "border-left-color": "rgb(219, 232, 244)",
+        "border-bottom-color": "rgb(30, 52, 70)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-title": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(219, 232, 244)",
+        "border-left-color": "rgb(219, 232, 244)",
+        "border-bottom-color": "rgb(219, 232, 244)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "-0.62px",
+        "text-transform": "none"
+      },
+      ".vr-status": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 147, 168)",
+        "border-top-color": "rgb(125, 147, 168)",
+        "border-left-color": "rgb(125, 147, 168)",
+        "border-bottom-color": "rgb(125, 147, 168)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-stagehead": {
+        "background-color": "rgba(255, 138, 60, 0.12)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(30, 52, 70)",
+        "border-left-color": "rgb(255, 162, 94)",
+        "border-bottom-color": "rgb(30, 52, 70)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-code": {
+        "background-color": "rgb(7, 16, 25)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(30, 52, 70)",
+        "border-left-color": "rgb(30, 52, 70)",
+        "border-bottom-color": "rgb(30, 52, 70)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-codehead": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 147, 168)",
+        "border-top-color": "rgb(125, 147, 168)",
+        "border-left-color": "rgb(125, 147, 168)",
+        "border-bottom-color": "rgb(30, 52, 70)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".cm-line": {
+        "background-color": "rgb(19, 36, 51)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(219, 232, 244)",
+        "border-left-color": "rgb(219, 232, 244)",
+        "border-bottom-color": "rgb(219, 232, 244)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active": {
+        "background-color": "rgba(255, 138, 60, 0.12)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(219, 232, 244)",
+        "border-left-color": "rgb(255, 162, 94)",
+        "border-bottom-color": "rgb(219, 232, 244)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-beat.is-active .vr-beat-note": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(164, 184, 204)",
+        "border-top-color": "rgb(164, 184, 204)",
+        "border-left-color": "rgb(164, 184, 204)",
+        "border-bottom-color": "rgb(164, 184, 204)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-cell": {
+        "background-color": "rgb(14, 26, 38)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(47, 81, 107)",
+        "border-left-color": "rgb(47, 81, 107)",
+        "border-bottom-color": "rgb(47, 81, 107)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-colnow": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(219, 232, 244)",
+        "border-left-color": "rgb(30, 52, 70)",
+        "border-bottom-color": "rgb(219, 232, 244)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-coldock": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(30, 52, 70)",
+        "border-left-color": "rgb(219, 232, 244)",
+        "border-bottom-color": "rgb(219, 232, 244)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-transport": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(219, 232, 244)",
+        "border-top-color": "rgb(219, 232, 244)",
+        "border-left-color": "rgb(219, 232, 244)",
+        "border-bottom-color": "rgb(219, 232, 244)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-label": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 147, 168)",
+        "border-top-color": "rgb(125, 147, 168)",
+        "border-left-color": "rgb(125, 147, 168)",
+        "border-bottom-color": "rgb(125, 147, 168)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "0.945px",
+        "text-transform": "uppercase"
+      },
+      ".vr-note p": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(164, 184, 204)",
+        "border-top-color": "rgb(164, 184, 204)",
+        "border-left-color": "rgb(164, 184, 204)",
+        "border-bottom-color": "rgb(164, 184, 204)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-notefull > summary": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 147, 168)",
+        "border-top-color": "rgb(125, 147, 168)",
+        "border-left-color": "rgb(125, 147, 168)",
+        "border-bottom-color": "rgb(125, 147, 168)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-chip": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(164, 184, 204)",
+        "border-top-color": "rgb(47, 81, 107)",
+        "border-left-color": "rgb(47, 81, 107)",
+        "border-bottom-color": "rgb(47, 81, 107)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-btn.vr-primary": {
+        "background-color": "rgb(219, 232, 244)",
+        "color": "rgb(8, 17, 26)",
+        "border-top-color": "rgb(219, 232, 244)",
+        "border-left-color": "rgb(219, 232, 244)",
+        "border-bottom-color": "rgb(219, 232, 244)",
+        "font-family": "-apple-system, \"Segoe UI\", \"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+        "font-variant-ligatures": "normal",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      },
+      ".vr-blockhead .vr-meta": {
+        "background-color": "rgba(0, 0, 0, 0)",
+        "color": "rgb(125, 147, 168)",
+        "border-top-color": "rgb(125, 147, 168)",
+        "border-left-color": "rgb(125, 147, 168)",
+        "border-bottom-color": "rgb(125, 147, 168)",
+        "font-family": "ui-monospace, \"Cascadia Mono\", SFMono-Regular, Consolas, \"Liberation Mono\", monospace",
+        "font-variant-ligatures": "none",
+        "letter-spacing": "normal",
+        "text-transform": "none"
+      }
+    }
+  }
+}

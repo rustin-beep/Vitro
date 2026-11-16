@@ -10,6 +10,8 @@
   //   - 键盘仪表盘：空格播放/暂停、←/→ 单步、Home/End 首末帧（全局键盘
   //     处理在 App，本块只给提示）。
   import { seek, session, setFps, setGran, step, togglePlay } from "../session.svelte.ts";
+  import { lessonSession } from "./lessonSession.svelte.ts";
+  import { sceneBand, sceneIndexAt } from "./scenes.ts";
 
   const FPS_STEPS = [2, 8, 30, 60, 120, 240];
   const FPS_NOTE: Record<number, string> = { 2: " · 很慢", 8: " · 默认", 30: " · 快", 60: " · 高速", 120: " · 极快", 240: " · 极快" };
@@ -20,6 +22,13 @@
   const idx = $derived(Math.min(session.idx, Math.max(n - 1, 0)));
   const pct = $derived(n > 1 ? (idx / (n - 1)) * 100 : 0);
   const ended = $derived(n > 0 && idx >= n - 1);
+
+  // 本课分镜（scene 真源 = lesson.md；未迁移课 = []，整条分幕面不渲染）。
+  // 未采集（n=0）时不给「当前幕」：帧流还不存在，idx 0 落在第一幕坐标里
+  // 会被误读成「已到第 1 幕」。
+  const scenes = $derived(lessonSession.note?.scenes ?? []);
+  const cur = $derived(n > 0 ? sceneIndexAt(scenes, idx) : -1);
+  const bands = $derived(scenes.map((s) => ({ id: s.id, ...sceneBand(s, n) })));
 
   // 刻度步长按**标尺实际宽度**自适应：固定 5 帧在 540 帧的长程序里会把
   // 108 个刻度标签糊成一条黑带（390 实测）。目标 ≈ 每 48px 一个标签，
@@ -108,6 +117,14 @@
       </select>
     </div>
   </div>
+
+  {#if n > 0 && bands.length > 0}
+    <div class="vr-bands" aria-hidden="true">
+      {#each bands as b, i (b.id)}
+        <span class="vr-band" class:is-active={i === cur} class:is-done={i < cur} style:left="{b.left}%" style:width="{b.width}%"></span>
+      {/each}
+    </div>
+  {/if}
 
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div

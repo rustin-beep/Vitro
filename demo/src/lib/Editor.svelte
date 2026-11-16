@@ -22,7 +22,11 @@
   import { c as clikeC } from "@codemirror/legacy-modes/mode/clike";
   import { session, toggleBreakpoint } from "../session.svelte.ts";
 
-  let { source = $bindable(""), disabled = false }: { source?: string; disabled?: boolean } = $props();
+  let {
+    source = $bindable(""),
+    disabled = false,
+    annotations = [],
+  }: { source?: string; disabled?: boolean; annotations?: Array<{ line: number; text: string }> } = $props();
 
   let hostEl: HTMLDivElement | undefined = $state();
   let view: EditorView | null = $state(null);
@@ -196,6 +200,32 @@
     provide: (f) => EditorView.decorations.from(f),
   });
 
+  // ── 本幕逐行注记（#222 P1 第五片，2026-10-21）：行尾伪元素（`t ← 5` /
+  // `a[1] ← 3`）。注记真源 = WorkScreen 由帧流差分（lib/annotations.ts），本
+  // 组件只做渲染。
+  // ⚠️ 用**行装饰属性 + CSS ::after**而不是行内 widget：widget 的文本会进
+  // `.cm-content` 的 textContent，E2E 的 docLen（字符增量）会被注记字数污染
+  //（N1「8 字符全部落地」直接假红）；伪元素不进 DOM 文本面。
+  // 源码一改（docChanged）注记整体作废——不拿旧行号贴新代码。
+  const setAnnotEffect = StateEffect.define<Array<{ line: number; text: string }>>();
+  const annotField = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(decos, tr) {
+      if (tr.docChanged) return Decoration.none;
+      decos = decos.map(tr.changes);
+      for (const e of tr.effects) {
+        if (e.is(setAnnotEffect)) {
+          const ranges = e.value
+            .filter((a) => a.line >= 1 && a.line <= tr.state.doc.lines && a.text)
+            .map((a) => Decoration.line({ attributes: { "data-annot": a.text } }).range(tr.state.doc.line(a.line).from));
+          decos = Decoration.set(ranges, true);
+        }
+      }
+      return decos;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+
   // ── 扩展集 ──────────────────────────────────────────────────────────
   // ⚠️ 每个 StateField 都必须在此登记才存在——bpField 曾漏登记（gutter 里
   // field(bpField, false) 静默取 undefined，断点never渲染；E2E S4 2026-10-16
@@ -231,6 +261,7 @@
       diagLineField,
       followLineField,
       visLineField,
+      annotField,
       highlightActiveLineGutter(),
       highlightActiveLine(),
       history(),
@@ -291,6 +322,13 @@
     if (!view) return;
     const bps = [...session.breakpoints];
     view.dispatch({ effects: [setBpEffect.of(bps), setBpLinesEffect.of(bps)] });
+  });
+
+  // 本幕注记（#222 P1 第五片）：WorkScreen 差分结果 → 行尾 widget；空数组即清空。
+  $effect(() => {
+    if (!view) return;
+    const list = annotations.map((a) => ({ line: a.line, text: a.text }));
+    view.dispatch({ effects: setAnnotEffect.of(list) });
   });
 
   export function getDoc(): string {

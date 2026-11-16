@@ -280,10 +280,12 @@ func goldenRun(files []string, corpus string) int {
 		fail("清单缺语料节 %s（先 --freeze）", mode)
 	}
 	goldenSelftestHit(sec.RespHashes)
+	// 2026-10-23（审阅 P3）：source sha 只留档，不参与判定——注释/空白改动
+	// 不要求重冻；语义变化由 resp_hash 指纹抓。新增样本仍须重冻。
 	for _, f := range files {
 		name := filepath.Base(f)
-		if sha := typeckSrcSHA(f); sec.Sources[name] != sha {
-			fail("语料 %s 已变更而清单未重刷（%s ≠ %s）——重跑 --freeze", name, sha, sec.Sources[name])
+		if _, ok := sec.Sources[name]; !ok {
+			fail("新语料 %s 不在清单（先 --freeze）", name)
 		}
 	}
 	moonDir := moonDump(corpus)

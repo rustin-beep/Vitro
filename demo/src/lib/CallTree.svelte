@@ -20,6 +20,10 @@
   let wrapW = $state(0);
 
   const layout = $derived(layoutCallTree(tree?.root ?? null));
+  // 浅树压扁（#222 P1 第三片，2026-10-21）：节点 ≤3（prog → main 一族）时
+  // 画布没有信息量却吃 214px 高——压成一行面包屑 + 当前语句，把首屏让给
+  // 数组/变量/输出。深树（fib/dfs/递归）保持原画布。
+  const compact = $derived(!!layout && layout.nodes.length <= 3);
   const frame = $derived(frameAt(idx));
   const curNode = $derived(tree && tree.frameNode[idx] ? tree.frameNode[idx] : null);
   const curPos = $derived(curNode && layout ? (layout.nodes.find((n) => n.node === curNode) ?? null) : null);
@@ -169,20 +173,31 @@
 <section class="vr-block" aria-label="调用树">
   <div class="vr-blockhead">
     <h2 class="vr-label">调用树</h2>
-    <div class="vr-seg" role="group" aria-label="取景">
-      <button type="button" class:is-active={mode === "follow" && !manual} onclick={followCur}>跟随</button>
-      <button type="button" class:is-active={mode === "overview"} onclick={overview}>全览</button>
-    </div>
-    <div class="vr-zoom">
-      <button type="button" onclick={() => zoomBy(1 / 1.18)} aria-label="缩小">−</button>
-      <span>{zoomPct}%</span>
-      <button type="button" onclick={() => zoomBy(1.18)} aria-label="放大">+</button>
-    </div>
+    {#if !compact}
+      <div class="vr-seg" role="group" aria-label="取景">
+        <button type="button" class:is-active={mode === "follow" && !manual} onclick={followCur}>跟随</button>
+        <button type="button" class:is-active={mode === "overview"} onclick={overview}>全览</button>
+      </div>
+      <div class="vr-zoom">
+        <button type="button" onclick={() => zoomBy(1 / 1.18)} aria-label="缩小">−</button>
+        <span>{zoomPct}%</span>
+        <button type="button" onclick={() => zoomBy(1.18)} aria-label="放大">+</button>
+      </div>
+    {/if}
     <span class="vr-spacer"></span>
-    <span class="vr-meta">{layout ? `${layout.nodes.length} 个节点` : "未采集"}</span>
+    <span class="vr-meta">{layout ? `${layout.nodes.length} 个节点` : "未采集"}{compact ? " · 浅树压扁" : ""}</span>
   </div>
 
-  <div class="vr-treebox">
+  {#if compact}
+    <div class="vr-tree-compact" aria-label="调用路径">
+      <span class="vr-tree-path">{pathText || "prog"}</span>
+      <span class="vr-tree-line">{line > 0 ? `· L${line}` : railed ? "· 收尾" : "· —"}</span>
+      <code class="vr-tree-code">{curText || (railed ? "程序已退出（末帧收尾）" : "（未采集帧流）")}</code>
+      {#if railed}<span class="vr-tree-vars">{frame?.func_name}{#if railVars} · {railVars}{/if}</span>{/if}
+    </div>
+    <p class="vr-tree-note">栈深 ≤ 2 的课不画布：{pathText || "prog"} 只有库调用，递归课（如 global_struct 的 fib）才展开画布。</p>
+  {:else}
+    <div class="vr-treebox">
     <aside class="vr-rail" aria-label="当前执行">
       <span class="vr-rail-kicker">当前执行</span>
       <div class="vr-rail-line">{line > 0 ? `L${line}` : railed ? "收尾" : "—"}</div>
@@ -240,4 +255,5 @@
       <span>{session.breakpoints.length ? `断点 ${session.breakpoints.length} 处` : "无断点"}</span>
     {/if}
   </div>
+  {/if}
 </section>

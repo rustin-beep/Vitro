@@ -445,12 +445,8 @@ func runLexGolden(corpus, mbOut, digestFile string) int {
 		fmt.Fprintf(os.Stderr, "lexer_diff[golden]: 语料 %s 文件数已变（现 %d ≠ 落盘 %d）——重跑 --freeze\n", corpusName, len(cur), len(src))
 		return 1
 	}
-	for name, sha := range src {
-		if cur[name] != sha {
-			fmt.Fprintf(os.Stderr, "lexer_diff[golden]: 语料 %s 已变更而清单未重刷——重跑 --freeze\n", name)
-			return 1
-		}
-	}
+	// 2026-10-23（审阅 P3）：source sha 只留档，不再逐文件比对——注释/空白
+	// 改动不要求重冻；token 序列回归由下方 TSV hash 抓。文件数变化仍红。
 	normDir := normalizeCorpusTo(corpus, mbOut+"_norm_src")
 	defer os.RemoveAll(normDir)
 	runOrFail(exec.Command("moon", "-C", "moonbit", "run", "--target", "native",

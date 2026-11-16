@@ -1133,10 +1133,8 @@ func runAgainstDigest(cases []Case) int {
 			fmt.Fprintf(os.Stderr, "vm_diff[golden]: 清单缺例 %s——重跑 --freeze\n", c.rel)
 			os.Exit(1)
 		}
-		if sha := srcSHAOf(c.path); sha != e.SrcSHA {
-			fmt.Fprintf(os.Stderr, "vm_diff[golden]: 语料 %s 已变更而清单未重刷（%s ≠ %s）——重跑 --freeze\n", c.rel, sha, e.SrcSHA)
-			os.Exit(1)
-		}
+		// 2026-10-23（审阅 P3）：src_sha 只留档，不再判红——注释/空白/路径
+		// 改动不要求重冻；行为回归由 exit/stdout/memory 三 hash 抓。
 		m := runMoonBit(c.path)
 		me, ms, mm, mcf := digestOfResultMB(m)
 		cleanup(m)

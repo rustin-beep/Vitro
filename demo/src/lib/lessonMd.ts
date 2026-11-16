@@ -13,6 +13,9 @@
 //   正文：## / ### 标题、段落、- 无序列表、1. 有序列表、``` 围栏代码、
 //         GFM 表格——行内样式（粗体/行内码）v1 保持原样文本，token 化留 v2
 //         （version 字段即为此留）。
+//   可选：body 顶部 `<!-- vitri-scenes v1 ... -->` 分镜元数据（2026-10-21
+//         拍板：scene 真源 = lesson.md，不建 beats.ts）；解析时从 blocks
+//         剥离，CourseNote / E-08 渲染面逐字节不变。
 
 export interface LessonMeta {
   id: string;
@@ -29,10 +32,24 @@ export type Block =
   | { type: "code"; lang: string; text: string }
   | { type: "table"; rows: string[][] };
 
+/** 分镜（scene）：lesson.md body 顶部 `vitri-scenes v1` 注释块的解析产物。
+ *  与 blocks 同源、不新增正文段落——注释在解析时剥离，CourseNote / E-08
+ *  渲染面保持逐字节不变。from/to 是 viewFrames 下标（闭区间）。 */
+export interface Scene {
+  id: string;
+  title: string;
+  from: number;
+  to: number;
+  lines: [number, number];
+  note: string;
+}
+
 export interface LessonDoc {
   version: 1;
   meta: LessonMeta;
   blocks: Block[];
+  /** 无 scene 元数据的课 = []，消费方回退现有长文。 */
+  scenes: Scene[];
 }
 
 // ── 行内样式 token（v2 兑现——头注 schema 留的演进位）──────────────
@@ -88,7 +105,50 @@ export function parseLessonMd(src: string): LessonDoc {
   if (!meta.id || !meta.kind) throw new LessonParseError("frontmatter 缺 id 或 kind");
 
   const body = rest.slice(end + 4).replace(/^\n+/, "");
-  return { version: 1, meta, blocks: parseBlocks(body.split("\n")) };
+  const sceneDoc = extractScenes(body);
+  return { version: 1, meta, blocks: parseBlocks(sceneDoc.body.split("\n")), scenes: sceneDoc.scenes };
+}
+
+/** 从 body 顶部剥离 `<!-- vitri-scenes v1 ... -->` 并解析。
+ *  只在 body 开头识别（正文中间的注释按普通段落保留）；格式错误 fail loud，
+ *  由 lessonNotes 的 catch 兜底为诚实的「无叙述」而不是半截 scene。 */
+function extractScenes(body: string): { body: string; scenes: Scene[] } {
+  const prefix = body.match(/^<!--\s*vitri-scenes\b/);
+  if (!prefix) return { body, scenes: [] };
+  const head = body.match(/^<!--\s*vitri-scenes\s+v(\d+)[^\n]*\n/);
+  if (!head) throw new LessonParseError("scene 元数据缺版本行（vitri-scenes v1）");
+  if (head[1] !== "1") throw new LessonParseError(`不支持的 scene 版本 v${head[1]}`);
+  const close = body.indexOf("\n-->", head[0].length);
+  if (close < 0) throw new LessonParseError("scene 元数据未闭合");
+  const raw = body.slice(head[0].length, close);
+  const rest = body.slice(close + 4).replace(/^\n+/, "");
+  const scenes: Scene[] = [];
+  const ids = new Set<string>();
+  let prevTo = -1;
+  for (const line of raw.split("\n")) {
+    const t = line.trim();
+    if (!t) continue;
+    const m = t.match(/^([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|(.*)$/);
+    if (!m) throw new LessonParseError(`scene 行不是 5 段形态: ${t}`);
+    const id = m[1].trim();
+    const title = m[2].trim();
+    const fromTo = m[3].trim().match(/^(\d+)\.\.(\d+)$/);
+    const lineRange = m[4].trim().match(/^(\d+)\.\.(\d+)$/);
+    if (!id || !title) throw new LessonParseError(`scene 缺 id 或 title: ${t}`);
+    if (ids.has(id)) throw new LessonParseError(`scene id 重复: ${id}`);
+    if (!fromTo || !lineRange) throw new LessonParseError(`scene 范围须为 a..b: ${t}`);
+    const from = Number.parseInt(fromTo[1], 10);
+    const to = Number.parseInt(fromTo[2], 10);
+    const l0 = Number.parseInt(lineRange[1], 10);
+    const l1 = Number.parseInt(lineRange[2], 10);
+    if (from > to || l0 < 1 || l1 < l0) throw new LessonParseError(`scene 范围非法: ${t}`);
+    if (from <= prevTo) throw new LessonParseError(`scene 帧范围重叠或乱序: ${id}`);
+    prevTo = to;
+    ids.add(id);
+    scenes.push({ id, title, from, to, lines: [l0, l1], note: m[5].trim() });
+  }
+  if (scenes.length === 0) throw new LessonParseError("scene 元数据为空");
+  return { body: rest, scenes };
 }
 
 function trimQuotes(v: string): string {

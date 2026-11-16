@@ -1,9 +1,10 @@
 ///|
-/// Vitro 字节码操作码（153 条；0..137 为历史蓝本 Rust oracle `vitro_runtime/src/opcode.rs`
+/// Vitro 字节码操作码（154 条；0..137 为历史蓝本 Rust oracle `vitro_runtime/src/opcode.rs`
 /// 段〔tag rust-oracle-freeze 可回溯〕不重排，
 /// 138..150 为本仓自扩 U 系对偶段——2026-10-11 #61 第一梯队病 31~34 批新增，非照搬编号；
 /// 151..153 为全局 char 字节粒度段——2026-10-19 #177 批新增；154..155 为
-/// u64→fp 无符号对偶段——2026-10-28 #345 审阅批新增，均非照搬编号）。
+/// u64→fp 无符号对偶段——2026-10-28 #345 审阅批新增；156 为 fp→u64 无符号对偶
+/// CastD2UQ——#471 2026-11-05 新增，均非照搬编号）。
 ///
 /// 编号契约：0..137 区间，空号 47–49（历史浮点段位预留）；44/45/46 为
 /// **C# 异常三件**（`TryBegin`/`TryEnd`/`Throw`，CSharp 前端引入计划 §1 拍板进
@@ -356,7 +357,7 @@ pub fn OpCode::code(self : OpCode) -> Int32 {
 }
 
 ///|
-/// 编号 → opcode；空号（44–49）与越界（>153 / <0）返回 None。
+/// 编号 → opcode；空号（44–49）与越界（>156 / <0）返回 None。
 pub fn OpCode::from_u8(value : Int32) -> OpCode? {
   match value {
     0 => Some(Nop)

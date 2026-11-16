@@ -1,5 +1,55 @@
 ## [Unreleased]
 
+### fix(moonbit+docs): 工具陷阱彻查批——AGENTS.md 实测重校 + `String::replace_all` 收编（2026-11-16）
+
+- **陷阱勘正**（moonbit/AGENTS.md，逐条探针复核）：`ref` 为预留字
+  Warning 0035 非编译错误（陷阱 1；unused mut 已扩到 struct 字段 Error
+  0015）；derive 后置两形态分界（尾置 0027 deprecated 未升 error / 头后置
+  Error 3002+4091，「本仓=error」系 moon.mod 仓内升格；0079 同录，陷阱 2）；
+  `1.0e16` 合法（陷阱 13）；fmt 折行阈实测 >80 字节（陷阱 15）；doc test
+  现行语法重写（`///|` 分隔 + 裸名引用，`@self` 已死 Error 4037——陷阱
+  16）；bash 工具传输层折叠反斜杠归因勘正（非 heredoc，陷阱 19）；
+  `substring` 弃用 + 返回视图（陷阱 24）；`reinterpret_as_int64` 现行 API
+  （陷阱 25）；三臂测试栈预算梯度 js < wasm-gc < native 重测（现炸点
+  (3000,3750]/(4500,5250]/(8000,9000]，陷阱 28）；字符串比较 shortlex 官方
+  定性（core issue #4637：有意设计，String/Bytes/Array/Deque 全族、List
+  例外；`String::lexical_compare` 语义对应——陷阱 29）；`StringBuilder()`
+  入弃用清单（陷阱 34）；main 带 raise 仅 Warning 0024 不再拒绝（陷阱
+  36）；`String::replace` 只替换首个系文档化设计，`replace_all` 自 core
+  PR #647 在位（陷阱 37）；增量缓存纯 mtime 严格相等机理精化（陷阱 41）；
+  #2480 上游已修 + CC env 已纳入增量判定（`moon clean` 处方过时）+ obj
+  哈希不可作编译器判别（陷阱 43）；prove 边界增补五条（陷阱 45）；「no
+  prover available」本机全灭系管理员权限（用户定性，陷阱 46）；新录
+  0082 ambiguous_braces（陷阱 47）/ missing_priv 0004 + `Pkg::fn` 双冒号
+  退役（陷阱 48）/ 跨包 `pub struct` 字面量构造被拒 4036（陷阱 49）。
+- **`String::replace_all` 收编**：`host/host_io.mbt` 的 CRLF 规整与四 dump
+  包 `norm_path` 的反斜杠折叠 while-replace 循环（`replace` 只替换首个时代
+  的产物）全部改单次 `replace_all`（消 O(n²) 最坏）。双臂实测：js 266/266
+  + native 298/298（改动面六包全量）。
+
+### feat(facts)+fix(docs): 门面数字收尾批——facts 双键立锚 + stale 三族修正 + 现值行判据升级（#532/#533/#534，2026-11-16）
+
+- **#534 facts 双键**：`opcode_variants`（静态扫 `moonbit/opcode/opcode.mbt`
+  的 `enum OpCode` 变体 = 154，与 `opcode_wbtest` from_u8 全空间命中同源）
+  与 `diag_code_count`（`scripts/moonbit/diagnostics_data/error_codes.json`
+  arms 排除 Unknown = 129）入台账——RUN_KEYS / 非 `--run` 条件占位 /
+  collector 三处对称；audit 增两条对账规则（带宽/排除面实测收口：moon.mod
+  面随发版、gen_diag 基线另口径（130 臂含 Unknown）、编号分段清单行归人工
+  维护）。门面数字自此机判：漂移即红。
+- **#533 stale 三族修正**：README 与 moonbit/README 测试数 1426 → **1546**
+  （worktree 基线 `fed84d07` 裸 `moon test` 实测）、opcode 153 → **154**、
+  诊断码 119/121/137 → **129**；`opcode.mbt` 头注条数与 from_u8 越界注释
+  （>153 → >156，补录 #471 CastD2UQ 段）连坐；总计划 L1 诊断契约行陈旧
+  基线（126 臂/catalog 122 → 130/126，EXPECTED_ARMS/EXPECTED_CATALOG
+  实读）勘正；`moon.mod` description 按发版纪律**不动**（随下版发布窗口）。
+- **#532 现值行判据升级**：`scripts/facts/audit.mts` classifyLine 增现值
+  声明词判定——现值句与日期/as-of 词同行时**不再整行冻结**（陈旧数字搭
+  日期便车假绿实锤：README:28/145 的 1426 长期报漂移 0），降级
+  manual + suspect（不自动替换；`--strict` 判红，可经
+  `suspect_exemptions.json` 豁免）；README 28/145 行内多列表项拆行
+  （现值句与历史注记分离）。J9 锚 `facts/current_bypass.test.mts`（4 例：
+  先红——冻结形态复现；后绿，含纯历史行不误伤 + 已维护行不误报）。
+
 ### fix(ci+scripts+desktop): PR #529 审阅处置——P1×1 + P2×4 + P3×7 全清（2026-11-15）
 
 - **P1-1 package_check 失败路径**：`check(); process.exit(1)` 在 try 内——exit

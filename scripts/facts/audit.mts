@@ -121,6 +121,21 @@ export function rules(): Rule[] {
     mk("moonbit_check_warnings", "moon check warning 台账数",
       `warning[^\\n]{0,8}台账|moonbit_check_warnings`,
       ``, 0, 120, "条"),
+    // #534（2026-11-16）：门面数字两族（#533 stale 三族的根治键）——
+    // opcode 变体数 / 诊断码数入机判。exclude 收口两类行：moon.mod 面
+    // （#533 裁定随下版发版，发版前有意保留旧值）与「编号分段清单」行
+    // （每段上下界都是裸数字，与总数混在同一单元格，属分解式人工维护面：
+    // 设计单历史快照行/README 包表的 stable numbering 段）。
+    mk("opcode_variants", "opcode 变体数", `opcode|操作码`,
+      `moon\\.mod|mooncakes 模块页|设计单|直映表|语义冻结|语义已由|冻结|全表|私有码表|stable numbering`,
+      150, 160, "条"),
+    // 带宽 lo=118：覆盖诊断码全部历史值（119/121/126/135/137 须落进候选
+    // 才能判漂移——下限高于旧值=漏抓假绿）；同句邻居的卡片数 115/117 排除
+    // （教学卡片与错误码是两族计量，混行时不能互相误锚）。gen_diag 基线行
+    // 另口径（EXPECTED_ARMS 含 Unknown 哨兵=变体数，与"诊断码数"差 1）且自
+    // 带 fail loud 锚，归生成器闸管。
+    mk("diag_code_count", "诊断码数", `诊断错误码|诊断码|ErrorCode`,
+      `moon\\.mod|mooncakes 模块页|设计单|教学卡片|卡片|catalog_codes|gen_diag`, 118, 140, "个"),
   ];
 }
 
@@ -173,6 +188,11 @@ const RE_DISCIPLINE = /纪律\s*\d+/g;
 const RE_ASOF_WORD = /as[- ]?of|截至|原记|彼时|当时|历史|已废弃|旧口径|陈旧口径|归档|已过时|已被.*取代|口径已/i;
 const RE_PHASE = /(Phase|Stage|阶段|第)\s*\d+/g;
 const RE_NUM = /\d{2,6}/g;
+// #532（2026-11-16）：现值声明词——与日期/as-of 词同行时不得整行冻结。
+// 实锤形态：README:28/145 现值句尾附历史勘探 as_of 注记，陈旧测试数搭
+// 日期便车长期假绿（facts --strict 报漂移 0）。命中者降级 manual+suspect
+// （不自动替换；--strict 判红，可经 suspect_exemptions.json 豁免）。
+const RE_CURRENT_DECL = /现值|当前值|活数字|对账管束|漂移即红|即连坐|真值以/i;
 // 数字绑定实测结果：直接替换会**伪造测量**（如"632 用例实测 103.6s"改成 671
 // 就变成假记录）。此类应标 as-of，而不是改数字。
 const RE_MEASURE = /实测|耗时|冷启动|加速比|吞吐|性能|基准/;
@@ -645,7 +665,10 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
       if (goTrimSpace(line) === "") continue;
       // HTML 嵌入标签行：width 等布局参数不参与数字对账（见 RE_HTML_TAG_LINE 注释）。
       if (RE_HTML_TAG_LINE.test(line)) continue;
-      const frozen = classifyLine(line) || tier === "AS-OF";
+      const lineFrozen = classifyLine(line);
+      const tierFrozen = tier === "AS-OF";
+      const currentBypass = !tierFrozen && lineFrozen && RE_CURRENT_DECL.test(line);
+      const frozen = (lineFrozen && !currentBypass) || tierFrozen;
       const spans = numberSpans(line);
 
       // 这一行对每个事实各命中哪些候选数字。
@@ -697,6 +720,14 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
         h.warn = warns.join("；");
         if (frozen) {
           a.frozen.push(h);
+        } else if (currentBypass) {
+          // #532：现值声明与日期同行的混合句——不冻结（搭便车面）也不直接
+          // 判 drift（自动替换会改断"现值+历史注记"的句子结构）：
+          // 进 manual 人工维护，整行无真值数字时升级 Suspect（--strict 判红）。
+          a.manual.push(h);
+          if (!hitContainsTruth(cands, a.truth)) {
+            a.suspect.push(h);
+          }
         } else if (h.warn !== "") {
           // 分解式/实测行：子项与总数无法机判区分、自动替换有破坏面
           // （见 FactAudit.manual 注释）——人工维护，不判 drift。

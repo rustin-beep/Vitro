@@ -34,10 +34,14 @@ pub fn utf8_len(s : String) -> Int32 {
 
 ///|
 /// 字典序比较（负/零/正）。**禁用 `String::compare` / `<` `>`**——MoonBit
-/// 内置 String 比较实测非字典序（`"delta" > "charlie"` 为 false，疑似长度
-/// 优先；陷阱 #29），与 Go canonicalize 的键排序（sort.Strings，字节字典序）
-/// 不一致。本函数按 UTF-16 码元逐位比较 + 短者小——键域为 C 标识符
-/// （ASCII），与 UTF-8 字节字典序在此域等价。
+/// 内置 String 比较实测非字典序（`"delta" > "charlie"` 为 false，长度优先
+/// 〔shortlex〕；陷阱 #29——2026-11-16 官方定性：core #4637 裁定 shortlex
+/// 为有意设计，String/Bytes/Array/Deque 全族如此仅 List 例外），与 Go
+/// canonicalize 的键排序（sort.Strings，字节字典序）不一致。本函数按
+/// UTF-16 码元逐位比较 + 短者小——键域为 C 标识符（ASCII），与 UTF-8
+/// 字节字典序在此域等价。语义对应：core 现已提供纯字典序 API
+/// `String::lexical_compare`（与 本函数同义）——单源纪律照旧不替换，
+/// 此注记仅作语义互证锚。
 pub fn str_cmp(a : String, b : String) -> Int32 {
   let n = if a.length() < b.length() { a.length() } else { b.length() }
   for i in 0..<n {

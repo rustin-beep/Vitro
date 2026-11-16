@@ -108,6 +108,51 @@ export interface StepNextResult {
   max_collected_step?: number;
 }
 
+// ── TimelinePlan（#470；gateway timeline.plan 只读出口）────────
+// 与 moonbit/docs/spec/TIMELINE_PLAN_V0_1.md 同构（pv=2 起含 v0.2 字段）。
+// steps[k] 与请求帧窗零基同构；键缺省 = 无（禁空串占位）。demo 的语句级
+// 消费在 session 层按组聚合（sws/bar/cam/enter）；归属判据本身单源在引擎。
+
+export interface TimelineSwap {
+  /** 真实数组名（vis_events.context 点名），非字幕展示名。 */
+  name: string;
+  i: number;
+  j: number;
+}
+
+export interface TimelineCap {
+  t: string;
+  w: number;
+  dur: number;
+}
+
+/** 相机关键帧（v0.2）：fit = 拟合目标；func = 栈顶函数；depth = 栈深。
+ *  demo CallTree 相机当前按「当前帧节点」定位（D2），本字段登记为后续批
+ *  消费的相机意图（不改变现有跟随行为）。 */
+export interface TimelineCam {
+  fit: string;
+  func: string;
+  depth: number;
+}
+
+export interface TimelineStep {
+  sw?: TimelineSwap;
+  cap?: TimelineCap;
+  /** 变化格（name → 升序下标；基准 = 选中帧集内前帧）。 */
+  ch?: Record<string, number[]>;
+  /** 量感条归一比例（name → 逐元素 0..1；像素下限归宿主）。 */
+  bar?: Record<string, number[]>;
+  /** 相机关键帧（栈顶/深度变化帧）。 */
+  cam?: TimelineCam;
+  /** 进场标识："func:<name>"（栈顶变化）/ "diag:<category>"（根因首现）。 */
+  enter?: string;
+}
+
+export interface TimelinePlan {
+  pv: number;
+  steps: TimelineStep[];
+}
+
 // ── compile / run（运行链消费）──────────────────────────────
 
 export interface Diagnostic {

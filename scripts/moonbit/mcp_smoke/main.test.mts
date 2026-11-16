@@ -103,18 +103,23 @@ test("frameHasValidSwap：越界/歧义/缺失不点亮", () => {
   assert.equal(frameHasValidSwap({ r: { a: len5, b: len5 }, e: [[2, 2, 0, 1, -1, "a[j]:b[j + 1]"]] }), false, "歧义不猜");
 });
 
-test("checkTimelinePlan：合规产物绿 + 计数", () => {
+test("checkTimelinePlan：合规产物绿 + 计数（v0.2 六字段）", () => {
   const data = {
     frames: [
-      { r: { a: ["2", "1"] }, e: [[2, 2, 0, 1, -1, "a[j]:a[j + 1]"]], s: "交换 arr[0]↔arr[1]" },
-      { r: { a: ["2", "1"] }, e: [], s: "" },
+      { r: { a: ["2", "1"] }, rt: { a: "int" }, c: ["prog", "main"], e: [[2, 2, 0, 1, -1, "a[j]:a[j + 1]"]], s: "交换 arr[0]↔arr[1]" },
+      { r: { a: ["2", "1"] }, rt: { a: "int" }, c: ["prog", "main"], e: [], s: "" },
     ],
     doc: {
       timeline: {
-        pv: 1,
+        pv: 2,
         steps: [
-          { sw: { name: "a", i: 0, j: 1 }, cap: { t: "交换 arr[0]↔arr[1]", w: 2, dur: 1 } },
-          {},
+          {
+            sw: { name: "a", i: 0, j: 1 },
+            cap: { t: "交换 arr[0]↔arr[1]", w: 2, dur: 1 },
+            bar: { a: [1, 0.5] },
+            cam: { fit: "calltree", func: "main", depth: 2 },
+          },
+          { bar: { a: [1, 0.5] } },
         ],
       },
     },
@@ -125,18 +130,23 @@ test("checkTimelinePlan：合规产物绿 + 计数", () => {
   assert.equal(r.swFrames, 1);
 });
 
-test("checkTimelinePlan：J9 突变必红（对齐/归属/空串/漏点亮）", () => {
+test("checkTimelinePlan：J9 突变必红（对齐/归属/空串/漏点亮/pv/ch/bar/cam）", () => {
   const mk = () => ({
     frames: [
-      { r: { a: ["2", "1"] }, e: [[2, 2, 0, 1, -1, "a[j]:a[j + 1]"]], s: "交换 arr[0]↔arr[1]" },
-      { r: { a: ["2", "1"] }, e: [], s: "" },
+      { r: { a: ["2", "1"] }, rt: { a: "int" }, c: ["prog", "main"], e: [[2, 2, 0, 1, -1, "a[j]:a[j + 1]"]], s: "交换 arr[0]↔arr[1]" },
+      { r: { a: ["2", "1"] }, rt: { a: "int" }, c: ["prog", "main"], e: [], s: "" },
     ],
     doc: {
       timeline: {
-        pv: 1,
+        pv: 2,
         steps: [
-          { sw: { name: "a", i: 0, j: 1 }, cap: { t: "交换 arr[0]↔arr[1]", w: 2, dur: 1 } },
-          {},
+          {
+            sw: { name: "a", i: 0, j: 1 },
+            cap: { t: "交换 arr[0]↔arr[1]", w: 2, dur: 1 },
+            bar: { a: [1, 0.5] },
+            cam: { fit: "calltree", func: "main", depth: 2 },
+          },
+          { bar: { a: [1, 0.5] } },
         ],
       },
     },
@@ -153,4 +163,17 @@ test("checkTimelinePlan：J9 突变必红（对齐/归属/空串/漏点亮）", 
   const emptyCap = mk();
   emptyCap.doc.timeline.steps[1]!.cap = { t: "", w: 1, dur: 0 };
   assert.ok(checkTimelinePlan(emptyCap, "a").errors.some((e) => e.includes("空标签仍产 cap")));
+  // v0.2 突变：pv 旧值 / ch 漏 / bar 越界 / cam 丢弃 —— 四路必红
+  const oldPv = mk();
+  (oldPv.doc.timeline as { pv: number }).pv = 1;
+  assert.ok(checkTimelinePlan(oldPv, "a").errors.some((e) => e.includes("pv 非 2")));
+  const chAng = mk();
+  chAng.frames[1]!.r!.a = ["9", "1"];
+  assert.ok(checkTimelinePlan(chAng, "a").errors.some((e) => e.includes("ch[a]")));
+  const barOver = mk();
+  barOver.doc.timeline.steps[0]!.bar!.a = [1.5, 0.5];
+  assert.ok(checkTimelinePlan(barOver, "a").errors.some((e) => e.includes("bar[a][0]")));
+  const camGone = mk();
+  delete camGone.doc.timeline.steps[0]!.cam;
+  assert.ok(checkTimelinePlan(camGone, "a").errors.some((e) => e.includes("缺 cam")));
 });

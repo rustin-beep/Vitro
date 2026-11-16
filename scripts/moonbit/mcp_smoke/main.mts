@@ -150,6 +150,8 @@ export interface DriveResult {
   total: number;
   data: unknown;
   probes: FrameProbe[];
+  /** 产物 PLAYER 顶层的页内 planStep（批二 EMBED 镜像，#470）；缺失 = 未接线。 */
+  stepProbe?: (fr: MiniFrame, prev: MiniFrame | null) => TimelineStep | null;
 }
 
 export function driveScript(scriptText: string): DriveResult {
@@ -195,7 +197,11 @@ export function driveScript(scriptText: string): DriveResult {
     if (swap > 0) swapFrames++;
     probes.push({ swap, changed, cap: cap.innerHTML });
   }
-  return { swapFrames, total, data: sandbox.__VITRO__, probes };
+  const rawProbe = (sandbox as { planStep?: unknown }).planStep;
+  const stepProbe = typeof rawProbe === "function"
+    ? (rawProbe as (fr: MiniFrame, prev: MiniFrame | null) => TimelineStep | null)
+    : undefined;
+  return { swapFrames, total, data: sandbox.__VITRO__, probes, stepProbe };
 }
 
 /** render 产物探针（读盘 + 提段 + 驱动；异常折叠为 {ok:false,err}）。 */
@@ -207,11 +213,12 @@ function probeHtml(
   total: number;
   data?: unknown;
   probes?: FrameProbe[];
+  stepProbe?: (fr: MiniFrame, prev: MiniFrame | null) => TimelineStep | null;
   err?: string;
 } {
   try {
     const d = driveScript(extractScript(readFileSync(htmlPath, "utf8")));
-    return { ok: true, swapFrames: d.swapFrames, total: d.total, data: d.data, probes: d.probes };
+    return { ok: true, swapFrames: d.swapFrames, total: d.total, data: d.data, probes: d.probes, stepProbe: d.stepProbe };
   } catch (e) {
     return { ok: false, swapFrames: -1, total: -1, err: e instanceof Error ? e.message : String(e) };
   }
@@ -237,14 +244,26 @@ export interface TimelineCap {
 export interface TimelineStep {
   sw?: TimelineSwap;
   cap?: TimelineCap;
+  /** v0.2：变化格（name → 升序下标）；基准 = 选中帧集内前帧。 */
+  ch?: Record<string, number[]>;
+  /** v0.2：量感条归一比例（name → 逐元素 0..1）。 */
+  bar?: Record<string, number[]>;
+  /** v0.2：相机关键帧（栈顶/深度变化帧）。 */
+  cam?: { fit: string; func: string; depth: number };
+  /** v0.2：进场标识（"func:<name>" / "diag:<category>"）。 */
+  enter?: string;
 }
 export interface MiniFrame {
   s?: string;
   /** vis_events 紧凑数组 [ty,line,e0,e1,e2,context]（context 是字符串）。 */
   e?: Array<Array<number | string>>;
   r?: Record<string, string[]>;
+  /** v0.2：数组元素类型表（与 r 同键集；bar 类型判据）。 */
+  rt?: Record<string, string>;
+  /** 调用栈函数名（cam/enter 判据）。 */
+  c?: string[];
   a?: { p?: string; d?: string } | null;
-  h?: { o?: string } | null;
+  h?: { o?: string; c?: string; category?: string } | null;
 }
 export interface VitroData {
   frames?: MiniFrame[];
@@ -275,7 +294,7 @@ export function frameHasValidSwap(fr: MiniFrame): boolean {
   return false;
 }
 
-/** TimelinePlan v0.1 产物不变量（#470 批一）：
+/** TimelinePlan v0.2 产物不变量（#470 批一/批四）：
  *  steps 与 frames 零基同构 / sw 归属真名且事件帧全点亮 / cap.t 与字幕同源 /
  *  缺省键不产空串。返回错误清单（空 = 绿）与计数。 */
 export function checkTimelinePlan(
@@ -287,7 +306,7 @@ export function checkTimelinePlan(
   const frames = d.frames ?? [];
   const tl = d.doc?.timeline;
   const steps = tl?.steps;
-  if (tl?.pv !== 1) errors.push(`doc.timeline.pv 非 1（${String(tl?.pv)}）`);
+  if (tl?.pv !== 2) errors.push(`doc.timeline.pv 非 2（${String(tl?.pv)}）`);
   if (!Array.isArray(steps)) {
     return { errors: [...errors, "doc.timeline.steps 缺失"], swFrames: 0, steps: 0, frames: frames.length };
   }
@@ -297,6 +316,7 @@ export function checkTimelinePlan(
   let swFrames = 0;
   for (let k = 0; k < Math.min(steps.length, frames.length); k++) {
     const fr = frames[k] ?? {};
+    const prev = k > 0 ? frames[k - 1] : undefined;
     const step = steps[k] ?? {};
     const hasEv = frameHasValidSwap(fr);
     // prod 帧的 r 已按 focus 过滤——归属真名不在本帧可见数组时不判「事件↔sw」
@@ -326,8 +346,102 @@ export function checkTimelinePlan(
       if (!(typeof cap.w === "number" && cap.w >= 1)) errors.push(`帧 ${k}: cap.w 非法`);
       if (!(typeof cap.dur === "number" && cap.dur >= 0)) errors.push(`帧 ${k}: cap.dur 非法`);
     }
+    // v0.2 ch：可见数组的差分必须与引擎 ch 一致（非可见键允许——plan 可带
+    // 非聚焦数组意图）；空差分 ≡ 缺键。
+    for (const [name, els] of Object.entries(fr.r ?? {})) {
+      const pe = prev?.r?.[name];
+      const expected: number[] = [];
+      if (pe !== undefined && pe.length === els.length) {
+        for (let i = 0; i < els.length; i++) if (pe[i] !== els[i]) expected.push(i);
+      }
+      const actual = step.ch?.[name] ?? [];
+      if (JSON.stringify(expected) !== JSON.stringify(actual)) {
+        errors.push(`帧 ${k}: ch[${name}] 期望 ${JSON.stringify(expected)} 实得 ${JSON.stringify(actual)}`);
+      }
+    }
+    // v0.2 bar：可见非 char 数组整组数值 → 长度=元素数且 [0,1]；非数值不产键。
+    for (const [name, els] of Object.entries(fr.r ?? {})) {
+      const ty = fr.rt?.[name] ?? "?";
+      const vals = els.map((x) => Number(x));
+      const numeric = ty !== "char" && els.length > 0 && vals.every((n) => Number.isFinite(n));
+      const ratios = step.bar?.[name];
+      if (!numeric) {
+        if (ratios !== undefined) errors.push(`帧 ${k}: 非数值/char 数组 ${name} 仍产 bar`);
+        continue;
+      }
+      if (ratios === undefined) {
+        errors.push(`帧 ${k}: 数值数组 ${name} 缺 bar`);
+        continue;
+      }
+      if (ratios.length !== els.length) {
+        errors.push(`帧 ${k}: bar[${name}] 长度 ${ratios.length} ≠ ${els.length}`);
+        continue;
+      }
+      const mx = Math.max(1, ...vals.map((n) => Math.abs(n)));
+      for (let i = 0; i < vals.length; i++) {
+        const want = Math.abs(vals[i] ?? 0) / mx;
+        if (Math.abs((ratios[i] ?? 0) - want) > 1e-12) {
+          errors.push(`帧 ${k}: bar[${name}][${i}] ${ratios[i]} ≠ ${want}`);
+          break;
+        }
+      }
+    }
+    // v0.2 cam/enter：首帧恒 cam；栈顶/深度变化帧产 cam；不变帧无 cam。
+    const stack = fr.c ?? [];
+    const top = stack[stack.length - 1] ?? "";
+    const pstack = prev?.c ?? [];
+    const ptop = pstack[pstack.length - 1] ?? "";
+    const changedStack = prev !== undefined && (top !== ptop || stack.length !== pstack.length);
+    const cam = step.cam;
+    if (prev === undefined || changedStack) {
+      if (cam === undefined) {
+        errors.push(`帧 ${k}: 首帧/栈变帧缺 cam`);
+      } else if (cam.fit !== "calltree" || cam.func !== top || cam.depth !== stack.length) {
+        errors.push(`帧 ${k}: cam 不符 ${JSON.stringify(cam)}`);
+      }
+    } else if (cam !== undefined) {
+      errors.push(`帧 ${k}: 栈不变仍产 cam`);
+    }
+    const enter = step.enter;
+    if (enter !== undefined && !/^(func:|diag:)/.test(enter)) {
+      errors.push(`帧 ${k}: enter 值域非法 ${enter}`);
+    }
   }
   return { errors, swFrames, steps: steps.length, frames: frames.length };
+}
+
+/** TimelinePlan 页内镜像不变量（#470 批二）：产物 PLAYER 的 planStep（interactive
+ *  EMBED 同款函数）对产物帧逐帧重算，与引擎 plan 逐位相等（sw+cap；null ≡ 缺省）。
+ *  锚定单数组语料（bubble/bubble_sort/same-name）——产物帧 r 按 focus 过滤，
+ *  多数组歧义面在可见子集下语义不同，不属本锚。返回错误清单（空 = 绿）。 */
+export function checkEmbedMirror(
+  data: unknown,
+  stepProbe: ((fr: MiniFrame, prev: MiniFrame | null) => TimelineStep | null) | undefined,
+  realName: string,
+): string[] {
+  if (stepProbe === undefined) return ["产物 PLAYER 缺 planStep（EMBED 镜像未接线）"];
+  const d = (data ?? {}) as VitroData;
+  const frames = d.frames ?? [];
+  const steps = d.doc?.timeline?.steps;
+  if (!Array.isArray(steps)) return ["doc.timeline.steps 缺失"];
+  const errors: string[] = [];
+  const norm = (st: TimelineStep | null): string =>
+    JSON.stringify({
+      sw: st?.sw ?? null,
+      cap: st?.cap ?? null,
+      ch: st?.ch ?? null,
+      bar: st?.bar ?? null,
+      cam: st?.cam ?? null,
+      enter: st?.enter ?? null,
+    });
+  for (let k = 0; k < Math.min(frames.length, steps.length); k++) {
+    const fr = frames[k] ?? {};
+    if (fr.r?.[realName] === undefined) continue; // 该帧无聚焦数组可见面
+    const mine = norm(stepProbe(fr, k > 0 ? (frames[k - 1] ?? null) : null));
+    const eng = norm(steps[k] ?? {});
+    if (mine !== eng) errors.push(`帧 ${k}: 镜像 ${mine} ≠ 引擎 ${eng}`);
+  }
+  return errors;
 }
 
 async function drive(): Promise<number> {
@@ -451,10 +565,26 @@ async function drive(): Promise<number> {
     // 真名（bubble 真名=展示名 arr）、界内事件帧全点亮（3/3）、cap.t 同源。
     const pt = pa.data === undefined ? null : checkTimelinePlan(pa.data, "arr");
     chk.check(
-      "doc.timeline：steps==frames(301) + 事件帧全点亮 3 + sw.name=arr（#470 批一）",
+      "doc.timeline v0.2：steps==frames(301) + 事件帧全点亮 3 + sw.name=arr（#470）",
       pt !== null && pt.errors.length === 0 && pt.steps === 301 && pt.swFrames === 3,
       pt === null ? "产物数据缺失" : `steps=${pt.steps} sw=${pt.swFrames} ${pt.errors.slice(0, 3).join(" | ")}`,
     );
+    // #470 批二：interactive EMBED 的 planStep 镜像与引擎 plan 逐帧同源；
+    // 旧归属规则（legacySwapPair/ctxMentions 正则）已从壳层退役。
+    if (pa.ok && rendered.html_path !== undefined) {
+      const script = extractScript(readFileSync(rendered.html_path, "utf8"));
+      chk.check(
+        "PLAYER 旧归属规则退役（legacySwapPair/ctxMentions 不在产物）",
+        !script.includes("legacySwapPair") && !script.includes("ctxMentions"),
+        "产物 script 仍含旧规则函数",
+      );
+      const mirrorErrs = checkEmbedMirror(pa.data, pa.stepProbe, "arr");
+      chk.check(
+        "EMBED planStep 镜像 == 引擎 plan（bubble 301 帧逐帧）",
+        mirrorErrs.length === 0,
+        mirrorErrs.slice(0, 3).join(" | "),
+      );
+    }
     // interactive 回落（CI 无 wasm 资产——恒走回落，恰锁该路径）
     const anim = body<{ ok: boolean; mode: string; frame_count: number; warnings: string[] }>(
       await call("animate", { source: BUBBLE_C, mode: "interactive", out_dir: outDir, preview_png: false }));
@@ -483,9 +613,15 @@ async function drive(): Promise<number> {
     // ——这条正是「数组长度入最小视图」的判别证据（否则 plan 会到 56 帧）。
     const ptc = pc.data === undefined ? null : checkTimelinePlan(pc.data, "a");
     chk.check(
-      "doc.timeline：sw.name=a 54 界内帧全点亮 + 越界帧不产 sw（#470 批一）",
+      "doc.timeline v0.2：sw.name=a 54 界内帧全点亮 + 越界帧不产 sw（#470）",
       renderedC.ok && ptc !== null && ptc.errors.length === 0 && ptc.steps === 81 && ptc.swFrames === 54,
       ptc === null ? "产物数据缺失" : `steps=${ptc.steps} sw=${ptc.swFrames} ${ptc.errors.slice(0, 3).join(" | ")}`,
+    );
+    const mirrorErrsC = checkEmbedMirror(pc.data, pc.stepProbe, "a");
+    chk.check(
+      "EMBED planStep 镜像 == 引擎 plan（bubble_sort 81 帧逐帧，含越界/真名）",
+      renderedC.ok && mirrorErrsC.length === 0,
+      mirrorErrsC.slice(0, 3).join(" | "),
     );
     await call("session_close", { session_id: openedC.session_id });
 

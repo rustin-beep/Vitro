@@ -317,6 +317,17 @@ jobs:
         run: node scripts/teaching_truth/main.mts --backend-wasm
         shell: bash
 
+      # TimelinePlan v0.2 wasm 臂内容锚（#470 批四收尾；PR #530 审阅
+      # 「wasm 臂 plan 内容未深度审阅」建议项）：wasm-gc 产物经 Node 宿主
+      # （scripts/wasm_load.mts）实例化后走 step 流调 timeline.plan，断言
+      # pv=2 / steps==payloads / sw 真名界内 / ch 与 payload 差分一致 /
+      # bar [0,1] 域 / cam 首帧+栈变帧 / enter 值域——plan 内容此前只在
+      # js 臂产物与 gateway js-target 白盒被验证（浏览器交付同源面盲区）。
+      - name: TimelinePlan v0.2 wasm content anchor
+        if: ${{ !cancelled() && steps.gate.outcome == 'success' && matrix.slice == 'serve_channel' }}
+        run: node scripts/moonbit/timeline_wasm_anchor/main.mts
+        shell: bash
+
       # ── slice cli_smoke = 统一 CLI 入口闸 + algorithms.catalog 三方对账 ──
       # 统一 CLI 入口闸（#49 批一，2026-10-06；js 臂连坐 2026-10-15 三后端批）：
       # wasm 壳（scripts/vitro_cli/
@@ -364,13 +375,14 @@ jobs:
           node scripts/moonbit/mcp_smoke/main.mts
         shell: bash
 
-      # TimelinePlan v0.1 等价对拍（#470 批一，2026-11-15；PR #530 审阅扩面）：
+      # TimelinePlan v0.2 等价对拍（#470 批一/批四，2026-11-15；PR #530 审阅扩面）：
       # 同一真实产物逐帧对比「旧规则（冻结副本）vs plan 路径」——bubble（真名
       # =展示名 arr）/ bubble_sort（真名 a ≠ 展示名 arr 的 #469 分叉面，含
       # 越界事件）/ same-name（全局 arr + 形参 arr 双快照）三案例：交换帧集合 /
-      # 字幕 HTML / stage 关键类名逐帧一致；另有人造分叉锚（plan 与 frames
-      # 故意不一致 → DOM 必须跟 plan 走，防静默回退旧规则）。J9：改生成器归属
-      # /字幕/壳层换源 → 本闸红。前置 = 上一步 js 产物。
+      # 字幕 HTML / stage 关键类名（swap/changed；changed 已换读 plan.ch）逐帧
+      # 一致；另有人造分叉锚（plan 与 frames 故意不一致 → DOM 必须跟 plan 走，
+      # 防静默回退旧规则）。J9：改生成器归属/字幕/ch/壳层换源 → 本闸红。
+      # 前置 = 上一步 js 产物。
       - name: TimelinePlan equivalence (old rule vs plan path, 3 corpora)
         if: matrix.slice == 'cli_smoke'
         run: node scripts/moonbit/timeline_equiv/main.mts

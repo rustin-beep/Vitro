@@ -335,6 +335,7 @@ vitro/engine/gateway vitro/engine/teaching/steps export_algorithms_catalog_json
 vitro/engine/gateway vitro/engine/time_travel DEFAULT_MAX_CHECKPOINTS
 vitro/engine/gateway vitro/engine/time_travel SourceLineProvider
 vitro/engine/gateway vitro/engine/time_travel UnifiedEngine
+vitro/engine/gateway vitro/engine/timeline ArraySnap
 vitro/engine/gateway vitro/engine/timeline FrameEvent
 vitro/engine/gateway vitro/engine/timeline FrameView
 vitro/engine/gateway vitro/engine/timeline Plan
@@ -442,6 +443,7 @@ vitro/engine/mcp vitro/engine/gateway engine_version
 vitro/engine/mcp vitro/engine/gateway invoke_on
 vitro/engine/mcp vitro/engine/gateway protocol_version
 vitro/engine/mcp vitro/engine/session Session
+vitro/engine/mcp vitro/engine/timeline ArraySnap
 vitro/engine/mcp vitro/engine/timeline FrameEvent
 vitro/engine/mcp vitro/engine/timeline FrameView
 vitro/engine/mcp vitro/engine/timeline Plan
@@ -636,6 +638,7 @@ vitro/engine/time_travel vitro/engine/vm Delta
 vitro/engine/time_travel vitro/engine/vm Full
 vitro/engine/time_travel vitro/engine/vm VMSnapshot
 vitro/engine/time_travel vitro/engine/vm VitroVM
+vitro/engine/timeline moonbitlang/core/string parse_double
 vitro/engine/typeck vitro/engine/arith AddOverflow
 vitro/engine/typeck vitro/engine/arith I32
 vitro/engine/typeck vitro/engine/arith I64

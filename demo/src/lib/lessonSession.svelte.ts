@@ -40,9 +40,11 @@ class LessonSessionState {
 
   /** 当前课分镜（#238 单点解析出口）：v2 锚点幕在帧流上动态求值
    *  （未命中该幕不猜）、v1 数字课幂等直通——**消费方一律取本属性**，
-   *  勿直接读 note.scenes（那是未求值的锚点原态，from=-1 恒无当前幕）。 */
+   *  勿直接读 note.scenes（那是未求值的锚点原态，from=-1 恒无当前幕）。
+   *  #470 批三：@swap 词条读引擎 plan 的交换意图（session.viewSwapFlags，
+   *  与 viewFrames 逐位对齐）；无 plan 时 resolveScenes 内部回落旧判据。 */
   get scenes(): Scene[] {
-    return resolveScenes(this.note?.scenes ?? [], session.viewFrames);
+    return resolveScenes(this.note?.scenes ?? [], session.viewFrames, session.viewSwapFlags);
   }
   /** 当前课（null = 分享还原的自由代码/默认示例）。 */
   lesson = $state<CourseLesson | null>(null);

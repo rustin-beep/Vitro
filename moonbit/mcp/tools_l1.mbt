@@ -506,7 +506,7 @@ fn Server::render_entry(
   for i in idx {
     frames_json.push(frame_json_full(slice[i], focus))
   }
-  // TimelinePlan v0.1（#470 批一）：steps[k] ↔ 选中帧[k] 零基同构，落
+  // TimelinePlan v0.2（#470 批一/批四）：steps[k] ↔ 选中帧[k] 零基同构，落
   // doc.timeline（与 doc.series_decl 同一版本化信封）。plan 与 frames 的
   // 对齐是本文件内构造保证 + validate 兜底——错位属内部缺陷，fail loud
   // 不产坏产物。interactive 页内帧流（运行时 keyframe 采集）与本 plan 不同源，

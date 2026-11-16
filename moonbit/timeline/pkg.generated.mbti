@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub const PLAN_PV : Int32 = 1
+pub const PLAN_PV : Int32 = 2
 
 pub fn plan(Array[FrameView]) -> Plan
 
@@ -17,6 +17,18 @@ pub fn validate(Plan, Int32) -> Result[Unit, String]
 // Errors
 
 // Types and methods
+pub(all) struct ArraySnap {
+  name : String
+  elements : Array[String]
+  element_ty : String
+}
+
+pub(all) struct Cam {
+  fit : String
+  func : String
+  depth : Int32
+}
+
 pub(all) struct Cap {
   t : String
   w : Int32
@@ -36,7 +48,9 @@ pub(all) struct FrameView {
   func_name : String
   semantic_label : String
   vis_events : Array[FrameEvent]
-  arrays : Array[(String, Int32)]
+  arrays : Array[ArraySnap]
+  call_stack : Array[String]
+  root_category : String
 }
 
 pub(all) struct Plan {
@@ -47,6 +61,10 @@ pub(all) struct Plan {
 pub(all) struct Step {
   sw : SwapPair?
   cap : Cap?
+  ch : Map[String, Array[Int32]]?
+  bar : Map[String, Array[Double]]?
+  cam : Cam?
+  enter : String?
 }
 
 pub(all) struct SwapPair {

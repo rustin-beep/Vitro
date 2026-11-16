@@ -20,11 +20,14 @@ const bundlePath = path.join(demoRoot, "dist-e08", "entry.js");
 const bundle = (await import(pathToFileURL(bundlePath).href)) as typeof import("../src/e08/entry.ts");
 
 // 用例输入：payloads/<case>.json 存在则优先（用例专属覆盖，如空态分支），
-// 否则吃全量 core.json。
+// 否则按下表别名找同源夹具，再否则吃全量 core.json（e08-update.mts 同规则）。
 const payloadDir = path.join(demoRoot, "e08", "payloads");
+const PAYLOAD_ALIAS: Record<string, string> = { "rootcause-uaf": "diagband-trap" };
 function payloadFor(name: string): CorePayload {
   const over = path.join(payloadDir, `${name}.json`);
-  return JSON.parse(readFileSync(existsSync(over) ? over : path.join(payloadDir, "core.json"), "utf8")) as CorePayload;
+  const alias = PAYLOAD_ALIAS[name];
+  const fallback = path.join(payloadDir, alias === undefined ? "core.json" : `${alias}.json`);
+  return JSON.parse(readFileSync(existsSync(over) ? over : fallback, "utf8")) as CorePayload;
 }
 const goldenDir = path.join(demoRoot, "e08", "golden");
 

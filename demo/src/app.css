@@ -372,6 +372,14 @@ html { --vr-masthead-h: 65px; scroll-padding-top: calc(var(--vr-masthead-h) + 12
 .vr-meta { font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-empty { margin: 0; padding: 14px 0; font-family: var(--vr-mono); font-size: 11px; font-variant-ligatures: none; color: var(--vr-ink-3); }
 
+/* ---------- 根因提示（#470 批三：帧级 root_cause_hint，教学面琥珀分色） ---------- */
+.vr-rootcause { border-left: 3px solid var(--vr-amber-2); padding-left: 14px; }
+.vr-rootcause-line { margin: 0; font-size: calc(var(--vr-fs) * .85); line-height: 1.7; }
+.vr-rootcause-fix { margin: 6px 0 0; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .75); font-variant-ligatures: none; color: var(--vr-green); }
+/* 批四：plan.enter == diag:<category>（根因首现帧）的入场（reduce 由文件尾全局规则切断） */
+.vr-rootcause.is-enter { animation: vr-rootcause-rise .5s var(--vr-ease-enter) both; }
+@keyframes vr-rootcause-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
 /* ---------- 诊断带（单行摘要 → 展开三栏） ---------- */
 .vr-diag-summary { border-top: 1px solid var(--vr-rule); border-bottom: 1px solid var(--vr-rule); padding: 5px 0; }
 .vr-diag-pill { display: flex; align-items: center; gap: 14px; width: 100%; background: transparent; border: 0; padding: 2px 0; font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); text-align: left; }

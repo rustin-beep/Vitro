@@ -1,8 +1,13 @@
-// L0 纯语义·动效编排计划包（TimelinePlan v0.1 批一，2026-11-15，refs #470）：
+// L0 纯语义·动效编排计划包（TimelinePlan v0.2 批四，2026-11-15，refs #470）：
 // 帧选择（各宿主的关键帧抽取）之上的「每帧动效意图」结构 + 生成器——零 IO、
-// 零包依赖（不 import 任何引擎包；输入是宿主无关的最小帧视图，不依赖
-// mcp/gateway 内部 Frame 类型——L0 禁止反向依赖）。
+// 零引擎包依赖（不 import 任何引擎包；输入是宿主无关的最小帧视图，不依赖
+// mcp/gateway 内部 Frame 类型——L0 禁止反向依赖）。仅依赖 core 数值解析
+// （bar 归一：moonbitlang/core/string parse_double）——非引擎依赖。
 // 输出 {pv, steps[]}：steps 与选中帧集零基同构（steps[k] ↔ frames[k]）。
 // 消费面：gateway `timeline.plan`（只读帧区间）+ mcp render/animate
 // （doc.timeline，与 doc.series_decl 同一渲染数据信封）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L0，总计划 §4）。
+
+import {
+  "moonbitlang/core/string",
+}

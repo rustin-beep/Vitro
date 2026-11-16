@@ -9,7 +9,7 @@
 "use strict";
 
 import { loadGateway, setGateway, invoke, bodyOf, type GatewayExports } from "../../js/gw.ts";
-import type { Diagnostic, Frame } from "../../js/types.ts";
+import type { Diagnostic, Frame, TimelinePlan } from "../../js/types.ts";
 import { latin1ToUtf8 } from "../../js/util.ts";
 import type { StepPayload, StepNextResult } from "../../js/types.ts";
 import wasmUrl from "../../wasm.wasm?url";
@@ -75,6 +75,9 @@ export interface CollectResult {
   compileOk: boolean;
   /** run 六字段出口（A8：返回码/VM 步数统计卡 + A2 waiting_input 驱动）。 */
   run: { status: string; return_value: number; steps_executed: number; waiting_input: boolean } | null;
+  /** TimelinePlan v0.1（#470 批三）：与 frames 逐位同构的动效意图（引擎单源
+   *  timeline.plan）；拉取失败/编译失败 = null（宿主回落旧判据）。 */
+  timeline: TimelinePlan | null;
 }
 
 type EngineCfg = Record<string, unknown>;
@@ -122,6 +125,19 @@ async function drainSteps(cap: number): Promise<{ frames: StepPayload[]; stopped
   return { frames, stopped };
 }
 
+/** TimelinePlan 拉取（#470 批三）：帧窗 [0, frameCount) 与回传 frames 零基
+ *  同构。plan 是派生只读视图，拉取失败不阻塞采集（null = 宿主回落旧判据）。 */
+function pullTimeline(frameCount: number): TimelinePlan | null {
+  if (frameCount <= 0) return null;
+  try {
+    const tl = must<TimelinePlan>(invoke({ method: "timeline.plan", params: { start: 0, end: frameCount } }));
+    return Array.isArray(tl.steps) ? tl : null;
+  } catch (err) {
+    console.warn("[vitro] timeline.plan 拉取失败（宿主回落旧判据）：", String((err as Error)?.message ?? err).slice(0, 120));
+    return null;
+  }
+}
+
 async function collect(source: string, cap: number, bpLines: number[], files: Array<{ filename: string; source: string }> | undefined, cfg: EngineCfg, argv: string[] | undefined): Promise<CollectResult> {
   const g = await ensureGw();
   const t0 = performance.now();
@@ -154,6 +170,7 @@ async function collect(source: string, cap: number, bpLines: number[], files: Ar
       ppTrace: comp.preprocessor_trace ?? [],
       compileOk: false,
       run: null,
+      timeline: null,
     };
   }
   // A3（#140）：argv 通道（run params argv——引擎侧跨 run 存活，serve_run
@@ -188,6 +205,7 @@ async function collect(source: string, cap: number, bpLines: number[], files: Ar
     ppTrace: comp.preprocessor_trace ?? [],
     compileOk: true,
     run: { status: run.status, return_value: run.return_value, steps_executed: run.steps_executed, waiting_input: run.waiting_input },
+    timeline: pullTimeline(frames.length),
   };
 }
 
@@ -214,6 +232,7 @@ async function feed(text: string, cap: number): Promise<CollectResult> {
     ppTrace: [],
     compileOk: true,
     run: { status: run.status, return_value: run.return_value, steps_executed: run.steps_executed, waiting_input: run.waiting_input },
+    timeline: pullTimeline(frames.length),
   };
 }
 

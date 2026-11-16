@@ -27,11 +27,14 @@ try {
 }
 
 const payloadDir = path.join(demoRoot, "e08", "payloads");
-// 用例输入：payloads/<case>.json 存在则优先（用例专属覆盖，如空态分支），
-// 否则吃全量 core.json——与 e08.test.mts 同规则，两处须同批改。
+// 用例输入：payloads/<case>.json 存在则优先，否则按别名表找同源夹具，再否则
+// 吃全量 core.json——与 e08.test.mts 同规则，两处须同批改。
+const PAYLOAD_ALIAS: Record<string, string> = { "rootcause-uaf": "diagband-trap" };
 function payloadFor(name: string): CorePayload {
   const over = path.join(payloadDir, `${name}.json`);
-  return JSON.parse(readFileSync(existsSync(over) ? over : path.join(payloadDir, "core.json"), "utf8")) as CorePayload;
+  const alias = PAYLOAD_ALIAS[name];
+  const fallback = path.join(payloadDir, alias === undefined ? "core.json" : `${alias}.json`);
+  return JSON.parse(readFileSync(existsSync(over) ? over : fallback, "utf8")) as CorePayload;
 }
 
 mkdirSync(goldenDir, { recursive: true });

@@ -2219,13 +2219,10 @@ pub fn InputState::from_stdin_text(text : String, batch : Bool) -> InputState {
   if normalized.has_prefix(bom) {
     normalized = normalized[1:].to_owned()
   }
-  // **循环规整**（2026-09-29 stdin 34 例批实锤）：MoonBit String::replace
-  // 只替换**首个**匹配（探针：a\rb\rc.replace → a-bc）——单次调用只消
-  // 一个 CRLF，kr_1_19 实测第二行起 \r 泄入程序（输出多 \r 分叉）；
-  // 循环到不含即全量（stdin 规模小，O(n^2) 最坏可忽略）
-  while normalized.contains("\r\n") {
-    normalized = normalized.replace(old="\r\n", new="\n")
-  }
+  // **CRLF 全量规整**（2026-09-29 stdin 34 例批实锤：单次 replace 只消一个
+  // CRLF，kr_1_19 第二行起 \r 泄入程序；2026-11-16 陷阱彻查批收编——
+  // String::replace_all 在位（core PR #647 起），替换 while 循环消 O(n^2)）
+  normalized = normalized.replace_all(old="\r\n", new="\n")
   if normalized.is_empty() {
     return InputState::new([], batch)
   }

@@ -218,12 +218,9 @@ fn basename_keep_ext(path : String) -> String {
 /// 本地调用域足够，真要绝对化需 fs 层 realpath（本包 vendored fs 无此 API）。
 /// dir_of 族同义复制件——修改须与其余 dump 三包同步。
 fn norm_path(p : String) -> String {
-  // 反斜杠折叠：String::replace 只替换首个（陷阱 #37），循环到不含为止——先例
-  // host_io.mbt from_stdin_text 的 CRLF 规整
-  let mut unified = p
-  while unified.contains("\\") {
-    unified = unified.replace(old="\\", new="/")
-  }
+  // 反斜杠折叠全量：replace_all（陷阱 #37 彻查批收编，2026-11-16——旧 while
+  // 循环系 replace 只替换首个时代的写法；host_io.mbt CRLF 规整同批已改）
+  let unified = p.replace_all(old="\\", new="/")
   let segs : Array[String] = []
   for seg in unified.split("/") {
     let s : String = seg.to_owned()

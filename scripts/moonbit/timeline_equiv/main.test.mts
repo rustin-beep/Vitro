@@ -56,16 +56,21 @@ function synthetic(): {
 } {
   const data = {
     frames: [
-      { r: { a: ["5", "3"] }, e: [[2, 2, 0, 1, -1, "a[j]:a[j + 1]"]], s: "交换 arr[0]↔arr[1]" },
-      { r: { a: ["3", "5"] }, e: [] as Array<Array<number | string>>, s: "第 2 行", a: { p: "compare", d: "desc" } },
+      { r: { a: ["5", "3"] }, rt: { a: "int" }, c: ["prog", "main"], e: [[2, 2, 0, 1, -1, "a[j]:a[j + 1]"]], s: "交换 arr[0]↔arr[1]" },
+      { r: { a: ["3", "5"] }, rt: { a: "int" }, c: ["prog", "main"], e: [] as Array<Array<number | string>>, s: "第 2 行", a: { p: "compare", d: "desc" } },
     ],
     focus: ["a"],
     doc: {
       timeline: {
-        pv: 1,
+        pv: 2,
         steps: [
-          { sw: { name: "a", i: 0, j: 1 }, cap: { t: "交换 arr[0]↔arr[1]", w: 2, dur: 1 } },
-          { cap: { t: "第 2 行", w: 1, dur: 0 } },
+          {
+            sw: { name: "a", i: 0, j: 1 },
+            cap: { t: "交换 arr[0]↔arr[1]", w: 2, dur: 1 },
+            bar: { a: [1, 0.6] },
+            cam: { fit: "calltree", func: "main", depth: 2 },
+          },
+          { cap: { t: "第 2 行", w: 1, dur: 0 }, ch: { a: [0, 1] }, bar: { a: [0.6, 1] } },
         ],
       },
     },

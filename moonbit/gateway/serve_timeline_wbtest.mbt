@@ -64,7 +64,7 @@ test "serve_timeline_plan_alignment_and_real_name" {
   assert_true(tp.contains("\"ok\":true"), msg="plan 成功帧")
   let pj = @util.json_parse(tp) catch { _ => abort("plan 帧非 JSON") }
   let res = json_field(pj, "result")
-  assert_eq(json_field(res, "pv").as_int(), Some(1), msg="pv=1")
+  assert_eq(json_field(res, "pv").as_int(), Some(2), msg="pv=2（v0.2）")
   let steps = match json_field(res, "steps") {
     Array(a) => a
     _ => abort("steps 非数组")
@@ -118,6 +118,15 @@ test "serve_timeline_plan_alignment_and_real_name" {
   }
   let label = jstr_or_like(json_field(payloads[sw_at], "semantic_label"))
   assert_eq(cap_t, label, msg="cap.t 同帧 semantic_label")
+  // v0.2（批四）：首帧恒有 cam（初始镜头 fit=calltree）；交换帧 bar 在场
+  let cam0 = json_field(steps[0], "cam")
+  assert_eq(
+    jstr_or_like(json_field(cam0, "fit")),
+    "calltree",
+    msg="首帧 cam.fit=calltree",
+  )
+  let bar_j = json_field(steps[sw_at], "bar")
+  assert_true(bar_j is Object(_), msg="数值数组帧 bar 对象在场")
 }
 
 ///|

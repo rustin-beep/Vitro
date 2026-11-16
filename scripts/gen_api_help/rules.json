@@ -157,7 +157,7 @@
     },
     {
       "method": "timeline.plan",
-      "brief": "动效编排计划（TimelinePlan v0.1，#470）——只读帧区间 → {pv,steps[]}，steps 与区间帧零基同构；sw=交换归属（vis_events context 真实数组名），cap=字幕段（t/w/dur）；会话须先 step.begin",
+      "brief": "动效编排计划（TimelinePlan v0.2，#470）——只读帧区间 → {pv,steps[]}，steps 与区间帧零基同构；sw=交换归属（vis_events context 真实数组名），cap=字幕段（t/w/dur），ch/bar/cam/enter=v0.2 意图字段；会话须先 step.begin",
       "example": "{\"start\":0,\"end\":50}",
       "params": "start?:int>=0；end?:int>=start（帧区间左闭右开 [start,end)，缺省 = 0..窗尾——与 payload.get 同区间语义）"
     },

@@ -8,12 +8,12 @@
 //     $derived 经 frameAt() 读它时依赖跟踪照常生效。
 "use strict";
 
-import type { Diagnostic, StepPayload, VisEvent } from "../js/types.ts";
+import type { Diagnostic, StepPayload, TimelinePlan, VisEvent } from "../js/types.ts";
 import { createEngineTransport, type EngineTransport } from "./protocol/engine.ipc.ts";
 import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
 import { toast } from "./toasts.svelte.ts";
 import { buildCallTree } from "../js/calltree.ts";
-import { statementEvents } from "./lib/visEvents.ts";
+import { aggregatePlanStep, statementEvents, viewPlanOf, type ViewPlanStep } from "./lib/visEvents.ts";
 import { ICONS_DIGEST } from "../js/icons.ts";
 import { ui } from "./ui.svelte.ts";
 import { goldenOf, type GoldenState } from "./lib/golden.ts";
@@ -63,14 +63,21 @@ class SessionState {
   /** 播放帧序列（粒度派生——审阅 A-P2-12 处方：派生生成不 mutate 真源）。
    *  语句级 = 按行合并组尾帧（coalesceStmt 物理保留 util.ts，tests 锚零改动）。
    *  事件表与帧序列**同一次派生**，保证逐位对齐（见 lib/visEvents.ts 头注：
-   *  组尾帧自身常无 vis_events，语句级必须组内聚合，否则 ty=2 交换全丢）。 */
-  private view = $derived.by((): { frames: StepPayload[]; events: VisEvent[][]; rawIndex: number[] } => {
+   *  组尾帧自身常无 vis_events，语句级必须组内聚合，否则 ty=2 交换全丢）。
+   *  ranges = 每组原流帧区间（指令级 = 单帧组）——TimelinePlan 组聚合用。 */
+  private view = $derived.by((): {
+    frames: StepPayload[];
+    events: VisEvent[][];
+    rawIndex: number[];
+    ranges: Array<{ from: number; to: number }>;
+  } => {
     const raw = this.frames;
     if (this.gran === "insn") {
       return {
         frames: raw,
         events: raw.map((f) => f.vis_events ?? []),
         rawIndex: raw.map((_, i) => i),
+        ranges: raw.map((_, i) => ({ from: i, to: i })),
       };
     }
     return statementEvents(raw);
@@ -80,6 +87,27 @@ class SessionState {
   viewEvents = $derived(this.view.events);
   /** 与 viewFrames 逐位对齐的原流帧下标（raw 表查表用）。 */
   viewRawIndex = $derived(this.view.rawIndex);
+  /** TimelinePlan（指令级，与 frames 零基同构；#470 批三）。raw 不代理：
+   *  采集回传后只读。null = 引擎未回传（旧产物/拉取失败——宿主回落旧判据）。 */
+  timeline = $state.raw<TimelinePlan | null>(null);
+  /** 与 viewFrames 逐位对齐的 plan 视图（语句组聚合；归属判据单源在引擎）。
+   *  长度/区间不匹配（旧产物、cap 截断失配）→ null，不猜。 */
+  private viewPlan = $derived.by((): ViewPlanStep[] | null => {
+    const tl = this.timeline;
+    if (tl === null || !Array.isArray(tl.steps)) return null;
+    if (this.gran === "insn") {
+      if (tl.steps.length !== this.frames.length) return null;
+      return tl.steps.map((st) => aggregatePlanStep([st]));
+    }
+    return viewPlanOf(tl.steps, this.view.ranges);
+  });
+  /** 第 i 个回放帧的 plan 视图（交换对 + 字幕段）；无 plan 返回 null。 */
+  planAt(i: number): ViewPlanStep | null {
+    return this.viewPlan?.[i] ?? null;
+  }
+  /** 与 viewFrames 逐位对齐的「本组有交换意图」标记（scenes @swap 锚用）；
+   *  无 plan 返回 null（调用方回落旧判据）。 */
+  viewSwapFlags = $derived(this.viewPlan === null ? null : this.viewPlan.map((p) => p.sws.length > 0));
   /** 第 i 个回放帧的事件全集（组件/动效消费的单点；空帧返回空数组）。 */
   eventsAt(i: number): VisEvent[] {
     return this.viewEvents[i] ?? [];
@@ -396,6 +424,7 @@ export async function collect(source: string, _bpLines: number[] = [], opts: { a
   session.tree = null;
   session.memory = null;
   session.frames = []; // 旧帧流同清：编辑器已是新课源码，回放旧帧 = 行染/画面张冠李戴
+  session.timeline = null; // plan 与帧流同代（旧 plan 不得挂新帧）
   session.idx = 0;
   try {
     // 工作区模式（F4 残留②）：全量打包 compile.files——active 文件 = 编辑器
@@ -430,7 +459,7 @@ export async function collect(source: string, _bpLines: number[] = [], opts: { a
     // A3：argv 用户输入优先，空则回落用例声明（旧栈 runParams 同语义）
     const argvText = session.argvText.trim();
     const argv = argvText ? argvText.split(/\s+/) : (session.currentCase?.argv as string[] | undefined);
-    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; versions: { engine: string; protocol: string }; diagnostics: Diagnostic[]; ppTrace: string[]; compileOk: boolean; run: { status: string; return_value: number; steps_executed: number; waiting_input: boolean } | null }>({
+    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; versions: { engine: string; protocol: string }; diagnostics: Diagnostic[]; ppTrace: string[]; compileOk: boolean; run: { status: string; return_value: number; steps_executed: number; waiting_input: boolean } | null; timeline: TimelinePlan | null }>({
       op: "collect",
       source,
       cap: session.cap,
@@ -441,6 +470,7 @@ export async function collect(source: string, _bpLines: number[] = [], opts: { a
     }, RPC_TIMEOUT_LONG_MS);
     if (my !== session.epoch) return; // 迟到回传：期间有新采集/作废，整体丢弃不碰任何状态
     session.frames = r.frames;
+    session.timeline = r.timeline ?? null;
     session.idx = 0;
     // 编译失败时网关可能回传上一轮的 stopped（引擎侧滞留）——按 compileOk
     // 截断，否则旧 trap 会挂在新代码上冒充本次死因（2026-10-18 实测）。
@@ -512,13 +542,14 @@ export async function feedStdin(): Promise<void> {
   stopTimer();
   session.status = "喂入续跑中（input.feed + 全量重采）…";
   try {
-    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; run: { status: string; return_value: number; steps_executed: number; waiting_input: boolean } | null }>({
+    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; run: { status: string; return_value: number; steps_executed: number; waiting_input: boolean } | null; timeline: TimelinePlan | null }>({
       op: "feed",
       text: session.stdinDraft,
       cap: session.cap,
     }, RPC_TIMEOUT_LONG_MS);
     if (my !== session.epoch) return;
     session.frames = r.frames;
+    session.timeline = r.timeline ?? null;
     session.idx = 0;
     session.stopped = r.stopped;
     session.outputs = r.outputs;
@@ -639,6 +670,7 @@ export function resetSession(): void {
   session.playing = false;
   session.collecting = false;
   session.frames = [];
+  session.timeline = null;
   session.idx = 0;
   session.stopped = "";
   session.diagnostics = [];

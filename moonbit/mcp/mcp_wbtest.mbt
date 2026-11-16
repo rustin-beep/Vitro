@@ -1383,9 +1383,8 @@ fn frame_has_inbounds_swap(fr : Json, arr_name : String) -> Bool {
 }
 
 ///|
-/// TimelinePlan v0.1 批一（2026-11-15，refs #470）：render/animate 的
-/// doc.timeline 与选中帧零基同构；sw 归属真名；cap.t 与字幕同源；
-/// 缺省键不产空串。
+/// TimelinePlan v0.2（#470 批一/批四）：render/animate 的 doc.timeline 与
+/// 选中帧零基同构；sw 归属真名；cap.t 与字幕同源；ch/bar/cam/enter 在场形态。
 test "mcp_render_timeline_plan_contract" {
   let clock : Ref[Double] = Ref(0.0)
   let rendered : Ref[Json] = Ref(Json::null())
@@ -1407,7 +1406,7 @@ test "mcp_render_timeline_plan_contract" {
   let data = rendered.val
   let doc = jget(data, "doc")
   let tl = jget(doc, "timeline")
-  assert_eq(jint(jget(tl, "pv")), Some(1), msg="doc.timeline.pv=1")
+  assert_eq(jint(jget(tl, "pv")), Some(2), msg="doc.timeline.pv=2（v0.2）")
   let frames = jarr(jget(data, "frames"))
   let steps = jarr(jget(tl, "steps"))
   assert_eq(
@@ -1448,6 +1447,37 @@ test "mcp_render_timeline_plan_contract" {
         msg="cap.t 与字幕原文同源",
       )
       assert_true(jint_or(jget(cap, "w"), 0) >= 1, msg="cap.w 量感档在场")
+    }
+    // v0.2 bar：帧可见 arr（int 全数值）→ 逐元素比例，长度 = 元素数
+    let arr_els = jarr(jget(jget(fr, "r"), "arr"))
+    if arr_els.length() > 0 {
+      let bar = jget(step, "bar")
+      let ratios = jarr(jget(bar, "arr"))
+      assert_eq(
+        ratios.length(),
+        arr_els.length(),
+        msg="bar[arr] 长度 = 元素数",
+      )
+      for r in ratios {
+        let v = match r {
+          Number(x, ..) => x
+          _ => -1.0
+        }
+        assert_true(v >= 0.0 && v <= 1.0, msg="bar 比例 ∈ [0,1]")
+      }
+    }
+    // v0.2 cam：首帧恒有（初始镜头）；非首帧有 cam 时 func/depth 合法
+    let cam = jget(step, "cam")
+    if k == 0 {
+      assert_eq(
+        jstr_or(jget(cam, "fit"), ""),
+        "calltree",
+        msg="首帧 cam.fit=calltree",
+      )
+      assert_true(
+        jint_or(jget(cam, "depth"), -1) >= 0,
+        msg="首帧 cam.depth 合法",
+      )
     }
   }
   assert_true(sw_frames > 0, msg="锚非空转：至少一个交换帧")

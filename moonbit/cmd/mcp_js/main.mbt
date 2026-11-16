@@ -198,16 +198,44 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| var S={cur:0,playing:false,timer:null,speed:200,frames:D.frames||[],prevC:null,speakOn:false,lastCap:""};
   #| function $(id){return document.getElementById(id)}
   #| function arrDims(fr,nm){for(var i=0;i<fr.v.length;i++){if(fr.v[i][0]===nm){var m=/\\\[(\\\d+)\\\]\\\[(\\\d+)\\\](?![\\\[])\\s*$/.exec(fr.v[i][1]);if(m)return [+m[1],+m[2]]}}return null}
-  #| function ctxMentions(ctx,nm){if(!nm)return false;var esc=nm.replace(/[.*+?^\${}()|[\]\\\\]/g,"\\\\$&");return new RegExp("(^|[^\\\\w.])"+esc+"\\\\s*\\\\[").test(ctx)}
-  #| function legacySwapPair(fr,nm,len){ // 仅 interactive 回退（批二 EMBED 镜像 planStep 后删除）
-  #| for(var k=0;k<fr.e.length;k++){var ev=fr.e[k];
-  #| if(ev[0]!==2||!ctxMentions(ev[5],nm))continue;
-  #| var x=ev[2],y=ev[3];
-  #| if(!Number.isInteger(x)||!Number.isInteger(y)||x<0||y<0||x===y)continue;
+  #| function planStep(fr,prev){ // TimelinePlan v0.2 生成器的页内镜像（#470 批二/批四）——与 moonbit/timeline/plan.mbt 逐条同判据：context 唯一点名 + 下标合法 + 越界丢弃；同名快照按 Map 语义后写覆盖；ch 基准 = 帧集内前一帧
+  #| var r=fr.r||{},names=[],n;
+  #| for(n in r){if(Object.prototype.hasOwnProperty.call(r,n))names.push(n)}
+  #| function mentions(ctx,nm){if(!nm)return false;var esc=nm.replace(/[.*+?^\${}()|[\]\\\\]/g,"\\\\$&");return new RegExp("(^|[^\\\\w.])"+esc+"\\\\s*\\\\[").test(ctx)}
+  #| var sw=null,evs=fr.e||[];
+  #| for(var k=0;k<evs.length&&!sw;k++){var ev=evs[k];if(ev[0]!==2||!ev[5])continue;
+  #| var hits=0,hit=null;
+  #| for(var a=0;a<names.length;a++){if(mentions(ev[5],names[a])){hits++;hit=names[a]}}
+  #| if(hits!==1)continue;
+  #| var x=ev[2],y=ev[3];if(!Number.isInteger(x)||!Number.isInteger(y))continue;
   #| var lo=Math.min(x,y),hi=Math.max(x,y);
-  #| if(hi>=len)continue;
-  #| return{i:lo,j:hi}}
-  #| return null}
+  #| if(lo<0||lo===hi)continue;
+  #| if(hi>=(r[hit]||[]).length)continue;
+  #| sw={name:hit,i:lo,j:hi}}
+  #| var cap=null,s=fr.s||"";
+  #| if(s.length){var w=sw?2:1;cap={t:s,w:w,dur:w-1}}
+  #| var ch=null;
+  #| if(prev){var pr=prev.r||{};ch={};var any=false;
+  #| for(var ci=0;ci<names.length;ci++){var cn=names[ci],ce=r[cn],pe=pr[cn];if(!ce||!pe||ce.length!==pe.length)continue;
+  #| var di=[];for(var ei=0;ei<ce.length;ei++){if(ce[ei]!==pe[ei])di.push(ei)}
+  #| if(di.length){ch[cn]=di;any=true}}
+  #| if(!any)ch=null}
+  #| var bar=null,rt=fr.rt||{};
+  #| for(var bi=0;bi<names.length;bi++){var bn=names[bi],be=r[bn];if(!be||!be.length||rt[bn]==="char")continue;
+  #| var vals=[],okb=true;
+  #| for(var vi2=0;vi2<be.length;vi2++){var bv=parseFloat(be[vi2]);if(!isFinite(bv)){okb=false;break}vals.push(bv)}
+  #| if(!okb)continue;
+  #| var mxb=1;for(var mi=0;mi<vals.length;mi++){if(Math.abs(vals[mi])>mxb)mxb=Math.abs(vals[mi])}
+  #| var ratios=[];for(var ri=0;ri<vals.length;ri++)ratios.push(Math.abs(vals[ri])/mxb);
+  #| bar=bar||{};bar[bn]=ratios}
+  #| var stack=fr.c||[],top=stack.length?stack[stack.length-1]:"",depth=stack.length;
+  #| var cam=null,enter=null;
+  #| if(!prev){cam={fit:"calltree",func:top,depth:depth}}
+  #| else{var ps=prev.c||[],ptop=ps.length?ps[ps.length-1]:"",pd=ps.length;
+  #| if(ptop!==top||pd!==depth)cam={fit:"calltree",func:top,depth:depth};
+  #| var hh=fr.h||{},ph=prev.h||{},ccat=hh.c||hh.category||"",pcat=ph.c||ph.category||"";
+  #| if(ccat&&ccat!==pcat)enter="diag:"+ccat;else if(ptop!==top)enter="func:"+top}
+  #| return{sw:sw,cap:cap,ch:ch,bar:bar,cam:cam,enter:enter}}
   #| function renderCode(){var lines=D.source.split("\\n");var h="";var heat=D.heat||{};
   #| for(var n=1;n<=lines.length;n++){var cls="ln"+(D.errLines&&D.errLines.indexOf(n)>=0?" err":"");
   #| h+='<div class="'+cls+'" data-l="'+n+'"><span class="no">'+n+'</span><code>'+esc(lines[n-1]||" ")+'</code></div>'}
@@ -216,24 +244,27 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| var DOC=D.doc||{pv:"",default:"cells",projectors:[],series_decl:[],timeline:{pv:1,steps:[]}};
   #| var TL=(DOC.timeline&&DOC.timeline.steps)||[];
   #| var LIVE=D.mode==="interactive";
-  #| function planSwap(fr,nm,len){if(LIVE)return legacySwapPair(fr,nm,len);var st=TL[S.cur];if(!st||!st.sw)return null;var sw=st.sw;if(sw.name!==nm)return null;return{i:sw.i,j:sw.j}}
+  #| var __LIVE_PLAN=[]; // interactive 帧级 plan 缓存（帧流只追加，索引稳定）
+  #| function liveStep(fr){var k=S.cur;if(!__LIVE_PLAN[k])__LIVE_PLAN[k]=planStep(fr,k>0?S.frames[k-1]:null);return __LIVE_PLAN[k]}
+  #| function planSwap(fr,nm){if(LIVE){var ls=liveStep(fr);if(!ls||!ls.sw)return null;var sw=ls.sw;if(sw.name!==nm)return null;return{i:sw.i,j:sw.j}}var st=TL[S.cur];if(!st||!st.sw)return null;var sw2=st.sw;if(sw2.name!==nm)return null;return{i:sw2.i,j:sw2.j}}
   #| function projSpec(id){var ps=DOC.projectors||[];for(var i=0;i<ps.length;i++){if(ps[i].id===id)return ps[i]}return null}
   #| function dimLabel(i,dm){var out="",rest=i,idx=[];for(var k=dm.length-1;k>=0;k--){var d=dm[k]||1;idx.unshift(d>0?rest%d:0);rest=d>0?Math.floor(rest/d):0}for(var q=0;q<idx.length;q++)out+="["+idx[q]+"]";return out}
   #| function arrHtml(fr,pv,nm){var els=(fr.r||{})[nm]||[];if(!els.length)return"";
-  #| var pels=pv&&(pv.r||{})[nm]||[];
   #| var dm=((fr.rd||{})[nm])||arrDims(fr,nm)||null;var cols=dm?(dm[dm.length-1]||1):els.length;
-  #| var sp=planSwap(fr,nm,els.length);
-  #| var max=1;for(var q=0;q<els.length;q++){var fv=parseFloat(els[q]);if(isFinite(fv)&&Math.abs(fv)>max)max=Math.abs(fv)}
-  #| var h='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> \u00b7 '+els.length+' \u5143\u7d20'+(dm?' ['+dm.join('x')+']':'')+'</span></div><div class="cells'+(dm?' grid2d':'')+'" style="--n:'+els.length+';--cw:64px'+(dm?';--cols:'+cols:'')+'">';
+  #| var st=LIVE?liveStep(fr):(TL[S.cur]||null);
+  #| var sp=planSwap(fr,nm);
+  #| var chSet=(st&&st.ch&&st.ch[nm])||null;
+  #| var bars=(st&&st.bar&&st.bar[nm])||null;
+  #| var h='<div class="arr"><div class="arr-h">'+esc(nm)+'<span class="ver"> · '+els.length+' 元素'+(dm?' ['+dm.join('x')+']':'')+'</span></div><div class="cells'+(dm?' grid2d':'')+'" style="--n:'+els.length+';--cw:64px'+(dm?';--cols:'+cols:'')+'">';
   #| for(var i2=0;i2<els.length;i2++){var cls2="cell";var sp2=sp&&(i2===sp.i||i2===sp.j);
-  #| if(sp2)cls2+=" swap";else if(pels.length&&pels[i2]!==els[i2])cls2+=" changed";
-  #| var v=parseFloat(els[i2]);var ratio=isFinite(v)?Math.max(.06,Math.abs(v)/max):.3;
-  #| var lab=dm?dimLabel(i2,dm):i2;
-  #| h+='<div class="'+cls2+'" style="--v:'+ratio.toFixed(2)+'"><span class="idx">'+lab+'</span>'+esc(els[i2])+'<span class="bar"></span></div>'}
+  #| if(sp2)cls2+=" swap";else if(chSet&&chSet.indexOf(i2)>=0)cls2+=" changed";
+  #| var lab=dm?dimLabel(i2,dm):i2;var attrs="",barHtml="";
+  #| if(bars){attrs=' style="--v:'+bars[i2].toFixed(2)+'"';barHtml='<span class="bar"></span>'}
+  #| h+='<div class="'+cls2+'"'+attrs+'><span class="idx">'+lab+'</span>'+esc(els[i2])+barHtml+'</div>'}
   #| h+="</div>";
   #| h+='<div class="ptrs'+(dm?' grid2d':'')+'" style="--n:'+els.length+';--cw:64px'+(dm?';--cols:'+cols:'')+'">';
   #| for(var i3=0;i3<els.length;i3++){var p2="";for(var vi=0;vi<fr.v.length;vi++){var va=fr.v[vi];var num=parseInt(va[2]);
-  #| if(isFinite(num)&&num===i3&&/^int$/.test(va[1]))p2+=(p2?" ":"")+"\u25be"+va[0]+"="+va[2]}
+  #| if(isFinite(num)&&num===i3&&/^int$/.test(va[1]))p2+=(p2?" ":"")+"▾"+va[0]+"="+va[2]}
   #| h+='<div class="ptr">'+p2+'</div>'}
   #| return h+"</div></div>"}
   #| function vizErr(label,msg){return '<div class="viz"><div class="viz-h">'+esc(label)+'</div><p class="viz-err" role="status">'+esc(msg)+"</p></div>"}
@@ -295,7 +326,7 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| var sh="";for(var y=fr.c.length-1;y>=0;y--)sh+='<div class="fr2'+(y===fr.c.length-1?" top":"")+'">'+esc(fr.c[y])+"</div>";
   #| $("stack").innerHTML=sh;
   #| if(D.outputs&&D.outputs.stdout)$("stdout").textContent=D.outputs.stdout;
-  #| var stl=TL[k];var capTxt=LIVE?(fr.s||""):((stl&&stl.cap&&stl.cap.t)||"");
+  #| var stl=TL[k];var capTxt=LIVE?((liveStep(fr).cap||{}).t||""):((stl&&stl.cap&&stl.cap.t)||"");
   #| var cap=capTxt;if(fr.a&&fr.a.d)cap+=' <span class="as">\u2014 '+esc(fr.a.d)+"</span>";
   #| if(fr.h)cap+=' <span class="as" style="color:var(--err)">\u26a0 '+esc(fr.h.o)+"</span>";
   #| $("cap").innerHTML=cap;
@@ -384,8 +415,8 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| return true;
   #| }
   #| function compactFrame(p, focusSet) {
-  #| const r = {}; const rd = {};
-  #| for (const a of p.array_snapshots ?? []) if (!focusSet || focusSet.has(a.name)) { r[a.name] = a.elements; if (a.dims && a.dims.length > 1) rd[a.name] = a.dims; }
+  #| const r = {}; const rd = {}; const rt = {};
+  #| for (const a of p.array_snapshots ?? []) if (!focusSet || focusSet.has(a.name)) { r[a.name] = a.elements; if (a.dims && a.dims.length > 1) rd[a.name] = a.dims; rt[a.name] = a.element_ty ?? "?"; }
   #| return {
   #| i: p.step_index,
   #| l: p.code_line,
@@ -395,7 +426,7 @@ extern "js" fn js_render_hook(data_json : String, style_css : String) -> String 
   #| v: (p.local_vars ?? []).map((x) => [x.name, x.ty_name, x.value]),
   #| c: (p.call_stack ?? []).map((x) => x.func_name),
   #| e: (p.vis_events ?? []).map((x) => [x.ty, x.line, x.extra0, x.extra1, x.extra2, x.context]),
-  #| r, rd,
+  #| r, rd, rt,
   #| h: p.root_cause_hint ? { c: p.root_cause_hint.category, o: p.root_cause_hint.one_liner, ls: p.root_cause_hint.related_lines, fx: p.root_cause_hint.suggested_fix_desc } : null,
   #| };
   #| }

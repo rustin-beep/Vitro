@@ -1,19 +1,21 @@
 #!/usr/bin/env node
-// timeline_equiv —— TimelinePlan v0.1 等价对拍闸（#470 批一，2026-11-15）。
+// timeline_equiv —— TimelinePlan v0.2 等价对拍闸（#470 批一，2026-11-15；批四 v0.2 连坐）。
 //
 // 目的：证明「动效编排下沉」没有改变可观察行为。同一真实产物逐帧对比
 // **旧规则（改造前壳层 swapPair/ctxMentions 的 TS 冻结副本，oracle）** 与
 // **plan 路径（产物 doc.timeline + 真实 PLAYER 驱动的 DOM）**：
 //   - 交换帧集合（旧规则有交换 cells 的帧 == plan 生效 sw 的帧 == DOM swap 帧）
 //   - 字幕文本（#cap innerHTML 与旧公式逐字节相等；cap.t 与 semantic_label 同源）
-//   - stage 关键类名（cell swap / cell changed 逐帧计数相等）
+//   - stage 关键类名（cell swap / cell changed 逐帧计数相等——changed 已换读
+//     plan.ch（v0.2），旧规则差分是冻结 oracle 的对拍面）
 // 两案例：bubble（数组真名 == 展示名 arr）与 bubble_sort（真名 a ≠ 字幕展示名
 // arr 的 #469 分叉面；含 2 帧 a[4]↔a[5] 越界事件——旧规则靠 `hi >= len` 丢，
 // plan 必须同样丢，否则 56 vs 54 即红）。
 //
 // 旧规则副本是**冻结 oracle**：不得随实现演进修改（改了就不是对拍）；plan
 // 生成器在 moonbit/timeline。静态壳层只读 plan（旧 swapPair 已删）；interactive
-// 路径仍留 legacySwapPair 回退（运行时帧流与 plan 不同源，批二 EMBED 镜像后删）。
+// 路径页内 planStep 镜像按 live 帧实时产 plan（批二，壳层旧 legacySwapPair/
+// ctxMentions 已删——其 TS 冻结副本仅存于本闸作等价 oracle）。
 // 前置：moon build --release --target js cmd/mcp_js（CI 上一步已建）。
 // 用法：node scripts/moonbit/timeline_equiv/main.mts
 import { spawn } from "node:child_process";

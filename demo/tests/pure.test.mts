@@ -41,7 +41,7 @@ import {
   type AnchorFrame,
 } from "../src/lib/scenes.ts";
 import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
-import { statementEvents, swapPairs, type EventFrame } from "../src/lib/visEvents.ts";
+import { statementEvents, aggregatePlanStep, viewPlanOf, type EventFrame } from "../src/lib/visEvents.ts";
 import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS, parseCssMs } from "../src/lib/motionTokens.ts";
 import { planRelay, scalePlan } from "../src/lib/relayPlan.ts";
 import { PROJECTORS } from "../src/lib/projectors.ts";
@@ -616,6 +616,7 @@ test("visEvents：语句级事件按组聚合到组尾（swap 不再丢），帧
   assert.equal(v.frames[0], frames[2]); // 组尾对象同一性（viewFrames/frameAt 口径）
   assert.deepEqual(v.frames, coalesceStmt(frames)); // 与既有语句级序列完全同源
   assert.deepEqual(v.rawIndex, [2, 4]); // view 下标 → 原流帧下标（frameNode 查表用）
+  assert.deepEqual(v.ranges, [{ from: 0, to: 2 }, { from: 3, to: 4 }]); // 组区间（plan 聚合用）
   assert.equal(v.events[0]?.length, 1);
   assert.equal(v.events[0]?.[0]?.ty, 2);
   assert.equal(v.events[1]?.[0]?.ty, 1);
@@ -626,26 +627,47 @@ test("visEvents：语句级事件按组聚合到组尾（swap 不再丢），帧
   ]);
   assert.equal(dup.events[0]?.length, 1);
   // 空流 / 单帧边界
-  assert.deepEqual(statementEvents([]), { frames: [], events: [], rawIndex: [] });
+  assert.deepEqual(statementEvents([]), { frames: [], events: [], rawIndex: [], ranges: [] });
   assert.equal(statementEvents([{ code_line: 3, vis_events: [] }]).frames.length, 1);
 });
 
-test("visEvents：swapPairs 只认 ty=2 合法相邻对（-1 哨兵/越界/同格/重复剔除）", () => {
-  const e = (ty: number, a: number, b: number, ctx = ""): VisEvent => ({ ty, line: 9, extra0: a, extra1: b, extra2: -1, context: ctx });
-  assert.deepEqual(swapPairs([], 5), []);
-  assert.deepEqual(swapPairs([e(2, 0, 1)], 5), [{ a: 0, b: 1 }]);
-  assert.deepEqual(swapPairs([e(2, 1, 0)], 5), [{ a: 0, b: 1 }]); // 逆序归一（恒 a<b）
-  assert.deepEqual(swapPairs([e(1, 0, 1)], 5), []); // compare 不是交换
-  assert.deepEqual(swapPairs([e(2, -1, -1)], 5), []); // 运行期读不到 j 的诚实空态
-  assert.deepEqual(swapPairs([e(2, 4, 5)], 5), []); // 右格越界
-  assert.deepEqual(swapPairs([e(2, -2, 0)], 5), []); // 左格越界
-  assert.deepEqual(swapPairs([e(2, 2, 2)], 5), []); // 同格不是交换
-  assert.deepEqual(swapPairs([e(2, 0, 1), e(2, 0, 1)], 5), [{ a: 0, b: 1 }]); // 同帧去重
-  // 多数组归属：extras 没有数组名，靠 context 的 `name[` 判定；同号格不得串数组。
-  assert.deepEqual(swapPairs([e(2, 0, 1, "a[j]:a[j + 1]")], 5, "a"), [{ a: 0, b: 1 }]);
-  assert.deepEqual(swapPairs([e(2, 0, 1, "a[j]:a[j + 1]")], 5, "b"), []);
-  assert.deepEqual(swapPairs([e(2, 0, 1, "obj.arr[j]:obj.arr[j + 1]")], 5, "arr"), []); // 成员数组不冒充独立数组
-  assert.deepEqual(swapPairs([e(2, 0, 1, "")], 5, "a"), []); // 无 context 不归因（宁可静态不亮）
+test("visEvents：plan 组聚合（sws 帧序去重 + 组尾 cap）与 viewPlanOf 区间映射（#470 批三）", () => {
+  const sw = (name: string, i: number, j: number) => ({ name, i, j });
+  const cap = (t: string) => ({ t, w: 1, dur: 0 });
+  // 空组 = 无意图（不产占位）
+  assert.deepEqual(aggregatePlanStep([]), { sws: [] });
+  // 组内多帧：sw 按帧序聚合并去重；cap 取组尾帧（语句级字幕 = 句末标签）
+  const agg = aggregatePlanStep([
+    { sw: sw("a", 0, 1), cap: cap("交换 a[0]") },
+    { sw: sw("a", 0, 1) }, // 重复对去重
+    { sw: sw("b", 2, 3) },
+    { cap: cap("回写") },
+  ]);
+  assert.deepEqual(agg, { sws: [sw("a", 0, 1), sw("b", 2, 3)], cap: cap("回写") });
+  // 区间映射：steps 与指令帧零基同构，ranges 决定组边界；越界/残缺 → null 不猜
+  const steps = [
+    { sw: sw("a", 0, 1) }, // 组 0（帧 0..1）
+    {},
+    {}, // 组 1（帧 2）——组尾 cap 空
+    { sw: sw("b", 1, 2), cap: cap("交换 b[1]") }, // 组 2（帧 3）
+  ];
+  assert.deepEqual(viewPlanOf(steps, [{ from: 0, to: 1 }, { from: 2, to: 2 }, { from: 3, to: 3 }]), [
+    { sws: [sw("a", 0, 1)] },
+    { sws: [] },
+    { sws: [sw("b", 1, 2)], cap: cap("交换 b[1]") },
+  ]);
+  assert.equal(viewPlanOf(steps, [{ from: 0, to: 4 }]), null); // 区间越界 → null
+  assert.equal(viewPlanOf(undefined, []), null); // 无 plan → null
+  assert.equal(viewPlanOf(steps, undefined), null);
+  // v0.2：bar 取组尾帧（组尾快照的视图）；cam/enter 取组内最后一个意图
+  const v2 = aggregatePlanStep([
+    { cam: { fit: "calltree", func: "main", depth: 2 }, enter: "func:main" },
+    { bar: { a: [0.5, 1] }, cam: { fit: "calltree", func: "bubble", depth: 3 }, enter: "func:bubble" },
+    { bar: { a: [0.25, 1] } }, // 组尾：bar 应取这一帧
+  ]);
+  assert.deepEqual(v2.bar, { a: [0.25, 1] });
+  assert.deepEqual(v2.cam, { fit: "calltree", func: "bubble", depth: 3 });
+  assert.equal(v2.enter, "func:bubble");
 });
 
 // ── scenes：帧 → 幕定位（时间轴分幕 / 分镜条共用单点，P1 第二片）
@@ -1154,6 +1176,32 @@ test("resolveAnchor：swap 序 / compare 序 / func / last / 偏移 clamp", () =
   assert.equal(resolveAnchor("@first_swap+99", frames), 9); // clamp 末帧
   assert.equal(resolveAnchor("@first_swap-99", frames), 0); // clamp 首帧
   assert.equal(resolveAnchor("@nosuch", frames), -1); // 未登记词汇
+});
+
+test("resolveAnchor：swapFlags（引擎 plan 交换意图）优先，无 plan 回落旧判据（#470 批三）", () => {
+  const mk = (label: string): AnchorFrame => ({
+    code_line: 0,
+    func_name: "main",
+    semantic_label: label,
+    algorithm_step: null,
+  });
+  // 帧 0 旧判据像交换（label 前缀）但 plan 无意图；帧 1 plan 有意图但 label 不像
+  const frames = [mk("交换 arr[0]↔arr[1]"), mk("函数调用"), mk("循环 i=0"), mk("交换 arr[1]↔arr[2]")];
+  for (let i = 0; i < frames.length; i += 1) (frames[i] as AnchorFrame).code_line = i + 1;
+  // 无 plan：旧判据命中帧 0（首交换）/ 帧 3
+  assert.equal(resolveAnchor("@first_swap", frames), 0);
+  assert.equal(resolveAnchor("@swap:2", frames), 3);
+  // 有 plan：@first_swap = 帧 1；label 的「交换」不再算（帧 0/3 被 plan 否定）
+  const flags = [false, true, false, false];
+  assert.equal(resolveAnchor("@first_swap", frames, flags), 1);
+  assert.equal(resolveAnchor("@swap:2", frames, flags), -1);
+  // plan 全无交换 → 不猜（不得回落 label 误命中）
+  assert.equal(resolveAnchor("@first_swap", frames, [false, false, false, false]), -1);
+  // resolveScenes 透传：@first_swap..@last 按 plan 求值
+  const scenes: Scene[] = [{ id: "01", title: "t", fromAnchor: "@first_swap", toAnchor: "@last", from: -1, to: -1, lines: [1, 2], note: "" }];
+  const got = resolveScenes(scenes, frames, flags);
+  assert.equal(got[0]?.from, 1);
+  assert.equal(got[0]?.to, 3);
 });
 
 test("resolveScenes：v1 数字幂等直通 / v2 求值 / 未命中 -1 保持", () => {

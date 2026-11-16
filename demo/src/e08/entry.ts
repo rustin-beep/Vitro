@@ -25,6 +25,7 @@ import SeriesView from "../lib/SeriesView.svelte";
 import { declError } from "../lib/viewProjection.ts";
 import CourseNote from "../lib/CourseNote.svelte";
 import DiagBand from "../lib/DiagBand.svelte";
+import RootCauseNote from "../lib/RootCauseNote.svelte";
 import MemoryView from "../lib/MemoryView.svelte";
 import OutputView from "../lib/OutputView.svelte";
 import ProtoView from "../lib/ProtoView.svelte";
@@ -220,6 +221,9 @@ const CASES: Record<string, (p: CorePayload) => string> = {
   "diagband-ok": () => render(DiagBand).body,
   "diagband-compilefail": () => render(DiagBand).body,
   "diagband-trap": () => render(DiagBand).body,
+  // 根因提示（#470 批三）：trap 帧的 root_cause_hint（UseAfterFree）——
+  // payload 别名 diagband-trap（同名夹具，两处 payloadFor 同规则）。
+  "rootcause-uaf": () => render(RootCauseNote).body,
   "refindex-diagnostics": () => render(RefIndex).body,
   "protoview-caps": () => render(ProtoView).body,
   "coursenote-blocks": () =>

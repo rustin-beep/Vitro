@@ -26,6 +26,7 @@
   import VarsList from "../lib/VarsList.svelte";
   import OutputView from "../lib/OutputView.svelte";
   import DiagBand from "../lib/DiagBand.svelte";
+  import RootCauseNote from "../lib/RootCauseNote.svelte";
   import MemoryView from "../lib/MemoryView.svelte";
   import ProtoView from "../lib/ProtoView.svelte";
   import StageHead from "../lib/StageHead.svelte";
@@ -314,6 +315,7 @@
     <ModeTabs meta={session.gran === "insn" ? "指令级" : "语句级"} />
 
     <DiagBand onjump={(ln) => editorRef?.revealLine(ln)} />
+    <RootCauseNote />
     {#if snaps.length > 0}
       {#each views as v (v.key)}
         {#if v.kind === "cells"}

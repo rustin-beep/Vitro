@@ -29,6 +29,9 @@ pub struct Frame {
   e : Array[VisEv]
   /// 数组快照 name → elements（全量；聚焦过滤在消费点）
   r : Map[String, Array[String]]
+  /// 数组快照 name → element_ty（v0.2 批四：plan bar 归一需要类型判据——
+  /// char 数组不产量感条；Map 与 r 同步后写覆盖）
+  rty : Map[String, String]
   /// 多维数组 name → dims（2026-11-14 批 B，refs #517 P2-08）：**只收二维起**
   /// 的形态（一维按 `[len]` 兜底，不入表——渲染产物每帧省一个冗余键）。
   rd : Map[String, Array[Int32]]
@@ -71,6 +74,7 @@ fn frame_of_payload(p : Json) -> Frame {
     })
   }
   let r : Map[String, Array[String]] = Map([])
+  let rty : Map[String, String] = Map([])
   let rd : Map[String, Array[Int32]] = Map([])
   for x in jarr(jget(p, "array_snapshots")) {
     let name = jstr_or(jget(x, "name"), "")
@@ -84,6 +88,7 @@ fn frame_of_payload(p : Json) -> Frame {
       )
     }
     r.set(name, els)
+    rty.set(name, jstr_or(jget(x, "element_ty"), "?"))
     let d : Array[Int32] = []
     for el in jarr(jget(x, "dims")) {
       d.push(jint_or(el, 0))
@@ -102,6 +107,7 @@ fn frame_of_payload(p : Json) -> Frame {
     c,
     e,
     r,
+    rty,
     rd,
     h: match jget(p, "root_cause_hint") {
       Object(_) as hint => hint
@@ -121,16 +127,25 @@ fn vis_kind(ty : Int32) -> String {
 
 ///|
 /// Frame → TimelinePlan 最小帧视图（宿主无关输入契约；timeline 是 L0 纯语义
-/// 包，本包单向消费——禁把 mcp Frame 类型下推）。数组面带元素数：旧规则
-/// `j >= len` 越界过滤属于可观察行为（bubble_sort 实测 2 帧 a[4]↔a[5]）。
+/// 包，本包单向消费——禁把 mcp Frame 类型下推）。数组面带元素与类型：
+/// 长度是旧规则 `j >= len` 越界过滤的等价性要求（bubble_sort 实测 2 帧
+/// a[4]↔a[5]）；元素/类型是 v0.2 ch/bar 的生成输入。
 fn timeline_view_of_frame(fr : Frame) -> @timeline.FrameView {
   let events : Array[@timeline.FrameEvent] = []
   for ev in fr.e {
     events.push({ ty: ev.ty, e0: ev.e0, e1: ev.e1, e2: ev.e2, context: ev.ctx, })
   }
-  let arrays : Array[(String, Int32)] = []
+  let arrays : Array[@timeline.ArraySnap] = []
   for name, els in fr.r {
-    arrays.push((name, els.length()))
+    arrays.push({
+      name,
+      elements: els,
+      element_ty: fr.rty.get(name).unwrap_or("?"),
+    })
+  }
+  let stack : Array[String] = []
+  for f in fr.c {
+    stack.push(f)
   }
   {
     code_line: fr.l,
@@ -138,6 +153,8 @@ fn timeline_view_of_frame(fr : Frame) -> @timeline.FrameView {
     semantic_label: fr.s,
     vis_events: events,
     arrays,
+    call_stack: stack,
+    root_category: jstr_or(jget(fr.h, "category"), ""),
   }
 }
 
@@ -304,6 +321,9 @@ fn frame_json_full(fr : Frame, focus : Array[String]) -> Json {
   ignore(o.sa("c", fr.c))
   ignore(o.j("e", frame_events_json(fr)))
   ignore(o.j("r", frame_arrays_json(fr, focus)))
+  // v0.2 批四：element_ty 表（与 r 同 focus 口径）——interactive 的
+  // compactFrame 同键；宿主页内 planStep 镜像的 bar 类型判据（char 不产量感条）。
+  ignore(o.j("rt", frame_types_json(fr, focus)))
   match frame_dims_json(fr, focus) {
     Some(j) => ignore(o.j("rd", j))
     None => ()
@@ -371,6 +391,19 @@ fn frame_arrays_json(fr : Frame, focus : Array[String]) -> Json {
   for name, els in fr.r {
     if focus.length() == 0 || focus.contains(name) {
       m.set(name, jstrs(els))
+    }
+  }
+  Json::object(m)
+}
+
+///|
+/// 数组元素类型表（v0.2 批四）：与 `r` 同 focus 口径；空表返回空对象
+/// （无数组帧恒有 rt={}——键集与 r 对齐，宿主无需判空键）。
+fn frame_types_json(fr : Frame, focus : Array[String]) -> Json {
+  let m : Map[String, Json] = Map([])
+  for name, ty in fr.rty {
+    if focus.length() == 0 || focus.contains(name) {
+      m.set(name, Json::string(ty))
     }
   }
   Json::object(m)

@@ -4,11 +4,13 @@
 //
 // 输入：params.start / params.end（帧序号区间，左闭右开，缺省 0..窗尾——
 // 与 payload.get 同区间语义）；会话须先 step.begin（帧窗在 UnifiedEngine）。
-// 输出：TimelinePlan v0.1（{pv, steps[]}，steps 与区间内发布帧零基同构）。
+// 输出：TimelinePlan v0.2（{pv, steps[]}，steps 与区间内发布帧零基同构）。
 // 单源：plan 生成器 = vitro/engine/timeline（L0），本方法只做 DTO 适配。
 
 ///|
 /// StepPayload → 最小帧视图（timeline 生成器的输入契约；不传 mcp Frame 类型）。
+/// v0.2 批四：数组快照带元素与类型（ch/bar 生成输入）、调用栈（cam/enter）、
+/// root_cause_hint.category（enter 的 diag 进场）。
 fn timeline_view_of_payload(p : @protocol.StepPayload) -> @timeline.FrameView {
   let events : Array[@timeline.FrameEvent] = []
   for v in p.vis_events {
@@ -20,9 +22,21 @@ fn timeline_view_of_payload(p : @protocol.StepPayload) -> @timeline.FrameView {
       context: v.context,
     })
   }
-  let arrays : Array[(String, Int32)] = []
+  let arrays : Array[@timeline.ArraySnap] = []
   for a in p.array_snapshots {
-    arrays.push((a.name, a.elements.length()))
+    arrays.push({
+      name: a.name,
+      elements: a.elements,
+      element_ty: a.element_ty,
+    })
+  }
+  let stack : Array[String] = []
+  for f in p.call_stack {
+    stack.push(f.func_name)
+  }
+  let root_category = match p.root_cause_hint {
+    Some(h) => h.category
+    None => ""
   }
   {
     code_line: p.code_line,
@@ -30,6 +44,8 @@ fn timeline_view_of_payload(p : @protocol.StepPayload) -> @timeline.FrameView {
     semantic_label: p.semantic_label,
     vis_events: events,
     arrays,
+    call_stack: stack,
+    root_category,
   }
 }
 

@@ -66,7 +66,7 @@ const REQUESTS: Request[] = [
   { id: 6, method: "step.next" },
   { id: 7, method: "step.next" },
   { id: 8, method: "payload.get", params: { start: 0, end: 50 } },
-  // TimelinePlan v0.1（#470 批一）：只读帧区间 → {pv,steps[]}（同一 step 帧窗）
+  // TimelinePlan v0.2（#470 批一/批四）：只读帧区间 → {pv,steps[]}（同一 step 帧窗）
   { id: 81, method: "timeline.plan", params: { start: 0, end: 50 } },
   { id: 9, method: "breakpoints.set", params: { lines: [3] } },
   { id: 10, method: "seek", params: { step: 1 } },
@@ -514,13 +514,13 @@ async function mainBatchAndBatches(exe: string): Promise<number> {
   const pg = res(8);
   check("cache_start_step" in pg && "max_collected_step" in pg, "payload.get 携带窗口字段", "");
 
-  // TimelinePlan v0.1（#470 批一）：pv=1 + steps 与同区间 payload.get 帧数同构
+  // TimelinePlan v0.2（#470 批一/批四）：pv=2 + steps 与同区间 payload.get 帧数同构
   const tp = res(81);
   const tpSteps = asArr(tp["steps"]);
   const pgFrames = asArr(pg["payloads"]) ?? [];
   check(
-    numEq(tp["pv"], 1) && tpSteps !== null,
-    "timeline.plan 返回 {pv:1,steps[]}",
+    numEq(tp["pv"], 2) && tpSteps !== null,
+    "timeline.plan 返回 {pv:2,steps[]}",
     tailMap(tp),
   );
   check(

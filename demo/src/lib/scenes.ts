@@ -64,11 +64,11 @@ function arrayDiffers(a: AnchorFrame, b: AnchorFrame): boolean {
 
 /** 求值单个锚点表达式 → 帧号；未命中返回 -1（fail loud 由调用方提示）。
  *  词汇表（受控最小集，帧流可观测事件）：
- *  - `@first_swap` / `@swap:N`：第 N 个交换帧（N 从 1 起；algorithm_step
- *    .phase=="swap" 优先，semantic_label「交换」前缀兜底——#325 起
- *    两判据同源结构判定（交换赋值主行/回写行，左侧下标写），与交换
- *    暂存变量命名无关（旧形态依赖 temp 命名）；无标注算法兜底
- *    @arr_change:N）
+ *  - `@first_swap` / `@swap:N`：第 N 个交换帧（N 从 1 起；**plan.sw 判定**
+ *    ——#470 批三起优先用引擎 TimelinePlan 的交换意图（swapFlags 与 src
+ *    逐位对齐）；无 plan（旧产物/未采集）回落旧判据：algorithm_step
+ *    .phase=="swap" 或 semantic_label「交换」前缀（#325 结构判定）；
+ *    无标注算法兜底 @arr_change:N）
  *  - `@compare:N`：第 N 个比较帧（algorithm_step.phase=="compare"——仅
  *    行末标注帧携带，见行为契约 algorithm_step_line_end_sparsity）
  *  - `@arr_change:N`：第 N 次数组内容变化帧（相邻帧快照差分——不依赖
@@ -77,13 +77,18 @@ function arrayDiffers(a: AnchorFrame, b: AnchorFrame): boolean {
  *    表达 main 内初始化段——比「数组非全零」类快照判定稳）
  *  - `@last`：末帧
  *  - `±K` 后缀：相对偏移（clamp 到 [0, last]） */
-export function resolveAnchor(anchor: string, src: AnchorFrame[]): number {
+export function resolveAnchor(
+  anchor: string,
+  src: AnchorFrame[],
+  swapFlags?: readonly boolean[] | null,
+): number {
   // 粒度归一（审阅 P1-2 定稿）：全部词汇在语句级域（同行组取组尾）求值
   //——@arr_change 的差分序数、±K 偏移（=语句组偏移）、@last 端点在
   // 指令级/语句级两粒度下语义一致；结果经对象同一性映射回原流帧号
   //（消费方 sceneIndexAt 在原流 idx 上工作）。语句级流传入时 coalesce
   // 幂等。
   const frames = coalesceStmt(src);
+  const planFlags = Array.isArray(swapFlags) ? swapFlags : null;
   // @N：数字直答锚（@0..@arr_change:2 的起点形态）——clamp 进帧域
   const pure = anchor.match(/^@(\d+)$/);
   if (pure) {
@@ -103,7 +108,11 @@ export function resolveAnchor(anchor: string, src: AnchorFrame[]): number {
     let seen = 0;
     for (let i = 0; i < frames.length; i += 1) {
       const f = frames[i] as AnchorFrame;
-      if (f.algorithm_step?.phase === "swap" || f.semantic_label.startsWith("交换")) {
+      const orig = planFlags === null ? -1 : src.indexOf(f);
+      const isSwap = planFlags !== null
+        ? orig >= 0 && planFlags[orig] === true
+        : f.algorithm_step?.phase === "swap" || f.semantic_label.startsWith("交换");
+      if (isSwap) {
         seen += 1;
         if (seen === want) {
           base = i;
@@ -160,15 +169,21 @@ export function resolveAnchor(anchor: string, src: AnchorFrame[]): number {
 }
 
 /** 解析一课的分镜（v2 锚点 → 数字区间；v1 数字幂等直通）。
+ *  swapFlags（可选，与 frames 逐位对齐）= 引擎 plan 的交换意图标记；提供时
+ *  @swap 词条读 plan.sw（#470 批三），缺失时回落旧判据（旧产物兼容）。
  *  锚点未命中的幕 from/to 置 -1（sceneIndexAt「不猜」语义天然接住——
  *  界面无当前幕）并 console.warn 明示——静默错位是 #238 的病根形态。 */
-export function resolveScenes(scenes: Scene[], frames: AnchorFrame[]): Scene[] {
+export function resolveScenes(
+  scenes: Scene[],
+  frames: AnchorFrame[],
+  swapFlags?: readonly boolean[] | null,
+): Scene[] {
   if (frames.length === 0) return scenes;
   if (!scenes.some((s) => s.fromAnchor !== undefined || s.toAnchor !== undefined)) return scenes;
   return scenes.map((s) => {
     if (s.fromAnchor === undefined && s.toAnchor === undefined) return s;
-    const from = resolveAnchor(s.fromAnchor ?? "@0", frames);
-    const to = resolveAnchor(s.toAnchor ?? "@last", frames);
+    const from = resolveAnchor(s.fromAnchor ?? "@0", frames, swapFlags);
+    const to = resolveAnchor(s.toAnchor ?? "@last", frames, swapFlags);
     if (from < 0 || to < 0 || from > to) {
       console.warn(`[scenes] 分镜锚点未命中（${s.id}）：${s.fromAnchor}..${s.toAnchor} —— 该幕不可定位，保持无幕态`);
       return { ...s, from: -1, to: -1 };

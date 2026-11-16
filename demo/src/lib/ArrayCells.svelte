@@ -10,11 +10,13 @@
   //     高亮 + 一道连线 + WAAPI 脉冲（脉冲受动效预算管辖；静态语义恒在）。
   //     无事件时才回落到「相邻帧快照差分闪烁」兜底——差分只是猜测，事件是
   //     引擎说的原话（动效不撒谎：不插值数据，只指示身份与状态）；
+  //     #470 批三：归属与字幕改读引擎 TimelinePlan（session.planAt）——本组件
+  //     不再持有 context 归属规则，只把 plan.sw 投影到格/线/图例；
   //   - 「已就位」由 golden 输出反推（与末位对齐的最长后缀），非硬编码。
   import { session } from "../session.svelte.ts";
   import { goldenNumbers } from "./golden.ts";
   import { motion, pulse } from "./motion.svelte.ts";
-  import { swapPairs, type SwapPair } from "./visEvents.ts";
+  import { type SwapPair } from "./visEvents.ts";
   import { arrayIndexLabel } from "../../js/util.ts";
   import type { ArraySnapshot, StepPayload } from "../../js/types.ts";
 
@@ -62,12 +64,15 @@
     return s;
   });
 
-  /** 本帧 ty=2 交换对（extras 越界/-1 哨兵在纯函数层已剔除）。
-   *  帧号必须取**数据面帧**（WorkScreen 的 displayIdx）——末帧收尾沿用前一
-   *  帧快照时，事件也要对同一帧，否则会拿 A 帧的事件指 B 帧的格子。 */
+  /** 本帧 plan 视图（交换归属 + 字幕段；引擎单源，#470 批三）。帧号必须取
+   *  **数据面帧**（WorkScreen 的 displayIdx）——末帧收尾沿用前一帧快照时，
+   *  plan 也要对同一帧，否则会拿 A 帧的意图指 B 帧的格子。 */
+  const step = $derived(session.planAt(frameIdx ?? -1));
+  /** 本帧交换对：plan.sw 投影到该数组（多数组课只有归属数组点亮——归属
+   *  判据在引擎，组件不再读 context）。 */
   const pairList = $derived.by((): SwapPair[] => {
     if (frameIdx === undefined || frameIdx < 0 || elements.length === 0) return [];
-    return swapPairs(session.eventsAt(frameIdx), elements.length, snap.name);
+    return (step?.sws ?? []).filter((sw) => sw.name === snap.name).map((sw) => ({ a: sw.i, b: sw.j }));
   });
   const pairCells = $derived(new Set(pairList.flatMap((p) => [p.a, p.b])));
   const hasSwapEvent = $derived(pairList.length > 0);
@@ -101,6 +106,9 @@
     return [...new Set(out)].sort((a, b) => a - b);
   });
 
+  /** 量感条（v0.2）：引擎 plan.bar 归一比例（单源）；旧产物/无 plan 时回退
+   *  宿主归一（|v|/max——与引擎同式，仅兼容面；像素下限恒在宿主）。 */
+  const planBars = $derived(step?.bar?.[snap?.name ?? ""] ?? null);
   /** 「已就位」= 与 golden 末位一致的**后缀**（排序课才有；非排序课不标）。 */
   const sortedFrom = $derived.by(() => {
     const g = goldenNumbers(session.currentCase);
@@ -227,7 +235,7 @@
           <span class="vr-idx">{cellLabel(i)}</span>
           <span class="vr-val">{isChar ? charCellText(v) : v}</span>
           {#if numeric}
-            <span class="vr-bar" style:height="{Math.round(Math.max((Math.abs(nums[i] ?? 0) / maxAbs) * 16, 2))}px"></span>
+            <span class="vr-bar" style:height="{Math.round(Math.max((planBars?.[i] ?? Math.abs(nums[i] ?? 0) / maxAbs) * 16, 2))}px"></span>
           {/if}
         </div>
       {/each}{#if linkGeom && firstPair}

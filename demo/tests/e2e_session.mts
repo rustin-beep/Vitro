@@ -112,6 +112,8 @@ interface D1Swap {
   dataSwap: string; linkFrom: string; linkTo: string; linkW: number; legend: boolean;
   meta: string; visTy: string; visSwap: number; pulses: number;
   motionOn: boolean; sys: boolean;
+  planPv: number | null; planSteps: number; rawN: number; planSw: string;
+  planBarLen: number; planCam0: boolean; planEnter0: string; bar0: string;
 }
 interface D1Compare { idx: number; ty: string; swapLines: number; link: boolean; swapCells: number }
 interface D0Base { attr: string | null; enabled: boolean; sys: boolean; stored: string; pulses: number }
@@ -355,6 +357,17 @@ async function run() {
       pulses: window.__pilot.motion.pulseCount,
       motionOn: window.__pilot.motion.enabled,
       sys: window.__pilot.motion.systemReduced,
+      // #470 批三：交换面/字幕真消费引擎 plan（timeline.plan 拉取成功且
+      // 语句组聚合出 sws——旧 swapPairs 判据已删，链路断则本锚必红）
+      planPv: s.timeline?.pv ?? null,
+      planSteps: s.timeline?.steps?.length ?? -1,
+      rawN: s.frames.length,
+      planSw: JSON.stringify(s.planAt(s.idx)?.sws?.find((x) => x.name === 'a') ?? null),
+      // v0.2：bar 单源下发（组尾帧 plan.bar）且 DOM 高度按比例渲染（像素下限宿主）
+      planBarLen: s.planAt(s.idx)?.bar?.a?.length ?? -1,
+      planCam0: !!s.timeline?.steps?.[0]?.cam,
+      planEnter0: s.timeline?.steps?.[0]?.enter ?? 'none',
+      bar0: document.querySelector('.vr-cell .vr-bar')?.style.height ?? '',
     };
   })()`);
   check("D1 交换帧：事件双格 + 连线 + 编辑分色（组内聚合；修前只有 1 格差分）",
@@ -362,7 +375,9 @@ async function run() {
       d1.swapCount === 2 && d1.swapLabels.join("|").includes("a[0] =") && d1.swapLabels.join("|").includes("a[1] =") &&
       d1.fallback === 0 && d1.dataSwap === "0-1" && d1.linkFrom === "0" && d1.linkTo === "1" && d1.legend === true &&
       d1.meta.includes("本帧交换 a[0] ↔ a[1]") && d1.visTy === "swap" && d1.visSwap >= 1 &&
-      d1.motionOn === true && d1.sys === false && d1.pulses >= 2,
+      d1.motionOn === true && d1.sys === false && d1.pulses >= 2 &&
+      d1.planPv === 2 && d1.planSteps === d1.rawN && d1.planSw === JSON.stringify({ name: 'a', i: 0, j: 1 }) &&
+      d1.planBarLen === 5 && d1.bar0 === '12px' && d1.planCam0 === true && d1.planEnter0 === 'none',
     JSON.stringify(d1));
 
   // 比较帧（语句帧 3 = 第 5 行循环条件）：左缘走 compare 色，不画交换面。

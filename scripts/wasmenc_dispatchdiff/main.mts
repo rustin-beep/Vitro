@@ -640,15 +640,17 @@ async function main(): Promise<number> {
       continue;
     }
     const wtLine = wtOf.get(i);
-    const wt: RuntimeArmResult = isHostCase
+    const wtOrNull: RuntimeArmResult | null = isHostCase
       ? { kind: "ok", steps: -1, note: "wasmtime-host-pending（批 4″ 回接——三方降双方）" }
       : parseWasmtimeLine(wtLine ?? "");
-    if (!isHostCase && wt === null) {
+    if (!isHostCase && wtOrNull === null) {
       console.error(`RED ${c.file}: wasmtime 出口行不可解析：${wtLine}`);
       red++;
       pairRed++;
       continue;
     }
+    // 收窄依据：isHostCase 分支构造必非 null；非 host 分支上方已 continue 拦 null。
+    const wt: RuntimeArmResult = wtOrNull!;
     if (!isHostCase && wt.badCompile !== undefined) {
       console.error(`RED ${c.file}: wasmtime 编译失败（dispatch 产物非法 wasm）：${wt.badCompile.slice(0, 120)}`);
       red++;
@@ -698,9 +700,9 @@ async function main(): Promise<number> {
   const totals: Record<string, number> = { ok: 0, callhost_stdin: 0, callhost_vfs: 0, callhost_callback: 0, callhost_va: 0, callhost_other: 0, badreturn: 0, unsupported: 0, other: 0, compile: 0, dirs: targets.length, wt_pending: hostCases.length };
   for (const b of Object.values(perDir)) {
     for (const k of BUCKET_KEYS) {
-      totals[k] += b[k];
+      totals[k] = (totals[k] ?? 0) + b[k];
     }
-    totals.compile += b.compile;
+    totals.compile = (totals.compile ?? 0) + b.compile;
   }
   // coverage.json 只在全量默认目录集跑时落盘（facts 采集面 = 九目录全集）；
   // --dir 部分跑覆盖全量 coverage 会污染禁译覆盖率真值（批 4b-3 实锤：

@@ -551,9 +551,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          node scripts/facts/main.mts --run --strict check > facts-ci.log 2>&1; rc=$?
+          set +e
+          node scripts/facts/main.mts --run --strict check > facts-ci.log 2>&1
+          rc=$?
           if [ $rc -ne 0 ]; then
-            tail -60 facts-ci.log > facts-tail.log 2>/dev/null || cp facts-ci.log facts-tail.log
+            tail -80 facts-ci.log
+            tail -200 facts-ci.log > facts-tail.log 2>/dev/null || cp facts-ci.log facts-tail.log
             gh pr comment ${{ github.event.pull_request.number }} --body-file facts-tail.log || echo "gh comment failed"
           fi
           exit $rc

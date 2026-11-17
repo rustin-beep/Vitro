@@ -16,7 +16,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { rules } from "./audit.mts";
+import { auditDocs, rules } from "./audit.mts";
 import { collectAll, collectDiagCodeCount, collectOpcodeVariants } from "./facts.mts";
 import type { Fact, FactsDoc } from "./facts.mts";
 
@@ -65,3 +65,60 @@ test("#534 三处对称：非 --run 的 collectAll 两键即有真值（静态�
   assert.equal(doc.facts["diag_code_count"]?.status, "ok");
   assert.equal(doc.facts["opcode_variants"]!.value, 154);
 });
+
+// ── #541 P2-1 锚：静态键不得吃「沿用上次采集」（fail loud 通道） ──────────
+// 原实现把两键塞进 RUN_KEYS，沿用循环（facts.mts 的 prev 分支）只接「本轮
+// unavailable + 上轮 ok」——采集器坏掉（正则失效/源改名）时静默沿用旧值，
+// `--run --strict check` 仍 EXIT=0（审阅实测；本锚即该形态的机判）。静态键
+// 的源在仓内，采集失败=代码或数据缺陷，必须落到「待采集」判红。
+test("J9：prev 有 ok 值 + 源缺失 → 两键仍 unavailable（静态键不沿用）", () => {
+  const root = tmpRoot(); // 空目录：opcode.mbt / error_codes.json 均不存在
+  const prev: FactsDoc = {
+    schema: "vitro.facts.v1", generated_at: "", git: { rev: "", branch: "", dirty: false },
+    facts: {
+      opcode_variants: {
+        value: 154, unit: "条", source: "", provenance: "", as_of: "", status: "ok", note: "", how_to_get: "",
+      } as Fact,
+      diag_code_count: {
+        value: 129, unit: "个", source: "", provenance: "", as_of: "", status: "ok", note: "", how_to_get: "",
+      } as Fact,
+    },
+  };
+  const doc = collectAll(root, false, false, "", prev);
+  assert.equal(doc.facts["opcode_variants"]!.status, "unavailable",
+    "静态键沿用上次采集 = fail silent（#541 P2-1）；源缺失必须 unavailable 让 --strict 判红");
+  assert.equal(doc.facts["diag_code_count"]!.status, "unavailable");
+});
+
+// ── #541 P2-2 锚：命中面机判（exclude 写宽 = 零覆盖，而零覆盖与"全对"不可分）──
+// 审阅实测形态：opcode 规则 exclude 含「全表」「stable numbering」，整份
+// moonbit/README.md 回滚到批前时该规则一处未红。锚锁两向：零覆盖必报、
+// 现役文档面不得误报。
+function okDoc(): FactsDoc {
+  const f = (value: number, unit: string): Fact => ({
+    value, unit, source: "", provenance: "", as_of: "", status: "ok", note: "", how_to_get: "",
+  } as Fact);
+  return {
+    schema: "vitro.facts.v1", generated_at: "", git: { rev: "", branch: "", dirty: false },
+    facts: {
+      opcode_variants: f(154, "条"),
+      diag_code_count: f(129, "个"),
+      teaching_card_count: f(126, "条"),
+    },
+  };
+}
+
+test("J9：文档树零命中 → 三条门面规则全部落 coverage（规则形同虚设必报）", () => {
+  const res = auditDocs(tmpRoot(), okDoc()); // 空树：一条文档都没有
+  const keys = res.coverage.join("\n");
+  for (const k of ["opcode_variants", "diag_code_count", "teaching_card_count"]) {
+    assert.ok(keys.includes(k), `${k} 零覆盖必须进 coverage（#541 P2-2），实得：${keys || "（空）"}`);
+  }
+});
+
+test("#541 P2-2 反向锚：现役文档面不得误报 coverage", { skip: !hasRealRepo }, () => {
+  const res = auditDocs(repoRoot, okDoc());
+  assert.deepEqual(res.coverage, [], "现役文档面命中面合规（规则覆盖到位且未扩散）");
+});
+
+

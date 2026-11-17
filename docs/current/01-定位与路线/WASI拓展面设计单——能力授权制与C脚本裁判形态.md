@@ -38,17 +38,17 @@
 | 2 | **无 env** | `moonbit/libc/unsupported_sig.mbt:22-23`：`getenv` 显式拒绝，注释原文「沙盒无环境面」——进 **E3073 类「已知不支持」诊断**（`unsupported_libc_sig` 表，typeck `check_user_func` 第四级消费），不是「未定义」而是「加原型也没用」 | 脚本要读环境变量（`PATH`、`VITRO_*` 配置）——现状类型面可过、语义面恒拒绝 |
 | 3 | **无进程** | `unsupported_sig.mbt:24-25`：`system` 显式拒绝「沙盒禁系统命令」；host 114 名表全表无 spawn/fork/exec/popen 族（`moonbit/bytecode/host_func_id_gen.mbt` 亲读——全表仅 IO/libc 名）；放行名全集 175（`moonbit/libc/libc.mbt:555` 附近）同样无进程面 | 脚本要起子进程（调 clang、并行任务、管道消费）——现状唯一「系统」出口 `system()` 是显式排除项 |
 | 4 | **无网络** | host 114 ∪ bytecode 88 ∮ 放行 175 三表〔已验证，`moonbit/AGENTS.md` L5/L6 行 + `route.mbt:41-54` 亲证〕无 socket/connect 族——**从未实现也从未声明**，与 env/进程的「显式拒绝」不同，网络是**名表空白**（学生引用 socket 头直接走 E3036 未定义路径） | 脚本形态 v1 **不开网络面**（见 §2.1 表尾——安全面收益/复杂度比不成立，留开放问题 O8） |
-| 5 | **exit/argv/clock 的半开面**（对照：已有能力证明沙箱不是铁板一块） | exit：host 路由 38（`host_func_id_gen.mbt:58,381`）——但只影响 `// EXIT <ret>` 标记行（`moonbit/cmd/lib/cli/cli_run.mbt:8-11` 注释「进程码唯一消费方 = shell/agent」），不透传宿主 rc；argv：`vm/state.mbt:551 setup_argv` + CLI `--` 透传（`cli_run.mbt:34-36 RunArgs.argv_passthrough`）——**argv 面已工作**；clock：宿主注入 `gateway/gateway.mbt:86-88 set_clock_source`，未注册恒 0〔已验证，native 报告同证〕 | exit code 透传/argv 直用是**独立小改**（§3 映射表）——这一行证明「能力注入」在本仓有成熟先例（include_reader/clock 双先例，`gateway.mbt:66-88`） |
+| 5 | **exit/argv/clock 的半开面**（对照：已有能力证明沙箱不是铁板一块） | exit：host 路由 38（`host_func_id_gen.mbt:58,381`）——但只影响 `// EXIT <ret>` 标记行（`moonbit/cmd/lib/cli/cli_run.mbt:8-11` 注释「进程码唯一消费方 = shell/agent」），不透传宿主 rc；argv：`vm/state.mbt:588 setup_argv` + CLI `--` 透传（`cli_run.mbt:34-36 RunArgs.argv_passthrough`）——**argv 面已工作**；clock：宿主注入 `gateway/gateway.mbt:96 set_clock_source`，未注册恒 0〔已验证，native 报告同证〕 | exit code 透传/argv 直用是**独立小改**（§3 映射表）——这一行证明「能力注入」在本仓有成熟先例（include_reader/clock 双先例，`gateway.mbt:87-98`） |
 
 ### 1.2 现役能力注入先例（本设计的机制母型）〔已验证〕
 
-- `set_include_reader(read : (String) -> String?)`（`gateway/gateway.mbt:77-79`）：native 壳注册文件系统读取、wasm 臂不注册 ⇒ include 家族解析为 **E1021 not found 正当教学诊断**（`gateway.mbt:66-72` 头注原文「宿主注入文件表是将来扩展位」——**本设计单就是这个扩展位的兑现**）。
-- `set_clock_source(f : () -> UInt64)`（`gateway.mbt:86-88`）：native 注册真墙钟、wasm 恒 0——同一引擎双宿主按「注册与否」分叉语义，**能力不存在 ≠ 故障**。
+- `set_include_reader(read : (String) -> String?)`（`gateway/gateway.mbt:87`）：native 壳注册文件系统读取、wasm 臂不注册 ⇒ include 家族解析为 **E1021 not found 正当教学诊断**（`gateway.mbt:76-86` 头注原文「宿主注入文件表是将来扩展位」——**本设计单就是这个扩展位的兑现**）。
+- `set_clock_source(f : () -> UInt64)`（`gateway.mbt:96`）：native 注册真墙钟、wasm 恒 0——同一引擎双宿主按「注册与否」分叉语义，**能力不存在 ≠ 故障**。
 - 两条先例共同构成「宿主注入 = 能力授权」的母型：**未注册 = 能力不存在（教学诊断正当），注册 = 宿主自担语义**。WASI 面把这对偶从「编译期 include / 时钟」扩到「运行期文件/进程/env」。
 
 ### 1.3 #274 喂入式形态的边界（废案的精确表述）
 
-issue #274（本会话亲读全文，`tmp/_i274.json` 缓存）的架构是「ts 权威实现（裁判）→ C 跟随实现（选手）跑在 vitro 上 → ts 驱动 spawn vitro 喂输入收输出对拍」。其设计决策三条中与本设计相关的边界：
+issue #274（本会话亲读全文）的架构是「ts 权威实现（裁判）→ C 跟随实现（选手）跑在 vitro 上 → ts 驱动 spawn vitro 喂输入收输出对拍」。其设计决策三条中与本设计相关的边界：
 
 1. **「ts 单向真相，不存在双向」**——C 版永远是错误候选，判定面恒在 ts 侧。理由是排除记录里的自证循环红线：「**C 当裁判：自证循环红线，判官不能是被告写的——引擎病则防线同病、红上加红无法定位**」。**这条红线不因 WASI 面成立而消失**（§4 复兴评估的核心论据）。
 2. **「范围开放，不预设围墙」**——原文「今天做不了的 IO 面（spawn/管道）由 ts 驱动宿主喂入式解决，明天 stdlib 扩展后自然纳入」。喂入式 = **C 选手没有主动 IO 面**：输入域由 ts 驱动决定（`-i` stdin 文件 / `--json` input 帧 / `InputState::push_lines`，`host/host_io.mbt:77-87` 亲证），C 代码不能自己开文件、起进程、读 env——**只能做纯变换任务**（输入→输出）。凡是任务本身需要 IO 主动性的（遍历目录、读配置、并行子任务）都落在 #274 范围外。
@@ -68,9 +68,9 @@ issue #274（本会话亲读全文，`tmp/_i274.json` 缓存）的架构是「ts
 
 | 指令（WASI 名） | 语义 | 宿主实现 | 备注 |
 |---|---|---|---|
-| `args_sizes_get` / `args_get` | argc/argv 载入内存约定区 | native：壳进程 argv；V8：`process.argv`（Node）/ 壳注入（浏览器降级为 [script 名] 单元素） | **现役先例直映**：`setup_argv`（`vm/state.mbt:551`）已做内存铺设——H3 版 = 同布局 + 宿主真值源 |
+| `args_sizes_get` / `args_get` | argc/argv 载入内存约定区 | native：壳进程 argv；V8：`process.argv`（Node）/ 壳注入（浏览器降级为 [script 名] 单元素） | **现役先例直映**：`setup_argv`（`vm/state.mbt:588`）已做内存铺设——H3 版 = 同布局 + 宿主真值源 |
 | `environ_sizes_get` / `environ_get` | 环境变量表载入 | native：`environ`；V8：`process.env`（Node）/ 白名单注入（浏览器） | 解锁 `getenv`（§3 映射表） |
-| `clock_time_get` / `clock_res_get` | 墙钟/精度 | **复用现役 `set_clock_source` 注入链**（`gateway.mbt:86-88`）——H3 handler 直接调注册的钟源，未注册恒 0 | 教学确定性口径不动（`--realtime` 旗标先例，`cli_run.mbt:37-39`） |
+| `clock_time_get` / `clock_res_get` | 墙钟/精度 | **复用现役 `set_clock_source` 注入链**（`gateway.mbt:96`）——H3 handler 直接调注册的钟源，未注册恒 0 | 教学确定性口径不动（`--realtime` 旗标先例，`cli_run.mbt:37-39`） |
 | `vitro_sys_capabilities`（**自定义**） | 宿主能力位图（四级 + 文件根目录清单 + 宿主形态标识） | 各宿主静态自报 | **能力探测指令**——脚本据此降级（浏览器无进程面等），双侧契约的一部分（§2.4） |
 
 #### 级 2「流 IO」（stdio 直通——副作用=输出）
@@ -125,7 +125,7 @@ REHOST 设计单 §2.2-D 类已定「CallHost 110 路由 = 单一 import `env.vi
 
 | 宿主 | 形态 | 系统能力实现 | 依据 |
 |---|---|---|---|
-| **native 直链壳**（脚本主形态） | C ABI 直链（`vitro_init`/`vitro_invoke` 两函数薄包装——native 导出面已实测打通，`tmp/batch_NATIVE_EXPORT_REPORT.md` §2-4 全绿，release 2.28MB） | C 实现：`env.h` H3 handler 表——`args`（main 的 argv 直传）/ `environ`（CRT environ）/ `fd_write/read`（read/write 系统调用）/ `path_open`（真 fopen + 授权根前缀校验）/ `proc_spawn`（CreateProcess/posix_spawn） | 该报告 §2 已证 include_reader 注册先例（`@fs.read_file_to_string`）；H3 handler 同层落位（壳层 C 代码，不进引擎包） |
+| **native 直链壳**（脚本主形态） | C ABI 直链（`vitro_init`/`vitro_invoke` 两函数薄包装——native 导出面已实测打通，native 导出面探针报告 §2-4 全绿（现场批次产物，不入库），release 2.28MB） | C 实现：`env.h` H3 handler 表——`args`（main 的 argv 直传）/ `environ`（CRT environ）/ `fd_write/read`（read/write 系统调用）/ `path_open`（真 fopen + 授权根前缀校验）/ `proc_spawn`（CreateProcess/posix_spawn） | 该报告 §2 已证 include_reader 注册先例（`@fs.read_file_to_string`）；H3 handler 同层落位（壳层 C 代码，不进引擎包） |
 | **V8 影子**（js/wasm 臂 + demo/CEF） | JS import 桩（与 H2 `vitro_host_call` 桩并列，`WebAssembly.Instance` imports 对象加 `vitro_syscall` 键） | JS 实现：Node 形态全能力（`process`/`fs`/`child_process`）；浏览器/CEF 形态降级（stdio 走 console/OPFS、进程面 ENOTSUP——能力位图自报，脚本据此降级） | REHOST §4.1 V8 嵌入三形态直接复用（demo Worker / CEF / node 跑器） |
 | **wasmtime 跑器**（W4 第四臂） | Rust Linker 桩（`Linker::func_wrap` 供给 `vitro_syscall`） | Rust 实现：WASI 面可直接用 wasmtime WASI ctx（但 **H3 是自定义 import 名**，不等于 wasi_snapshot_preview1——须自写薄桩映射到 `std::fs`/`std::process` 或桥接 wasmtime_wasi） | 审阅 v2 R3b「wasmtime Rust 供给 0.38ms runtime 对拍独有保留」先例〔已验证，20261102 审阅报告 v2 总报告〕 |
 
@@ -249,8 +249,8 @@ REHOST §6 解锁清单增第 7 项（本批已连坐改写该设计单，见提
 ## 附：本设计单的证据底账（全部本会话亲读）
 
 - 沙箱面：`moonbit/host/vfs.mbt:3-6,164-172,234-264,1002-1013`（VFS 内存态/注入/列举口）；`moonbit/libc/unsupported_sig.mbt:22-31`（getenv/system/atexit 显式拒绝）；`moonbit/bytecode/host_func_id_gen.mbt:43,58,121-124,376,381,402-403`（getchar/exit/fopen/fread 路由与全表无进程/网络面）；`moonbit/libc/libc.mbt:555`（放行名全集段）
-- 能力注入先例：`moonbit/gateway/gateway.mbt:66-88`（include_reader/clock_source 双注入 + E1021 正当诊断）；`moonbit/vm/state.mbt:551`（setup_argv）；`moonbit/host/host_io.mbt:45-96`（InputState 喂入式/EOF 粘滞）；`moonbit/vm/host_dispatch3.mbt:14-16`（Batch/Interactive 双模式头注）
+- 能力注入先例：`moonbit/gateway/gateway.mbt:87-98`（include_reader/clock_source 双注入 + E1021 正当诊断）；`moonbit/vm/state.mbt:588`（setup_argv）；`moonbit/host/host_io.mbt:45-96`（InputState 喂入式/EOF 粘滞）；`moonbit/vm/host_dispatch3.mbt:14-16`（Batch/Interactive 双模式头注）
 - 路由与 ABI：`moonbit/bytecode/route.mbt:26-54,121-138`（CallRoute/遮蔽集/派生规则）；REHOST 设计单 §2.2-D/§2.3-E4（H2 单一 ABI 选型）
 - CLI 形态：`moonbit/cmd/lib/cli/cli_run.mbt:1-80`（rc 表/argv 透传/--realtime/未知旗标 fail loud）；`moonbit/cmd/run/main.mbt:25-50`（c_exit/write_stdout_stub/clock stub）
-- 宿主形态：`tmp/batch_NATIVE_EXPORT_REPORT.md` §0-4（native C ABI 直链全绿/2.28MB/invoke 0.002ms/include_reader 注册先例）；`tmp/_i274.json`（issue #274 全文）；`moonbit/wasmenc/` 目录亲见（批 1a 在途）
+- 宿主形态：native 导出面探针报告 §0-4（现场批次产物，不入库；native C ABI 直链全绿/2.28MB/invoke 0.002ms/include_reader 注册先例）；issue #274 全文（GitHub）；`moonbit/wasmenc/` 目录亲见（批 1a 在途）
 - WASI 规范面参照〔推断档——规范知识非仓内实测〕：WASI preview1 指令族语义；wasm import 链接期约束；wasmtime WASI ctx

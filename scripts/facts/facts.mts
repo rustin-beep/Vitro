@@ -287,6 +287,31 @@ export function collectDiagCodeCount(root: string, facts: Record<string, Fact>):
   );
 }
 
+// collectTeachingCardCount（#541 审阅 P2-3，2026-11-17）：教学卡片数真值——
+// catalog.json entries 条数（= gen_diag 输入，仓内单源）。同族第四族：原
+// diag 规则 exclude 含「卡片」，包表行整行豁免导致该数字永久无闸，README 两处
+// 各写各的（115 cards / 117 条）且都与真值不符。
+export function collectTeachingCardCount(root: string, facts: Record<string, Fact>): void {
+  const rel = "scripts/moonbit/diagnostics_data/catalog.json";
+  let doc: { entries?: unknown[] };
+  try {
+    doc = JSON.parse(fs.readFileSync(path.join(root, rel), "utf8")) as typeof doc;
+  } catch {
+    facts["teaching_card_count"] = unavail("条", rel, "确认 " + rel + " 存在且可解析", "catalog.json 缺失或不可解析");
+    return;
+  }
+  const entries = doc.entries;
+  if (!Array.isArray(entries)) {
+    facts["teaching_card_count"] = unavail(
+      "条", rel, "entries 须为数组", "entries 形态变更（非数组，采集器须同步）",
+    );
+    return;
+  }
+  facts["teaching_card_count"] = okFact(
+    entries.length, "条", rel + "（entries 条数；gen_diag 的 EXPECTED_CATALOG 同源）", "source_scan", nowISO(),
+  );
+}
+
 // collectAbiVersion 采集 C ABI 版本真值。唯一来源曾是
 // native/src/capi/first_batch.rs 的 VITRO_ABI_VERSION 常量——文档里的
 // 版本号一律不是真相（M13 实证：代码 2.1.0 时仍有多份文档写 1.2.0/2.0.0）。
@@ -913,9 +938,11 @@ export const RUN_KEYS = [
   "moonbit_test_passed_native",
   "moonbit_coverage_uncovered_lines",
   "moonbit_check_warnings",
-  // #534 门面数字键：静态采集（源码扫描，毫秒级）——入表只为采集失败时
-  // 与其它键同享「沿用上次采集」兜底，非 --run 执行档。
-  "opcode_variants", "diag_code_count",
+  // #534 门面数字键（opcode_variants / diag_code_count）**不入本表**：它们是
+  // 静态采集（源码扫描，毫秒级），源就在仓内——采集失败=代码或数据缺陷，
+  // 必须落到「待采集」让 --strict 判红。入表曾让采集器坏掉时走「沿用上次
+  // 采集」静默绿（#541 审阅 P2-1 实测：正则失效后 `--run --strict` 仍
+  // EXIT=0，只剩一行软提示）。J9 锚 facts_keys.test.mts「静态键不沿用」。
 ];
 
 // markRetiredFacts：Rust 退役键统一 unavailable（工序④删区批 2026-10-05）。
@@ -946,6 +973,7 @@ export function collectAll(
   collectRehostDispatch(root, facts);
   collectOpcodeVariants(root, facts);
   collectDiagCodeCount(root, facts);
+  collectTeachingCardCount(root, facts);
   collectAbiVersion(root, facts);
   collectMoonbitPackages(root, facts);
 
@@ -984,6 +1012,9 @@ export function collectAll(
     }
     if (!("diag_code_count" in facts)) {
       facts["diag_code_count"] = unavail("个", "scripts/moonbit/diagnostics_data/error_codes.json", "确认数据文件存在", "静态采集未产出（键缺失防线）");
+    }
+    if (!("teaching_card_count" in facts)) {
+      facts["teaching_card_count"] = unavail("条", "scripts/moonbit/diagnostics_data/catalog.json", "确认数据文件存在", "静态采集未产出（键缺失防线）");
     }
   }
   if (cargoLog !== "") {

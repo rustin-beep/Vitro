@@ -143,6 +143,10 @@ function summarize(res: AuditResult, doc: FactsDoc, strict = false): void {
   for (const s of res.staleSuspectExempts) {
     console.log(`  ❗[僵尸豁免] suspect_exemptions.json 条目本轮零命中：${s}（删除或修正该条目）`);
   }
+  // 命中面机判（#541 P2-2）：规则声明了 expect 但本轮覆盖不足/扩散——无条件红。
+  for (const c of res.coverage) {
+    console.log(`  ❗[命中面] ${c}`);
+  }
   for (const r of res.broken) {
     console.log(`  [坏引用] ${r.file}:${r.lineNo} → ${r.path}（文件不存在）`);
   }
@@ -427,7 +431,7 @@ async function main(): Promise<void> {
       {
         const suspectRed = strict && res.suspectN > 0;
         const pendingRed = strict && res.pendingN > 0;
-        if (res.driftN > 0 || res.broken.length > 0 || (staleN > 0 && !allowStale) || suspectRed || pendingRed || res.staleSuspectExempts.length > 0) {
+        if (res.driftN > 0 || res.broken.length > 0 || (staleN > 0 && !allowStale) || suspectRed || pendingRed || res.staleSuspectExempts.length > 0 || res.coverage.length > 0) {
           process.exit(1);
         }
       }

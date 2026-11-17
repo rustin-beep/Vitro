@@ -18,7 +18,7 @@
 /// 越权写抹相邻字面量池串/LoadGlobal 32 位读卷邻居——StoreGlobalByte 写低
 /// 8 位、LoadGlobalByte i8 符号扩展读、LoadGlobalUByte u8 零扩展读；
 /// 语义对齐 LoadMemByte/LoadMemUByte/StoreMemByte）。
-/// `from_u8` 对空号与 >155 越界值返回 None（0..255 全空间断言见 opcode_wbtest）。
+/// `from_u8` 对空号（47–49）与 >156 越界值返回 None（0..255 全空间断言见 opcode_wbtest）。
 /// `Strlen` / `TrapBoundsVla` 为零发射死码——保留编号位（产物对拍依赖编号冻结），
 /// 不新增使用。
 ///
@@ -357,7 +357,7 @@ pub fn OpCode::code(self : OpCode) -> Int32 {
 }
 
 ///|
-/// 编号 → opcode；空号（44–49）与越界（>156 / <0）返回 None。
+/// 编号 → opcode；空号（47–49）与越界（>156 / <0）返回 None。
 pub fn OpCode::from_u8(value : Int32) -> OpCode? {
   match value {
     0 => Some(Nop)

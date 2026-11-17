@@ -1,6 +1,6 @@
 # vitro/engine/diag — Vitro 诊断契约
 
-C 教学引擎的诊断错误码契约：**156 个错误码**（1xxx 词法 / 2xxx 语法 / 3xxx 语义 / 4xxx C++ 专属）+ 三档严重级 + 114 条教学卡片。码表由 gen_diag 从 `scripts/moonbit/diagnostics_data/{error_codes,catalog}.json` 单源生成（禁手抄，生成物带源 sha256 落款）。
+C 教学引擎的诊断错误码契约：**129 个错误码**（1xxx 词法 / 2xxx 语法 / 3xxx 语义 / 4xxx C++ 专属）+ 三档严重级 + 126 条教学卡片。码表由 gen_diag 从 `scripts/moonbit/diagnostics_data/{error_codes,catalog}.json` 单源生成（禁手抄，生成物带源 sha256 落款）。
 
 ## 安装
 

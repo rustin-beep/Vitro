@@ -35,6 +35,9 @@ jobs:
     #（无 full-only 判定面，行为零变化）。
     name: Static gates (${{ matrix.slice }})
     runs-on: windows-latest
+    permissions:
+      contents: read
+      pull-requests: write
     strategy:
       fail-fast: false
       matrix:
@@ -545,9 +548,14 @@ jobs:
         # 成本（moon test ×2 + diff_gate ×8 + replay/serve_smoke）与 gen
         # slice 的 `facts facts` 步等价（两片并行，不阻塞总时长）。
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           node scripts/facts/main.mts --run --strict check > facts-ci.log 2>&1; rc=$?
-          if [ $rc -ne 0 ]; then tail -40 facts-ci.log | while IFS= read -r l; do echo "::error::$l"; done; fi
+          if [ $rc -ne 0 ]; then
+            tail -60 facts-ci.log > facts-tail.log 2>/dev/null || cp facts-ci.log facts-tail.log
+            gh pr comment ${{ github.event.pull_request.number }} --body-file facts-tail.log || echo "gh comment failed"
+          fi
           exit $rc
 
       - name: Facts collect for gen_svg (slice 内自足落盘)

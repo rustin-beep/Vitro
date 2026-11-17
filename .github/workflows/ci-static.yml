@@ -545,7 +545,10 @@ jobs:
         # 成本（moon test ×2 + diff_gate ×8 + replay/serve_smoke）与 gen
         # slice 的 `facts facts` 步等价（两片并行，不阻塞总时长）。
         shell: bash
-        run: node scripts/facts/main.mts --run --strict check
+        run: |
+          node scripts/facts/main.mts --run --strict check > facts-ci.log 2>&1; rc=$?
+          if [ $rc -ne 0 ]; then tail -40 facts-ci.log | while IFS= read -r l; do echo "::error::$l"; done; fi
+          exit $rc
 
       - name: Facts collect for gen_svg (slice 内自足落盘)
         # 2026-10-18 CI 红处置：c5f01fff 拆 matrix 三片时 gen_svg 与 facts

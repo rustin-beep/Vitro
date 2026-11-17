@@ -79,10 +79,14 @@
       ],
       "anchors": {
         "shadow_known": [],
-        "clang_direct_known": [],
+        "clang_direct_known": [
+          "offsetof_packed_layout.c"
+        ],
         "vm_diff_known": []
       },
-      "detectable_by_defense": [],
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
       "notes": "parser/typeck 源码零 pack 处理亲证（2026-09-30 grep）；detectable 空集 = 零覆盖诚实记录；carry_over=retest 前置 = 先立 golden"
     },
     {

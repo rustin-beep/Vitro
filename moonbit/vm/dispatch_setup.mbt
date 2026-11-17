@@ -44,7 +44,7 @@ pub extend DispatchProjectError with Eq::{not_equal, equal}
 /// 载体产物：模块字节 + 装载协议元数据（宿主〔4b 胶水〕消费面）。
 pub(all) struct DispatchProduct {
   /// 可执行 wasm 模块（dispatch-loop 骨架）
-  module : Array[Byte]
+  module_bytes : Array[Byte]
   /// 程序入口 ip（全程序域）
   entry_ip : Int32
   /// 初始 mem_stack_top（STACK_START——模块入口自置）
@@ -57,9 +57,9 @@ pub(all) struct DispatchProduct {
   data_base : Int32
   /// 窗口装载参数（批 4′ host 回接——中继 INIT 帧消费；堆基/argv 引擎
   /// 侧同源铺设的布局输入）
-  pub win_data_end : Int32
-  pub win_argc : Int32
-  pub win_argv0 : String
+  win_data_end : Int32
+  win_argc : Int32
+  win_argv0 : String
   /// CallHost 组数（静态计数）。**PR #526 审阅 P3 注记：当前恒 0 死字段**
   ///——build_dispatch_input 遇 CallHost 直接 NotSupported（host 回接批
   /// 前禁译），成功产物的本字段无判定力；保留为 host 回接批的产物面
@@ -286,7 +286,7 @@ pub fn build_dispatch_input(
     remap.set(libc_len + i, user_base + i)
   }
   for name in names {
-    guard output.func_index.get(name) is Some(idx) else { continue }
+    guard output.func_index.get(name) is Some(_) else { continue }
     guard output.func_table.get(name) is Some(m) else { continue }
     remap.set(m.ip + libc_len, user_base + m.ip)
   }
@@ -379,7 +379,7 @@ pub fn build_dispatch_input(
     }
   }
   for name in names {
-    guard output.func_index.get(name) is Some(idx) else { continue }
+    guard output.func_index.get(name) is Some(_) else { continue }
     guard output.func_table.get(name) is Some(m) else { continue }
     match remap.get(m.ip + libc_len) {
       Some(t) => entry_ips.push(t)
@@ -588,7 +588,7 @@ pub fn build_dispatch_product(
   match @wasmenc.assemble_dispatch_module(input) {
     Ok(bytes) =>
       Ok({
-        module: bytes,
+        module_bytes: bytes,
         entry_ip,
         stack_start: 1048576,
         group_count,

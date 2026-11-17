@@ -2,7 +2,7 @@
 
 > **建账背景（B3 台账机制，2026-11-13）**：两轮独立评审实锤 `moonbit/AGENTS.md` 发布流程段「余额 34 条全为带据豁免」硬数字失真——0db534ec 实测 **98 条**（`moon check --target all` 口径；两轮评审各时点 80/98，批合入不清 warning 的活性缺口）。本台账为**止涨机制**的锚点文档：facts 键 `moonbit_check_warnings` 采集真值，本文裸数字声明对账——**warning 数增减即 facts 漂移红，须归因清点并更新本文**（涨须逐条归因入下表；清零是理想终态，减亦须同步）。
 
-moon check warning 台账现值：**112 条**（`moon check --target all` 全目标口径）。
+moon check warning 台账现值：**111 条**（`moon check --target all` 全目标口径）。
 
 > **上一行是机判锚——禁写日期 / as_of / 截至等词**：现值行带日期会被 audit 冻结豁免旁路（`classifyLine` 命中 `RE_DATE|RE_ASOF_WORD` 即整行冻结，永不进 drift——PR #511 审阅 P1-1 实锤：12 处候选全冻结、止涨闸拦截力为零）。现值行只写活数字（2026-10-04 格式裁定：冻结豁免被门面现值句搭便车 = 文档格式问题，处置是改文档不加机制兜底）；带日期的更新记录写文末。
 
@@ -65,4 +65,5 @@ moon check warning 台账现值：**112 条**（`moon check --target all` 全目
 
 ## 更新记录
 
+- 2026-11-17：112 → 111（-1）——REHOST 批 4′（#535）：16 个新增 warning 清零（host_relay 未用函数×2 / deprecated substring×2 / unused import×1 / reserved `module` 字段×2 / redundant pub×6 / unused idx×2 / Option Show inspect×2）+ 1 个连带消失（unused idx 路径合并）；净 -1。
 - 2026-11-14：98 → 112（+14）——rebase 实测：master 侧 #514/#513/#516（sweep3/棘轮闸/Sluice 纪律批）带入的新 warning（本 PR rebase 基实测对齐；逐条归因入上表随该线处置批补——止涨闸活性以现值对齐优先）。

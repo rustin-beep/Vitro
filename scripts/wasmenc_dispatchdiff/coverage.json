@@ -1,15 +1,15 @@
 {
-  "as_of": "2026-11-15",
+  "as_of": "2026-11-17",
   "per_dir": {
     "baseline": {
-      "ok": 482,
+      "ok": 484,
       "callhost_stdin": 13,
       "callhost_vfs": 17,
       "callhost_callback": 4,
       "callhost_va": 0,
       "callhost_other": 0,
       "badreturn": 4,
-      "unsupported": 23,
+      "unsupported": 24,
       "other": 0,
       "compile": 35
     },
@@ -111,19 +111,19 @@
     }
   },
   "totals": {
-    "ok": 767,
+    "ok": 769,
     "callhost_stdin": 43,
     "callhost_vfs": 22,
     "callhost_callback": 8,
     "callhost_va": 0,
     "callhost_other": 0,
     "badreturn": 35,
-    "unsupported": 44,
+    "unsupported": 45,
     "other": 0,
     "compile": 42,
     "dirs": 9,
-    "wt_pending": 745
+    "wt_pending": 747
   },
-  "paired": 672,
-  "red": 95
+  "paired": 0,
+  "red": 769
 }

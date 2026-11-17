@@ -44,7 +44,7 @@ test "host_window: 全 id 穷尽（114 名对账）" {
   }
   inspect(n, content="114")
   // 关键路由形态抽验（真源 = 头文件原型 + 臂亲读——表内注释逐条对齐）
-  inspect(host_window_sig(15).unwrap().argc, content="None") // printf 变参（AST 侧车）
+  assert_true(host_window_sig(15).unwrap().argc is None) // printf 变参（AST 侧车）
   inspect(expect_ready_fixed(2, 1, true, false, false, false), content="true") // malloc(size)→word
   inspect(expect_ready_fixed(3, 1, false, false, false, true), content="true") // free→void
   inspect(expect_ready_fixed(118, 2, false, true, false, false), content="true") // strtod→f64
@@ -64,11 +64,11 @@ test "host_window: 全 id 穷尽（114 名对账）" {
 ///|
 /// **Ready 组 argc 形态**（C 原型参数个数——stdlib.h/string.h 亲读对齐）。
 test "host_window: Ready 组 argc 形态" {
-  inspect(host_window_sig(56).unwrap().argc, content="Some(3)") // strncpy(d,s,n)
-  inspect(host_window_sig(57).unwrap().argc, content="Some(3)") // memcpy(d,s,n)
-  inspect(host_window_sig(37).unwrap().argc, content="Some(3)") // memset(p,v,n)
-  inspect(host_window_sig(32).unwrap().argc, content="Some(2)") // strcmp(a,b)
-  inspect(host_window_sig(73).unwrap().argc, content="Some(2)") // pow(x,y)
-  inspect(host_window_sig(35).unwrap().argc, content="Some(0)") // rand()
-  inspect(host_window_sig(124).unwrap().argc, content="Some(0)") // clock()
+  assert_eq(host_window_sig(56).unwrap().argc, Some(3)) // strncpy(d,s,n)
+  assert_eq(host_window_sig(57).unwrap().argc, Some(3)) // memcpy(d,s,n)
+  assert_eq(host_window_sig(37).unwrap().argc, Some(3)) // memset(p,v,n)
+  assert_eq(host_window_sig(32).unwrap().argc, Some(2)) // strcmp(a,b)
+  assert_eq(host_window_sig(73).unwrap().argc, Some(2)) // pow(x,y)
+  assert_eq(host_window_sig(35).unwrap().argc, Some(0)) // rand()
+  assert_eq(host_window_sig(124).unwrap().argc, Some(0)) // clock()
 }

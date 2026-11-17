@@ -55,7 +55,7 @@ pub fn CallFrame::not_equal(Self, Self) -> Bool
 pub fn CallFrame::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DispatchProduct {
-  module : Array[Byte]
+  module_bytes : Array[Byte]
   entry_ip : Int32
   stack_start : Int32
   group_count : Int32

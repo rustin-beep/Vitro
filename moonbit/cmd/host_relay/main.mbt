@@ -70,25 +70,8 @@ fn bytes_to_fixed(b : Bytes) -> FixedArray[Byte] {
 }
 
 ///|
-fn write_str(s : String) -> Unit {
-  js_write(@utf8.encode(s))
-}
-
-///|
 fn write_line(s : String) -> Unit {
   js_write(@utf8.encode(s + "\n"))
-}
-
-///|
-/// u64 → 小端 8 字节。
-fn u64_le_bytes(v : UInt64) -> Bytes {
-  let arr : FixedArray[Byte] = FixedArray::make(8, b'\x00')
-  let mut x = v
-  for i = 0; i < 8; i = i + 1 {
-    arr[i] = (x & 0xFFUL).to_byte()
-    x = x >> 8
-  }
-  Bytes::from_array(arr)
 }
 
 ///|
@@ -134,7 +117,7 @@ fn main {
   while true {
     let line = js_read_line()
     if line.length() >= 4 {
-      if line.substring(start=0, end=4) == "INIT" {
+      if line.has_prefix("INIT") {
         // INIT <data_end> <argc_main> <argv0_hex>
         let parts : Array[String] = split_line(line)
         if parts.length() >= 4 {
@@ -154,7 +137,7 @@ fn main {
           )
           write_line("OK")
         }
-      } else if line.substring(start=0, end=4) == "CALL" {
+      } else if line.has_prefix("CALL") {
         // CALL <id> <argc>
         guard relay is Some(r) else {
           write_line("ERR no-init")

@@ -4,7 +4,6 @@
 // fs.readSync 同步驱动。
 import {
   "vitro/engine/vm",
-  "vitro/engine/util",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/string",
 }

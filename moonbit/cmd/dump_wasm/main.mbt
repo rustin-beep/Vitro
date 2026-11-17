@@ -186,7 +186,7 @@ fn dispatch_json(
     Ok(p) => {
       let buf = StringBuilder()
       buf.write_string("{\"ok\":true,\"module\":\"")
-      buf.write_string(hex_bytes(p.module))
+      buf.write_string(hex_bytes(p.module_bytes))
       buf.write_string("\",\"data\":\"")
       buf.write_string(hex_bytes(p.data_blob))
       buf.write_string("\",\"base\":")

@@ -56,11 +56,11 @@ pub extend HostWindowGroup with Eq::{not_equal, equal}
 #derive(Debug, Eq)
 pub(all) struct HostWindowSig {
   /// 能力分组（Ready = 可组装；其余 = 禁译桶 reason 细分）
-  pub group : HostWindowGroup
+  group : HostWindowGroup
   /// 固定参数个数（Ready 组固定参路由；变参路由 None = AST 侧车供给）
-  pub argc : Int32?
+  argc : Int32?
   /// 返回值形态（None = void / 停机族——CallHost 组装不压返回值）
-  pub ret : @wasmenc.WValKind?
+  ret : @wasmenc.WValKind?
 }
 
 ///|

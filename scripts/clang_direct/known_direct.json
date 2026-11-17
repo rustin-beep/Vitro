@@ -28,6 +28,11 @@
     "reason": "#178（2026-10-19）E3083 码位锁面锚：NULL 写 trap（vitro 教学 trap rc=2、stdout『guard-ok』——trap 前已产出）vs Clang SIGSEGV 3221225477 且 stdio 缓冲崩溃吞掉 stdout（空）——UB 崩溃域与受检 trap 的正当形态差异（p2e_div_zero_scope 同款：报告返回码 X != Y 的 o=Clang/m=MoonBit，trap 时 m 侧 // EXIT 行缺失记 0）。对照组判空分支 guard-ok 双侧语义一致。"
   },
   {
+    "case": "offsetof_packed_layout.c",
+    "digest": "6d9684ac",
+    "reason": "offsetof 布局值随 struct 紧排口径分叉（#437 chibicc port 批 2026-11-16 登记）：offsetof 宏本身工作（编译期常量 + 嵌套 struct 成员均可取），但 Vitro 默认紧排布局（无对齐 padding——已知限制表 6 DIFF-LAYOUT-PACKED-01 既有登记）使 char+int 成员偏移 = 1 vs clang x64 = 4、sizeof(B) = 16 vs 24；function_pointer_sizeof 同族（架构差异域，非缺陷）。offsetof 数值断言的教学程序须按 Vitro 布局口径写，或与 clang 对照时归一布局差。"
+  },
+  {
     "case": "p2e_div_zero_scope.c",
     "digest": "5fd9b345",
     "reason": "除零教学 trap vs Clang Windows SEH 崩（0xC0000142 域返回码 3221225620）——Vitro 白箱把除零转为结构化教学诊断（inspect 段列本帧零值变量），Clang 无 sanitizer 直接崩；array_bound_const_index.c 同款形态（教学 trap vs 无 sanitizer）。病 53 修复批：inspect 段已按当前帧 func_name 过滤（跨函数局部变量不再错位列出）"

@@ -348,18 +348,20 @@ test "setup_argv_layout_and_conflict" {
   let vm = VitroVM::new()
   vm.setup_argv(2, ["a", "bc"], 0x2000U)
   assert_eq(vm.argc, 2)
-  assert_eq(vm.argv_addr, 0xFFF0U) // footprint = align4(2*4 + (1+1)+(2+1)) = align4(12) = 12 → 0x10000-0xC
+  // #271：锚随 GLOBAL_REGION_LIMIT 64KB → 320KB 连坐——footprint = align4(2*4
+  // + (1+1)+(2+1)) = align4(12) = 12 → 0x50000-0xC
+  assert_eq(vm.argv_addr, 0x4FFF0U)
   // 指针数组两槽指向字符串区
-  guard vm.memory.load_u32(vm.mem_map, 0xFFF0U) is Ok(s0) else {
+  guard vm.memory.load_u32(vm.mem_map, 0x4FFF0U) is Ok(s0) else {
     fail("slot0 必须可读")
   }
-  assert_eq(s0, 0xFFF8U) // 0xFFF0 + 2*4
+  assert_eq(s0, 0x4FFF8U) // 0x4FFF0 + 2*4
   // 首串 "a\0"
-  guard vm.memory.load_i8(vm.mem_map, 0xFFF8U) is Ok(b0) else {
+  guard vm.memory.load_i8(vm.mem_map, 0x4FFF8U) is Ok(b0) else {
     fail("str0 必须可读")
   }
   assert_eq(b0, 'a'.to_int())
-  guard vm.memory.load_i8(vm.mem_map, 0xFFF9U) is Ok(b1) else {
+  guard vm.memory.load_i8(vm.mem_map, 0x4FFF9U) is Ok(b1) else {
     fail("NUL 必须可读")
   }
   assert_eq(b1, 0)
@@ -369,7 +371,7 @@ test "setup_argv_layout_and_conflict" {
   assert_eq(vm.argv_addr, 0U)
   // 冲突：global_data_end 顶到 argv 区 → error 置位
   vm.error = ""
-  vm.setup_argv(4, ["aaaa"], 0xFFF0U)
+  vm.setup_argv(4, ["aaaa"], 0x4FFF0U)
   assert_eq(
     vm.error,
     "setup_argv: 命令行参数与全局数据区冲突（全局数据过大），无法安放 argv",

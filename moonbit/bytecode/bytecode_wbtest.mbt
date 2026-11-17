@@ -36,9 +36,12 @@ test "libc_index: full table contiguous, unique, head/tail anchors" {
 
 ///|
 test "R1 layout constants and align4 (r1 #7)" {
-  // 上限常量：与旧字符串判据 MEM_SIZE/16 一致，不收紧存量行为
-  assert_eq(GLOBAL_REGION_LIMIT, MEM_SIZE / 16)
-  assert_eq(GLOBAL_REGION_LIMIT, 0x10000)
+  // 上限常量：#271（2026-11-15）64KB → 320KB——旧值 MEM_SIZE/16 只对齐 R1
+  // 之前的字符串字面量判据（中位 13 行语料时代的口径）；千行档（llm_scale）
+  // 标准教学设计（对象池/稠密验证矩阵）实测需求 61KB~263KB。320KB 覆盖
+  // 且堆仍余 ~704KB（LZ78 1MB 堆属 #133 扩展段域，不在本锚）。
+  assert_eq(GLOBAL_REGION_LIMIT, MEM_SIZE * 5 / 16)
+  assert_eq(GLOBAL_REGION_LIMIT, 0x50000)
   assert_eq(GLOBAL_START, 0x1000)
   assert_eq(HEAP_START, 0x5000)
   assert_eq(STACK_START, 0x100000)

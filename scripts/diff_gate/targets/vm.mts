@@ -63,9 +63,33 @@ const RUN_EXE = "moonbit/_build/native/release/build/cmd/run/run.exe";
 const JS_SHELL = "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js";
 const DEFAULT_CORPORA = ["baseline", "knr", "leetcode", "gap", "llm_scale", "chibicc_port"]; // chibicc_port：#437 语料扩充窗口 2026-11-03 接线
 
-/** argv 区脱敏窗（评审 P3 收窄：载荷实测 ~50B，4KB 余量 ~80×）。 */
-const ARGV_MASK_LO = 0xf000;
-const ARGV_MASK_HI = 0x10000;
+/** argv 区脱敏窗（评审 P3 收窄：载荷实测 ~50B，4KB 余量 ~80×）。
+ *  #271（GLOBAL_REGION_LIMIT 64KB→320KB）：argv 区自 GLOBAL_REGION_LIMIT
+ *  向下分配（memory.mbt argv_region_footprint 编址单源），窗必须随常量走——
+ *  硬编码 0xF000..0x10000 是 64KB 时代值，320KB 后 argv 区搬到
+ *  0x4F000..0x50000 漏进 digest（3 例 union 语料 wasm 臂 DIFF 实锤）。
+ *  常量从 memory.mbt 解析（形态变更即 fail loud，防再漂）；runVm 入口初始化。 */
+let ARGV_MASK_LO = 0xf000;
+let ARGV_MASK_HI = 0x10000;
+function initArgvMask(root: string): void {
+  const p = path.join(root, "moonbit/bytecode/memory.mbt");
+  const src = fs.readFileSync(p, "utf8");
+  const ms = src.match(/pub const MEM_SIZE\s*:\s*UInt32\s*=\s*([0-9*\s]+)/);
+  if (ms === null) fatal("memory.mbt MEM_SIZE 形态变更——同步 vm.mts 脱敏窗解析");
+  const mem = ms[1]!.split("*").map((x) => Number(x.trim())).reduce((a, b) => a * b, 1);
+  const mul = src.match(/pub const GLOBAL_REGION_LIMIT\s*:\s*UInt32\s*=\s*MEM_SIZE\s*\*\s*(\d+)\s*\/\s*(\d+)/);
+  const div = mul === null
+    ? src.match(/pub const GLOBAL_REGION_LIMIT\s*:\s*UInt32\s*=\s*MEM_SIZE\s*\/\s*(\d+)/)
+    : null;
+  if (mul !== null) {
+    ARGV_MASK_HI = (mem * Number(mul[1])) / Number(mul[2]);
+  } else if (div !== null) {
+    ARGV_MASK_HI = mem / Number(div[1]);
+  } else {
+    fatal("无法解析 GLOBAL_REGION_LIMIT（memory.mbt 形态变更须同步 vm.mts 脱敏窗解析）");
+  }
+  ARGV_MASK_LO = ARGV_MASK_HI - 0x1000;
+}
 // 内存差异区间机判（knownEntry.memory_stack_only + 顶部 4KB 栈窗口）**未迁**——
 // 它在 Go 版的 compare() 里，只服务 oracle 双侧路径（随删区不可达）；golden 模式
 // 的 known 例与普通例同走三通道比对，无特殊分支。
@@ -305,6 +329,7 @@ export function sampleN(all: string[], n: number): string[] {
 /** 主流程（override 入口）。返回退出码。 */
 export function runVm(argv: string[], root: string): number {
   const fail = fatal;
+  initArgvMask(root);
   let corpora: string[] = DEFAULT_CORPORA;
   let sample = 0;
   let explicit: string[] = [];

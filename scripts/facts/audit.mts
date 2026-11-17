@@ -121,6 +121,21 @@ export function rules(): Rule[] {
     mk("moonbit_check_warnings", "moon check warning 台账数",
       `warning[^\\n]{0,8}台账|moonbit_check_warnings`,
       ``, 0, 120, "条"),
+    // #534（2026-11-16）：门面数字两族（#533 stale 三族的根治键）——
+    // opcode 变体数 / 诊断码数入机判。exclude 收口两类行：moon.mod 面
+    // （#533 裁定随下版发版，发版前有意保留旧值）与「编号分段清单」行
+    // （每段上下界都是裸数字，与总数混在同一单元格，属分解式人工维护面：
+    // 设计单历史快照行/README 包表的 stable numbering 段）。
+    mk("opcode_variants", "opcode 变体数", `opcode|操作码`,
+      `moon\\.mod|mooncakes 模块页|设计单|直映表|语义冻结|语义已由|冻结|全表|私有码表|stable numbering`,
+      150, 160, "条"),
+    // 带宽 lo=118：覆盖诊断码全部历史值（119/121/126/135/137 须落进候选
+    // 才能判漂移——下限高于旧值=漏抓假绿）；同句邻居的卡片数 115/117 排除
+    // （教学卡片与错误码是两族计量，混行时不能互相误锚）。gen_diag 基线行
+    // 另口径（EXPECTED_ARMS 含 Unknown 哨兵=变体数，与"诊断码数"差 1）且自
+    // 带 fail loud 锚，归生成器闸管。
+    mk("diag_code_count", "诊断码数", `诊断错误码|诊断码|ErrorCode`,
+      `moon\\.mod|mooncakes 模块页|设计单|教学卡片|卡片|catalog_codes|gen_diag`, 118, 140, "个"),
   ];
 }
 

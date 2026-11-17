@@ -196,10 +196,19 @@ pub fn blocks_exit_heights(
     for gip = start; gip < end; gip = gip + 1 {
       let op = ops[gip]
       match op {
-        Jump | JumpIfZero | JumpIfNotZero | Call | CallVar | Ret | RetVoid => {
+        Jump
+        | JumpIfZero
+        | JumpIfNotZero
+        | Call
+        | CallVar
+        | CallHost
+        | Ret
+        | RetVoid => {
           let pops = control_pop_words(op) +
             (match op {
-              Call | CallVar => call_arg_words(gip)
+              // 批 4′：CallHost 并入回调（净效应 = argc − ret 项——供给方
+              // 算好；control_pop_words 的 CallHost 零弹注释随批退役）
+              Call | CallVar | CallHost => call_arg_words(gip)
               _ => 0
             })
           height = height - pops
@@ -244,10 +253,19 @@ pub fn blocks_underflow_with_entry(
     for gip = start; gip < end; gip = gip + 1 {
       let op = ops[gip]
       match op {
-        Jump | JumpIfZero | JumpIfNotZero | Call | CallVar | Ret | RetVoid => {
+        Jump
+        | JumpIfZero
+        | JumpIfNotZero
+        | Call
+        | CallVar
+        | CallHost
+        | Ret
+        | RetVoid => {
           let pops = control_pop_words(op) +
             (match op {
-              Call | CallVar => call_arg_words(gip)
+              // 批 4′：CallHost 并入回调（净效应 = argc − ret 项——供给方
+              // 算好；control_pop_words 的 CallHost 零弹注释随批退役）
+              Call | CallVar | CallHost => call_arg_words(gip)
               _ => 0
             })
           height = height - pops

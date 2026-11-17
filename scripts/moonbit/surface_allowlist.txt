@@ -112,7 +112,6 @@ vitro/engine/wasmenc blocks_exit_heights
 vitro/engine/wasmenc blocks_underflow_with_entry
 vitro/engine/wasmenc control_pop_words
 vitro/engine/wasmenc fold_instrs
-vitro/engine/wasmenc partition_blocks
 vitro/engine/wasmenc sleb_decode
 vitro/engine/wasmenc sleb_encode
 vitro/engine/wasmenc uleb_decode

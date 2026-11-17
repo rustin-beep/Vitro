@@ -1,0 +1,13 @@
+// REHOST 批 4′：host 窗口中继（js 目标产物——node 直跑）——dispatchdiff
+// V8/wasmtime 臂的 `env.vitro_host_call` 回接引擎单源分发（@vm.HostRelay）。
+// stdin/stdout 同步帧协议（文本命令头 + 二进制段）——胶水侧
+// fs.readSync 同步驱动。
+import {
+  "vitro/engine/vm",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "+js"

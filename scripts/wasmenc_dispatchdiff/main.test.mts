@@ -43,10 +43,16 @@ test("judgeCase：host 桩被调必红（零 host 子集运行期违约）", () 
   assert.match(judgeCase("a.c", arm("host", undefined, 3), arm("ok", 7), eng("finished", 7, 9))!, /host 桩被调/);
 });
 
-test("judgeCase：stdout 非空红（零 host 例两侧恒空断言）", () => {
+test("judgeCase：stdout 三方逐位（批 4′ host 回接——两侧分叉红/一致绿）", () => {
   const e = eng("finished", 7, 9);
   e.stdout = Buffer.from("x");
-  assert.match(judgeCase("a.c", arm("ok", 7), arm("ok", 7), e)!, /stdout 非空/);
+  const v = arm("ok", 7);
+  v.stdout = Buffer.from("x");
+  const w = arm("ok", 7);
+  w.stdout = Buffer.from("x");
+  assert.equal(judgeCase("a.c", v, w, e), null);
+  v.stdout = Buffer.from("y");
+  assert.match(judgeCase("a.c", v, w, e)!, /stdout 分叉/);
 });
 
 test("parseWasmtimeLine：ok/trap/host 三形态 + 非法行 null", () => {

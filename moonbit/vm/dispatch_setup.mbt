@@ -44,7 +44,7 @@ pub extend DispatchProjectError with Eq::{not_equal, equal}
 /// 载体产物：模块字节 + 装载协议元数据（宿主〔4b 胶水〕消费面）。
 pub(all) struct DispatchProduct {
   /// 可执行 wasm 模块（dispatch-loop 骨架）
-  module : Array[Byte]
+  module_bytes : Array[Byte]
   /// 程序入口 ip（全程序域）
   entry_ip : Int32
   /// 初始 mem_stack_top（STACK_START——模块入口自置）
@@ -55,6 +55,11 @@ pub(all) struct DispatchProduct {
   data_blob : Array[Byte]
   /// data_blob 铺设基址（blob 首字节对应的全程序地址）
   data_base : Int32
+  /// 窗口装载参数（批 4′ host 回接——中继 INIT 帧消费；堆基/argv 引擎
+  /// 侧同源铺设的布局输入）
+  win_data_end : Int32
+  win_argc : Int32
+  win_argv0 : String
   /// CallHost 组数（静态计数）。**PR #526 审阅 P3 注记：当前恒 0 死字段**
   ///——build_dispatch_input 遇 CallHost 直接 NotSupported（host 回接批
   /// 前禁译），成功产物的本字段无判定力；保留为 host 回接批的产物面
@@ -93,10 +98,30 @@ fn libc_spans(libc : LibcArtifact) -> Array[(Int32, Int32, Int32)] {
 /// 的 CtxI32 槽从批 1c 的 0 近似升真值；空串 = 不精化保近似〔wbtest 旧
 /// 锚口径〕。引擎臂 cmd/run 恒以完整文件路径作 argv[0] 下发——对拍闸须
 /// 同串调用本参数，argv 区字节（data 铺设）才与引擎臂 1MB 映像逐位对齐）。
+/// `variadic_argc~`（批 4′）：变参 host 路由（printf/sprintf/snprintf/
+/// sscanf）的调用序实参个数——dump_wasm 管线扫 typed AST 供给（codegen
+/// 按 AST 实参压栈同源）；缺省空表 = 无变参调用点（含变参的产物对账红）。
+
+///|
+/// libc 段定位（idx → (start, end)——make_site_old 扁平 meta 回退扫描用）。
+fn libc_span_of(
+  spans : Array[(Int32, Int32, Int32)],
+  idx : Int32,
+) -> (Int32, Int32)? {
+  for sp in spans {
+    if sp.0 == idx {
+      return Some((sp.1, sp.2))
+    }
+  }
+  None
+}
+
+///|
 pub fn build_dispatch_input(
   output : @bytecode.CompileOutput,
   max_steps : Int32,
   argv0~ : String = "",
+  variadic_argc~ : Array[Int32] = [],
 ) -> Result[@wasmenc.DispatchInput, DispatchProjectError] {
   // ── libc 装载（与 setup_from_output 第 1 步同源）──
   let libc = load_libc_artifact()
@@ -119,7 +144,10 @@ pub fn build_dispatch_input(
     entry_of.set(idx, m.ip + libc_len)
     meta_of.set(idx, m)
   }
-  // call_sites 构造子（Call/CallVar 共用——旧 ip 域，target 由调用方 remap）
+  // call_sites 构造子（Call/CallVar 共用——旧 ip 域，target 由调用方 remap；
+  // 闭包捕获 libc/spans——libc 扁平 meta 的 return_type 失真回退扫描用）
+  let libc_code2 = libc.code
+  let spans2 = libc_spans(libc)
   fn make_site_old(
     func_idx : Int32,
     gip : Int32,
@@ -159,14 +187,49 @@ pub fn build_dispatch_input(
       // 「与 param_words 同长」的类型源位（未来 wide 域扩展预留）
       param_kinds.push(@wasmenc.VkWordI32)
     }
+    // libc 扁平产物（param_types 空）的 return_type 恒 Void 失真（探针
+    // 实锤 88/88——批 4′ 解锁「libc Call 返回值被消费」形态暴露：返回点
+    // rv1=0 → h_in 缺 1 → 块图 -1）。**静态回退**：段内控制流组扫描——
+    // 出现 Ret（值返回组，RetVoid 除外）→ 非 void；ret_kind 按「段内
+    // Ret 前一组」producer 定型（值生产者机制同源——用户段 ret_kinds
+    // 表的 libc 段覆盖面）
+    // 判据 = idx 命中 libc 段表（param_types 空会误伤无参用户函数——
+    // `int main()` 的 param_types 同为空表）
+    let span = libc_span_of(spans2, func_idx)
+    let libc_flat = span is Some(_)
+    let (is_void2, ret_kind2) : (Bool, @wasmenc.WValKind) = if libc_flat {
+      let mut saw_ret = false
+      let mut kind = @wasmenc.VkWordI32
+      if span is Some((s0, e0)) {
+        // span 上面已查（判据同源）
+        for g = s0; g < e0; g = g + 1 {
+          let ins2 = libc_code2[g]
+          match ins2.op {
+            Ret => {
+              saw_ret = true
+              if g > s0 {
+                let k2 = producer_val_kind(libc_code2[g - 1].op)
+                if k2 != @wasmenc.VkWordI32 {
+                  kind = k2
+                }
+              }
+            }
+            _ => ()
+          }
+        }
+      }
+      (if saw_ret { false } else { true }, kind)
+    } else {
+      (m.return_type is Void(_), ret_kind_of(m.return_type))
+    }
     Ok({
       target_ip: target,
       arg_words,
       frame_bytes: m.local_count,
       param_words,
       param_kinds,
-      is_void: m.return_type is Void(_),
-      ret_kind: ret_kind_of(m.return_type),
+      is_void: is_void2,
+      ret_kind: ret_kind2,
     })
   }
 
@@ -223,7 +286,7 @@ pub fn build_dispatch_input(
     remap.set(libc_len + i, user_base + i)
   }
   for name in names {
-    guard output.func_index.get(name) is Some(idx) else { continue }
+    guard output.func_index.get(name) is Some(_) else { continue }
     guard output.func_table.get(name) is Some(m) else { continue }
     remap.set(m.ip + libc_len, user_base + m.ip)
   }
@@ -303,22 +366,6 @@ pub fn build_dispatch_input(
       }
     }
   }
-  // ── CallHost 禁译（4b-2 定谳：块图高度分歧的大宗根因——CallHost 模板
-  //    不消费 vitro 栈参数〔微缩域由垫收器供给；dispatch 真执行参数滞留
-  //    wasm 栈 → 前驱会合高分歧 BadReturnPoint 神秘红，摸底 221/919 例
-  //    大宗〕。参数消费序列 = H2 宿主回接协议的组成件，归 host 回接批；
-  //    本批零 host 子集对拍不受影响，禁译理由显式化替代神秘组装红）──
-  for gip = 0; gip < full_ops.length(); gip = gip + 1 {
-    if full_ops[gip] is CallHost {
-      return Err(
-        NotSupported(
-          "callhost gip=" +
-          gip.to_string() +
-          "（H2 宿主回接协议归 host 回接批——参数消费序列未展开）",
-        ),
-      )
-    }
-  }
   // ── 函数入口 ip 集（live 域——块划分 leader 判定）+ 段头 meta 对
   //    （ret_kinds 段扫描的元数据源——批 4b-4）──
   let entry_ips : Array[Int32] = []
@@ -332,7 +379,7 @@ pub fn build_dispatch_input(
     }
   }
   for name in names {
-    guard output.func_index.get(name) is Some(idx) else { continue }
+    guard output.func_index.get(name) is Some(_) else { continue }
     guard output.func_table.get(name) is Some(m) else { continue }
     match remap.get(m.ip + libc_len) {
       Some(t) => entry_ips.push(t)
@@ -387,12 +434,41 @@ pub fn build_dispatch_input(
       }
     }
   }
+  // ── CallHost 窗口调用点构造（批 4′——4b-2 的全禁译撤除：参数消费
+  //    序列〔vitro 栈参数 → H2 窗口〕经 host_window_sig + AST 侧车 +
+  //    块内类型模拟展开；禁译面按分组细分 reason〔Stdin/Vfs/Callback/
+  //    VaList/Observe〕归 dispatchdiff 桶登记）──
+  let host_sites = match
+    build_host_sites(
+      full_ops,
+      full_operands,
+      entry_ips,
+      user_base,
+      ctx,
+      output.global_data_end,
+      if argv0.is_empty() {
+        0
+      } else {
+        1
+      },
+      if argv0.is_empty() {
+        []
+      } else {
+        [argv0]
+      },
+      variadic_argc,
+      call_sites,
+    ) {
+    Ok(s) => s
+    Err(m) => return Err(NotSupported(m))
+  }
   Ok({
     ops: full_ops,
     operands: full_operands,
     func_entry_ips: entry_ips,
     entry_ip: user_base,
     call_sites,
+    host_sites,
     ret_kinds,
     stack_start: 1048576,
     call_depth_limit: 10000,
@@ -408,8 +484,10 @@ pub fn build_dispatch_product(
   output : @bytecode.CompileOutput,
   max_steps : Int32,
   argv0~ : String = "",
+  variadic_argc~ : Array[Int32] = [],
 ) -> Result[DispatchProduct, String] {
-  let input = match build_dispatch_input(output, max_steps, argv0~) {
+  let input = match
+    build_dispatch_input(output, max_steps, argv0~, variadic_argc~) {
     Ok(i) => i
     Err(NotSupported(m)) => return Err("dispatch-not-supported: " + m)
     Err(FuncMissing(idx)) =>
@@ -510,12 +588,19 @@ pub fn build_dispatch_product(
   match @wasmenc.assemble_dispatch_module(input) {
     Ok(bytes) =>
       Ok({
-        module: bytes,
+        module_bytes: bytes,
         entry_ip,
         stack_start: 1048576,
         group_count,
         data_blob,
         data_base,
+        win_data_end: output.global_data_end.reinterpret_as_int(),
+        win_argc: if argv0.is_empty() {
+          0
+        } else {
+          1
+        },
+        win_argv0: argv0,
         host_calls,
         max_steps,
       })
@@ -534,13 +619,27 @@ pub fn build_dispatch_product(
       Err("dispatch-bad-target ip=" + ip.to_string() + " of " + n.to_string())
     Err(@wasmenc.NotSupportedHeight(h)) =>
       Err("dispatch-not-supported: spill-height " + h.to_string())
-    Err(@wasmenc.BadReturnPoint(b, h)) =>
+    Err(@wasmenc.BadReturnPoint(gip, h)) => {
+      // 诊断增强（批 4′）：坏块首 gip 起的组序列（块图红的定位面）
+      let mut seq = ""
+      let mut g = gip
+      while g < input.ops.length() && g < gip + 10 {
+        seq = seq +
+          " " +
+          input.ops[g].name() +
+          "/" +
+          input.operands[g].to_string()
+        g = g + 1
+      }
       Err(
-        "dispatch-bad-return-point block=" +
-        b.to_string() +
+        "dispatch-bad-return-point gip=" +
+        gip.to_string() +
         " height=" +
-        h.to_string(),
+        h.to_string() +
+        " ops:" +
+        seq,
       )
+    }
     Err(@wasmenc.Blocks(@wasmenc.Emit(m))) =>
       Err("dispatch-not-supported: " + m)
     Err(_) => Err("dispatch-assemble-failed: unclassified")

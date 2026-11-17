@@ -73,8 +73,12 @@ test("规则表含 #534 双键（opcode_variants / diag_code_count）", () => {
 // ── #534 采集器锚（J9）：真仓静态采集值 + 缺失路径 fail loud 不丢键 ──────
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
+// Stryker 突变沙箱只复制被测闭包文件（无真仓目录树）——依赖真仓的锚必须
+// 在沙箱里跳过，否则 mutation gate 干跑红（master 先例：demo_smoke 三向
+// 对账在沙箱 ENOENT）。守卫 = 真仓标志文件在场。
+const hasRealRepo = fs.existsSync(path.join(repoRoot, "moonbit", "opcode", "opcode.mbt"));
 
-test("#534 真仓采集：opcode_variants=154 / diag_code_count=129", () => {
+test("#534 真仓采集：opcode_variants=154 / diag_code_count=129", { skip: !hasRealRepo }, () => {
   const facts: Record<string, Fact> = {};
   collectOpcodeVariants(repoRoot, facts);
   collectDiagCodeCount(repoRoot, facts);
@@ -95,7 +99,7 @@ test("J9：源文件缺失 → unavailable 且键不丢（#298 病族防线）",
   assert.equal(facts["diag_code_count"]!.status, "unavailable");
 });
 
-test("#534 三处对称：非 --run 的 collectAll 两键即有真值（静态采集档）", () => {
+test("#534 三处对称：非 --run 的 collectAll 两键即有真值（静态采集档）", { skip: !hasRealRepo }, () => {
   const doc: FactsDoc = collectAll(repoRoot, false, false, "", null);
   assert.equal(doc.facts["opcode_variants"]?.status, "ok", "非 --run 档必须已有静态真值（占位不得覆盖）");
   assert.equal(doc.facts["diag_code_count"]?.status, "ok");

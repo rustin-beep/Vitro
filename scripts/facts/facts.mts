@@ -242,6 +242,76 @@ function collectRehostDispatch(root: string, facts: Record<string, Fact>): void 
   );
 }
 
+// collectOpcodeVariants（#534 门面数字真值键，2026-11-16）：README/moon.mod
+// 的「153 opcode」长期人肉同步必漂（#533 三族 stale 实锤）——本键把 opcode
+// 变体数纳入 facts --strict 对账。静态扫 enum OpCode 块（源码即真值）；
+// 与 opcode_wbtest 的 from_u8 0..255 全空间命中数（154）同源互证。
+export function collectOpcodeVariants(root: string, facts: Record<string, Fact>): void {
+  const rel = "moonbit/opcode/opcode.mbt";
+  let src: string;
+  try {
+    src = fs.readFileSync(path.join(root, rel), "utf8");
+  } catch {
+    facts["opcode_variants"] = unavail("条", rel, "确认 " + rel + " 存在", "opcode.mbt 缺失");
+    return;
+  }
+  const m = src.match(/pub\(all\) enum OpCode \{([\s\S]*?)\n\}/);
+  if (m === null) {
+    facts["opcode_variants"] = unavail(
+      "条", rel, "enum 块须为 `pub(all) enum OpCode { ... }` 形态", "枚举块匹配失败（形态变更须同步采集器）",
+    );
+    return;
+  }
+  const n = [...m[1]!.matchAll(/^ {2}([A-Z][A-Za-z0-9]*)[ \t\r]*$/gm)].length;
+  facts["opcode_variants"] = okFact(
+    n, "条", rel + "（enum OpCode 变体；wbtest from_u8 全空间命中同数）", "source_scan", nowISO(),
+  );
+}
+
+// collectDiagCodeCount（#534）：诊断码数真值——error_codes.json 的 arms
+// 排除 Unknown（错误码 0 不是诊断码）。数据源 = gen_diag 输入，生成物
+// moonbit/diag/error_code_gen.mbt 的枚举变体同数。
+export function collectDiagCodeCount(root: string, facts: Record<string, Fact>): void {
+  const rel = "scripts/moonbit/diagnostics_data/error_codes.json";
+  let doc: { arms?: { name?: string; code?: number }[] };
+  try {
+    doc = JSON.parse(fs.readFileSync(path.join(root, rel), "utf8")) as typeof doc;
+  } catch {
+    facts["diag_code_count"] = unavail("个", rel, "确认 " + rel + " 存在且可解析", "error_codes.json 缺失或不可解析");
+    return;
+  }
+  const arms = doc.arms ?? [];
+  const n = arms.filter((a) => a.name !== "Unknown").length;
+  facts["diag_code_count"] = okFact(
+    n, "个", rel + "（arms 排除 Unknown；即 ErrorCode 变体数 - 1）", "source_scan", nowISO(),
+  );
+}
+
+// collectTeachingCardCount（#541 审阅 P2-3，2026-11-17）：教学卡片数真值——
+// catalog.json entries 条数（= gen_diag 输入，仓内单源）。同族第四族：原
+// diag 规则 exclude 含「卡片」，包表行整行豁免导致该数字永久无闸，README 两处
+// 各写各的（115 cards / 117 条）且都与真值不符。
+export function collectTeachingCardCount(root: string, facts: Record<string, Fact>): void {
+  const rel = "scripts/moonbit/diagnostics_data/catalog.json";
+  let doc: { entries?: unknown[] };
+  try {
+    doc = JSON.parse(fs.readFileSync(path.join(root, rel), "utf8")) as typeof doc;
+  } catch {
+    facts["teaching_card_count"] = unavail("条", rel, "确认 " + rel + " 存在且可解析", "catalog.json 缺失或不可解析");
+    return;
+  }
+  const entries = doc.entries;
+  if (!Array.isArray(entries)) {
+    facts["teaching_card_count"] = unavail(
+      "条", rel, "entries 须为数组", "entries 形态变更（非数组，采集器须同步）",
+    );
+    return;
+  }
+  facts["teaching_card_count"] = okFact(
+    entries.length, "条", rel + "（entries 条数；gen_diag 的 EXPECTED_CATALOG 同源）", "source_scan", nowISO(),
+  );
+}
+
 // collectAbiVersion 采集 C ABI 版本真值。唯一来源曾是
 // native/src/capi/first_batch.rs 的 VITRO_ABI_VERSION 常量——文档里的
 // 版本号一律不是真相（M13 实证：代码 2.1.0 时仍有多份文档写 1.2.0/2.0.0）。
@@ -868,6 +938,11 @@ export const RUN_KEYS = [
   "moonbit_test_passed_native",
   "moonbit_coverage_uncovered_lines",
   "moonbit_check_warnings",
+  // #534 门面数字键（opcode_variants / diag_code_count）**不入本表**：它们是
+  // 静态采集（源码扫描，毫秒级），源就在仓内——采集失败=代码或数据缺陷，
+  // 必须落到「待采集」让 --strict 判红。入表曾让采集器坏掉时走「沿用上次
+  // 采集」静默绿（#541 审阅 P2-1 实测：正则失效后 `--run --strict` 仍
+  // EXIT=0，只剩一行软提示）。J9 锚 facts_keys.test.mts「静态键不沿用」。
 ];
 
 // markRetiredFacts：Rust 退役键统一 unavailable（工序④删区批 2026-10-05）。
@@ -896,6 +971,9 @@ export function collectAll(
   collectFailureLedgers(root, facts);
   collectCaseDirs(root, facts);
   collectRehostDispatch(root, facts);
+  collectOpcodeVariants(root, facts);
+  collectDiagCodeCount(root, facts);
+  collectTeachingCardCount(root, facts);
   collectAbiVersion(root, facts);
   collectMoonbitPackages(root, facts);
 
@@ -927,6 +1005,17 @@ export function collectAll(
     // B3：占位与 RUN_KEYS 对称（#298 病族——缺占位=沿用跳过=落盘丢键假绿）
     facts["moonbit_check_warnings"] = unavail("条", "moonbit/（moon check --target all）", "--run",
       "需 --run 才执行");
+    // #534：静态键的占位只在采集器整体未产出时兜底（正常路径上方静态区
+    // 已写值，不得覆盖）——键缺失=落盘丢键假绿（#298 病族）防线对称。
+    if (!("opcode_variants" in facts)) {
+      facts["opcode_variants"] = unavail("条", "moonbit/opcode/opcode.mbt", "确认枚举块形态", "静态采集未产出（键缺失防线）");
+    }
+    if (!("diag_code_count" in facts)) {
+      facts["diag_code_count"] = unavail("个", "scripts/moonbit/diagnostics_data/error_codes.json", "确认数据文件存在", "静态采集未产出（键缺失防线）");
+    }
+    if (!("teaching_card_count" in facts)) {
+      facts["teaching_card_count"] = unavail("条", "scripts/moonbit/diagnostics_data/catalog.json", "确认数据文件存在", "静态采集未产出（键缺失防线）");
+    }
   }
   if (cargoLog !== "") {
     // CI 接线路径：日志由 cargo test 步骤 tee 落盘，此处只解析不重跑。

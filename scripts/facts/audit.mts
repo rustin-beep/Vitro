@@ -35,6 +35,25 @@ const RETIRED_KEYS = new Set([
 
 // ─── 对账规则 ────────────────────────────────────────────────────────────────
 
+// 命中面声明（#541 审阅 P2-2，2026-11-17）：exclude 是**整行豁免**，一条规则
+// 的 exclude 一旦写宽（含「全表」「stable numbering」这类包表行常见词），该
+// 规则就可能对整族文档零覆盖却仍报绿——审阅实测：整份 moonbit/README.md 回滚
+// 到批前，opcode 规则一处都没红。声明命中面即把「实际覆盖到哪些文件、命中几
+// 行」变成机判：命中行数低于下限（规则形同虚设）或落到白名单外文件（规则扩散
+// 到意外文档）都判红。仅新规则按需声明；存量规则不声明即不受影响。
+export interface RuleExpect {
+  // CURRENT 命中行数下限（含 drift/frozen/pending/manual/suspect 与已对上真值
+  // 的行）——低于此值说明规则的 exclude 把本来该管的行全豁免掉了。
+  minHits: number;
+  // 允许命中的文件白名单（相对仓根路径）。落白名单外=规则扩散。
+  files: RegExp;
+  // 整文件豁免（相对仓根路径）。用于**历史定格的设计单/快照文档**：整篇以
+  // 某个旧值为叙述对象（如「153 码表实体化」），逐行加 as_of 不现实，
+  // 而它的数字是历史事实不是现值（2026-10-04 拍板的历史叙述豁免形态）。
+  // 只跳过该规则的判定，不影响下限机判——被豁免的文件不参与命中面统计。
+  skipFiles?: RegExp;
+}
+
 export interface Rule {
   key: string;
   label: string;
@@ -43,14 +62,18 @@ export interface Rule {
   lo: number;
   hi: number;
   unit: string;
+  expect: RuleExpect | null;
 }
 
 // 2026-10-12 带宽 5000-8000→1000-1600：真值面随 oracle 退役改四目录
 // 稳定语料（随机 2400 例生成路死亡——golden 清单不认临时目录名），
 // 1298=822+162+276+38（四目录冻结基线）。
 export function rules(): Rule[] {
-  const mk = (key: string, label: string, ctx: string, exc: string, lo: number, hi: number, unit: string): Rule => {
-    const r: Rule = { key, label, context: new RegExp(ctx, "i"), exclude: null, lo, hi, unit };
+  const mk = (
+    key: string, label: string, ctx: string, exc: string, lo: number, hi: number, unit: string,
+    expect?: RuleExpect,
+  ): Rule => {
+    const r: Rule = { key, label, context: new RegExp(ctx, "i"), exclude: null, lo, hi, unit, expect: expect ?? null };
     if (exc !== "") r.exclude = new RegExp(exc, "i");
     return r;
   };
@@ -121,6 +144,63 @@ export function rules(): Rule[] {
     mk("moonbit_check_warnings", "moon check warning 台账数",
       `warning[^\\n]{0,8}台账|moonbit_check_warnings`,
       ``, 0, 120, "条"),
+    // #534（2026-11-16）：门面数字两族（#533 stale 三族的根治键）——
+    // opcode 变体数 / 诊断码数入机判。
+    //
+    // #541 审阅 P2-2 处置（2026-11-17）：exclude 原含「全表」「stable
+    // numbering」——正是包表行的固有措辞（`154 opcodes with stable numbering`），
+    // 等于把该规则的**主覆盖面**整行豁免掉了：审阅实测整份 moonbit/README.md
+    // 回滚到批前只红 1 处（诊断码），opcode 三族零红。现收紧为只豁免真正
+    // 不该机判的行：moon.mod 面（#533 裁定随下版发版，发版前有意保留旧值）、
+    // 设计单历史快照行、语义说明行（`冻结`/`已由…取代`）、私有码表行。
+    // 带宽 lo=130（#541 P2-2）：原 lo=150 使历史值 135/153 落在带外=静默
+    // 不成为候选、也就永远判不出漂移（审阅实测 README.mbt.md 的「135 条」
+    // 永远不红）；130 覆盖全部历史值（135/153/154）。
+    mk("opcode_variants", "opcode 变体数", `opcode|操作码`,
+      `moon\\.mod|mooncakes 模块页|设计单|直映表|语义冻结|语义已由|冻结|私有码表`,
+      130, 160, "条",
+      {
+        minHits: 3,
+        // docs/README.md：发布档案索引行（「opcode 151→153」等）是带日期的
+        // 历史记录，合法面。
+        files: /^(README\.md|moonbit\/README\.md|moonbit\/README\.mbt\.md|moonbit\/diag\/README\.mbt\.md|docs\/README\.md|docs\/current\/)/,
+        // 「153 码表实体化」设计单整篇以旧码表为叙述对象（as_of 2026-11-05）。
+        skipFiles: /核载体迁移设计单/,
+      }),
+    // 带宽 lo=118：覆盖诊断码全部历史值（119/121/126/135/137 须落进候选
+    // 才能判漂移——下限高于旧值=漏抓假绿）。gen_diag 基线行另口径
+    // （EXPECTED_ARMS 含 Unknown 哨兵=变体数，与"诊断码数"差 1）且自带
+    // fail loud 锚，归生成器闸管。
+    // #541 审阅 P2-2 处置（2026-11-17）：原 exclude 含「教学卡片|卡片」——
+    // 包表行 `129-arm ErrorCode + ... teaching catalog (115 cards)` 一行同治，
+    // 整行豁免即把「129 臂」一起豁免（审阅实测 README:82 的 129 也漏红）。
+    // 去掉卡片词后同行的候选数字只剩带宽内的 129（115/117 均低于 lo=118），
+    // 卡片数由独立键 teaching_card_count 管（见下一条规则）。
+    // 「gen_diag」豁免同时被收窄为「枚举臂口径」豁免：宽泛的 gen_diag 会让
+    // 提到生成器的整行退出本规则，其数字改由邻近的卡片规则就近绑定——
+    // 实测 `156 个错误码 ... 114 条教学卡片` 一行的 156 被绑到卡片数上。
+    mk("diag_code_count", "诊断码数", `诊断错误码|诊断码|ErrorCode`,
+      `moon\\.mod|mooncakes 模块页|设计单|catalog_codes|EXPECTED_ARMS|\\d+\\s*臂`, 118, 140, "个",
+      {
+        // 现役命中面 = 根 README + moonbit/README 两处（诊断码声明不在
+        // README.mbt.md 的包表里）。
+        minHits: 2,
+        files: /^(README\.md|moonbit\/README\.md|moonbit\/README\.mbt\.md|moonbit\/diag\/README\.mbt\.md|docs\/README\.md|docs\/current\/)/,
+        skipFiles: /核载体迁移设计单/,
+      }),
+    // #541 审阅 P2-3（2026-11-17）：教学卡片数（catalog.json entries，真值 126）
+    // 是同族第四族——原 diag 规则的「卡片」豁免使它永久无闸，两处文档因此
+    // 各写各的（115 cards / 117 条，互相矛盾且都与真值不符）。独立成键后
+    // 与诊断码数解耦：同一行里「129 臂 + N 条卡片」两个数字各归各的规则。
+    // context 只认「教学卡片 / teaching catalog / cards」——裸「卡片」会命中
+    // 任意「iframe 卡片语境」行（实测：`height:100%` 被当成卡片数 100 判漂移）。
+    mk("teaching_card_count", "教学卡片数", `教学卡片|teaching catalog|\\bcards\\b`,
+      `moon\\.mod|mooncakes 模块页|设计单|catalog_codes`, 100, 140, "条",
+      {
+        minHits: 2,
+        files: /^(README\.md|moonbit\/README\.md|moonbit\/README\.mbt\.md|moonbit\/diag\/README\.mbt\.md|docs\/README\.md|docs\/current\/)/,
+        skipFiles: /核载体迁移设计单/,
+      }),
   ];
 }
 
@@ -466,6 +546,10 @@ export interface FactAudit {
   rule: Rule;
   truth: number | null;
   matched: number;
+  // matchedHits：整行候选数字全部对上真值的行（matched 的行级明细，
+  // #541 P2-2 命中面机判用——原实现只有计数，拿不到"规则究竟覆盖了哪些
+  // 文件:行"，exclude 写宽导致零覆盖时无从发现）。
+  matchedHits: Hit[];
   drift: Hit[];
   frozen: Hit[];
   pending: Hit[];
@@ -550,6 +634,10 @@ export interface AuditResult {
   // StaleSuspectExempts：白名单条目本轮扫描零命中（目标文件已无该 Suspect
   // 行）——僵尸豁免面，check 无条件红（防腐化，2026-10-01 接线批）。
   staleSuspectExempts: string[];
+  // Coverage：声明了 expect 的规则本轮命中面与声明不符（命中行数低于下限 /
+  // 命中落到白名单外文件）。#541 P2-2 处置——exclude 是整行豁免，写宽即
+  // 零覆盖，而零覆盖在旧机制下与"数字全对"不可区分。check 无条件红。
+  coverage: string[];
   scanN: number;
   // 坏引用：文档指向不存在的脚本文件（CURRENT 层才算；as-of/归档里的
   // 旧路径是有意的历史叙述）。
@@ -618,7 +706,7 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
     byKey.set(r.key, {
       rule: r,
       truth: t !== undefined && t.value !== null && t.value !== undefined ? t.value : null,
-      matched: 0, drift: [], frozen: [], pending: [], manual: [], suspect: [], suspectExempted: [],
+      matched: 0, matchedHits: [], drift: [], frozen: [], pending: [], manual: [], suspect: [], suspectExempted: [],
     });
     order.push(r.key);
   }
@@ -657,6 +745,8 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
       for (const r of rs) {
         if (!r.context.test(line)) continue;
         if (r.exclude !== null && r.exclude.test(line)) continue;
+        // 规则级整文件豁免（历史定格设计单，见 RuleExpect.skipFiles）。
+        if (r.expect?.skipFiles !== undefined && r.expect.skipFiles.test(rel)) continue;
         const c: NumSpan[] = [];
         for (const s of spans) {
           if (nearestKeyOfSpan(kws, s) !== r.key) continue;
@@ -680,6 +770,7 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
         const hit = cands.some((s) => s.value !== a.truth);
         if (!hit) {
           a.matched++;
+          a.matchedHits.push(h);
           continue;
         }
         const others: string[] = [];
@@ -723,9 +814,9 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
     const meta = SVG_FACT_META[key]!;
     const t = doc.facts[key];
     const a: FactAudit = {
-      rule: { key, label: meta.label, context: RE_DATA_FACT, exclude: null, lo: 0, hi: 0, unit: meta.unit },
+      rule: { key, label: meta.label, context: RE_DATA_FACT, exclude: null, lo: 0, hi: 0, unit: meta.unit, expect: null },
       truth: t !== undefined && t.value !== null && t.value !== undefined ? t.value : null,
-      matched: 0, drift: [], frozen: [], pending: [], manual: [], suspect: [], suspectExempted: [],
+      matched: 0, matchedHits: [], drift: [], frozen: [], pending: [], manual: [], suspect: [], suspectExempted: [],
     };
     byKey.set(key, a);
     order.push(key);
@@ -773,6 +864,7 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
         const found = h.spans.some((s) => s.value === a.truth);
         if (found) {
           a.matched++;
+          a.matchedHits.push(h);
         } else {
           a.drift.push(h);
         }
@@ -783,7 +875,7 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
   const res: AuditResult = {
     audits: [], truthOf: {}, driftN: 0, frozenN: 0, pendingN: 0, manualN: 0,
     suspectN: 0, suspectExemptedN: 0, staleSuspectExempts: [], scanN: files.length,
-    broken: [], consts: [],
+    broken: [], consts: [], coverage: [],
   };
   // Suspect 行级豁免白名单（2026-10-01 --strict 接线批）：fail loud 同
   // loadExemptDocs；TempDir 测试夹具无该文件视为空表（向后兼容）。
@@ -826,6 +918,32 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
     res.frozenN += a.frozen.length;
     res.pendingN += a.pending.length;
     if (a.truth !== null) res.truthOf[k] = a.truth;
+  }
+  // 命中面机判（#541 P2-2）：声明了 expect 的规则，本轮实际看到的行（含已对上
+  // 真值的 matchedHits 与冻结/待采集/人工桶）须满足下限且不越白名单。exclude
+  // 是整行豁免——写宽即零覆盖，而零覆盖在旧机制下与「数字全对」不可区分
+  // （审阅实测：整份 moonbit/README.md 回滚到批前，opcode 规则一处未红）。
+  for (const a of res.audits) {
+    const ex = a.rule.expect;
+    if (ex === null) continue;
+    const hits = [
+      ...a.matchedHits, ...a.drift, ...a.pending, ...a.manual, ...a.suspect,
+      ...a.suspectExempted, ...a.frozen,
+    ];
+    if (hits.length < ex.minHits) {
+      res.coverage.push(
+        `${a.rule.label}（${a.rule.key}）：CURRENT 命中 ${hits.length} 行 < 声明下限 ${ex.minHits}`
+        + `——规则 exclude 把本应管的行豁免掉了（#541 P2-2 形态）`,
+      );
+      continue;
+    }
+    const outside = [...new Set(hits.map((h) => h.file))].filter((f) => !ex.files.test(f));
+    if (outside.length > 0) {
+      res.coverage.push(
+        `${a.rule.label}（${a.rule.key}）：命中落到白名单外文件 ${byteSort(outside).join("、")}`
+        + `——规则扩散，须收窄 context 或登记白名单`,
+      );
+    }
   }
   // 白名单零命中条目 = 僵尸豁免面（目标行已被改写/删除），check 无条件红。
   // 判据口径（2026-11-12 run 140 实锤后修正）：以「contains 文本锚是否仍在

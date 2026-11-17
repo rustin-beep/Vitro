@@ -130,6 +130,58 @@ const COLLECT = `(() => {
   return { vars, styles: out };
 })()`;
 
+// 就绪探测（#541 审阅处置，2026-11-17）：主题切换原为固定 sleep(200)，在
+// CI 冷启动慢的 runner 上是竞态源——run 44094142934 attempt 1 实测：E2E
+// setup 45s（正常 12s）时本步 10s 且 exit 2（完整性断言），同代码 attempt 2
+// 4s 通过。改为轮询「本主题下全选择器可查 + 全 token 非空」，超时带清单判红。
+const READY = `(() => {
+  const missing = [];
+  for (const sel of ${JSON.stringify(SELECTORS)}) if (!document.querySelector(sel)) missing.push(sel);
+  const root = getComputedStyle(document.documentElement);
+  const emptyVars = ${JSON.stringify(VARS)}.filter((v) => !root.getPropertyValue(v).trim());
+  return { ok: missing.length === 0 && emptyVars.length === 0, missing, emptyVars };
+})()`;
+
+interface ReadyState {
+  ok: boolean;
+  missing: string[];
+  emptyVars: string[];
+}
+
+/** 等本主题就绪（选择器齐全 + token 非空）。超时返回最后状态，由调用方判红
+ *  （不在此处 exit——要把每个主题的缺失面聚齐再一次性报，便于定位）。 */
+async function waitThemeReady(timeoutMs: number): Promise<ReadyState> {
+  const t0 = Date.now();
+  let last: ReadyState = { ok: false, missing: [], emptyVars: [] };
+  for (;;) {
+    last = await evaluate<ReadyState>(READY);
+    if (last.ok) return last;
+    if (Date.now() - t0 >= timeoutMs) return last;
+    await sleep(100);
+  }
+}
+
+/** 等本主题的采集结果**稳定**（连续两次全等）后再返回。
+ *  必需：主题切换有 CSS transition（颜色/border-color），「就绪」只表示选择器
+ *  与 token 在位，不表示过渡已收敛——直接采集会拿到中间色，在基线比对里表现
+ *  为一整片 border 与 color 漂移（2026-11-17 本地实测：soft 主题 border 三色
+ *  采到 rgb(191,174,145) 过渡值）。原实现用 sleep(200) 硬等，慢 runner 上不够
+ *  （竞态源），此处改为稳定判定 + 上限，两边都覆盖。
+ *  上限（settleMs）只兜底动画循环，不参与就绪超时。 */
+async function waitThemeStable(timeoutMs: number, settleMs = 3000): Promise<{ ready: ReadyState; styles: ThemeStyle }> {
+  const ready = await waitThemeReady(timeoutMs);
+  let prev = await evaluate<ThemeStyle>(COLLECT);
+  const t0 = Date.now();
+  for (;;) {
+    await sleep(120);
+    const cur = await evaluate<ThemeStyle>(COLLECT);
+    if (JSON.stringify(cur) === JSON.stringify(prev) || Date.now() - t0 >= settleMs) {
+      return { ready, styles: cur };
+    }
+    prev = cur;
+  }
+}
+
 function walkDiff(expected: unknown, actual: unknown, path: string, diffs: Diff[]): void {
   if (typeof expected === "object" && expected !== null && typeof actual === "object" && actual !== null) {
     const e = expected as Record<string, unknown>;
@@ -157,6 +209,19 @@ function completenessProblems(doc: StyleDoc | undefined): string[] {
   return problems;
 }
 
+/**
+ * GitHub Actions 注解（#541 审阅处置，2026-11-17）：把失败细节写成 workflow
+ * command，run 页面直接可见。此前完整性断言的缺失清单只进 stderr，而 GitHub
+ * 的 annotation 只保留 exit code——CI 上出现过「只看到 exit code 2、不知道缺
+ * 什么」的诊断盲区（run 44094142934 attempt 1：E2E 冷启动 45s，采集时页面未
+ * 就绪，重跑 12s 即绿）。非 Actions 环境（本地跑）不输出，避免噪声。
+ */
+function ghAnnotate(level: "error" | "warning", title: string, detail: string): void {
+  if (process.env["GITHUB_ACTIONS"] !== "true") return;
+  const esc = (s: string): string => s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+  console.log(`::${level} title=${esc(title)}::${esc(detail)}`);
+}
+
 /** 完整性断言：--update 写盘前 / 比对读基线后都必须通过——缺失选择器在
  *  COLLECT 里是 null、未定义 token 是空串，直接写进基线会让下一次比较自然
  *  全等（D8 更新侧塌缩）。任一缺失 fail loud。 */
@@ -166,6 +231,8 @@ function assertComplete(doc: StyleDoc | undefined, label: string): void {
     console.error(`style_contract: ${label}完整性断言失败（${problems.length} 处）——拒绝冻结/比对残缺基线：`);
     for (const p of problems.slice(0, 20)) console.error("  " + p);
     if (problems.length > 20) console.error(`  ...另有 ${problems.length - 20} 处`);
+    ghAnnotate("error", `style_contract: ${label}完整性断言失败（${problems.length} 处）`,
+      "拒绝冻结/比对残缺基线。前 10 处：\n" + problems.slice(0, 10).join("\n"));
     process.exit(2);
   }
 }
@@ -224,12 +291,28 @@ async function main() {
   // 持久化可能是 16）——不固定就会在「同一份代码」上出现假红。
   await evaluate('document.documentElement.setAttribute("data-size", "14"); true');
   const actual: StyleDoc = {};
+  // 每主题就绪预算：CI 冷启动慢的 runner 上，主题切换后的样式/组件晚到是实测
+  // 形态（见 READY 注释）。20s 远大于正常 <100ms，只在异常慢时才等待。
+  const READY_TIMEOUT_MS = 20000;
+  const notReady: string[] = [];
   for (const theme of THEMES) {
     await evaluate(`document.documentElement.setAttribute("data-theme", ${JSON.stringify(theme)}); true`);
-    await sleep(200);
-    actual[theme] = await evaluate<ThemeStyle>(COLLECT);
+    const { ready, styles } = await waitThemeStable(READY_TIMEOUT_MS);
+    if (!ready.ok) {
+      notReady.push(
+        `${theme}: 缺选择器 [${ready.missing.join(", ") || "无"}]；空 token [${ready.emptyVars.join(", ") || "无"}]`,
+      );
+    }
+    actual[theme] = styles;
   }
   closeCdp();
+  if (notReady.length) {
+    console.error(`style_contract: ${notReady.length} 个主题在 ${READY_TIMEOUT_MS}ms 内未就绪（渲染/加载慢或组件缺失）：`);
+    for (const l of notReady) console.error("  " + l);
+    ghAnnotate("error", `style_contract: ${notReady.length} 个主题 ${READY_TIMEOUT_MS}ms 内未就绪`,
+      "采集前就绪等待超时（渲染慢/组件缺失）。未就绪明细：\n" + notReady.join("\n"));
+    process.exit(2);
+  }
   assertComplete(actual, "采集");
 
   if (UPDATE) {
@@ -249,6 +332,8 @@ async function main() {
     console.error(`style_contract: FAIL——${diffs.length} 处样式契约漂移`);
     for (const d of diffs.slice(0, 20)) console.error(`  ${d.path}\n    基线: ${JSON.stringify(d.expected)}\n    实际: ${JSON.stringify(d.actual)}`);
     if (diffs.length > 20) console.error(`  ...另有 ${diffs.length - 20} 处`);
+    ghAnnotate("error", `style_contract: ${diffs.length} 处样式契约漂移`,
+      "前 10 处：\n" + diffs.slice(0, 10).map((d) => `${d.path}（基线 ${JSON.stringify(d.expected)} / 实际 ${JSON.stringify(d.actual)}）`).join("\n"));
     process.exit(1);
   }
   console.log(`style_contract: PASS（${THEMES.length} 主题 × ${SELECTORS.length} 选择器 × ${PROPS.length} 属性）`);
